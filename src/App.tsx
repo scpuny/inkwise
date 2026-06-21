@@ -429,6 +429,21 @@ function AppContent() {
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
       />
+
+      {/* DocPicker */}
+      <DocPicker
+        open={docPickerOpen}
+        onClose={() => setDocPickerOpen(false)}
+        onResult={handleDocPickerResult}
+        activeCollectionId={activeCollectionId}
+      />
+
+      {/* Article Manager */}
+      <ArticleManager
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        onOpenArticle={handleOpenArticle}
+      />
 </div>
     </ErrorBoundary>
   );
