@@ -72,7 +72,9 @@ function getStatusLabel(status: string): string {
 export function ArticleManager({
   onOpenArticle,
   onClose,
+  open,
 }: {
+  open: boolean;
   onOpenArticle?: (articleId: string, collectionId: string) => void;
   onClose?: () => void;
 }) {
@@ -278,8 +280,11 @@ export function ArticleManager({
     }
   };
 
+  if (!open) return null;
+
   return (
-    <div className="article-manager">
+    <div className="article-manager-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+      <div className="article-manager" onClick={(e) => e.stopPropagation()}>
       {/* Header */}
       <div className="article-manager__header">
         <h2 className="article-manager__title">
@@ -521,6 +526,7 @@ export function ArticleManager({
           onCancel={() => setShowDeleteConfirm(false)}
           danger
         />
+    </div>
     </div>
   );
 }

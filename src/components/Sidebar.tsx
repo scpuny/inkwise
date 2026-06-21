@@ -4,7 +4,7 @@ import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
 
-type SidebarTab = "files" | "outline" | "manage";
+type SidebarTab = "files" | "outline";
 
 export function Sidebar({
   onOpenSettings,
@@ -18,7 +18,6 @@ export function Sidebar({
   onLinkFolder,
   onUnlinkFolder,
   onManageArticles,
-  tabOverride,
 }: {
   onOpenSettings: () => void;
   onSelectArticle?: (articleId: string) => void;
@@ -31,14 +30,11 @@ export function Sidebar({
   onLinkFolder?: (collectionId: string) => void;
   onUnlinkFolder?: (collectionId: string) => void;
   onManageArticles?: () => void;
-  manageMode?: boolean;
-  tabOverride?: string;
 }) {
   const [internalTab, setInternalTab] = useState<SidebarTab>("files");
-  const activeTab = (tabOverride as SidebarTab) || internalTab;
+  const activeTab = internalTab;
   const setActiveTab = (tab: SidebarTab) => {
     setInternalTab(tab);
-    if (tab === "manage" && onManageArticles) onManageArticles();
   };
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,12 +90,6 @@ export function Sidebar({
             onSelectArticle={onSelectArticle}
             activeArticleId={activeArticleId ?? null}
           />
-        ) : activeTab === "manage" ? (
-          <div className="sidebar__manage-placeholder">
-            <FileText size={32} />
-            <p>文章管理</p>
-            <span>点击上方"管理"按钮打开管理面板</span>
-          </div>
         ) : (
           <OutlinePanel
             items={outlineItems ?? []}
@@ -113,7 +103,7 @@ export function Sidebar({
       <nav className="sidebar__nav">
         <SidebarNavItem icon={<FileText size={15} />} label="文件" active={activeTab === "files"} onClick={() => setActiveTab("files")} />
         <SidebarNavItem icon={<List size={15} />} label="大纲" active={activeTab === "outline"} onClick={() => setActiveTab("outline")} />
-        <SidebarNavItem icon={<FileText size={15} />} label="管理" active={activeTab === "manage"} onClick={() => setActiveTab("manage")} />
+        <SidebarNavItem icon={<FileText size={15} />} label="管理" onClick={() => onManageArticles?.()} />
         <SidebarNavItem icon={<Settings size={15} />} label="设置" onClick={onOpenSettings} />
       </nav>
     </aside>

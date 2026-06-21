@@ -9331,6 +9331,30 @@ body {
    Article Manager — 文章管理页面
    ══════════════════════════════════════════════════════════════ */
 
+.article-manager-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+.article-manager {
+  width: min(90vw, 900px);
+  height: min(85vh, 640px);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.18s ease;
+}
 .article-manager {
   display: flex;
   flex-direction: column;

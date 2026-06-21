@@ -53,8 +53,7 @@ function AppContent() {
   const [sidebarWidth, setSidebarWidth] = useState(264);
   const [resizing, setResizing] = useState<"sidebar" | null>(null);
   const [hasActiveArticle, setHasActiveArticle] = useState(false);
-  const [manageMode, setManageMode] = useState(false);
-  const [manageArticleId, setManageArticleId] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
@@ -107,15 +106,10 @@ function AppContent() {
     setActiveArticleId(articleId);
     setActiveCollectionId(collectionId);
     setHasActiveArticle(true);
-    setManageMode(false);
-  }, []);
-
-  const handleManageMode = useCallback(() => {
-    setManageMode(true);
   }, []);
 
   const handleCloseManagement = useCallback(() => {
-    setManageMode(false);
+    setManageOpen(false);
   }, []);
 
   const handleDocPickerResult = useCallback(async (result: DocPickerResult) => {
@@ -124,7 +118,6 @@ function AppContent() {
       setActiveArticleId(result.articleId);
       setActiveCollectionId(result.collectionId || null);
       setHasActiveArticle(true);
-      setManageMode(false);
     } else if (result.action === "create" && result.collectionId) {
       // Create a new article in the selected collection
       setActiveCollectionId(result.collectionId);
@@ -136,14 +129,12 @@ function AppContent() {
       if (article) {
         setActiveArticleId(article.id);
         setHasActiveArticle(true);
-        setManageMode(false);
       }
     } else if (result.action === "plan" && result.collectionId) {
       // Go to plan mode - set collection and show splash
       setActiveCollectionId(result.collectionId);
       setHasActiveArticle(false);
       setActiveArticleId(null);
-      setManageMode(false);
     }
   }, []);
 
@@ -267,6 +258,7 @@ function AppContent() {
           onNewArticle={async () => {
             setDocPickerOpen(true);
           }}
+          onManageArticles={() => setManageOpen(true)}
           onLinkFolder={async (collectionId: string) => {
             let folderPath: string | null = null;
             
@@ -322,8 +314,7 @@ function AppContent() {
           outlineItems={outlineItems}
           activeOutlineId={activeOutlineId ?? undefined}
           onOutlineSelect={handleOutlineSelect}
-          onManageArticles={handleManageMode}
-          manageMode={manageMode}
+
         />
 
         {/* Sidebar Resizer */}
@@ -335,10 +326,6 @@ function AppContent() {
           aria-label="调整侧栏宽度"
         />
 
-        {manageMode ? (
-          <ArticleManager onOpenArticle={handleOpenArticle} onClose={handleCloseManagement} />
-        ) : (
-          <>
         {/* Editor */}
         <EditorPane
           aiDockOpen={false}
@@ -401,9 +388,6 @@ function AppContent() {
           onSetEditorStyleTemplate={setEditorStyleTemplate}
           onOutlineChange={handleOutlineChange}
         />
-
-        </>
-        )}
 
         {/* Agent Panel (replaces old AIDock) */}
         <AgentPanel />
