@@ -87,8 +87,7 @@ export async function loadArticleMeta(id: string): Promise<ArticleMeta | null> {
 export interface ArticleIndex {
   articleId: string;
   tags: string[];
-  embedding?: number[];       // 🔮 vector embedding
-  codegraph?: Record<string, unknown>; // 🔮 codegraph analysis
+  embedding?: number[];       // 🔮 reserved for vector embedding
 }
 
 const INDEX_KEY_PREFIX = "index:";

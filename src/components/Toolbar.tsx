@@ -2,10 +2,13 @@ import {
   Sparkles, Bold, Italic, Underline, Strikethrough,
   Quote, List, ListOrdered, Type, Link as LinkIcon,
   Highlighter, Code2, ListTodo, SeparatorHorizontal,
-  MoreHorizontal, Undo2, Redo2, Image, Search,
+  MoreHorizontal, Undo2, Redo2, Image, Search, Palette,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { getAllTemplates, type EditorStyleTemplate } from "../lib/editorStyles";
+import { Wand2, PenLine } from "lucide-react";
+import { useAgent } from "../lib/agent";
 
 // ── TipTap helper ──
 function getEditor() {
@@ -99,8 +102,29 @@ function ImagePopover({ onClose }: { onClose: () => void }) {
   const handleApply = () => {
     const ed = getEditor();
     if (!ed || !url.trim()) { onClose(); return; }
-    ed.commands.insertContent(`![image](${url.trim()})`);
+    ed.commands.setImage({ src: url.trim() });
     onClose();
+  };
+
+  const handleFile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const ed = getEditor();
+        if (ed) {
+          ed.commands.setImage({ src: dataUrl });
+        }
+        onClose();
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   };
 
   return (
@@ -114,7 +138,11 @@ function ImagePopover({ onClose }: { onClose: () => void }) {
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleApply(); if (e.key === "Escape") onClose(); }}
         />
-        <button className="btn btn--small" onClick={handleApply}>插入</button>
+        <button className="btn btn--small" onClick={handleApply}>插入 URL</button>
+        <button className="btn btn--small" onClick={handleFile}>
+          <Image size={12} />
+          本地图片
+        </button>
       </div>
     </div>
   );
@@ -197,11 +225,15 @@ export function Toolbar({
   aiDockOpen,
   onModeSwitch,
   editorMode,
+  onStyleTemplate,
+  styleTemplateId,
 }: {
   onToggleAIDock: () => void;
   aiDockOpen: boolean;
   onModeSwitch?: (mode: "rich" | "markdown") => void;
   editorMode?: "rich" | "markdown";
+  onStyleTemplate?: (id: string) => void;
+  styleTemplateId?: string;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
@@ -209,6 +241,8 @@ export function Toolbar({
   const [headingOpen, setHeadingOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [styleOpen, setStyleOpen] = useState(false);
+  const { openCommandBar, togglePanel, panelOpen } = useAgent();
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const [popoverPos, setPopoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -221,7 +255,7 @@ export function Toolbar({
       const target = e.target as HTMLElement;
       if (!target.closest(".toolbar-popover") && !target.closest(".toolbar-dropdown-btn")) {
         setLinkOpen(false); setImageOpen(false); setHighlightOpen(false);
-        setHeadingOpen(false); setMoreOpen(false);
+        setHeadingOpen(false); setMoreOpen(false); setStyleOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -252,6 +286,35 @@ export function Toolbar({
 
   return (
     <div className="toolbar">
+      {/* AI Quick Actions */}
+      <div className="toolbar__group toolbar__group--ai">
+        <button
+          className="toolbar-btn toolbar-btn--ai"
+          title="续写 (Ctrl+K)"
+          onClick={() => openCommandBar()}
+        >
+          <Wand2 size={14} />
+          <span className="toolbar-btn__label">续写</span>
+        </button>
+        <button
+          className="toolbar-btn toolbar-btn--ai"
+          title="润色选中文本"
+          onClick={() => openCommandBar()}
+        >
+          <PenLine size={14} />
+          <span className="toolbar-btn__label">润色</span>
+        </button>
+        <button
+          className={`toolbar-btn${panelOpen ? " toolbar-btn--active" : ""}`}
+          onClick={togglePanel}
+          title="Agent 面板 (Ctrl+Shift+\)"
+        >
+          <Sparkles size={14} />
+          <span className="toolbar-btn__label">AI</span>
+        </button>
+        <span className="toolbar__divider" />
+      </div>
+      
       {/* Left: History + Headings + Format */}
       <div className="toolbar__group">
         {/* History */}
@@ -375,8 +438,41 @@ export function Toolbar({
         </div>
       </div>
 
-      {/* Right: Mode + AI + Search */}
+      {/* Right: Mode + Style + AI + Search */}
       <div className="toolbar__group toolbar__group--right">
+
+        {/* Style template */}
+        {onStyleTemplate && (
+          <div style={{ position: "relative" }}>
+            <button
+              className="toolbar-btn toolbar-dropdown-btn"
+              title="排版样式"
+              onClick={() => { setStyleOpen((o) => !o); setLinkOpen(false); }}
+            >
+              <Palette size={14} />
+            </button>
+            {styleOpen && (
+              <div className="toolbar-popover" style={{ right: 0, left: "auto" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "3px 0", minWidth: 160 }}>
+                  {getAllTemplates().map((t) => (
+                    <button
+                      key={t.id}
+                      className="heading-dropdown-item"
+                      style={{
+                        fontWeight: styleTemplateId === t.id ? 600 : 400,
+                        color: styleTemplateId === t.id ? "var(--accent)" : "var(--fg-dim)",
+                      }}
+                      onClick={() => { onStyleTemplate(t.id); setStyleOpen(false); }}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Editor mode switch */}
         {onModeSwitch && (
           <button
@@ -388,15 +484,7 @@ export function Toolbar({
           </button>
         )}
 
-        <span className="toolbar__divider" />
 
-        <button
-          className={`toolbar-btn${aiDockOpen ? " toolbar-btn--active" : ""}`}
-          onClick={onToggleAIDock}
-          title="AI 助手"
-        >
-          <Sparkles size={15} />
-        </button>
 
         <span className="toolbar__divider" />
 

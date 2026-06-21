@@ -8,4 +8,28 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "tiptap-vendor": [
+            "@tiptap/react",
+            "@tiptap/core",
+            "@tiptap/starter-kit",
+            "@tiptap/extension-underline",
+            "@tiptap/extension-placeholder",
+            "@tiptap/extension-link",
+            "@tiptap/extension-task-list",
+            "@tiptap/extension-task-item",
+            "@tiptap/extension-highlight",
+            "@tiptap/extension-text-align",
+            "@tiptap/markdown",
+            "@tiptap/extension-image",
+          ],
+          "lucide": ["lucide-react"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 });

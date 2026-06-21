@@ -1,0 +1,82 @@
+{
+  "$schema": "https://codex.openai.com/plugins/schema.json",
+  "id": "aiwriter-codegraph",
+  "name": "CodeGraph Integration",
+  "description": "代码知识图谱插件，提供代码实体搜索、调用图分析、文件结构查看等功能。基于 CodeGraph MCP 守护进程构建。",
+  "version": "0.1.0",
+  "commands": [
+    {
+      "id": "codegraph-stats",
+      "name": "CodeGraph 统计",
+      "description": "查看项目的代码知识图谱统计信息（节点数、边数、文件数等）"
+    },
+    {
+      "id": "codegraph-search",
+      "name": "代码搜索",
+      "description": "在代码知识图谱中全文搜索代码实体（函数、类、变量等）",
+      "args": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "搜索关键词",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codegraph-file-entities",
+      "name": "文件实体列表",
+      "description": "查看指定文件中定义的所有代码实体",
+      "args": [
+        {
+          "name": "filePath",
+          "type": "string",
+          "description": "文件路径",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codegraph-call-graph",
+      "name": "调用图",
+      "description": "查看指定代码实体的调用关系（谁调用了它，它调用了谁）",
+      "args": [
+        {
+          "name": "nodeId",
+          "type": "string",
+          "description": "代码实体 ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "codegraph-list-files",
+      "name": "文件列表",
+      "description": "列出项目中被 CodeGraph 索引的所有文件"
+    },
+    {
+      "id": "codegraph-unresolved-refs",
+      "name": "未解析引用",
+      "description": "查看项目中无法解析的符号引用"
+    },
+    {
+      "id": "codegraph-db-info",
+      "name": "数据库信息",
+      "description": "查看 CodeGraph 数据库文件的元信息（路径、大小等）"
+    }
+  ],
+  "capabilities": [
+    "file_read",
+    "terminal_execute"
+  ],
+  "environment": {
+    "requires": ["codegraph"],
+    "hints": {
+      "codegraph": {
+        "check": "ls .codegraph/codegraph.db 2>/dev/null",
+        "install": "cargo install codegraph",
+        "description": "需要 CodeGraph MCP 守护进程（v0.9+）来提供代码分析能力"
+      }
+    }
+  }
+}

@@ -1,11 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  SendHorizonal, Play, Sparkles, Edit3, Languages,
-  MoreHorizontal, Brain, Gauge, ChevronsUpDown,
+  SendHorizonal, Play, Sparkles,
+  MoreHorizontal, Brain, Gauge, ChevronsUpDown, Type,
 } from "lucide-react";
 import { PopoverMenu, type MenuItem } from "./PopoverMenu";
 import { IntentMenu, type IntentOption } from "./IntentMenu";
-import { fetchAvailableModels, getProvidersSync, getAllModels, type Provider } from "../lib/providerModels";
+import { listSkills, type Skill } from "../lib/skill";
+import { getProvidersSync } from "../lib/providerModels";
 
 const COMPOSER_MIN_HEIGHT = 104;
 const COMPOSER_MAX_HEIGHT = 360;
@@ -17,6 +18,8 @@ const EFFORTS: MenuItem[] = [
   { id: "high", label: "高", subtitle: "深度思考", onClick: () => {} },
 ];
 
+const TOKEN_PRESETS = [500, 1000, 2000, 4000, 8000] as const;
+
 export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?: (text: string) => void; sending?: boolean; onIntent?: (intent: string) => void }) {
   const [value, setValue] = useState("");
   const [localSending, setLocalSending] = useState(false);
@@ -24,20 +27,61 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const [resizing, setResizing] = useState(false);
   const [composerHeight, setComposerHeight] = useState<number | null>(null);
 
-  // Model list from provider API
-  const [modelItems, setModelItems] = useState<MenuItem[]>([]);
-  const [selectedModel, setSelectedModel] = useState("");
+  // Model list from provider API — sync initializer reads latest from localStorage
+  const [modelItems, setModelItems] = useState<MenuItem[]>(() => buildModelItems());
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const items = buildModelItems();
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("aiwriter-default-model") : null;
+    if (saved && items.some((m) => m.id === saved)) return saved;
+    return items.length > 0 ? items[0].id : "";
+  });
+
+  // Re-read model items when providers change (event dispatched by ModelsSection)
+  useEffect(() => {
+    const handler = () => {
+      const items = buildModelItems();
+      setModelItems(items);
+    };
+    window.addEventListener("providers-changed", handler);
+    return () => window.removeEventListener("providers-changed", handler);
+  }, []);
+
+  const handleSelectModel = useCallback((id: string) => {
+    setSelectedModel(id);
+    try { localStorage.setItem("aiwriter-default-model", id); } catch {}
+    window.dispatchEvent(new CustomEvent("providers-changed"));
+  }, []);
   const [selectedEffort, setSelectedEffort] = useState(EFFORTS[0].id);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [effortMenuOpen, setEffortMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [currentIntent, setCurrentIntent] = useState("general");
-  const intentOptions: IntentOption[] = [
-    { id: "general", label: "通用", desc: "通用写作助手，适合各类写作场景", icon: <Sparkles size={13} />, active: currentIntent === "general", onToggle: () => setCurrentIntent("general") },
-    { id: "academic", label: "学术", desc: "严谨学术风格，适合论文和报告", icon: <Brain size={13} />, active: currentIntent === "academic", onToggle: () => setCurrentIntent("academic") },
-    { id: "creative", label: "创意", desc: "富有创意和文学性的表达", icon: <Sparkles size={13} />, active: currentIntent === "creative", onToggle: () => setCurrentIntent("creative") },
-    { id: "professional", label: "商务", desc: "专业的商务沟通风格", icon: <Gauge size={13} />, active: currentIntent === "professional", onToggle: () => setCurrentIntent("professional") },
+
+  // Max tokens
+  const [maxTokens, setMaxTokens] = useState(2048);
+  const [tokenMenuOpen, setTokenMenuOpen] = useState(false);
+  const tokenBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const fallbackSkills: Skill[] = [
+    { name: "general", description: "通用写作", body: "", scope: "Builtin", path: "", run_as: "Inline", allowed_tools: [], model: null, effort: null, enabled: true },
+    { name: "academic", description: "学术写作", body: "", scope: "Builtin", path: "", run_as: "Subagent", allowed_tools: [], model: null, effort: "high", enabled: true },
+    { name: "creative", description: "创意写作", body: "", scope: "Builtin", path: "", run_as: "Inline", allowed_tools: [], model: null, effort: null, enabled: true },
   ];
+  const intentOptions: IntentOption[] = (skills.length > 0 ? skills : fallbackSkills).map((s) => ({
+    id: s.name,
+    label: skillDisplayLabel(s.name),
+    desc: s.description,
+    icon: <Sparkles size={13} />,
+    active: currentIntent === s.name,
+    onToggle: () => setCurrentIntent(s.name),
+  }));
+
+  // Load skills from backend
+  useEffect(() => {
+    listSkills().then(setSkills).catch(() => {});
+  }, []);
+
   const [fetchingModels, setFetchingModels] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -46,47 +90,6 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const effortBtnRef = useRef<HTMLButtonElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const startResizeRef = useRef({ startY: 0, startHeight: 0 });
-
-  // Fetch all configured models from all enabled providers on mount
-  useEffect(() => {
-    let cancelled = false;
-    const loadModels = async () => {
-      setFetchingModels(true);
-      try {
-        const allModels = await getAllModels();
-        if (!cancelled) {
-          const providers = getProvidersSync();
-          // Build a map: modelId -> provider label
-          const modelProviderMap = new Map<string, string>();
-          for (const p of providers) {
-            if (p.enabled && p.models.length > 0) {
-              for (const m of p.models) {
-                modelProviderMap.set(m, p.label);
-              }
-            }
-          }
-          const items: MenuItem[] = allModels.map((id) => ({
-            id,
-            label: id,
-            subtitle: modelProviderMap.get(id) ?? "",
-            checked: false,
-            onClick: () => setSelectedModel(id),
-          }));
-          setModelItems(items);
-          // Select first model
-          if (items.length > 0) {
-            setSelectedModel(items[0].id);
-          }
-        }
-      } catch {
-        // Keep items empty if fetch fails
-      } finally {
-        if (!cancelled) setFetchingModels(false);
-      }
-    };
-    loadModels();
-    return () => { cancelled = true; };
-  }, []);
 
   const sendDisabled = value.trim().length === 0 || sending || fetchingModels;
 
@@ -136,48 +139,26 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     if (composerHeight !== null) setComposerHeight(null);
   }, [composerHeight]);
 
-  // Quick action intent handlers — sends directly with selected text context
-  const handleIntent = useCallback((key: string) => {
-    const editor = (window as any).editorInstance?.editor;
-    const selectedText = editor ? editor.state.selection.content().slice(0, -1).toString().trim() : "";
-    
-    let prompt = "";
-    if (key === "continue") {
-      prompt = "请继续扩写当前文档内容，保持文风一致。直接输出续写内容。";
-    } else if (key === "rewrite") {
-      prompt = selectedText 
-        ? `请改写以下文本，提升表达质量，保持原意：\n\n${selectedText}`
-        : "请改写当前选中的文本。如未选中文本，请告诉我需要改写的内容。";
-    } else if (key === "polish") {
-      prompt = selectedText
-        ? `请润色以下文本，使语言更加流畅自然：\n\n${selectedText}`
-        : "请润色当前选中的文本。";
-    } else if (key === "translate") {
-      prompt = selectedText
-        ? `请将以下文本翻译为英文：\n\n${selectedText}`
-        : "请翻译当前选中的文本为英文。";
-    }
-    
-    setValue(prompt);
-    inputRef.current?.focus();
-    // Auto-send if we have selected text context
-    if (selectedText) {
-      setTimeout(() => {
-        setValue(prompt);
-        onSend?.(prompt);
-        setValue("");
-      }, 100);
-    } else {
-      onIntent?.(prompt);
-    }
-  }, [onIntent, onSend]);
-
   // Effort menu items with callbacks
   const effortItems: MenuItem[] = EFFORTS.map((e) => ({
     ...e,
     checked: selectedEffort === e.id,
     onClick: () => setSelectedEffort(e.id),
   }));
+
+  // Token presets menu items
+  const tokenItems: MenuItem[] = TOKEN_PRESETS.map((t) => ({
+    id: String(t),
+    label: String(t),
+    checked: maxTokens === t,
+    onClick: () => setMaxTokens(t),
+  }));
+  tokenItems.push({
+    id: "unlimited",
+    label: "无限制",
+    checked: maxTokens === 0,
+    onClick: () => setMaxTokens(0),
+  });
 
   const moreItems: MenuItem[] = [
     { id: "new-doc", label: "新建文档", icon: <Play size={13} />, onClick: () => {} },
@@ -187,6 +168,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   ];
 
   const selectedLabel = modelItems.find((m) => m.id === selectedModel)?.label ?? selectedModel ?? "加载中…";
+  const tokenLabel = maxTokens ? String(maxTokens) : "∞";
 
   const cardClass = [
     "composer-card",
@@ -230,12 +212,23 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <IntentMenu currentIntent={currentIntent} options={intentOptions} />
             </div>
 
-            {/* Quick actions */}
-            <div className="composer-meta__control composer-meta__control--quick">
-              <button className="pill-btn pill-btn--icon" type="button" title="继续写作" onClick={() => handleIntent("continue")}><Play size={11} /><span>继续</span></button>
-              <button className="pill-btn pill-btn--icon" type="button" title="改写" onClick={() => handleIntent("rewrite")}><Edit3 size={11} /><span>改写</span></button>
-              <button className="pill-btn pill-btn--icon" type="button" title="润色" onClick={() => handleIntent("polish")}><Sparkles size={11} /><span>润色</span></button>
-              <button className="pill-btn pill-btn--icon" type="button" title="翻译" onClick={() => handleIntent("translate")}><Languages size={11} /><span>翻译</span></button>
+            {/* Max tokens */}
+            <div className="composer-meta__control composer-meta__control--tokens">
+              <button
+                ref={tokenBtnRef}
+                className="pill-btn"
+                onClick={() => setTokenMenuOpen(!tokenMenuOpen)}
+                title="最大输出 token 数"
+              >
+                <Type size={11} />
+                <span>{tokenLabel}</span>
+              </button>
+              <PopoverMenu
+                items={tokenItems}
+                anchorRef={tokenBtnRef}
+                open={tokenMenuOpen}
+                onClose={() => setTokenMenuOpen(false)}
+              />
             </div>
 
             {/* Model selector */}
@@ -246,7 +239,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
                 onClick={() => setModelMenuOpen(!modelMenuOpen)}
               >
                 <Brain size={13} />
-                <span className="modelsw__label">{fetchingModels ? "加载中…" : selectedLabel}</span>
+                <span className="modelsw__label">{selectedLabel}</span>
                 <span className="modelsw__chevron"><ChevronsUpDown size={11} /></span>
               </button>
               {modelItems.length > 0 && (
@@ -254,7 +247,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
                   items={modelItems.map((m) => ({
                     ...m,
                     checked: selectedModel === m.id,
-                    onClick: () => setSelectedModel(m.id),
+                    onClick: () => handleSelectModel(m.id),
                   }))}
                   anchorRef={modelBtnRef}
                   open={modelMenuOpen}
@@ -305,4 +298,51 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
       </div>
     </div>
   );
+}
+
+function skillDisplayLabel(name: string): string {
+  const labels: Record<string, string> = {
+    "continue-writing": "续写",
+    "rewrite": "改写",
+    "polish": "润色",
+    "translate": "翻译",
+    "academic": "学术",
+    "creative": "创意",
+    "summary": "摘要",
+    "outline": "大纲",
+    "expand": "扩写",
+    "paraphrase": "同义改写",
+    "proofread": "校对",
+    "blog": "博客",
+    "novel": "小说",
+    "headline": "标题",
+    "email": "邮件",
+    "keyword-extract": "关键词",
+    "readability": "可读性",
+    "citation": "引用",
+    "general": "通用",
+    "professional": "商务",
+  };
+  return labels[name] || name;
+}
+
+function buildModelItems(): MenuItem[] {
+  const providers = getProvidersSync();
+  const modelProviderMap = new Map<string, string>();
+  const allModels: string[] = [];
+  for (const p of providers) {
+    if (p.models.length > 0) {
+      for (const m of p.models) {
+        modelProviderMap.set(m, p.label);
+        allModels.push(m);
+      }
+    }
+  }
+  return allModels.map((id) => ({
+    id,
+    label: id,
+    subtitle: modelProviderMap.get(id) ?? "",
+    checked: false,
+    onClick: () => {},
+  }));
 }

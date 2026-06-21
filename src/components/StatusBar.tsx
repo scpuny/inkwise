@@ -1,10 +1,33 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Brain, Gauge, CircleDollarSign, FileText, Clock, Type,
 } from "lucide-react";
 import { getProvidersSync } from "../lib/providerModels";
 
-export function StatusBar() {
+export type SaveState = "idle" | "saving" | "saved";
+
+export function StatusBar({ saveState: _saveState }: { saveState?: SaveState }) {
+  const saveState = _saveState || "idle";
+  const [visibleSave, setVisibleSave] = useState<SaveState>("idle");
+  const fadeTimer = useRef<any>(undefined);
+
+  // Keep "saved" visible for longer, with fade
+  useEffect(() => {
+    if (_saveState === "saving") {
+      setVisibleSave("saving");
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    } else if (_saveState === "saved") {
+      setVisibleSave("saved");
+      if (fadeTimer.current) clearTimeout(fadeTimer.current);
+      fadeTimer.current = setTimeout(() => setVisibleSave("idle"), 3000);
+    } else if (_saveState === "idle") {
+      // Only transition to idle if not currently saving/saved
+      if (visibleSave !== "saving" && visibleSave !== "saved") {
+        setVisibleSave("idle");
+      }
+    }
+    return () => { if (fadeTimer.current) clearTimeout(fadeTimer.current); };
+  }, [_saveState, visibleSave]);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [paragraphCount, setParagraphCount] = useState(0);
@@ -36,31 +59,34 @@ export function StatusBar() {
     setReadTime(readMinutes <= 0 ? "<1分钟" : `${readMinutes}分钟`);
   }, []);
 
-  // Sync model/effort from AIBar
+  // Sync model/effort from AIBar via localStorage
   useEffect(() => {
-    const interval = setInterval(() => {
-      const providers = getProvidersSync();
-      const enabled = providers.find((p) => p.enabled && p.models.length > 0);
-      if (enabled && enabled.models.length > 0) {
-        setModelName(enabled.models[0]);
+    const updateModel = () => {
+      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("aiwriter-default-model") : null;
+      if (saved) setModelName(saved);
+      else {
+        const providers = getProvidersSync();
+        const enabled = providers.find((p) => p.enabled && p.models.length > 0);
+        setModelName(enabled && enabled.models.length > 0 ? enabled.models[0] : "—");
       }
-      setEffort("自动");
-    }, 2000);
-    updateStats();
-    return () => clearInterval(interval);
-  }, [updateStats]);
+    };
+    updateModel();
+    window.addEventListener("providers-changed", updateModel);
+    return () => window.removeEventListener("providers-changed", updateModel);
+  }, []);
 
   // Listen for editor content changes
   useEffect(() => {
-    updateStats();
-    const handler = () => updateStats();
     const editorEl = document.getElementById("editorMain");
-    if (editorEl) {
-      const observer = new MutationObserver(handler);
-      observer.observe(editorEl, { childList: true, subtree: true, characterData: true });
-      return () => observer.disconnect();
-    }
+    if (!editorEl) return;
+    // Call once immediately (editor may already be ready)
+    updateStats();
+    const observer = new MutationObserver(() => updateStats());
+    observer.observe(editorEl, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
   }, [updateStats]);
+
+  const saveLabel = visibleSave === "saving" ? "保存中…" : visibleSave === "saved" ? "已保存" : "";
 
   return (
     <div className="statusbar">
@@ -85,6 +111,16 @@ export function StatusBar() {
             <Clock size={11} />
             <span className="stat__label">阅读</span>
             <b>{readTime}</b>
+          </span>
+        </span>
+      )}
+
+      {/* Save state */}
+      {saveLabel && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat statusbar__save">
+            <span className={`statusbar__save-dot statusbar__save-dot--${visibleSave}`} />
+            <b>{saveLabel}</b>
           </span>
         </span>
       )}

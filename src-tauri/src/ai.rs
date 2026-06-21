@@ -177,6 +177,230 @@ pub async fn chat_completion(config: &ProviderConfig, req: &ChatRequest) -> Resu
     }
 }
 
+
+
+// ─── Streaming chat completion ───
+
+/// Callback type for streaming tokens
+pub type TokenCallback = Box<dyn Fn(String) + Send + Sync>;
+
+/// Parse a single SSE line and extract content delta.
+fn parse_sse_line(line: &str) -> Option<String> {
+    let line = line.trim();
+    if !line.starts_with("data: ") {
+        return None;
+    }
+    let data = &line[6..]; // strip "data: "
+    if data == "[DONE]" {
+        return None;
+    }
+    // Try to parse as JSON
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
+        // OpenAI format: choices[0].delta.content
+        if let Some(choice) = parsed["choices"].as_array()?.first() {
+            if let Some(delta) = choice["delta"].as_object() {
+                if let Some(content) = delta.get("content") {
+                    return content.as_str().map(|s| s.to_string());
+                }
+            }
+        }
+        // Anthropic format: type: content_block_delta, delta.text
+        if parsed["type"] == "content_block_delta" {
+            if let Some(text) = parsed["delta"]["text"].as_str() {
+                return Some(text.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// OpenAI-compatible streaming chat completion
+async fn openai_chat_stream(
+    client: &reqwest::Client,
+    config: &ProviderConfig,
+    req: &ChatRequest,
+    on_token: &TokenCallback,
+) -> Result<String, String> {
+    let url = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
+
+    let mut body = serde_json::json!({
+        "model": req.model,
+        "messages": req.messages.iter().map(|m| {
+            serde_json::json!({"role": m.role, "content": m.content})
+        }).collect::<Vec<_>>(),
+        "stream": true,
+    });
+
+    if let Some(t) = req.temperature {
+        body["temperature"] = serde_json::json!(t);
+    }
+    if let Some(m) = req.max_tokens {
+        body["max_tokens"] = serde_json::json!(m);
+    }
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", config.api_key))
+        .header("Content-Type", "application/json")
+        .header("Accept", "text/event-stream")
+        .json(&body)
+        .timeout(Duration::from_secs(180))
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("API 错误 ({}): {}", status, text));
+    }
+
+    let mut full_content = String::new();
+    let mut stream = response.bytes_stream();
+
+    use futures_util::StreamExt;
+    let mut buf = String::new();
+
+    while let Some(chunk_result) = stream.next().await {
+        let chunk = chunk_result.map_err(|e| format!("读取流失败: {}", e))?;
+        let chunk_str = String::from_utf8_lossy(&chunk);
+        buf.push_str(&chunk_str);
+
+        // Process complete SSE events (separated by double newlines)
+        while let Some(pos) = buf.find("\n\n") {
+            let event = buf[..pos].to_string();
+            buf = buf[pos + 2..].to_string();
+
+            for line in event.lines() {
+                if let Some(token) = parse_sse_line(line) {
+                    full_content.push_str(&token);
+                    on_token(token);
+                }
+            }
+        }
+    }
+
+    // Process remaining buffer
+    if !buf.is_empty() {
+        for line in buf.lines() {
+            if let Some(token) = parse_sse_line(line) {
+                full_content.push_str(&token);
+                on_token(token);
+            }
+        }
+    }
+
+    Ok(full_content)
+}
+
+/// Anthropic streaming chat completion
+async fn anthropic_chat_stream(
+    client: &reqwest::Client,
+    config: &ProviderConfig,
+    req: &ChatRequest,
+    on_token: &TokenCallback,
+) -> Result<String, String> {
+    let url = format!("{}/messages", config.base_url.trim_end_matches('/'));
+
+    let system = req
+        .messages
+        .iter()
+        .find(|m| m.role == "system")
+        .map(|m| m.content.clone());
+
+    let messages: Vec<serde_json::Value> = req
+        .messages
+        .iter()
+        .filter(|m| m.role != "system")
+        .map(|m| serde_json::json!({"role": m.role, "content": m.content}))
+        .collect();
+
+    let mut body = serde_json::json!({
+        "model": req.model,
+        "messages": messages,
+        "max_tokens": req.max_tokens.unwrap_or(4096),
+        "stream": true,
+    });
+
+    if let Some(s) = system {
+        body["system"] = serde_json::json!(s);
+    }
+    if let Some(t) = req.temperature {
+        body["temperature"] = serde_json::json!(t);
+    } else {
+        body["temperature"] = serde_json::json!(0.7);
+    }
+
+    let response = client
+        .post(&url)
+        .header("x-api-key", &config.api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("Content-Type", "application/json")
+        .header("Accept", "text/event-stream")
+        .json(&body)
+        .timeout(Duration::from_secs(180))
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("API 错误 ({}): {}", status, text));
+    }
+
+    let mut full_content = String::new();
+    let mut stream = response.bytes_stream();
+    use futures_util::StreamExt;
+    let mut buf = String::new();
+
+    while let Some(chunk_result) = stream.next().await {
+        let chunk = chunk_result.map_err(|e| format!("读取流失败: {}", e))?;
+        let chunk_str = String::from_utf8_lossy(&chunk);
+        buf.push_str(&chunk_str);
+
+        while let Some(pos) = buf.find("\n\n") {
+            let event = buf[..pos].to_string();
+            buf = buf[pos + 2..].to_string();
+
+            for line in event.lines() {
+                if let Some(token) = parse_sse_line(line) {
+                    full_content.push_str(&token);
+                    on_token(token);
+                }
+            }
+        }
+    }
+
+    if !buf.is_empty() {
+        for line in buf.lines() {
+            if let Some(token) = parse_sse_line(line) {
+                full_content.push_str(&token);
+                on_token(token);
+            }
+        }
+    }
+
+    Ok(full_content)
+}
+
+/// Main streaming chat function. Calls on_token for each token, returns full content.
+pub async fn chat_completion_stream(
+    config: &ProviderConfig,
+    req: &ChatRequest,
+    on_token: TokenCallback,
+) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(180))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    match config.kind.as_str() {
+        "anthropic" => anthropic_chat_stream(&client, config, req, &on_token).await,
+        _ => openai_chat_stream(&client, config, req, &on_token).await,
+    }
+}
+
 /// Fetch available models from an OpenAI-compatible provider's /v1/models endpoint.
 /// Falls back to a best-effort list if the endpoint is not available.
 pub async fn fetch_available_models(config: &ProviderListConfig) -> Result<Vec<String>, String> {

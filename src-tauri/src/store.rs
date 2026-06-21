@@ -230,4 +230,66 @@ impl DataStore {
     pub fn codegraph_dir(&self) -> &PathBuf {
         &self._codegraph_dir
     }
+
+    /// Root data directory path
+    pub fn data_dir(&self) -> &PathBuf {
+        &self.data_dir
+    }
+}
+
+// ─── Blueprint ───
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct OutlineSection {
+    pub id: String,
+    pub title: String,
+    pub level: u32,
+    pub description: Option<String>,
+    pub target_word_count: Option<u32>,
+    pub status: String,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticleBlueprint {
+    pub working_title: String,
+    pub description: String,
+    pub target_word_count: Option<u32>,
+    pub tone: Option<String>,
+    pub target_audience: Option<String>,
+    pub cover_image: Option<String>,
+    pub phase: String,
+    pub tags: Vec<String>,
+    pub outline: Vec<OutlineSection>,
+    pub updated_at: u64,
+}
+
+impl DataStore {
+    pub fn save_blueprint(&self, id: &str, blueprint: &ArticleBlueprint) -> Result<(), String> {
+        let path = self.articles_dir.join(format!("{}.blueprint.json", id));
+        let content = serde_json::to_string_pretty(blueprint).map_err(|e| e.to_string())?;
+        std::fs::write(&path, content).map_err(|e| e.to_string())
+    }
+
+    pub fn load_blueprint(&self, id: &str) -> Option<ArticleBlueprint> {
+        let path = self.articles_dir.join(format!("{}.blueprint.json", id));
+        if path.exists() {
+            std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|c| serde_json::from_str(&c).ok())
+        } else {
+            None
+        }
+    }
+
+    pub fn delete_blueprint(&self, id: &str) -> Result<(), String> {
+        let path = self.articles_dir.join(format!("{}.blueprint.json", id));
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())
+        } else {
+            Ok(())
+        }
+    }
 }

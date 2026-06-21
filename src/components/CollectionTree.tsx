@@ -22,7 +22,12 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const [ctxMenu, setCtxMenu] = useState<{ items: ContextMenuItem[]; x: number; y: number } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "date" | "articleCount">("name");
+  const [articleSortBy, setArticleSortBy] = useState<Record<string, "name" | "created" | "words">>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+
+  const handleArticleSort = useCallback((colId: string, mode: "name" | "created" | "words") => {
+    setArticleSortBy((prev) => ({ ...prev, [colId]: mode }));
+  }, []);
   const sortBtnRef = useRef<HTMLButtonElement>(null);
 
   // Article stats cache: { articleId: { words, chars, paragraphs } }
@@ -57,6 +62,26 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Load word counts for articles in expanded collections
+  useEffect(() => {
+    for (const col of collections) {
+      if (expanded.has(col.id)) {
+        for (const article of col.articles) {
+          if (!statsCache[article.id]) {
+            loadArticleContent(article.id).then((content) => {
+              if (content) {
+                const cnChars = (content.match(/[\u4e00-\u9fff]/g) || []).length;
+                const westernWords = content.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+                const words = cnChars + westernWords;
+                setStatsCache((prev) => ({ ...prev, [article.id]: { words, chars: content.length, paragraphs: content.split(/\n\n+/).filter(p => p.trim()).length } }));
+              }
+            });
+          }
+        }
+      }
+    }
+  }, [collections, expanded]);
 
   // ── Collapse / Expand all ──
   const allExpanded = expanded.size === collections.length && collections.length > 0;
@@ -197,6 +222,11 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                 { icon: <Plus size={13} />, label: "新建文章", onClick: () => { void handleNewArticle(col.id); } },
                 { icon: <Pencil size={13} />, label: "重命名", onClick: () => handleRenameCollection(col.id, col.title) },
                 { icon: <Trash2 size={13} />, label: confirmDeleteId === col.id ? "确认删除" : "删除合集", danger: true, onClick: () => handleRemoveCollection(col.id) },
+                { icon: <ArrowUpDown size={13} />, label: "文章排序", children: [
+                  { icon: <Type size={12} />, label: `按名称${(articleSortBy[col.id] || "created") === "name" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "name") },
+                  { icon: <FileText size={12} />, label: `按时间${(articleSortBy[col.id] || "created") === "created" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "created") },
+                  { icon: <AlignLeft size={12} />, label: `按字数${(articleSortBy[col.id] || "created") === "words" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "words") },
+                ] },
               ])}>
                 {isEditing ? (
                   <input ref={editInputRef} className="collection-tree__input" value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)}
@@ -225,7 +255,12 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               </div>
               {isExpanded && (
                 <div className="collection-tree__children">
-                  {col.articles.map((article) => {
+                  {(col.articles.slice().sort((a, b) => {
+            const sortMode = articleSortBy[col.id] || "created";
+            if (sortMode === "name") return a.title.localeCompare(b.title, "zh");
+            if (sortMode === "words") return (statsCache[b.id]?.words || 0) - (statsCache[a.id]?.words || 0);
+            return b.createdAt - a.createdAt;
+          })).map((article) => {
                     const isActive = externalActiveId === article.id;
                     const isEditingArt = editingId === `art:${article.id}`;
                     return (
@@ -242,7 +277,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                             onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); await refresh(); } if (e.key === "Escape") setEditingId(null); }}
                             onClick={(e) => e.stopPropagation()} />
                         ) : (
-                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className="collection-tree__leaf-icon" /></span><span className="collection-tree__leaf-label">{article.title}</span></>
+                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className="collection-tree__leaf-icon" /></span><span className="collection-tree__leaf-label">{article.title}</span>
+                            {statsCache[article.id] && <span className="collection-tree__leaf-stats">{statsCache[article.id].words}字</span>}</>
                         )}
                       </div>
                     );

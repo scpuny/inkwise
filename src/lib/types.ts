@@ -28,3 +28,4 @@ export type AnalysisData = {
   tone: { label: string; score: number }[];
   keywords: string[];
 };
+

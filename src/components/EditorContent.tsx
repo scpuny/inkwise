@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useCallback, useRef, useState } from "react";
 import { useEditor, EditorContent as TipTapEditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -9,7 +9,10 @@ import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
-import { Sparkles, X, Loader2 } from "lucide-react";
+import Image from "@tiptap/extension-image";
+import { X, Loader2 } from "lucide-react";
+import { applyEditorStyle, resetEditorStyle, type EditorStyleTemplate } from "../lib/editorStyles";
+import { InlineGhostText } from "./InlineGhostText";
 
 export type EditorMode = "rich" | "markdown";
 
@@ -17,6 +20,9 @@ export interface EditorContentProps {
   content?: string;
   aiResponse?: string | null;
   sending?: boolean;
+  onCancelStream?: () => void;
+  streamElapsed?: number;
+  streamError?: string | null;
   onChange?: (content: string, mode?: EditorMode) => void;
   onClearResponse?: () => void;
   onInsertResponse?: (text: string) => void;
@@ -24,6 +30,7 @@ export interface EditorContentProps {
   lineHeight?: number;
   paragraphGap?: string;
   onOutlineChange?: (items: OutlineItem[]) => void;
+  styleTemplate?: EditorStyleTemplate;
 }
 
 export interface OutlineItem {
@@ -49,10 +56,18 @@ function parseOutlineFromMarkdown(content: string): OutlineItem[] {
   return items;
 }
 
+/** Check if a string looks like HTML (starts with a tag) */
+function isHTML(str: string): boolean {
+  return /^\s*<(?:!DOCTYPE|html|head|body|div|p|h[1-6]|ul|ol|li|table|blockquote|pre|section|article|main)\b/i.test(str);
+}
+
 export function EditorContent({
   content,
   aiResponse,
   sending,
+  onCancelStream,
+  streamElapsed,
+  streamError,
   onChange,
   onClearResponse,
   onInsertResponse,
@@ -60,11 +75,13 @@ export function EditorContent({
   lineHeight = 1.75,
   paragraphGap = "1.25em",
   onOutlineChange,
+  styleTemplate,
 }: EditorContentProps) {
   const editorModeRef = useRef<EditorMode>(mode);
-  const prevContentRef = useRef<string | undefined>(undefined);
+  const prevMdRef = useRef<string | undefined>(undefined);
   const syncFromProps = useRef(true);
   const outlineTimer = useRef<any>(undefined);
+  const [rawMd, setRawMd] = useState("");
 
   // Debounced outline sync
   const updateOutline = useCallback((content: string) => {
@@ -75,20 +92,16 @@ export function EditorContent({
     }
   }, [onOutlineChange]);
 
+  // Unified: always emit markdown
   const handleTransaction = useCallback(() => {
     if (!onChange) return;
     const editor = window.editorInstance?.editor;
     if (!editor) return;
 
-    if (editorModeRef.current === "rich") {
-      const html = editor.getHTML();
-      if (html !== prevContentRef.current) {
-        prevContentRef.current = html;
-        onChange(html, "rich");
-      }
-    } else {
-      const md = editor.getMarkdown();
-      onChange(md, "markdown");
+    const md = editor.getMarkdown();
+    if (md !== prevMdRef.current) {
+      prevMdRef.current = md;
+      onChange(md, editorModeRef.current);
     }
   }, [onChange]);
 
@@ -97,11 +110,11 @@ export function EditorContent({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
-        codeBlock: false, // handled separately
+        codeBlock: false,
       }),
       Underline,
       Placeholder.configure({
-        placeholder: "开始写作…",
+        placeholder: mode === "markdown" ? "使用 Markdown 语法写作…" : "开始写作…",
       }),
       Markdown,
       Link.configure({
@@ -114,6 +127,13 @@ export function EditorContent({
       TextAlign.configure({
         types: ["heading", "paragraph"],
       }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: "tiptap-image",
+        },
+      }),
     ],
     content: "",
     editorProps: {
@@ -121,55 +141,95 @@ export function EditorContent({
         class: "tiptap",
         spellcheck: "true",
       },
+      handlePaste: (_view, event) => {
+        // Handle image paste
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith("image/")) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (!file) continue;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const dataUrl = e.target?.result as string;
+              // Insert as base64 image - in production, upload to backend
+              const editor = window.editorInstance?.editor;
+              if (editor) {
+                editor.chain().focus().setImage({ src: dataUrl }).run();
+              }
+            };
+            reader.readAsDataURL(file);
+            return true;
+          }
+        }
+        return false;
+      },
     },
-    onUpdate: () => handleTransaction(),
-    onSelectionUpdate: () => handleTransaction(),
+    onTransaction: handleTransaction,
+    onUpdate: ({ editor }) => {
+      const md = editor.getMarkdown();
+      updateOutline(md);
+    },
   });
 
-  // Sync content from props (article switching)
-  useLayoutEffect(() => {
-    if (!editor || !editorModeRef.current) return;
+  // Sync content from props (initial load or article switch)
+  useEffect(() => {
+    if (!editor || content === undefined) return;
+    if (!syncFromProps.current) return;
 
-    if (editorModeRef.current === "markdown") {
-      editor.commands.setContent(content || "", {
-        parseOptions: { preserveWhitespace: true },
-      });
-    } else {
-      const currentHTML = editor.getHTML();
-      if (currentHTML !== (content || "") && content !== undefined) {
-        editor.commands.setContent(content);
-      }
+    const currentMd = editor.getMarkdown();
+    const cleanCurrent = currentMd.replace(/\s+$/, "");
+    const cleanContent = (content || "").replace(/\s+$/, "");
+
+    if (cleanCurrent !== cleanContent) {
+      editor.commands.setContent(isHTML(content) ? content : content || "");
+      prevMdRef.current = content;
     }
     syncFromProps.current = false;
   }, [editor, content]);
 
-  // Handle mode switching
+  // Sync editor mode changes
   useEffect(() => {
     if (!editor || mode === editorModeRef.current) return;
     editorModeRef.current = mode;
 
-    if (mode === "markdown") {
-      const md = editor.getMarkdown();
-      editor.commands.setContent(md);
+    if (mode === "rich") {
+      // Switching FROM markdown TO rich: push textarea content into editor
+      editor.commands.setContent(rawMd || content || "");
     } else {
-      if (content) {
-        editor.commands.setContent(content);
-      }
+      // Switching FROM rich TO markdown: sync textarea with current editor state
+      const currentMd = editor.getMarkdown();
+      setRawMd(currentMd);
+      prevMdRef.current = currentMd;
+      onChange?.(currentMd, "markdown");
     }
-  }, [editor, mode, content]);
+  }, [editor, mode, rawMd, content, onChange]);
 
-  // Expose editor globally for Toolbar
+  // Push placeholder updates on mode change
+  useEffect(() => {
+    if (!editor) return;
+    const ext = editor.extensionManager.extensions.find((e: any) => e.name === "placeholder");
+    if (ext) {
+      ext.options.placeholder = mode === "markdown" ? "使用 Markdown 语法写作…" : "开始写作…";
+    }
+  }, [editor, mode]);
+
+  // Apply style template — inject full CSS into a <style> tag
+  useEffect(() => {
+    if (styleTemplate) {
+      applyEditorStyle(styleTemplate);
+    } else {
+      resetEditorStyle();
+    }
+  }, [styleTemplate]);
+
+  // Expose editor globally
   useEffect(() => {
     window.editorInstance = { editor };
     return () => { window.editorInstance = undefined; };
   }, [editor]);
-
-  // Outline sync from markdown content
-  useEffect(() => {
-    if (mode === "markdown" && editor) {
-      updateOutline(content || "");
-    }
-  }, [content, mode, editor, updateOutline]);
 
   // AI insert at cursor position
   const handleInsertResponse = useCallback(() => {
@@ -184,11 +244,32 @@ export function EditorContent({
     onInsertResponse?.(aiResponse);
   }, [aiResponse, editor, onClearResponse, onInsertResponse]);
 
+  // Handle raw markdown textarea change (markdown mode)
+  const handleRawMdChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setRawMd(val);
+    prevMdRef.current = val;
+    onChange?.(val, "markdown");
+    updateOutline(val);
+  }, [onChange, updateOutline]);
+
   if (!editor) {
     return (
       <main className="editor-main" id="editorMain">
-        <div className="tiptap editor-empty-state" style={{ lineHeight, "--paragraph-gap": paragraphGap } as React.CSSProperties}>
-          <p>编辑器加载中…</p>
+        <div className="editor-container">
+          <div className="editor-skeleton">
+            <div className="editor-skeleton__line editor-skeleton__line--title" />
+            <div className="editor-skeleton__line editor-skeleton__line--short" />
+            <div className="editor-skeleton__line" />
+            <div className="editor-skeleton__line" />
+            <div className="editor-skeleton__line editor-skeleton__line--medium" />
+            <div className="editor-skeleton__spacer" />
+            <div className="editor-skeleton__line" />
+            <div className="editor-skeleton__line editor-skeleton__line--long" />
+            <div className="editor-skeleton__line editor-skeleton__line--short" />
+            <div className="editor-skeleton__line" />
+            <div className="editor-skeleton__line editor-skeleton__line--medium" />
+          </div>
         </div>
       </main>
     );
@@ -196,39 +277,72 @@ export function EditorContent({
 
   return (
     <main className="editor-main" id="editorMain">
-      <div
-        className="editor-container"
-        style={{ "--line-height": lineHeight, "--paragraph-gap": paragraphGap } as React.CSSProperties}
-      >
-        <TipTapEditorContent editor={editor} />
-      </div>
+      {mode === "rich" ? (
+        /* Rich Text — TipTap WYSIWYG */
+        <div
+          className="editor-container"
+          style={{ "--line-height": lineHeight, "--paragraph-gap": paragraphGap } as React.CSSProperties}
+        >
+          <TipTapEditorContent editor={editor} />
+          {/* Ghost text overlay */}
+          <InlineGhostText />
+        </div>
+      ) : (
+        /* Markdown — raw textarea source view */
+        <div className="editor-container editor-container--markdown">
+          <textarea
+            className="editor-markdown-source"
+            value={rawMd}
+            onChange={handleRawMdChange}
+            spellCheck={true}
+          />
+        </div>
+      )}
 
-      {/* AI loading */}
-      {sending && (
-        <div className="ai-inline-suggestion ai-inline-suggestion--loading" style={{ marginBottom: 24 }}>
-          <div className="ai-inline-suggestion__actions" style={{ justifyContent: "center" }}>
-            <Loader2 size={16} className="composer__spinner" />
-            <span style={{ color: "var(--fg-dim)", fontSize: 13 }}>AI 思考中…</span>
+      {/* AI response (legacy, for non-ghost mode) */}
+      {aiResponse && !sending && (
+        <div className="ai-inline-suggestion">
+          <div className="ai-inline-suggestion__card">
+            <hr className="ai-inline-suggestion__divider" />
+            <div className="ai-inline-suggestion__text" style={{ whiteSpace: "pre-wrap" }}>{aiResponse}</div>
+            <div className="ai-inline-suggestion__actions">
+              <button className="ai-inline-suggestion__key-hint" onClick={handleInsertResponse}>
+                <kbd>↩</kbd> 插入到文档
+              </button>
+              <button className="ai-inline-suggestion__key-hint" onClick={onClearResponse}>
+                <X size={12} /> 忽略
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* AI response */}
-      {aiResponse && !sending && (
-        <div className="ai-inline-suggestion" style={{ marginBottom: 24 }}>
-          <hr className="ai-inline-suggestion__divider" />
-          <div className="ai-inline-suggestion__text" style={{ whiteSpace: "pre-wrap" }}>{aiResponse}</div>
-          <div className="ai-inline-suggestion__actions">
-            <button className="ai-inline-suggestion__key-hint" onClick={handleInsertResponse}>
-              <kbd>↩</kbd> 插入到文档
-            </button>
-            <button className="ai-inline-suggestion__key-hint" onClick={onClearResponse}>
-              <X size={12} /> 忽略
-            </button>
-            <button className="ai-inline-suggestion__key-hint" onClick={() => {}}>
-              <Sparkles size={12} /> 换一个
-            </button>
+      {/* AI thinking / streaming */}
+      {sending && (
+        <div className="ai-inline-suggestion--thinking">
+          <div className="ai-inline-suggestion__thinking">
+            <span className="ai-inline-suggestion__pulse">AI</span>
+            <span>
+              {streamElapsed !== undefined && streamElapsed > 0
+                ? `正在生成… ${(streamElapsed / 1000).toFixed(1)}s`
+                : '正在思考中…'}
+            </span>
+            {onCancelStream && (
+              <button
+                className="ai-inline-suggestion__stop-btn"
+                onClick={onCancelStream}
+                title="停止生成"
+                aria-label="停止生成"
+              >
+                <span className="ai-inline-suggestion__stop-icon" />
+              </button>
+            )}
           </div>
+          {streamError && (
+            <div className="ai-inline-suggestion__error">
+              {streamError}
+            </div>
+          )}
         </div>
       )}
     </main>
