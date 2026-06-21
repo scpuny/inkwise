@@ -7,7 +7,11 @@ import {
   FileText,
   Plus,
   X,
+  List,
+  LayoutGrid,
+  Image,
 } from "lucide-react";
+import { CollectionFormModal } from "./CollectionFormModal";
 import { loadCollections, saveCollections, type Collection, type Article, genId } from "../lib/collections";
 import { loadArticleContent } from "../lib/articles";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
@@ -68,8 +72,11 @@ export function ArticleManager({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "list">("table");
 
   // Collection editing
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [showColForm, setShowColForm] = useState(false);
   const [editingColId, setEditingColId] = useState<string | null>(null);
   const [editColTitle, setEditColTitle] = useState("");
   const [newColName, setNewColName] = useState("");
@@ -168,39 +175,38 @@ export function ArticleManager({
   };
 
   // Collection CRUD
-  const handleAddCollection = async () => {
-    if (!newColName.trim()) return;
-    const col: Collection = { id: genId(), title: newColName.trim(), articles: [], createdAt: Date.now() };
-    collections.push(col);
-    await saveCollections(collections);
-    if (isTauriEnv()) { try { await tryInvoke("create_collection_db", { title: col.title, linkedFolder: null }); } catch {} }
-    setNewColName("");
-    setShowNewColInput(false);
-    await loadData();
+  const handleOpenColForm = (col?: Collection) => {
+    setEditingCollection(col || null);
+    setShowColForm(true);
   };
 
-  const handleRenameCollection = async (colId: string) => {
-    if (!editColTitle.trim()) return;
-    const col = collections.find((c) => c.id === colId);
-    if (col) {
-      col.title = editColTitle.trim();
-      await saveCollections(collections);
-      if (isTauriEnv()) { try { await tryInvoke("rename_collection_db", { id: colId, title: editColTitle.trim() }); } catch {} }
+  const handleSaveCollection = async (title: string, description: string, coverImage: string) => {
+    if (editingCollection) {
+      // Edit existing
+      editingCollection.title = title;
+      editingCollection.description = description || undefined;
+      editingCollection.coverImage = coverImage || undefined;
+      if (isTauriEnv()) { try { await tryInvoke("rename_collection_db", { id: editingCollection.id, title }); } catch {} }
+    } else {
+      // New collection
+      const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, articles: [], createdAt: Date.now() };
+      collections.push(col);
+      if (isTauriEnv()) { try { await tryInvoke("create_collection_db", { title, linkedFolder: null }); } catch {} }
     }
-    setEditingColId(null);
+    await saveCollections(collections);
+    setShowColForm(false);
+    setEditingCollection(null);
     await loadData();
   };
 
-  const handleDeleteCollection = async () => {
-    if (!deleteColId) return;
-    const idx = collections.findIndex((c) => c.id === deleteColId);
+  const handleDeleteCollection = async (colId: string) => {
+    const idx = collections.findIndex((c) => c.id === colId);
     if (idx >= 0) {
       collections.splice(idx, 1);
       await saveCollections(collections);
-      if (isTauriEnv()) { try { await tryInvoke("delete_collection_db", { id: deleteColId }); } catch {} }
-      if (filterCollection === deleteColId) setFilterCollection("all");
+      if (isTauriEnv()) { try { await tryInvoke("delete_collection_db", { id: colId }); } catch {} }
+      if (filterCollection === colId) setFilterCollection("all");
     }
-    setDeleteColId(null);
     await loadData();
   };
 
@@ -236,29 +242,12 @@ export function ArticleManager({
               <span>合集</span>
               <button
                 className="article-manager__col-add-toggle"
-                onClick={() => setShowNewColInput(!showNewColInput)}
+                onClick={() => handleOpenColForm()}
                 title="新建合集"
               >
                 <Plus size={12} />
               </button>
             </div>
-
-            {showNewColInput && (
-              <div className="article-manager__col-new-form">
-                <input
-                  type="text"
-                  placeholder="合集名称…"
-                  value={newColName}
-                  onChange={(e) => setNewColName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCollection(); if (e.key === "Escape") setShowNewColInput(false); }}
-                  autoFocus
-                />
-                <div className="article-manager__col-new-actions">
-                  <button onClick={handleAddCollection} disabled={!newColName.trim()}>创建</button>
-                  <button onClick={() => { setShowNewColInput(false); setNewColName(""); }}>取消</button>
-                </div>
-              </div>
-            )}
 
             <div className="article-manager__col-list">
               <div
@@ -275,46 +264,28 @@ export function ArticleManager({
                   key={col.id}
                   className={`article-manager__col-item ${filterCollection === col.id ? "is-active" : ""}`}
                 >
-                  {editingColId === col.id ? (
-                    <div className="article-manager__col-edit-form">
-                      <input
-                        type="text"
-                        value={editColTitle}
-                        onChange={(e) => setEditColTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleRenameCollection(col.id);
-                          if (e.key === "Escape") setEditingColId(null);
-                        }}
-                        autoFocus
-                      />
-                      <div className="article-manager__col-edit-actions">
-                        <button onClick={() => handleRenameCollection(col.id)}>保存</button>
-                        <button onClick={() => setEditingColId(null)}>取消</button>
+                  <div className="article-manager__col-item-main" onClick={() => setFilterCollection(col.id)}>
+                    {col.coverImage ? (
+                      <div className="article-manager__col-cover-thumb">
+                        <img src={col.coverImage} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       </div>
+                    ) : (
+                      <FolderOpen size={14} />
+                    )}
+                    <div className="article-manager__col-item-text">
+                      <span className="article-manager__col-item-name">{col.title}</span>
+                      {col.description && <span className="article-manager__col-item-desc">{col.description}</span>}
                     </div>
-                  ) : (
-                    <>
-                      <div className="article-manager__col-item-main" onClick={() => setFilterCollection(col.id)}>
-                        <FolderOpen size={14} />
-                        <span className="article-manager__col-item-name">{col.title}</span>
-                        <span className="article-manager__col-item-count">{col.articles.length}</span>
-                      </div>
-                      <div className="article-manager__col-item-actions">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingColId(col.id); setEditColTitle(col.title); }}
-                          title="编辑"
-                        >
-                          编辑
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteColId(col.id); }}
-                          title="删除"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </>
-                  )}
+                    <span className="article-manager__col-item-count">{col.articles.length}</span>
+                  </div>
+                  <div className="article-manager__col-item-actions">
+                    <button onClick={(e) => { e.stopPropagation(); handleOpenColForm(col); }} title="编辑">
+                      编辑
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }} title="删除">
+                      删除
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -322,7 +293,7 @@ export function ArticleManager({
 
           {/* ─── Right: Articles ─── */}
           <div className="article-manager__art-panel">
-            {/* Search */}
+            {/* Search + view toggle */}
             <div className="article-manager__art-search">
               <Search size={14} />
               <input
@@ -336,6 +307,22 @@ export function ArticleManager({
                   <X size={12} />
                 </button>
               )}
+              <div className="article-manager__view-toggle">
+                <button
+                  className={`article-manager__view-btn ${viewMode === "table" ? "is-active" : ""}`}
+                  onClick={() => setViewMode("table")}
+                  title="表格视图"
+                >
+                  <LayoutGrid size={13} />
+                </button>
+                <button
+                  className={`article-manager__view-btn ${viewMode === "list" ? "is-active" : ""}`}
+                  onClick={() => setViewMode("list")}
+                  title="列表视图"
+                >
+                  <List size={13} />
+                </button>
+              </div>
               <span className="article-manager__art-count-label">
                 {filterCollection === "all" ? "全部" : collections.find((c) => c.id === filterCollection)?.title} · {filtered.length} 篇
               </span>
@@ -360,7 +347,7 @@ export function ArticleManager({
               </div>
             )}
 
-            {/* Table */}
+            {/* Content: Table or List */}
             <div className="article-manager__art-table-wrap">
               {loading ? (
                 <div className="article-manager__loading">加载中…</div>
@@ -368,7 +355,7 @@ export function ArticleManager({
                 <div className="article-manager__empty">
                   {searchQuery ? "没有匹配的文章" : "暂无文章"}
                 </div>
-              ) : (
+              ) : viewMode === "table" ? (
                 <table className="article-manager__table">
                   <thead>
                     <tr>
@@ -407,6 +394,33 @@ export function ArticleManager({
                     ))}
                   </tbody>
                 </table>
+              ) : (
+                /* List / Single-column view */
+                <div className="article-manager__list-view">
+                  {filtered.map((article) => (
+                    <div
+                      key={article.id}
+                      className={`article-manager__list-card ${selectedIds.has(article.id) ? "is-selected" : ""}`}
+                      onClick={() => onOpenArticle?.(article.id, article.collectionId)}
+                    >
+                      <div className="article-manager__list-card-check" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(article.id)} onChange={() => toggleSelect(article.id)} />
+                      </div>
+                      <div className="article-manager__list-card-body">
+                        <div className="article-manager__list-card-title">{article.title || "无标题"}</div>
+                        <div className="article-manager__list-card-meta">
+                          <span>{article.collectionTitle}</span>
+                          <span>·</span>
+                          <span>{article.wordCount.toLocaleString()} 字</span>
+                          <span>·</span>
+                          <span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span>
+                          <span>·</span>
+                          <span>{formatDate(article.updatedAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -414,7 +428,14 @@ export function ArticleManager({
 
         {/* Delete confirmation */}
         <ConfirmDialog open={showDeleteConfirm} title="删除文章" message={`确定删除选中的 ${selectedIds.size} 篇文章？`} confirmLabel="删除" onConfirm={handleDeleteArticles} onCancel={() => setShowDeleteConfirm(false)} danger />
-        <ConfirmDialog open={deleteColId !== null} title="删除合集" message="确定删除此合集？文章不会被删除。" confirmLabel="删除" onConfirm={handleDeleteCollection} onCancel={() => setDeleteColId(null)} danger />
+        
+        {/* Collection Form Modal */}
+        <CollectionFormModal
+          collection={editingCollection}
+          open={showColForm}
+          onSave={handleSaveCollection}
+          onClose={() => { setShowColForm(false); setEditingCollection(null); }}
+        />
       </div>
     </div>
   );

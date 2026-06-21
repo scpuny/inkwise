@@ -10504,3 +10504,328 @@ body {
   color: var(--fg-dim);
   font-size: 12px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Collection Form Modal — 合集编辑表单
+   ══════════════════════════════════════════════════════════════ */
+
+.collection-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+.collection-form {
+  width: 420px;
+  max-height: 80vh;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.18s ease;
+}
+
+.collection-form__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  flex-shrink: 0;
+}
+
+.collection-form__close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 0;
+}
+
+.collection-form__close:hover {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.collection-form__cover-preview {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: var(--bg-soft);
+}
+
+.collection-form__cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.collection-form__body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.collection-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.collection-form__field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-dim);
+}
+
+.collection-form__field input,
+.collection-form__field textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.collection-form__field input:focus,
+.collection-form__field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.collection-form__field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.collection-form__cover-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.collection-form__cover-input input {
+  flex: 1;
+}
+
+.collection-form__cover-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: var(--bg-elev);
+  border-radius: 4px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.collection-form__cover-clear:hover {
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.collection-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.collection-form__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.collection-form__btn--save {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: transparent;
+}
+
+.collection-form__btn--save:hover {
+  filter: brightness(1.08);
+}
+
+.collection-form__btn--save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.collection-form__btn--cancel:hover {
+  border-color: var(--accent);
+}
+
+/* ── View toggle ── */
+.article-manager__view-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-soft);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.article-manager__view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+
+.article-manager__view-btn.is-active {
+  background: var(--bg-elev);
+  color: var(--fg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.article-manager__view-btn:hover:not(.is-active) {
+  color: var(--fg);
+}
+
+/* ── Collection cover thumbnail ── */
+.article-manager__col-cover-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-soft);
+}
+
+.article-manager__col-cover-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.article-manager__col-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.article-manager__col-item-desc {
+  font-size: 10px;
+  color: var(--fg-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── List / single-column view ── */
+.article-manager__list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.article-manager__list-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+
+.article-manager__list-card:hover {
+  background: var(--accent-soft);
+}
+
+.article-manager__list-card.is-selected {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-soft-2, var(--accent));
+}
+
+.article-manager__list-card-check {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.article-manager__list-card-check input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.article-manager__list-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.article-manager__list-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.article-manager__list-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  flex-wrap: wrap;
+}

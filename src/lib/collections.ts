@@ -12,6 +12,8 @@ export type Article = {
 export type Collection = {
   id: string;
   title: string;
+  description?: string;
+  coverImage?: string;
   articles: Article[];
   createdAt: number;
   linkedFolder?: string;
@@ -100,6 +102,7 @@ export function seedIfEmpty(): void {
   const essayCol: Collection = {
     id: genId(),
     title: "随笔",
+    description: "生活中的点滴感悟与随想",
     articles: [
       { id: autumnId, title: "秋日的午后", createdAt: Date.now() - 86400000 * 3, updatedAt: Date.now() - 86400000 },
       { id: nightId, title: "城市夜景漫步", createdAt: Date.now() - 86400000 * 7, updatedAt: Date.now() - 86400000 * 2 },
@@ -114,6 +117,7 @@ export function seedIfEmpty(): void {
   const techCol: Collection = {
     id: genId(),
     title: "技术博客",
+    description: "技术文章与编程经验分享",
     articles: [
       { id: reactId, title: "React 状态管理演进", createdAt: Date.now() - 86400000 * 10, updatedAt: Date.now() - 86400000 * 3 },
       { id: cssId, title: "CSS 容器查询指南", createdAt: Date.now() - 86400000 * 20, updatedAt: Date.now() - 86400000 * 8 },
