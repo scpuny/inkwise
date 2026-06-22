@@ -143,7 +143,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        messages.push({ role: "user", content: input });
+        // Include selected text in user message when selection is available
+        let userContent = input;
+        if (selection) {
+          const selText = beforeContent.slice(selection.from, selection.to);
+          if (selText && selText.length > 10) {
+            userContent = input + "\n\n## 用户选中的文本\n" + selText.slice(0, 3000);
+          }
+        }
+        messages.push({ role: "user", content: userContent });
         result = await sendChat({
           providerId: enabled.id,
           model,
