@@ -1,7 +1,7 @@
 // InlineToolbar.tsx — 选中文本后出现的浮动 AI 工具栏
 // 悬浮在选中文本上方，提供润色/改写/翻译/扩写等快捷操作
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal, Search, FileText, RotateCw, BookOpen, PenTool, Quote, ListChecks, Hash, MessageSquare } from "lucide-react";
 import { useAgent } from "../lib/agent";
@@ -29,6 +29,9 @@ const skillIconMap: Record<string, React.ReactNode> = {
   "email": <MessageSquare size={13} />,
 };
 const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
+
+// 常用技能（始终显示在工具栏上），其余放入更多面板
+const PRIMARY_SKILLS = ["polish", "rewrite", "translate", "expand", "analysis"];
 
 export function InlineToolbar() {
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
@@ -151,6 +154,54 @@ export function InlineToolbar() {
     setPanelTab("chat");
   }, [selectedText, selectionRange, execute, getDocumentContent, openPanel, setPanelTab]);
 
+  // More panel state
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreDirection, setMoreDirection] = useState<"down" | "up">("down");
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const morePanelRef = useRef<HTMLDivElement>(null);
+
+  // Split actions: primary visible buttons vs rest in more panel
+  const { primary, secondary } = useMemo(() => {
+    const p: typeof toolActions = [];
+    const s: typeof toolActions = [];
+    for (const a of toolActions) {
+      if (PRIMARY_SKILLS.includes(a.intent)) p.push(a);
+      else s.push(a);
+    }
+    return { primary: p, secondary: s };
+  }, [toolActions]);
+
+  const toggleMore = useCallback(() => {
+    if (!moreOpen) {
+      if (moreBtnRef.current) {
+        const btnRect = moreBtnRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - btnRect.bottom;
+        setMoreDirection(spaceBelow > 280 ? "down" : "up");
+      }
+    }
+    setMoreOpen(o => !o);
+  }, [moreOpen]);
+
+  // Close more panel on outside click
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        morePanelRef.current && !morePanelRef.current.contains(e.target as Node) &&
+        moreBtnRef.current && !moreBtnRef.current.contains(e.target as Node)
+      ) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [moreOpen]);
+
+  const handleMoreAction = useCallback((intent: string) => {
+    setMoreOpen(false);
+    handleAction(intent);
+  }, [handleAction]);
+
   const handleMore = useCallback(() => {
     setVisible(false);
     openPanel();
@@ -163,10 +214,10 @@ export function InlineToolbar() {
     <div
       ref={toolbarRef}
       className="inline-toolbar"
-      style={{ top: position.top, left: position.left }}
+      style={{ top: position.top, left: position.left, transform: "translateX(-50%)" }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {toolActions.map((action) => (
+      {primary.map((action) => (
         <button
           key={action.id}
           className="inline-toolbar__btn"
@@ -178,13 +229,50 @@ export function InlineToolbar() {
           <span>{action.label}</span>
         </button>
       ))}
+      {secondary.length > 0 && (
+        <>
+          <div className="inline-toolbar__divider" />
+          <div className="inline-toolbar__more-wrap">
+            <button
+              ref={moreBtnRef}
+              className={`inline-toolbar__btn inline-toolbar__btn--more ${moreOpen ? "is-active" : ""}`}
+              onClick={toggleMore}
+              title="更多操作"
+            >
+              <MoreHorizontal size={13} />
+            </button>
+            {moreOpen && (
+              <div
+                ref={morePanelRef}
+                className={`inline-toolbar__more-panel inline-toolbar__more-panel--${moreDirection}`}
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                {secondary.map((action) => (
+                  <button
+                    key={action.id}
+                    className="inline-toolbar__more-item"
+                    onClick={() => handleMoreAction(action.intent)}
+                    disabled={isProcessing}
+                    title={action.label}
+                  >
+                    {skillIconMap[action.intent] || <Sparkles size={13} />}
+                    <span>{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <div className="inline-toolbar__divider" />
       <button
-        className="inline-toolbar__btn inline-toolbar__btn--more"
-        onClick={handleMore}
-        title="更多操作"
+        className="inline-toolbar__btn"
+        onClick={() => { setMoreOpen(false); handleAction("analysis"); }}
+        disabled={isProcessing}
+        title="分析"
       >
-        <MoreHorizontal size={13} />
+        <Search size={13} />
+        <span>分析</span>
       </button>
     </div>,
     document.querySelector(".editor-container") || document.body

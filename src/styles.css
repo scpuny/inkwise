@@ -7212,6 +7212,65 @@ body {
   margin: 0 2px;
 }
 
+/* More panel */
+.inline-toolbar__more-wrap {
+  position: relative;
+}
+.inline-toolbar__more-panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 140px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  z-index: calc(var(--z-floating-menu) + 1);
+  animation: more-panel-in 0.12s var(--ease-out);
+}
+.inline-toolbar__more-panel--down {
+  top: calc(100% + 6px);
+  transform-origin: top center;
+}
+.inline-toolbar__more-panel--up {
+  bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+}
+@keyframes more-panel-in {
+  from { opacity: 0; transform: translateX(-50%) scaleY(0.9); }
+  to   { opacity: 1; transform: translateX(-50%) scaleY(1); }
+}
+.inline-toolbar__more-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+  text-align: left;
+}
+.inline-toolbar__more-item:hover {
+  background: var(--bg-hover, var(--sidebar-hover));
+  color: var(--fg);
+}
+.inline-toolbar__more-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.inline-toolbar__btn--more.is-active {
+  background: var(--bg-hover, var(--sidebar-hover));
+  color: var(--accent);
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    21. AGENT PANEL — 替代 AIDock
    ═══════════════════════════════════════════════════════════════════ */
