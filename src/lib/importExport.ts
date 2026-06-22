@@ -195,6 +195,91 @@ async function exportMarkdownBrowser(
   }
 }
 
+/** Render markdown content to HTML string (simple). */
+function renderMarkdownToHtml(md: string): string {
+  // Escape HTML chars first
+  let html = md
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:6px;margin:1em 0" />');
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--article-link-color)">$1</a>');
+  // Bold and italic
+  html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Code blocks
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // HR
+  html = html.replace(/^---$/gm, '<hr />');
+  // Blockquote
+  html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote>$1</blockquote>');
+  // Headings
+  html = html.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+  // List items
+  html = html.replace(/^[\-\*]\s+(.*)$/gm, '<li>$1</li>');
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/(<li>.*?<\/li>\n?)+/g, '<ul>$&</ul>');
+  // Fix nested ul
+  html = html.replace(/<\/ul>\n?<ul>/g, '');
+  // Paragraphs (remaining text not in tags)
+  html = html.replace(/^(?!<[houplb]|<li|<\/|<img|<code|\s*$)/gm, '<p>');
+  html = html.replace(/$(?!<\/)/gm, '</p>');
+  // Clean empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  return html;
+}
+
+/** Copy article content as HTML to clipboard (rich text with embedded images). */
+export async function copyAsHtml(articleId: string, title: string): Promise<boolean> {
+  const content = await loadArticleContent(articleId);
+  if (!content) return false;
+
+  try {
+    const { getThemeById, getSelectedArticleThemeId, buildThemeCss } = await import("./articleThemes");
+    const themeId = getSelectedArticleThemeId();
+    const theme = getThemeById(themeId);
+    const styleCss = theme ? buildThemeCss(theme.vars) : "";
+    const htmlContent = renderMarkdownToHtml(content);
+    const fullHtml = [
+      "<!DOCTYPE html>",
+      '<html lang="zh-CN">',
+      "<head>",
+      '<meta charset="UTF-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      "<title>" + title + "</title>",
+      "<style>" + styleCss + "</style>",
+      "</head>",
+      '<body style="margin:0;padding:20px">',
+      '<div class="article-body">' + htmlContent + "</div>",
+      "</body>",
+      "</html>",
+    ].join("\n");
+
+    const plainText = "# " + title + "\n\n" + content;
+    const clipboardItem = new ClipboardItem({
+      "text/html": new Blob([fullHtml], { type: "text/html" }),
+      "text/plain": new Blob([plainText], { type: "text/plain" }),
+    });
+    await navigator.clipboard.write([clipboardItem]);
+    return true;
+  } catch (e) {
+    console.error("copyAsHtml failed:", e);
+    try {
+      await navigator.clipboard.writeText(content);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 /** Copy article content as Markdown to clipboard. */
 export async function copyAsMarkdown(articleId: string): Promise<boolean> {
   const content = await loadArticleContent(articleId);

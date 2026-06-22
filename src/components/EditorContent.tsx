@@ -185,12 +185,13 @@ export function EditorContent({
             const file = item.getAsFile();
             if (!file) continue;
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
               const dataUrl = e.target?.result as string;
-              // Insert as base64 image - in production, upload to backend
+              // Compress image for smaller size & cross-platform compatibility
+              const compressed = await compressBase64Image(dataUrl);
               const editor = window.editorInstance?.editor;
               if (editor) {
-                editor.chain().focus().setImage({ src: dataUrl }).run();
+                editor.chain().focus().setImage({ src: compressed }).run();
               }
             };
             reader.readAsDataURL(file);
@@ -207,11 +208,13 @@ export function EditorContent({
           if (file.type.startsWith("image/")) {
             event.preventDefault();
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
               const dataUrl = e.target?.result as string;
+              // Compress image for smaller size & cross-platform compatibility
+              const compressed = await compressBase64Image(dataUrl);
               const editor = window.editorInstance?.editor;
               if (editor) {
-                editor.chain().focus().setImage({ src: dataUrl }).run();
+                editor.chain().focus().setImage({ src: compressed }).run();
               }
             };
             reader.readAsDataURL(file);
@@ -292,7 +295,34 @@ export function EditorContent({
     }
   }, [editor, content]);
 
-  // Sync editor mode changes
+  /**
+ * Compress a base64 image to reduce size for cross-platform compatibility.
+ * Max width 1200px, quality 0.8.
+ */
+function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w > maxWidth) {
+        h = h * maxWidth / w;
+        w = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// Sync editor mode changes
   useEffect(() => {
     if (!editor || mode === editorModeRef.current) return;
     editorModeRef.current = mode;
