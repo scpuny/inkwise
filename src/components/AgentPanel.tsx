@@ -402,6 +402,7 @@ function ChatPanel({
                               editor.commands.insertContent(session.afterContent);
                             }
                           }
+                          acceptSession(session.id);
                         }}>
                           <Check size={12} /> 插入
                         </button>

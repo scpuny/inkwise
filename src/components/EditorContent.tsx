@@ -13,7 +13,8 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { X, Loader2 } from "lucide-react";
-import { applyEditorStyle, resetEditorStyle, applyCodeTheme, type EditorStyleTemplate } from "../lib/editorStyles";
+import { applyEditorStyle, resetEditorStyle, applyCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, type EditorStyleTemplate } from "../lib/editorStyles";
+import { getSelectedArticleThemeId, getThemeById, buildEditorThemeCss } from "../lib/articleThemes";
 import { InlineGhostText } from "./InlineGhostText";
 import { useAgent } from "../lib/agent";
 
@@ -359,6 +360,20 @@ export function EditorContent({
     }
   }, [codeThemeId]);
 
+  // Initial code appearance settings
+  useEffect(() => {
+    applyMacosCodeBlockStyle(localStorage.getItem('macos-code-block') === 'true');
+    applyTextStyle(
+      localStorage.getItem('first-line-indent') === 'true',
+      localStorage.getItem('justify-align') === 'true'
+    );
+    applyHeadingDecorations(
+      localStorage.getItem('heading-deco-level') || '',
+      (() => { try { return JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch { return []; } })()
+    );
+    applyBgPattern(localStorage.getItem('bg-pattern') || '');
+  }, []);
+
   // Apply font-family + paragraph gap via !important injected style
   const [fontStyleTag, setFontStyleTag] = useState<HTMLStyleElement | null>(null);
   useEffect(() => {
@@ -378,6 +393,25 @@ export function EditorContent({
     }
     tag.textContent = rules.join('\n');
   }, [editorFontFamily, editorParagraphGap]);
+
+  // Apply article theme to editor
+  const themeTagRef = useRef<HTMLStyleElement | null>(null);
+  const applyTheme = useCallback(() => {
+    const themeId = getSelectedArticleThemeId();
+    const theme = getThemeById(themeId);
+    if (!theme) return;
+    if (!themeTagRef.current) {
+      themeTagRef.current = document.createElement('style');
+      themeTagRef.current.id = 'editor-article-theme';
+      document.head.appendChild(themeTagRef.current);
+    }
+    themeTagRef.current.textContent = buildEditorThemeCss(theme.vars);
+  }, []);
+  useEffect(() => {
+    applyTheme();
+    window.addEventListener('article-theme-changed', applyTheme);
+    return () => window.removeEventListener('article-theme-changed', applyTheme);
+  }, [applyTheme]);
 
   // Expose editor globally
   useEffect(() => {

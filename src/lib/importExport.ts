@@ -309,6 +309,67 @@ export async function exportPDF(
     return { success: false, error: `PDF 导出失败: ${e?.message || e}` };
   }
 }
+export async function exportAsHtml(articleId: string, title: string): Promise<ExportResult> {
+  const content = await loadArticleContent(articleId);
+  if (!content) {
+    return { success: false, error: "文章内容为空" };
+  }
+
+  // Use the currently selected editor style template for HTML export
+  const { getTemplate, getSelectedTemplateId } = await import("./editorStyles");
+  const templateId = getSelectedTemplateId();
+  const template = getTemplate(templateId);
+  const styleCss = template?.css || "";
+  // Scope the CSS to .article-body instead of body for standalone HTML
+  const scopedStyle = styleCss.replace(/\bbody\b/g, ".article-body");
+
+  const htmlContent = renderMarkdownToHTML(content);
+  const fullHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(title)}</title>
+<style>${scopedStyle}</style></head>
+<body style="margin:0">
+<div class="article-body">${htmlContent}</div>
+</body></html>`;
+
+  if (isTauriEnv()) {
+    return exportHtmlTauri(fullHtml, title);
+  }
+  return exportHtmlBrowser(fullHtml, title);
+}
+
+async function exportHtmlTauri(html: string, title: string): Promise<ExportResult> {
+  try {
+    const savePath = await tryInvoke<string>("dialog_save", {
+      filters: [{ name: "HTML", extensions: ["html"] }],
+      defaultPath: `${title}.html`,
+    });
+    if (!savePath) return { success: false, error: "未选择保存路径" };
+    await tryInvoke("fs_write_text_file", { path: savePath, contents: html });
+    return { success: true, path: savePath };
+  } catch (e: any) {
+    return { success: false, error: `导出失败: ${e?.message || e}` };
+  }
+}
+
+async function exportHtmlBrowser(html: string, title: string): Promise<ExportResult> {
+  try {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: `导出失败: ${e?.message || e}` };
+  }
+}
+
 
 /** Minimal HTML-escape to prevent XSS in the print window */
 function escapeHtml(text: string): string {

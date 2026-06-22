@@ -1236,3 +1236,112 @@ export function applyCodeTheme(themeId: string): void {
   }
   tag.textContent = theme.css;
 }
+
+export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean): void {
+  let tag = document.getElementById("editor-text-style") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-text-style";
+    document.head.appendChild(tag);
+  }
+  const rules: string[] = [];
+  if (firstLineIndent) {
+    rules.push(`.editor-container .tiptap p { text-indent: 2em !important; }`);
+  }
+  if (justifyAlign) {
+    rules.push(`.editor-container .tiptap.ProseMirror { text-align: justify !important; }`);
+    rules.push(`.editor-container .tiptap p { text-align: justify !important; }`);
+  }
+  tag.textContent = rules.join("\n");
+}
+
+export function applyHeadingDecorations(headingLevel: string, decos: string[]): void {
+  let tag = document.getElementById("editor-heading-deco") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-heading-deco";
+    document.head.appendChild(tag);
+  }
+  if (!headingLevel || decos.length === 0) {
+    tag.textContent = "";
+    return;
+  }
+  const sel = `.editor-container .tiptap ${headingLevel}`;
+  const parts: string[] = [];
+  const extraCss: string[] = [];
+  if (decos.includes('underline')) parts.push(`border-bottom: 2px solid var(--accent) !important; padding-bottom: 6px;`);
+  if (decos.includes('overline')) parts.push(`border-top: 2px solid var(--accent) !important; padding-top: 6px;`);
+  if (decos.includes('left-bar')) parts.push(`border-left: 4px solid var(--accent) !important; padding-left: 14px;`);
+  if (decos.includes('right-bar')) parts.push(`border-right: 4px solid var(--accent) !important; padding-right: 14px;`);
+  if (decos.includes('bg-block')) parts.push(`background: color-mix(in srgb, var(--accent) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
+  if (decos.includes('left-icon')) {
+    parts.push(`position: relative; padding-left: 1.6em;`);
+    extraCss.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: var(--accent); font-size: 1.2em; font-weight: 700; }`);
+  }
+  if (decos.includes('badge')) parts.push(`background: var(--accent) !important; color: #fff !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
+  tag.textContent = parts.length > 0 ? `${sel} { ${parts.join(' ')} }\n${extraCss.join('\n')}` : "";
+}
+
+export function applyBgPattern(pattern: string): void {
+  let tag = document.getElementById("editor-bg-pattern") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-bg-pattern";
+    document.head.appendChild(tag);
+  }
+  const patterns: Record<string, string> = {
+    'grid': `.editor-container .tiptap.ProseMirror { background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 20px 20px; }`,
+    'dots': `.editor-container .tiptap.ProseMirror { background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px); background-size: 16px 16px; }`,
+    'stripes': `.editor-container .tiptap.ProseMirror { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px); }`,
+  };
+  tag.textContent = patterns[pattern] || "";
+}
+
+export function applyMacosCodeBlockStyle(enabled: boolean): void {
+  let tag = document.getElementById("editor-macos-codeblock-style") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-macos-codeblock-style";
+    document.head.appendChild(tag);
+  }
+  if (!enabled) {
+    tag.textContent = "";
+    return;
+  }
+  tag.textContent = `.editor-container .tiptap pre {
+  position: relative;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+  padding-top: 36px !important;
+  overflow: hidden;
+  margin-top: 1.2em;
+  margin-bottom: 1.2em;
+}
+.editor-container .tiptap pre::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: #2b2b2b;
+  border-radius: 10px 10px 0 0;
+  z-index: 1;
+}
+.editor-container .tiptap pre::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 12px;
+  width: 40px;
+  height: 10px;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 5px 5px, #ff5f57 5px, transparent 5px),
+    radial-gradient(circle at 19px 5px, #ffbd2e 5px, transparent 5px),
+    radial-gradient(circle at 33px 5px, #28c840 5px, transparent 5px);
+}`;
+}
+

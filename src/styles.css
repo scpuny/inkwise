@@ -1083,7 +1083,7 @@ body {
 }
 
 .layout--style-open {
-  grid-template-columns: var(--sidebar-width, 0px) minmax(0, 1fr) var(--resizer-width, 8px) 280px;
+  grid-template-columns: var(--sidebar-width, 0px) minmax(0, 1fr) var(--resizer-width, 8px) 320px;
 }
 
 .layout--sidebar-open.layout--ai-open {
@@ -1091,7 +1091,7 @@ body {
 }
 
 .layout--sidebar-open.layout--style-open {
-  grid-template-columns: var(--sidebar-width, 264px) minmax(0, 1fr) var(--resizer-width, 8px) 280px;
+  grid-template-columns: var(--sidebar-width, 264px) minmax(0, 1fr) var(--resizer-width, 8px) 320px;
 }
 
 .layout--ai-open:not(.layout--sidebar-open) {
@@ -11673,7 +11673,10 @@ body {
   min-height: 0;
   overflow: hidden;
   animation: panel-in 0.2s var(--ease-out);
-  width: 280px;
+}
+
+.style-panel__body {
+  overflow-x: hidden;
 }
 
 .style-panel__header {
@@ -11736,11 +11739,10 @@ body {
 
 /* Section */
 .style-panel__section {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-soft);
+  padding: 8px 0;
 }
 
-.style-panel__section:last-of-type {
+
 
 .style-panel__row {
   display: flex;
@@ -11764,15 +11766,13 @@ body {
   min-width: 0;
 }
 
-.style-panel__divider {
-  height: 1px;
-  background: var(--border-soft);
-  margin: 4px 0;
-}
-  border-bottom: none;
-}
+
+
 
 .style-panel__section-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--fg-faint);
@@ -12049,7 +12049,7 @@ body {
   overflow: hidden;
 }
 .version-history__list {
-  width: 280px;
+  width: 320px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -12293,4 +12293,160 @@ body {
 }
 .btn--danger:hover {
   background: color-mix(in srgb, var(--err) 10%, transparent);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   30. THEME PREVIEW — 分享主题预览
+   ═══════════════════════════════════════════════════════════════════ */
+.theme-preview__swatches {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.theme-preview__swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   31. HORIZONTAL SECTION — 标签左、组件右布局
+   ═══════════════════════════════════════════════════════════════════ */
+.style-panel__section--horizontal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.style-panel__section--horizontal > .style-panel__section-label {
+  width: 60px;
+  min-width: 60px;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+.style-panel__section--horizontal > .style-panel__section-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   32. STYLE PANEL CHIPS — 选项组 + 自定义输入
+   ═══════════════════════════════════════════════════════════════════ */
+.style-panel__chip-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.style-panel__chip {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.1s, background 0.1s;
+}
+.style-panel__chip:hover {
+  border-color: var(--accent-soft);
+  color: var(--text);
+}
+.style-panel__chip--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.style-panel__chip-input {
+  width: 36px;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.style-panel__chip-input::-webkit-outer-spin-button,
+.style-panel__chip-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.style-panel__chip-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.style-panel__chip-unit {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   32. TOGGLE SWITCH
+   ═══════════════════════════════════════════════════════════════════ */
+.style-panel__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.style-panel__toggle-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.style-panel__toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+.style-panel__toggle--on {
+  background: var(--accent);
+}
+.style-panel__toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.style-panel__toggle--on .style-panel__toggle-knob {
+  transform: translateX(14px);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   33. TEMPLATE ROW — 两个下拉框并排
+   ═══════════════════════════════════════════════════════════════════ */
+.style-panel__template-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
 }

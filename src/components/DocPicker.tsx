@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Plus, FileText, FolderOpen, Trash2, Edit3, X, Check, SquarePen, Download, Clipboard, RotateCcw } from "lucide-react";
 import { loadCollections, saveCollections, renameArticle, trashArticle, type Collection, type Article, genId } from "../lib/collections";
 import { loadArticleContent } from "../lib/articles";
-import { exportMarkdown, copyAsMarkdown } from "../lib/importExport";
+import { exportMarkdown, copyAsMarkdown, exportAsHtml } from "../lib/importExport";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -164,6 +164,7 @@ export function DocPicker({
         }},
         { icon: <Download size={13} />, label: "导出 Markdown", onClick: () => exportMarkdown(article.id, article.title) },
         { icon: <Clipboard size={13} />, label: "复制为 Markdown", onClick: () => copyAsMarkdown(article.id) },
+        { icon: <FileText size={13} />, label: "导出为 HTML", onClick: () => exportAsHtml(article.id, article.title) },
         { icon: <Trash2 size={13} />, label: "移到回收站", danger: true, onClick: () => handleTrashArticle(article.id) },
       ],
       x: e.clientX,
