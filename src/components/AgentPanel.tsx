@@ -378,12 +378,18 @@ function ChatPanel({
                           const editor = (window as any).editorInstance?.editor;
                           if (editor) {
                             const sel = session.selectionRange;
-                            if (sel && sel.from !== undefined && sel.to !== undefined) {
-                              // Replace selected text: delete range then insert at position
+                            // Skills that modify selected text (use replace) vs generate new content (use insert)
+                            const replaceSkills = ["polish","rewrite","translate","expand","paraphrase","proofread","academic","creative"];
+                            const shouldReplace = sel && sel.from !== undefined && sel.to !== undefined && replaceSkills.includes(session.intent);
+                            if (shouldReplace) {
+                              // Replace selected text
                               editor.commands.deleteRange({ from: sel.from, to: sel.to });
                               editor.commands.insertContentAt(sel.from, session.afterContent);
+                            } else if (sel && sel.from !== undefined) {
+                              // Insert at selection position
+                              editor.commands.insertContentAt(sel.from, session.afterContent);
                             } else {
-                              // No selection info, just insert at cursor
+                              // Fallback: insert at cursor
                               editor.commands.insertContent(session.afterContent);
                             }
                           }
