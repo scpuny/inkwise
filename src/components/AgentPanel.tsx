@@ -426,6 +426,11 @@ function ChatPanel({
                       )}
                     </>
                   )}
+                  {session.state === "accepted" && (
+                    <span className="agent-chat__action agent-chat__action--done">
+                      <Check size={12} /> 已插入
+                    </span>
+                  )}
                 </div>
               </div>
             )}
