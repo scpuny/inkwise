@@ -1,14 +1,13 @@
 // AgentPanel.tsx — Agent 操作面板，替代原来的 AIDock
-// 三个 Tab：Chat（对话/结果） | Diff（差异对比） | History（操作历史）
+// Agent 对话面板 — 所有 AI 技能输出统一在此展示
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
-  MessageSquare, GitCompare, History, X, Check, Trash2,
+  MessageSquare, X, Check, Trash2, History,
   Sparkles, Loader2, RefreshCw, FileDown, Edit3, Languages,
   Maximize2, Search, PenTool, ListChecks, FileText, RotateCw,
   BookOpen, Hash, Quote,
 } from "lucide-react";
-import { computeDiff } from "../lib/diff";
 import { useAgent, getSkillDisplayLabel } from "../lib/agent";
 import type { AgentSession } from "../lib/agent";
 
@@ -17,8 +16,6 @@ type TabId = "chat" | "diff" | "history";
 
 const TABS: { id: TabId; icon: React.ReactNode; label: string }[] = [
   { id: "chat", icon: <MessageSquare size={13} />, label: "对话" },
-  { id: "diff", icon: <GitCompare size={13} />, label: "对比" },
-  { id: "history", icon: <History size={13} />, label: "历史" },
 ];
 
 export function AgentPanel() {
@@ -81,14 +78,9 @@ export function AgentPanel() {
             chatEndRef={chatEndRef}
           />
         )}
-        {panelTab === "diff" && (
-          <DiffPanel sessions={sessions} />
-        )}
         {panelTab === "history" && (
           <HistoryPanel
             sessions={sessions}
-            onAccept={acceptSession}
-            onReject={rejectSession}
             onRemove={removeSession}
           />
         )}
@@ -457,66 +449,10 @@ function ChatPanel({
 }
 
 /* ─── Diff Panel ─── */
-function DiffPanel({ sessions }: { sessions: AgentSession[] }) {
-  const pendingSessions = sessions.filter((s) => s.afterContent && s.state !== "rejected");
-
-  if (pendingSessions.length === 0) {
-    return (
-      <div className="agent-panel__empty">
-        <GitCompare size={24} />
-        <p>暂无 AI 操作记录可对比</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="agent-diff">
-      {pendingSessions.map((session) => {
-        const diffLines = computeDiff(session.beforeContent, session.afterContent);
-        const addCount = diffLines.filter(l => l.type === "add").length;
-        const removeCount = diffLines.filter(l => l.type === "remove").length;
-
-        return (
-          <div key={session.id} className="agent-diff__item">
-            <div className="agent-diff__header">
-              <span className="agent-chat__intent-badge">
-                {getSkillDisplayLabel(session.intent)}
-              </span>
-              <span className="agent-diff__stats">
-                <span className="agent-diff__stat agent-diff__stat--add">+{addCount}</span>
-                <span className="agent-diff__stat agent-diff__stat--remove">-{removeCount}</span>
-              </span>
-              {session.state === "accepted" && <span className="agent-diff__state agent-diff__state--accepted">已接受</span>}
-              {session.state === "pending" && <span className="agent-diff__state agent-diff__state--pending">待处理</span>}
-            </div>
-            <div className="agent-diff__rows">
-              {diffLines.map((line, i) => (
-                <div
-                  key={i}
-                  className={`agent-diff__row agent-diff__row--${line.type}`}
-                >
-                  <span className="agent-diff__row-num">{line.lineNum + 1}</span>
-                  <span className="agent-diff__row-prefix">
-                    {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
-                  </span>
-                  <span className="agent-diff__row-text">{line.text || " "}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── History Panel ─── */
 function HistoryPanel({
-  sessions, onAccept, onReject, onRemove,
+  sessions, onRemove,
 }: {
   sessions: AgentSession[];
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
   if (sessions.length === 0) {
@@ -551,20 +487,9 @@ function HistoryPanel({
           </div>
 
           <div className="agent-history__item-actions">
-            {session.state === "pending" ? (
-              <>
-                <button className="agent-history__action agent-history__action--accept" onClick={() => onAccept(session.id)}>
-                  <Check size={11} /> 接受
-                </button>
-                <button className="agent-history__action agent-history__action--reject" onClick={() => onReject(session.id)}>
-                  <X size={11} /> 拒绝
-                </button>
-              </>
-            ) : (
-              <span className={`agent-history__state agent-history__state--${session.state}`}>
-                {session.state === "accepted" ? "已接受" : "已拒绝"}
-              </span>
-            )}
+            <span className={`agent-history__state agent-history__state--${session.state}`}>
+              {session.state === "accepted" ? "已接受" : session.state === "rejected" ? "已拒绝" : "待处理"}
+            </span>
             <button className="agent-history__action agent-history__action--delete" onClick={() => onRemove(session.id)}>
               <Trash2 size={11} />
             </button>
