@@ -96,7 +96,81 @@ export function AgentPanel() {
 }
 
 /* ─── Chat Panel ─── */
-const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
+function renderMarkdown(text: string): React.ReactNode {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let listItems: React.ReactNode[] = [];
+  function flushList() {
+    if (listItems.length > 0) {
+      elements.push(<ul key={"ul" + elements.length} style={{margin: "2px 0", paddingLeft: 16, listStyle: "none"}}>{listItems}</ul>);
+      listItems = [];
+    }
+  }
+  lines.forEach((line, i) => {
+    const trimmed = line.trim();
+    // Heading
+    const hMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (hMatch) {
+      flushList();
+      const level = hMatch[1].length;
+      const style: React.CSSProperties = {fontSize: level === 1 ? 15 : level === 2 ? 14 : 13, fontWeight: 600, margin: "8px 0 4px", color: "var(--text)"};
+      if (level === 1) elements.push(<h3 key={i} style={style}>{hMatch[2]}</h3>);
+      else if (level === 2) elements.push(<h4 key={i} style={style}>{hMatch[2]}</h4>);
+      else elements.push(<h5 key={i} style={style}>{hMatch[2]}</h5>);
+      return;
+    }
+    // Bold
+    const boldParts = line.split(/(\*\*[^*]+\*\*)/g);
+    if (boldParts.length > 1) {
+      flushList();
+      const children = boldParts.map((part, j) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={j}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+      elements.push(<p key={i} style={{margin: "2px 0", lineHeight: 1.6, fontSize: 12, color: "var(--text-secondary)"}}>{children}</p>);
+      return;
+    }
+    // HR
+    if (trimmed.startsWith("---") || trimmed.startsWith("***")) {
+      flushList();
+      elements.push(<hr key={i} style={{margin: "6px 0", border: "none", borderTop: "1px solid var(--border)"}} />);
+      return;
+    }
+    // List item
+    if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+      const itemText = trimmed.slice(2);
+      const bParts = itemText.split(/(\*\*[^*]+\*\*)/g);
+      const children = bParts.map((part, j) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={j}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+      listItems.push(<li key={i} style={{fontSize: 12, lineHeight: 1.6, color: "var(--text-secondary)", marginLeft: 8}}>{children}</li>);
+      return;
+    }
+    // Empty line
+    if (!trimmed) {
+      flushList();
+      return;
+    }
+    // Paragraph
+    flushList();
+    const bp = line.split(/(\*\*[^*]+\*\*)/g);
+    const cp = bp.map((part, j) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={j}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+    elements.push(<p key={i} style={{margin: "2px 0", lineHeight: 1.6, fontSize: 12, color: "var(--text-secondary)"}}>{cp}</p>);
+  });
+  flushList();
+  return <>{elements}</>;
+}const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
 
 function ChatPanel({
   sessions, isProcessing, lastError, chatInput, onChatInputChange, chatInputRef, chatEndRef,
@@ -167,17 +241,20 @@ function ChatPanel({
             </div>
             {session.afterContent && (
               <div className="agent-chat__msg-response">
-                <div className="agent-chat__response-text">{session.afterContent}</div>
+                <div className="agent-chat__response-text">
+                  {renderMarkdown(session.afterContent)}
+                </div>
                 <div className="agent-chat__msg-actions">
                   {session.state === "pending" && (
                     <>
-                      <button className="agent-chat__action agent-chat__action--accept" onClick={() => {
-                        // Insert into editor
-                        const editor = (window as any).editorInstance?.editor;
-                        if (editor) editor.commands.insertContent(session.afterContent);
-                      }}>
-                        <Check size={12} /> 插入
-                      </button>
+                      {!["analysis","summary","chat","readability","keyword-extract","citation","outline","headline"].includes(session.intent) && (
+                        <button className="agent-chat__action agent-chat__action--accept" onClick={() => {
+                          const editor = (window as any).editorInstance?.editor;
+                          if (editor) editor.commands.insertContent(session.afterContent);
+                        }}>
+                          <Check size={12} /> 插入
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
