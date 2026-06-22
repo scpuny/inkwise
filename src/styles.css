@@ -12399,15 +12399,6 @@ body {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  vertical-align: middle;
-  line-height: 1;
-}
-.style-panel__section--horizontal > .style-panel__section-label svg {
-  display: inline-block;
-  vertical-align: middle;
 }
 .style-panel__section--horizontal > .style-panel__section-content {
   flex: 1;
