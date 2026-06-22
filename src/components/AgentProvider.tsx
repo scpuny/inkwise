@@ -53,7 +53,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     // Detect intent
     const intent = options?.intent
-      ? { id: options.intent, mode: options.intent === "chat" ? ("agent" as const) : ("inline" as const), skill: options.intent === "chat" || options.intent === "analysis" ? "" : options.intent, label: options.intent === "chat" ? "对话" : getSkillDisplayLabel(options.intent), description: "" }
+      ? { id: options.intent, mode: options.intent === "chat" || options.intent === "analysis" ? ("agent" as const) : ("inline" as const), skill: options.intent === "chat" || options.intent === "analysis" ? "" : options.intent, label: options.intent === "chat" ? "对话" : getSkillDisplayLabel(options.intent), description: "" }
       : detectIntent(input, selection ? Math.abs(selection.to - selection.from) : 0);
 
     // Get provider
