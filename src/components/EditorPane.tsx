@@ -152,8 +152,8 @@ export function EditorPane({
     const pending = bp.outline.filter(s => s.status === "pending");
     if (pending.length === 0) return true;
 
-    let currentContent: string = await loadArticleContent(articleId) || `# ${bp.workingTitle}\n\n${bp.description || ''}\n\n`;
-    if (!currentContent) currentContent = `# ${bp.workingTitle}\n\n${bp.description || ''}\n\n`;
+    let currentContent: string = await loadArticleContent(articleId) || "";
+    if (!currentContent) currentContent = "";
 
     let prevSectionTitle: string | undefined;
     let prevSectionContent: string | undefined;
@@ -226,7 +226,7 @@ export function EditorPane({
           lines.splice(sectionStart, sectionEnd - sectionStart, sectionContent);
           currentContent = lines.join("\n");
         } else {
-          currentContent += "\n\n" + sectionContent;
+          currentContent = currentContent ? currentContent + "\n\n" + sectionContent : sectionContent;
         }
 
         // Save content (browser → localStorage, Tauri → filesystem)
@@ -526,7 +526,8 @@ export function EditorPane({
       setBlueprint(bp);
 
       // Save skeleton content (already saved by onPlanComplete, but ensure it's persisted)
-      const skelDoc = "# " + (partialPlan.title || "") + "\n\n" + (partialPlan.description || "") + "\n\n";
+      const skelDoc = (partialPlan.description || "") + "\n\n";
+
       saveArticleContent(result.articleId, skelDoc);
 
       // Start writing phase
