@@ -8088,12 +8088,6 @@ body {
   color: var(--text);
   outline: none;
 }
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: var(--text-2xs);
-  color: var(--fg-faint);
-}
 
 .article-header__edit-btn {
   display: flex;
