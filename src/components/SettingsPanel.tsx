@@ -392,6 +392,16 @@ const SHORTCUT_GROUPS = [
       { label: "忽略 AI 建议", keys: "Esc" },
     ],
   },
+  {
+    title: "AI 技能",
+    items: [
+      { label: "润色", keys: "Alt+1" },
+      { label: "改写", keys: "Alt+2" },
+      { label: "翻译", keys: "Alt+3" },
+      { label: "扩写", keys: "Alt+4" },
+      { label: "分析", keys: "Alt+5" },
+    ],
+  },
 ];
 
 const DEFAULT_SHORTCUTS = SHORTCUT_GROUPS.flatMap(g => g.items);

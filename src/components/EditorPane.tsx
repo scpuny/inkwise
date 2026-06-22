@@ -675,6 +675,27 @@ ${augmentedContent}`
         e.preventDefault();
         openPanel?.();
         setPanelTab?.("chat");
+        return;
+      }
+      // Skill shortcuts: Alt+1..5 for quick polish/rewrite/translate/expand/analysis
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const skillMap: Record<string, string> = {
+          "1": "polish", "2": "rewrite", "3": "translate", "4": "expand", "5": "analysis",
+        };
+        const skill = skillMap[e.key];
+        if (skill) {
+          e.preventDefault();
+          const editor = (window as any).editorInstance?.editor;
+          const docContent = editor ? editor.getText() || "" : "";
+          const sel = (window as any).__lastEditorSelection;
+          const selectionText = sel && editor ? editor.state.doc.textBetween(sel.from, sel.to, " ") : "";
+          if (selectionText) {
+            // Execute skill with selected text
+            execute?.(selectionText, { intent: skill, beforeContent: docContent, selection: sel });
+            openPanel?.();
+            setPanelTab?.("chat");
+          }
+        }
       }
     };
     document.addEventListener("keydown", onKey);
