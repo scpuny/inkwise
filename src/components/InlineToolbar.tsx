@@ -3,34 +3,57 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal, Search } from "lucide-react";
+import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal, Search, FileText, RotateCw, BookOpen, PenTool, Quote, ListChecks, Hash, MessageSquare } from "lucide-react";
 import { useAgent } from "../lib/agent";
 
-interface InlineAction {
-  id: string;
-  icon: React.ReactNode;
-  label: string;
-  intent: string;
-}
-
-const ACTIONS: InlineAction[] = [
-  { id: "polish", icon: <Sparkles size={13} />, label: "润色", intent: "polish" },
-  { id: "rewrite", icon: <Edit3 size={13} />, label: "改写", intent: "rewrite" },
-  { id: "translate", icon: <Languages size={13} />, label: "翻译", intent: "translate" },
-  { id: "expand", icon: <Maximize2 size={13} />, label: "扩写", intent: "expand" },
-  { id: "analysis", icon: <Search size={13} />, label: "分析", intent: "analysis" },
-];
+// Skill → icon/label mapping (shared with AgentPanel)
+const skillIconMap: Record<string, React.ReactNode> = {
+  "polish": <Sparkles size={13} />,
+  "rewrite": <Edit3 size={13} />,
+  "translate": <Languages size={13} />,
+  "expand": <Maximize2 size={13} />,
+  "analysis": <Search size={13} />,
+  "continue-writing": <PenTool size={13} />,
+  "proofread": <ListChecks size={13} />,
+  "summary": <FileText size={13} />,
+  "outline": <ListChecks size={13} />,
+  "paraphrase": <RotateCw size={13} />,
+  "academic": <BookOpen size={13} />,
+  "creative": <PenTool size={13} />,
+  "headline": <Hash size={13} />,
+  "keyword-extract": <Search size={13} />,
+  "readability": <MessageSquare size={13} />,
+  "citation": <Quote size={13} />,
+  "blog": <FileText size={13} />,
+  "novel": <BookOpen size={13} />,
+  "email": <MessageSquare size={13} />,
+};
+const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
 
 export function InlineToolbar() {
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
-  const [enabledSkills, setEnabledSkills] = useState<string[]>(["polish","rewrite","translate","expand","analysis"]);
+  const [toolActions, setToolActions] = useState<{id:string;intent:string;label:string}[]>([
+    {id:"polish",intent:"polish",label:"润色"},
+    {id:"rewrite",intent:"rewrite",label:"改写"},
+    {id:"translate",intent:"translate",label:"翻译"},
+    {id:"expand",intent:"expand",label:"扩写"},
+    {id:"analysis",intent:"analysis",label:"分析"},
+  ]);
 
   useEffect(() => {
     (async () => {
       try {
         const { listSkills } = await import("../lib/skill");
         const skills = await listSkills();
-        setEnabledSkills(skills.filter(s => s.enabled !== false).map(s => s.name));
+        const enabled = skills.filter(s => s.enabled !== false).map(s => s.name);
+        const actions = enabled.filter(n => skillLabels[n] || n === "analysis").map(n => ({
+          id: n, intent: n, label: skillLabels[n] || (n === "analysis" ? "分析" : n),
+        }));
+        // Always include analysis at the end
+        if (!actions.find(a => a.intent === "analysis")) {
+          actions.push({id:"analysis",intent:"analysis",label:"分析"});
+        }
+        setToolActions(actions);
       } catch {}
     })();
   }, []);
@@ -143,7 +166,7 @@ export function InlineToolbar() {
       style={{ top: position.top, left: position.left }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {ACTIONS.filter(a => enabledSkills.includes(a.intent) || a.intent === "analysis").map((action) => (
+      {toolActions.map((action) => (
         <button
           key={action.id}
           className="inline-toolbar__btn"
@@ -151,7 +174,7 @@ export function InlineToolbar() {
           disabled={isProcessing}
           title={action.label}
         >
-          {action.icon}
+          {skillIconMap[action.intent] || <Sparkles size={13} />}
           <span>{action.label}</span>
         </button>
       ))}
