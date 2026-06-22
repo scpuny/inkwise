@@ -4204,8 +4204,27 @@ body {
   border-color: var(--accent);
   color: #fff;
 }
+
 .skills-list__toggle:hover {
   opacity: 0.8;
+}
+.skills-list__body {
+  padding: 4px 12px 10px 28px;
+}
+.skills-list__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 11px;
+}
+.skills-list__meta-key {
+  color: var(--text-tertiary);
+  min-width: 32px;
+}
+.skills-list__meta-val {
+  color: var(--text-secondary);
+  word-break: break-all;
 }
 .shortcuts-table {
   border: 1px solid var(--border-soft);

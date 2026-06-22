@@ -422,6 +422,18 @@ function SkillsSection() {
                   <Check size={10} />
                 </button>
               </div>
+              {expandedSkill === s.name && (
+                <div className="skills-list__body">
+                  <div className="skills-list__meta">
+                    <span className="skills-list__meta-key">ID</span>
+                    <span className="skills-list__meta-val">{s.name}</span>
+                  </div>
+                  <div className="skills-list__meta">
+                    <span className="skills-list__meta-key">描述</span>
+                    <span className="skills-list__meta-val">{s.description}</span>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
