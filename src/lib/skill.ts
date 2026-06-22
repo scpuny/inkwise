@@ -85,6 +85,22 @@ export async function installSkill(name: string, description: string, body: stri
   throw new Error("安装 Skill 仅在桌面版可用");
 }
 
+export async function setSkillEnabled(name: string, enabled: boolean): Promise<void> {
+  if (isTauriEnv()) {
+    try {
+      await tryInvoke("set_skill_enabled", { name, enabled });
+    } catch {}
+  }
+}
+
+export async function deleteSkill(name: string): Promise<void> {
+  if (isTauriEnv()) {
+    try {
+      await tryInvoke("delete_skill", { name });
+    } catch {}
+  }
+}
+
 export async function generateSkillBody(name: string, description: string): Promise<string> {
   if (isTauriEnv()) {
     try {

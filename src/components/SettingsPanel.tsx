@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
-  Palette, FileText, Cpu, Keyboard, Info, X,
-  Monitor, Sun, Plus, Trash2, Check, Sparkles, ChevronDown,
+  Palette, FileText, Cpu, Keyboard, Info, X, Zap,
+  Monitor, Sun, Plus, Trash2, Check, Sparkles, ChevronDown, ChevronRight,
 } from "lucide-react";
 import type { ThemeStyle, Theme } from "../lib/theme";
 import { THEME_STYLES } from "../lib/theme";
@@ -15,13 +15,14 @@ import { InlineConfirmButton } from "./InlineConfirmButton";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
 
 /* ─── Tab definitions ─── */
-export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "about";
+export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "skills" | "about";
 
 const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
   { id: "appearance", icon: <Palette size={14} />, label: "外观" },
   { id: "editor",    icon: <FileText size={14} />, label: "编辑器" },
   { id: "models",    icon: <Cpu size={14} />,      label: "模型" },
   { id: "shortcuts", icon: <Keyboard size={14} />, label: "快捷键" },
+  { id: "skills",    icon: <Zap size={14} />,       label: "技能" },
   { id: "about",     icon: <Info size={14} />,      label: "关于" },
 ];
 
@@ -115,6 +116,7 @@ export function SettingsPanel({
             {tab === "editor" && <EditorSection currentFormat={currentEditorFormat} currentLineHeight={currentEditorLineHeight} onSetFormat={onSetEditorFormat} onSetLineHeight={onSetEditorLineHeight} />}
             {tab === "models" && <ModelsSection />}
             {tab === "shortcuts" && <ShortcutsSection />}
+            {tab === "skills" && <SkillsSection />}
             {tab === "about" && <AboutSection />}
           </main>
         </div>
@@ -353,6 +355,81 @@ function ShortcutsSection() {
 /* ════════════════════════════════════════════════
    ABOUT SECTION
    ════════════════════════════════════════════════ */
+function SkillsSection() {
+  const [skills, setSkills] = useState<{ name: string; description: string; enabled: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listSkills } = await import("../lib/skill");
+        const list = await listSkills();
+        setSkills(list.map((s: any) => ({ name: s.name, description: s.description, enabled: s.enabled !== false })));
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const toggleSkill = async (name: string, enabled: boolean) => {
+    try {
+      const { setSkillEnabled } = await import("../lib/skill");
+      await setSkillEnabled(name, enabled);
+      setSkills(prev => prev.map(s => s.name === name ? { ...s, enabled } : s));
+    } catch {}
+  };
+
+  const skillNames: Record<string, string> = {
+    "continue-writing": "续写",
+    "rewrite": "改写",
+    "polish": "润色",
+    "translate": "翻译",
+    "academic": "学术写作",
+    "creative": "创意写作",
+    "summary": "摘要",
+    "outline": "大纲",
+    "expand": "扩写",
+    "paraphrase": "同义改写",
+    "proofread": "校对",
+    "blog": "博客",
+    "novel": "小说",
+    "headline": "标题",
+    "email": "邮件",
+    "keyword-extract": "关键词",
+    "readability": "可读性",
+    "citation": "引用",
+  };
+
+  return (
+    <SettingsPage title="技能" desc="管理 AI 写作技能，启用或禁用特定功能">
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "var(--text-tertiary)" }}>加载中…</div>
+      ) : (
+        <div className="skills-list">
+          {skills.map((s) => (
+            <div key={s.name} className={"skills-list__item" + (expandedSkill === s.name ? " skills-list__item--expanded" : "")}>
+              <div className="skills-list__header" onClick={() => setExpandedSkill(expandedSkill === s.name ? null : s.name)}>
+                <span className="skills-list__chevron">
+                  {expandedSkill === s.name ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </span>
+                <span className="skills-list__name">{skillNames[s.name] || s.name}</span>
+                <span className="skills-list__desc">{s.description}</span>
+                <button
+                  className={"skills-list__toggle" + (s.enabled ? " skills-list__toggle--on" : "")}
+                  onClick={(e) => { e.stopPropagation(); toggleSkill(s.name, !s.enabled); }}
+                  title={s.enabled ? "禁用" : "启用"}
+                >
+                  <Check size={10} />
+                </button>
+              </div>
+            </div>
+          ))})
+        </div>
+      )}
+    </SettingsPage>
+  );
+}
+
 function AboutSection() {
   return (
     <SettingsPage title="关于">
