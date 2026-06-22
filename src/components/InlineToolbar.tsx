@@ -141,14 +141,16 @@ export function InlineToolbar() {
   }, []);
 
   const handleAction = useCallback((intent: string) => {
-    if (!selectedText || !selectionRange) return;
+    if (!selectedText) return;
+    // Use current selection or fall back to globally saved selection
+    const sel = selectionRange || (window as any).__lastEditorSelection || undefined;
 
     const docContent = getDocumentContent();
     const cmd = `/${intent} ${selectedText.slice(0, 40)}${selectedText.length > 40 ? "…" : ""}`;
 
     execute(cmd, {
       intent,
-      selection: selectionRange,
+      selection: sel,
       beforeContent: docContent,
     });
 

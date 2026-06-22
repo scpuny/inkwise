@@ -220,6 +220,16 @@ export function EditorContent({
         return false;
       },
     },
+    onSelectionUpdate: ({ editor }) => {
+      // Persist last selection globally so other components can use it
+      // even when the editor loses focus
+      try {
+        const { from, to } = editor.state.selection;
+        if (from !== undefined) {
+          (window as any).__lastEditorSelection = { from, to };
+        }
+      } catch { /* ignore */ }
+    },
     onTransaction: handleTransaction,
     onUpdate: ({ editor }) => {
       const md = editor.getMarkdown();
