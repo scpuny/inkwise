@@ -152,7 +152,7 @@ export function EditorContent({
       }),
       Image.configure({
         inline: false,
-        allowBase64: false,
+        allowBase64: true,
         HTMLAttributes: {
           class: "tiptap-image",
         },
@@ -178,6 +178,27 @@ export function EditorContent({
             reader.onload = (e) => {
               const dataUrl = e.target?.result as string;
               // Insert as base64 image - in production, upload to backend
+              const editor = window.editorInstance?.editor;
+              if (editor) {
+                editor.chain().focus().setImage({ src: dataUrl }).run();
+              }
+            };
+            reader.readAsDataURL(file);
+            return true;
+          }
+        }
+        return false;
+      },
+      handleDrop: (_view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file.type.startsWith("image/")) {
+            event.preventDefault();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const dataUrl = e.target?.result as string;
               const editor = window.editorInstance?.editor;
               if (editor) {
                 editor.chain().focus().setImage({ src: dataUrl }).run();
