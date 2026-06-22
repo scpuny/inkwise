@@ -199,13 +199,12 @@ const skillIconMap: Record<string, React.ReactNode> = {
 
 // ─── Quick Action Dropdown (replaces native select for icon support) ───
 function QuickActionDropdown({
-  quickSkills, isProcessing, onChatInputChange, chatInputRef, execute,
+  quickSkills, isProcessing, onChatInputChange, chatInputRef,
 }: {
   quickSkills: string[];
   isProcessing: boolean;
   onChatInputChange: (v: string) => void;
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
-  execute: (input: string, opts?: any) => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -225,19 +224,14 @@ function QuickActionDropdown({
   const handleSelect = (intent: string) => {
     setOpen(false);
     const editor = (window as any).editorInstance?.editor;
-    if (!editor || editor.state.selection.empty) {
-      onChatInputChange("/" + intent + " ");
-      chatInputRef.current?.focus();
-      return;
+    let cmd = "/" + intent + " ";
+    if (editor && !editor.state.selection.empty) {
+      const { from, to } = editor.state.selection;
+      const selectedText = editor.state.doc.textBetween(from, to, " ");
+      cmd += selectedText;
     }
-    const { from, to } = editor.state.selection;
-    const selectedText = editor.state.doc.textBetween(from, to, " ");
-    const docContent = editor.getText() || "";
-    execute("/" + intent + " " + selectedText.slice(0, 40) + (selectedText.length > 40 ? "…" : ""), {
-      intent,
-      selection: { from, to },
-      beforeContent: docContent,
-    });
+    onChatInputChange(cmd);
+    chatInputRef.current?.focus();
   };
 
   return (
@@ -387,7 +381,6 @@ function ChatPanel({
           isProcessing={isProcessing}
           onChatInputChange={onChatInputChange}
           chatInputRef={chatInputRef}
-          execute={execute}
         />
         <textarea
           ref={chatInputRef}
