@@ -265,7 +265,7 @@ export function EditorContent({
       const newContent = content || "";
       // 设置内容时不加入撤销历史，防止首次加载按 Ctrl+Z 清空文档
       try {
-        const json = editor.markdown.parse(newContent);
+        const json = editor.markdown?.parse(newContent);
         const node = editor.schema.nodeFromJSON(json);
         const tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, node);
         tr.setMeta("addToHistory", false);

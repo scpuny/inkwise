@@ -685,6 +685,39 @@ function ThemesSection() {
     setCustoms(loadCustomThemes());
   }, []);
 
+  const handleImportTheme = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        // Validate theme structure
+        if (!data.label || !data.vars || !data.vars.textColor) {
+          alert('无效的主题文件');
+          return;
+        }
+        const theme: ArticleTheme = {
+          id: 'custom-' + Date.now(),
+          label: data.label,
+          desc: data.desc || '导入的主题',
+          platform: 'general',
+          tags: ['自定义', '导入'],
+          vars: data.vars,
+        };
+        const existing = loadCustomThemes();
+        saveCustomThemes([...existing, theme]);
+        refresh();
+      } catch {
+        alert('导入失败：文件格式错误');
+      }
+    };
+    input.click();
+  }, [refresh]);
+
   const defaultVars: ArticleThemeVars = {
     fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
     fontSize: '16',
@@ -705,12 +738,17 @@ function ThemesSection() {
     <SettingsPage title="文章主题管理">
       <div className="settings-section__header">
         <h3 className="settings-section__title">文章主题</h3>
-        <button className="btn btn--small" onClick={() => {
-          setEditTheme(null);
-          setShowEditor(true);
-        }}>
-          <Plus size={12} /> 新建自定义主题
-        </button>
+        <div style={{display: 'flex', gap: 6}}>
+          <button className="btn btn--small" onClick={handleImportTheme}>
+            <FileText size={12} /> 导入
+          </button>
+          <button className="btn btn--small" onClick={() => {
+            setEditTheme(null);
+            setShowEditor(true);
+          }}>
+            <Plus size={12} /> 新建
+          </button>
+        </div>
       </div>
 
       <div className="theme-manager__grid">
@@ -744,6 +782,23 @@ function ThemesSection() {
                 {isCustom && (
                   <>
                     <button className="btn btn--small" onClick={() => { setEditTheme(t); setShowEditor(true); }}>编辑</button>
+                    <button className="btn btn--small" onClick={() => {
+                      const json = JSON.stringify({ label: t.label, desc: t.desc, vars: t.vars }, null, 2);
+                      const fileName = t.label + '.json';
+                      if (isTauriEnv()) {
+                        tryInvoke('dialog_save', { filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: fileName }).then((path: any) => {
+                          if (path) tryInvoke('fs_write_text_file', { path, contents: json });
+                        });
+                      } else {
+                        const blob = new Blob([json], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = fileName;
+                        document.body.appendChild(a); a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }
+                    }}>导出</button>
                     <button className="btn btn--small btn--danger" onClick={() => {
                       const updated = customs.filter(c => c.id !== t.id);
                       saveCustomThemes(updated);

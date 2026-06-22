@@ -379,6 +379,19 @@ export function EditorPane({
       });
     }
 
+    // Check for unfinished plan draft
+    try {
+      const draftRaw = localStorage.getItem('plan-draft-' + activeArticleId);
+      if (draftRaw) {
+        const draft = JSON.parse(draftRaw) as PartialPlan;
+        if (draft.outline && draft.outline.length > 0) {
+          setPartialPlan(draft);
+          setPlanState("review");
+          setPlanStep("outline");
+        }
+      }
+    } catch {}
+
     // Load blueprint
     loadBlueprint(activeArticleId).then((bp) => {
       if (bp) {
@@ -469,21 +482,27 @@ export function EditorPane({
   const handlePlanRetry = useCallback(() => {
     if (!lastPlanInput) return;
     setPlanError(null);
+    if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
     setPlanState("planning");
     (async () => {
       try {
         const gen = generatePlanStream(lastPlanInput);
         for await (const result of gen) {
+          let updated: PartialPlan | null = null;
           if (result.step === "title" && result.data) {
-            setPartialPlan(p => ({ ...p, title: result.data }));
+            setPartialPlan(p => { updated = { ...p, title: result.data }; return updated; });
           } else if (result.step === "description" && result.data) {
-            setPartialPlan(p => ({ ...p, description: result.data }));
+            setPartialPlan(p => { updated = { ...p, description: result.data }; return updated; });
           } else if (result.step === "outline" && result.data) {
-            setPartialPlan(p => ({ ...p, outline: result.data }));
+            setPartialPlan(p => { updated = { ...p, outline: result.data }; return updated; });
           } else if (result.step === "tags" && result.data) {
-            setPartialPlan(p => ({ ...p, tags: result.data }));
+            setPartialPlan(p => { updated = { ...p, tags: result.data }; return updated; });
           }
           setPlanStep(result.step);
+          // Persist draft after each step
+          if (updated && activeArticleId) {
+            try { localStorage.setItem('plan-draft-' + activeArticleId, JSON.stringify(updated)); } catch {}
+          }
         }
         setPlanState("review");
       } catch (e: any) {
@@ -512,6 +531,9 @@ export function EditorPane({
 
       // Store article info for later navigation
       pendingArticleRef.current = result;
+
+      // Clear plan draft after confirm
+      if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
 
       // Build full blueprint with pending status
       const bp = createDefaultBlueprint(partialPlan.title);
@@ -575,6 +597,7 @@ export function EditorPane({
   }, [onEnterEditor]);
 
   const handlePlanCancel = useCallback(() => {
+    if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
     setPlanState("idle");
     setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0 });
     setPlanError(null);

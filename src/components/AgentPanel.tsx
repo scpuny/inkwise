@@ -238,6 +238,7 @@ function QuickActionDropdown({
   quickSkills: string[];
   isProcessing: boolean;
   onChatInputChange: (v: string) => void;
+  currentSessionId: string | null;
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const [open, setOpen] = useState(false);
@@ -310,6 +311,7 @@ function ChatPanel({
   lastError: string | null;
   chatInput: string;
   onChatInputChange: (v: string) => void;
+  currentSessionId: string | null;
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
@@ -433,6 +435,7 @@ function ChatPanel({
       {/* Input row: dropdown + textarea + send */}
       <div className="agent-chat__input-area">
         <QuickActionDropdown
+          currentSessionId={currentSessionId}
           quickSkills={quickSkills}
           isProcessing={isProcessing}
           onChatInputChange={onChatInputChange}
