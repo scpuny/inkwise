@@ -307,7 +307,7 @@ function ChatPanel({
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { execute, cancel } = useAgent();
+  const { execute, cancel, acceptSession } = useAgent();
   const [quickSkills, setQuickSkills] = useState<string[]>([]);
 
   useEffect(() => {
