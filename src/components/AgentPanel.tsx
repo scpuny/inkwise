@@ -12,7 +12,7 @@ import { useAgent, getSkillDisplayLabel } from "../lib/agent";
 import type { AgentSession } from "../lib/agent";
 
 /* ─── Tab 定义 ─── */
-type TabId = "chat" | "diff" | "history";
+type TabId = "chat" | "history";
 
 const TABS: { id: TabId; icon: React.ReactNode; label: string }[] = [
   { id: "chat", icon: <MessageSquare size={13} />, label: "对话" },

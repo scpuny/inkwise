@@ -120,7 +120,7 @@ export interface AgentState {
 export interface AgentActions {
   openPanel: () => void;
   closePanel: () => void;
-  setPanelTab: (tab: "chat" | "diff" | "history") => void;
+  setPanelTab: (tab: "chat" | "history") => void;
   togglePanel: () => void;
   openCommandBar: () => void;
   closeCommandBar: () => void;

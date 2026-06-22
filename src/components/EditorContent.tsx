@@ -261,8 +261,15 @@ export function EditorContent({
     // Diff check: only sync when content prop differs from editor content
     // AND the content prop has actually changed to something new (avoids re-syncing
     // after user edits when the parent re-renders with the same prop value)
+    // Performance: skip deep re-parse if content hasn't meaningfully changed
     if (cleanCurrent !== cleanContent && lastContentFromProps.current !== content) {
       const newContent = content || "";
+      // For large documents (>50KB), skip if the diff is only whitespace
+      if (newContent.length > 50000 && cleanCurrent.replace(/\s/g, '') === cleanContent.replace(/\s/g, '')) {
+        lastContentFromProps.current = content;
+        prevMdRef.current = content;
+        return;
+      }
       // 设置内容时不加入撤销历史，防止首次加载按 Ctrl+Z 清空文档
       try {
         const json = editor.markdown?.parse(newContent);
