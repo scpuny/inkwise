@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal } from "lucide-react";
+import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal, Search } from "lucide-react";
 import { useAgent } from "../lib/agent";
 
 interface InlineAction {
@@ -18,6 +18,7 @@ const ACTIONS: InlineAction[] = [
   { id: "rewrite", icon: <Edit3 size={13} />, label: "改写", intent: "rewrite" },
   { id: "translate", icon: <Languages size={13} />, label: "翻译", intent: "translate" },
   { id: "expand", icon: <Maximize2 size={13} />, label: "扩写", intent: "expand" },
+  { id: "analysis", icon: <Search size={13} />, label: "分析", intent: "analysis" },
 ];
 
 export function InlineToolbar() {
