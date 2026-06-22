@@ -4226,6 +4226,80 @@ body {
   color: var(--text-secondary);
   word-break: break-all;
 }
+
+/* ─── Skills expanded details ─── */
+.skills-list__preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+.skills-list__preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--hover);
+  color: var(--accent);
+}
+.skills-list__preview-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.skills-list__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.skills-list__badge--inline {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+.skills-list__badge--subagent {
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  color: var(--ok);
+}
+.skills-list__meta-hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+.skills-list__tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.skills-list__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+.skills-list__locations {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.skills-list__loc {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--hover);
+  color: var(--text-tertiary);
+}
+.skills-list__loc--active {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
 .shortcuts-table {
   border: 1px solid var(--border-soft);
   border-radius: 8px;

@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
   Palette, FileText, Cpu, Keyboard, Info, X, Zap,
+  Edit3, Languages, Maximize2, Search, PenTool, ListChecks,
+  RotateCw, BookOpen, Hash, MessageSquare, Quote,
   Monitor, Sun, Plus, Trash2, Check, Sparkles, ChevronDown, ChevronRight,
 } from "lucide-react";
 import type { ThemeStyle, Theme } from "../lib/theme";
@@ -12,7 +14,40 @@ import type { FontFamily } from "../lib/fontFamily";
 import { FONT_FAMILIES, applyFontFamily, getCustomFontName, setCustomFontName } from "../lib/fontFamily";
 import { type Provider, BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels } from "../lib/providerModels";
 import { InlineConfirmButton } from "./InlineConfirmButton";
+import type { Skill } from "../lib/skill";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
+
+// Skill icons & labels (shared with InlineToolbar/AgentPanel)
+const SKILL_ICONS: Record<string, ReactNode> = {
+  "polish": <Sparkles size={13} />,
+  "rewrite": <Edit3 size={13} />,
+  "translate": <Languages size={13} />,
+  "expand": <Maximize2 size={13} />,
+  "analysis": <Search size={13} />,
+  "continue-writing": <PenTool size={13} />,
+  "proofread": <ListChecks size={13} />,
+  "summary": <FileText size={13} />,
+  "outline": <ListChecks size={13} />,
+  "paraphrase": <RotateCw size={13} />,
+  "academic": <BookOpen size={13} />,
+  "creative": <PenTool size={13} />,
+  "headline": <Hash size={13} />,
+  "keyword-extract": <Search size={13} />,
+  "readability": <MessageSquare size={13} />,
+  "citation": <Quote size={13} />,
+  "blog": <FileText size={13} />,
+  "novel": <BookOpen size={13} />,
+  "email": <MessageSquare size={13} />,
+};
+const SKILL_LABELS: Record<string, string> = {
+  "continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译",
+  "academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲",
+  "expand":"扩写","paraphrase":"同义改写","proofread":"校对",
+  "blog":"博客","novel":"小说","headline":"标题","email":"邮件",
+  "keyword-extract":"关键词","readability":"可读性","citation":"引用",
+};
+const PRIMARY_SKILLS = ["polish","rewrite","translate","expand","analysis"];
+
 
 /* ─── Tab definitions ─── */
 export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "skills" | "about";
@@ -356,7 +391,7 @@ function ShortcutsSection() {
    ABOUT SECTION
    ════════════════════════════════════════════════ */
 function SkillsSection() {
-  const [skills, setSkills] = useState<{ name: string; description: string; enabled: boolean }[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
 
@@ -365,7 +400,7 @@ function SkillsSection() {
       try {
         const { listSkills } = await import("../lib/skill");
         const list = await listSkills();
-        setSkills(list.map((s: any) => ({ name: s.name, description: s.description, enabled: s.enabled !== false })));
+        setSkills(list);
       } catch {}
       setLoading(false);
     })();
@@ -379,31 +414,10 @@ function SkillsSection() {
     } catch {}
   };
 
-  const skillNames: Record<string, string> = {
-    "continue-writing": "续写",
-    "rewrite": "改写",
-    "polish": "润色",
-    "translate": "翻译",
-    "academic": "学术写作",
-    "creative": "创意写作",
-    "summary": "摘要",
-    "outline": "大纲",
-    "expand": "扩写",
-    "paraphrase": "同义改写",
-    "proofread": "校对",
-    "blog": "博客",
-    "novel": "小说",
-    "headline": "标题",
-    "email": "邮件",
-    "keyword-extract": "关键词",
-    "readability": "可读性",
-    "citation": "引用",
-  };
-
   return (
     <SettingsPage title="技能" desc="管理 AI 写作技能，启用或禁用特定功能">
       {loading ? (
-        <div style={{ padding: 24, textAlign: "center", color: "var(--text-tertiary)" }}>加载中…</div>
+        <div style={{padding: 24, textAlign: "center", color: "var(--text-tertiary)" }}>加载中…</div>
       ) : (
         <div className="skills-list">
           {skills.map((s) => (
@@ -412,7 +426,7 @@ function SkillsSection() {
                 <span className="skills-list__chevron">
                   {expandedSkill === s.name ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </span>
-                <span className="skills-list__name">{skillNames[s.name] || s.name}</span>
+                <span className="skills-list__name">{SKILL_LABELS[s.name] || s.name}</span>
                 <span className="skills-list__desc">{s.description}</span>
                 <button
                   className={"skills-list__toggle" + (s.enabled ? " skills-list__toggle--on" : "")}
@@ -424,13 +438,66 @@ function SkillsSection() {
               </div>
               {expandedSkill === s.name && (
                 <div className="skills-list__body">
-                  <div className="skills-list__meta">
-                    <span className="skills-list__meta-key">ID</span>
-                    <span className="skills-list__meta-val">{s.name}</span>
+                  {/* 图标 + 名称预览 */}
+                  <div className="skills-list__preview">
+                    <span className="skills-list__preview-icon">{SKILL_ICONS[s.name] || <Sparkles size={13} />}</span>
+                    <span className="skills-list__preview-label">{SKILL_LABELS[s.name] || s.name}</span>
                   </div>
+
+                  {/* 执行方式 */}
                   <div className="skills-list__meta">
-                    <span className="skills-list__meta-key">描述</span>
-                    <span className="skills-list__meta-val">{s.description}</span>
+                    <span className="skills-list__meta-key">执行方式</span>
+                    <span className={"skills-list__badge skills-list__badge--" + (s.run_as?.toLowerCase() || "inline")}>
+                      {s.run_as === "Subagent" ? "子代理" : "内联"}
+                    </span>
+                    <span className="skills-list__meta-hint">
+                      {s.run_as === "Subagent" ? "适合复杂任务，独立推理执行" : "轻量快速，直接在对话中完成"}
+                    </span>
+                  </div>
+
+                  {/* 可用工具 */}
+                  {s.allowed_tools && s.allowed_tools.length > 0 && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">工具权限</span>
+                      <div className="skills-list__tags">
+                        {s.allowed_tools.map(t => (
+                          <span key={t} className="skills-list__tag">{
+                            {"read_document": "读取文档", "write_document": "写入文档", "search_document": "搜索文档"}[t] || t
+                          }</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 模型配置 */}
+                  {(s.model || s.effort) && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">模型配置</span>
+                      <span className="skills-list__meta-val">
+                        {s.model ? `模型: ${s.model}` : ""}
+                        {s.model && s.effort ? " · " : ""}
+                        {s.effort ? `推理力度: ${s.effort}` : ""}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 所在位置 */}
+                  <div className="skills-list__meta">
+                    <span className="skills-list__meta-key">出现位置</span>
+                    <div className="skills-list__locations">
+                      <span className={"skills-list__loc" + (PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
+                        快捷工具栏
+                        {PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                      </span>
+                      <span className={"skills-list__loc" + (!PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
+                        更多面板
+                        {!PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                      </span>
+                      <span className={"skills-list__loc" + (SKILL_LABELS[s.name] ? " skills-list__loc--active" : "")}>
+                        Chat 快捷操作
+                        {SKILL_LABELS[s.name] && s.enabled ? "✓" : ""}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
