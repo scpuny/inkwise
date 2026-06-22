@@ -3863,22 +3863,29 @@ body {
   color: var(--text-secondary);
   font-family: var(--mono);
 }
-.settings-textarea {
+
+
+
+.settings-input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--text-sm);
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 8px 10px;
-  font-family: var(--mono);
+  min-width: 0;
   outline: none;
-  transition: border-color 0.15s;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
-.settings-textarea:focus {
+.settings-input:focus {
   border-color: var(--accent);
+}
+.settings-input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .settings-select {
