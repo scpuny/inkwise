@@ -13,6 +13,7 @@ import { TEXT_SIZES } from "../lib/textSize";
 import type { FontFamily } from "../lib/fontFamily";
 import { FONT_FAMILIES, applyFontFamily, getCustomFontName, setCustomFontName } from "../lib/fontFamily";
 import { type Provider, BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels } from "../lib/providerModels";
+import { getAllThemes, getThemeById, isPresetTheme, saveCustomThemes, loadCustomThemes, type ArticleTheme, type ArticleThemeVars } from "../lib/articleThemes";
 import { InlineConfirmButton } from "./InlineConfirmButton";
 import type { Skill } from "../lib/skill";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
@@ -50,7 +51,7 @@ const PRIMARY_SKILLS = ["polish","rewrite","translate","expand","analysis"];
 
 
 /* ─── Tab definitions ─── */
-export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "skills" | "about";
+export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "skills" | "themes" | "about";
 
 const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
   { id: "appearance", icon: <Palette size={14} />, label: "外观" },
@@ -58,6 +59,7 @@ const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
   { id: "models",    icon: <Cpu size={14} />,      label: "模型" },
   { id: "shortcuts", icon: <Keyboard size={14} />, label: "快捷键" },
   { id: "skills",    icon: <Zap size={14} />,       label: "技能" },
+  { id: "themes",    icon: <FileText size={14} />,    label: "文章主题" },
   { id: "about",     icon: <Info size={14} />,      label: "关于" },
 ];
 
@@ -152,6 +154,7 @@ export function SettingsPanel({
             {tab === "models" && <ModelsSection />}
             {tab === "shortcuts" && <ShortcutsSection />}
             {tab === "skills" && <SkillsSection />}
+            {tab === "themes" && <ThemesSection />}
             {tab === "about" && <AboutSection />}
           </main>
         </div>
@@ -669,6 +672,259 @@ function SkillsSection() {
         </>
       )}
     </SettingsPage>
+  );
+}
+
+function ThemesSection() {
+  const themes = getAllThemes();
+  const [customs, setCustoms] = useState<ArticleTheme[]>(loadCustomThemes());
+  const [showEditor, setShowEditor] = useState(false);
+  const [editTheme, setEditTheme] = useState<ArticleTheme | null>(null);
+
+  const refresh = useCallback(() => {
+    setCustoms(loadCustomThemes());
+  }, []);
+
+  const defaultVars: ArticleThemeVars = {
+    fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
+    fontSize: '16',
+    lineHeight: 1.75,
+    paragraphGap: '1.25',
+    maxWidth: '780',
+    textColor: '#2c2c2c',
+    bgColor: '#ffffff',
+    headingColor: '#111111',
+    linkColor: '#1a73e8',
+    codeBg: '#f5f5f5',
+    codeText: '#333333',
+    blockquoteBorder: '#dfe1e5',
+    blockquoteBg: '#f8f9fa',
+  };
+
+  return (
+    <SettingsPage title="文章主题管理">
+      <div className="settings-section__header">
+        <h3 className="settings-section__title">文章主题</h3>
+        <button className="btn btn--small" onClick={() => {
+          setEditTheme(null);
+          setShowEditor(true);
+        }}>
+          <Plus size={12} /> 新建自定义主题
+        </button>
+      </div>
+
+      <div className="theme-manager__grid">
+        {themes.map(t => {
+          const isCustom = !isPresetTheme(t.id);
+          const v = t.vars;
+          return (
+            <div key={t.id} className="theme-manager__card">
+              <div className="theme-manager__card-preview" style={{background: v.bgColor}}>
+                <div className="theme-manager__card-swatches">
+                  <span className="theme-manager__swatch" style={{background: v.textColor}} title="文字色" />
+                  <span className="theme-manager__swatch" style={{background: v.headingColor}} title="标题色" />
+                  <span className="theme-manager__swatch" style={{background: v.linkColor}} title="链接色" />
+                  <span className="theme-manager__swatch" style={{background: v.codeBg, border: '1px solid rgba(0,0,0,0.06)'}} title="代码背景" />
+                  <span className="theme-manager__swatch" style={{background: v.blockquoteBorder}} title="引用边框" />
+                </div>
+                <div className="theme-manager__card-text" style={{color: v.headingColor, fontFamily: v.fontFamily}}>
+                  <div style={{fontWeight: 700, fontSize: 14}}>{t.label}</div>
+                  <div style={{fontSize: 10, color: v.textColor, marginTop: 2}}>{v.fontSize}px / {v.lineHeight}</div>
+                </div>
+              </div>
+              <div className="theme-manager__card-info">
+                <span className="theme-manager__card-name">{t.label}</span>
+                {isCustom && <span className="theme-manager__card-badge">自定义</span>}
+              </div>
+              <div className="theme-manager__card-desc">{t.desc}</div>
+              <div className="theme-manager__card-actions">
+                {!isCustom && (
+                  <button className="btn btn--small" onClick={() => { setEditTheme(t); setShowEditor(true); }}>复制创建</button>
+                )}
+                {isCustom && (
+                  <>
+                    <button className="btn btn--small" onClick={() => { setEditTheme(t); setShowEditor(true); }}>编辑</button>
+                    <button className="btn btn--small btn--danger" onClick={() => {
+                      const updated = customs.filter(c => c.id !== t.id);
+                      saveCustomThemes(updated);
+                      refresh();
+                    }}>删除</button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showEditor && (
+        <div className="settings-overlay" onClick={() => setShowEditor(false)}>
+          <div className="theme-editor" onClick={e => e.stopPropagation()}>
+            <div className="theme-editor__header">
+              <h4>{editTheme ? '编辑自定义主题' : '新建自定义主题'}</h4>
+              <button className="btn btn--small" onClick={() => setShowEditor(false)}>✕</button>
+            </div>
+            <ThemeForm
+              initial={editTheme || { id: '', label: '', desc: '', platform: 'general', tags: [], vars: { ...defaultVars } }}
+              onSave={(theme) => {
+                const existing = customs.filter(c => c.id !== theme.id);
+                saveCustomThemes([...existing, theme]);
+                refresh();
+                setShowEditor(false);
+              }}
+              isNew={!editTheme}
+            />
+          </div>
+        </div>
+      )}
+    </SettingsPage>
+  );
+}
+
+function ThemeForm({ initial, onSave, isNew }: { initial: ArticleTheme; onSave: (t: ArticleTheme) => void; isNew: boolean }) {
+  const [label, setLabel] = useState(initial.label);
+  const [desc, setDesc] = useState(initial.desc);
+  const [vars, setVars] = useState<ArticleThemeVars>({ ...initial.vars });
+
+  const updateVar = (key: keyof ArticleThemeVars, val: any) => {
+    setVars(prev => ({ ...prev, [key]: val }));
+  };
+
+  const handleSave = () => {
+    if (!label.trim()) return;
+    // Generate new ID for new/copy; keep original ID for editing existing custom
+    const isEditingCustom = !isNew && initial.id.startsWith('custom-');
+    const id = isEditingCustom ? initial.id : 'custom-' + Date.now();
+    onSave({
+      id,
+      label: label.trim(),
+      desc: desc.trim(),
+      platform: 'general',
+      tags: ['自定义'],
+      vars,
+    });
+  };
+
+  return (
+    <div className="theme-editor__form">
+      <div className="theme-editor__field-row">
+        <div className="theme-editor__field">
+          <label className="set-label">主题名称</label>
+          <input className="mem-input" value={label} onChange={e => setLabel(e.target.value)} placeholder="我的自定义主题" />
+        </div>
+      </div>
+      <div className="theme-editor__field-row">
+        <div className="theme-editor__field">
+          <label className="set-label">描述</label>
+          <input className="mem-input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="简短描述这个主题的风格" />
+        </div>
+      </div>
+      <div className="theme-editor__divider" />
+
+      <div className="theme-editor__field-group">
+        <label className="theme-editor__group-label">排版</label>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">正文字体</label>
+            <input className="mem-input" value={vars.fontFamily} onChange={e => updateVar('fontFamily', e.target.value)} placeholder="font-family" />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">字号 (px)</label>
+            <input className="mem-input" type="number" min={12} max={24} value={parseInt(vars.fontSize)} onChange={e => updateVar('fontSize', String(e.target.value))} />
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">行距</label>
+            <input className="mem-input" type="number" min={1} max={3} step={0.05} value={vars.lineHeight} onChange={e => updateVar('lineHeight', parseFloat(e.target.value))} />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">段间距 (em)</label>
+            <input className="mem-input" type="number" min={0.5} max={3} step={0.1} value={parseFloat(vars.paragraphGap)} onChange={e => updateVar('paragraphGap', String(e.target.value))} />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">最大宽度 (px)</label>
+            <input className="mem-input" type="number" min={500} max={1200} value={parseInt(vars.maxWidth)} onChange={e => updateVar('maxWidth', String(e.target.value))} />
+          </div>
+        </div>
+      </div>
+
+      <div className="theme-editor__divider" />
+      <div className="theme-editor__field-group">
+        <label className="theme-editor__group-label">颜色</label>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">背景色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.bgColor} onChange={e => updateVar('bgColor', e.target.value)} />
+              <input className="mem-input" value={vars.bgColor} onChange={e => updateVar('bgColor', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">正文字色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.textColor} onChange={e => updateVar('textColor', e.target.value)} />
+              <input className="mem-input" value={vars.textColor} onChange={e => updateVar('textColor', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">标题色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.headingColor} onChange={e => updateVar('headingColor', e.target.value)} />
+              <input className="mem-input" value={vars.headingColor} onChange={e => updateVar('headingColor', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">链接色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.linkColor} onChange={e => updateVar('linkColor', e.target.value)} />
+              <input className="mem-input" value={vars.linkColor} onChange={e => updateVar('linkColor', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">代码背景</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.codeBg} onChange={e => updateVar('codeBg', e.target.value)} />
+              <input className="mem-input" value={vars.codeBg} onChange={e => updateVar('codeBg', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">代码文字色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.codeText} onChange={e => updateVar('codeText', e.target.value)} />
+              <input className="mem-input" value={vars.codeText} onChange={e => updateVar('codeText', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">引用边框色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.blockquoteBorder} onChange={e => updateVar('blockquoteBorder', e.target.value)} />
+              <input className="mem-input" value={vars.blockquoteBorder} onChange={e => updateVar('blockquoteBorder', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">引用背景色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.blockquoteBg} onChange={e => updateVar('blockquoteBg', e.target.value)} />
+              <input className="mem-input" value={vars.blockquoteBg} onChange={e => updateVar('blockquoteBg', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="theme-editor__actions">
+        <button className="btn" onClick={() => onSave(initial)}>取消</button>
+        <button className="btn btn--primary" onClick={handleSave} disabled={!label.trim()}>
+          <Check size={12} /> 保存主题
+        </button>
+      </div>
+    </div>
   );
 }
 
