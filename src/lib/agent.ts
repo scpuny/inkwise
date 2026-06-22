@@ -64,16 +64,16 @@ export function detectIntent(input: string, selectedTextLength: number): Intent 
     return { id: "custom", mode: "command", skill: "", label: cmd, description: `执行 ${cmd}` };
   }
 
-  // 选中文本 + 短指令 → inline
+  // 选中文本 + 短指令 → agent（结果展示在 ChatPanel）
   if (selectedTextLength > 0 && trimmed.length < 30) {
     for (const [keyword, intent] of Object.entries(INTENT_KEYWORD_MAP)) {
-      if (trimmed.includes(keyword)) return { ...intent, mode: "inline" };
+      if (trimmed.includes(keyword)) return { ...intent, mode: "command" };
     }
-    return { id: "rewrite-selection", mode: "inline", skill: "rewrite", label: "改写选中", description: "根据指令改写选中文本" };
+    return { id: "rewrite-selection", mode: "command", skill: "rewrite", label: "改写选中", description: "根据指令改写选中文本" };
   }
 
-  // 默认：续写（inline）
-  return { id: "continue", mode: "inline", skill: "continue-writing", label: "续写", description: "从光标位置继续写作" };
+  // 默认：续写 → agent
+  return { id: "continue", mode: "command", skill: "continue-writing", label: "续写", description: "从光标位置继续写作" };
 }
 
 const INTENT_MAP: Record<string, { id: string; skill: string; label: string; description: string }> = {
