@@ -453,10 +453,6 @@ function AppContent() {
           editorMaxWidth={editorMaxWidth}
           editorParagraphGap={editorParagraphGap}
           editorFontFamily={editorFontFamily}
-          codeThemeId={codeThemeId}          onSetEditorMaxWidth={setEditorMaxWidth}
-          editorParagraphGap={editorParagraphGap}
-          onSetEditorParagraphGap={setEditorParagraphGap}
-          editorFontFamily={editorFontFamily}
           onSetEditorFontFamily={setEditorFontFamily}
           codeThemeId={codeThemeId}
           onSetCodeTheme={setCodeThemeId}

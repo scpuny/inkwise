@@ -256,7 +256,7 @@ export function Toolbar({
       const target = e.target as HTMLElement;
       if (!target.closest(".toolbar-popover") && !target.closest(".toolbar-dropdown-btn")) {
         setLinkOpen(false); setImageOpen(false); setHighlightOpen(false);
-        setHeadingOpen(false); setMoreOpen(false); setStyleOpen(false);
+        setHeadingOpen(false); setMoreOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);

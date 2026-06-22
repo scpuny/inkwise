@@ -196,8 +196,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     const ghost = state.ghostText;
     if (!ghost) return;
 
-    // Insert via callback (provided by EditorPane)
-    insertGhost(ghost);
+    // Insert via window.__insertGhostContent (provided by EditorContent)
+    const editor = (window as any).editorInstance?.editor;
+    if (editor && editor.commands) {
+      editor.commands.insertContent(ghost);
+    }
 
     // Update session
     setState((s) => ({

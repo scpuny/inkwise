@@ -79,6 +79,7 @@ export function EditorPane({
   codeThemeId?: string;
   onApplyHeadingNumbers?: () => void;
   applyHeadingNumbersRef?: React.MutableRefObject<(() => void) | null>;
+  showHeadingNumber?: boolean;
   onSetEditorStyleTemplate?: (id: string) => void;
   onOutlineChange?: (items: OutlineItem[]) => void;
   onSaveStateChange?: (state: "idle" | "saving" | "saved") => void;

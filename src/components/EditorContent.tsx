@@ -323,7 +323,7 @@ export function EditorContent({
     window.editorInstance = { editor };
     // Expose insert method for ghost text
     (window as any).__insertGhostContent = (content: string) => {
-      editor.commands.insertContent(content);
+      editor?.commands.insertContent(content);
     };
     return () => { window.editorInstance = undefined; };
   }, [editor]);
