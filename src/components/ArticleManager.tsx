@@ -16,6 +16,8 @@ import { loadCollections, saveCollections, type Collection, type Article, genId 
 import { loadArticleContent } from "../lib/articles";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { VersionHistoryModal } from "./VersionHistoryModal";
+import { saveArticleContent } from "../lib/articles";
 
 type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
@@ -72,6 +74,7 @@ export function ArticleManager({
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [versionHistoryArticle, setVersionHistoryArticle] = useState<{ id: string; title: string } | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
 
   // Collection editing
@@ -390,6 +393,15 @@ export function ArticleManager({
                         <td><span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span></td>
                         <td>{getStatusLabel(article.status)}</td>
                         <td className="article-manager__cell-date">{formatDate(article.updatedAt)}</td>
+                        <td className="article-manager__cell-actions">
+                          <button
+                            className="article-manager__version-btn"
+                            onClick={(e) => { e.stopPropagation(); setVersionHistoryArticle({ id: article.id, title: article.title || "无标题" }); }}
+                            title="历史版本"
+                          >
+                            <Clock size={12} />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -418,6 +430,15 @@ export function ArticleManager({
                           <span>{formatDate(article.updatedAt)}</span>
                         </div>
                       </div>
+                      <div className="article-manager__list-card-actions">
+                        <button
+                          className="article-manager__version-btn"
+                          onClick={(e) => { e.stopPropagation(); setVersionHistoryArticle({ id: article.id, title: article.title || "无标题" }); }}
+                          title="历史版本"
+                        >
+                          <Clock size={11} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -430,6 +451,20 @@ export function ArticleManager({
         <ConfirmDialog open={showDeleteConfirm} title="删除文章" message={`确定删除选中的 ${selectedIds.size} 篇文章？`} confirmLabel="删除" onConfirm={handleDeleteArticles} onCancel={() => setShowDeleteConfirm(false)} danger />
         
         {/* Collection Form Modal */}
+        {/* Version History Modal */}
+        <VersionHistoryModal
+          articleId={versionHistoryArticle?.id || ""}
+          articleTitle={versionHistoryArticle?.title || ""}
+          open={versionHistoryArticle !== null}
+          onClose={() => setVersionHistoryArticle(null)}
+          onRestore={async (content) => {
+            if (versionHistoryArticle) {
+              await saveArticleContent(versionHistoryArticle.id, content);
+              setVersionHistoryArticle(null);
+              await loadData();
+            }
+          }}
+        />
         <CollectionFormModal
           collection={editingCollection}
           open={showColForm}

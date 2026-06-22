@@ -10,6 +10,7 @@ import { useAgent } from "../lib/agent";
 import { getProvidersSync } from "../lib/providerModels";
 import { loadCollections } from "../lib/collections";
 import { saveArticleContent, loadArticleContent } from "../lib/articles";
+import { saveVersionSnapshot } from "../lib/articleVersions";
 import { parseOutlineFromMarkdown, type OutlineItem, type BlueprintOutlineItem } from "./OutlinePanel";
 import { getTemplate, getSelectedTemplateId, setSelectedTemplateId, addHeadingNumbers } from "../lib/editorStyles";
 import {
@@ -321,7 +322,10 @@ export function EditorPane({
       const prevContent = contentRef.current;
       if (prevContent) {
         onSaveStateChange?.("saving");
-        saveArticleContent(prevId, prevContent).then(() => {
+        Promise.all([
+          saveVersionSnapshot(prevId, prevContent),
+          saveArticleContent(prevId, prevContent),
+        ]).then(() => {
           onSaveStateChange?.("saved");
           setTimeout(() => onSaveStateChange?.("idle"), 2000);
         });
@@ -439,7 +443,10 @@ export function EditorPane({
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     onSaveStateChange?.("saving");
     autoSaveTimer.current = setTimeout(() => {
-      saveArticleContent(activeArticleId, content).then(() => {
+      Promise.all([
+        saveVersionSnapshot(activeArticleId, contentRef.current),
+        saveArticleContent(activeArticleId, content),
+      ]).then(() => {
         onSaveStateChange?.("saved");
         setTimeout(() => onSaveStateChange?.("idle"), 2000);
       });
