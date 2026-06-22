@@ -200,6 +200,39 @@ function getSkillIcon(name: string): React.ReactNode {
   return icons[name] || <Sparkles size={13} />;
 }
 
+// ─── Thinking Timer — shows elapsed time while AI is processing ───
+function ThinkingTimer() {
+  const [elapsed, setElapsed] = useState(0);
+  const [hint, setHint] = useState("AI 思考中…");
+
+  useEffect(() => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const sec = Math.floor((Date.now() - start) / 1000);
+      setElapsed(sec);
+      if (sec > 30) setHint("仍在处理中，模型响应较慢或网络延迟…");
+      else if (sec > 15) setHint("AI 生成中，请稍候…");
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}分${sec}秒` : `${sec}秒`;
+  };
+
+  return (
+    <div className="agent-chat__message agent-chat__message--processing">
+      <div className="agent-chat__thinking">
+        <Loader2 size={14} className="agent-chat__spinner" />
+        <span>{hint}</span>
+        <span className="agent-chat__elapsed">{formatTime(elapsed)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Quick Action Dropdown (replaces native select for icon support) ───
 function QuickActionDropdown({
   quickSkills, isProcessing, onChatInputChange, chatInputRef,
@@ -362,14 +395,7 @@ function ChatPanel({
           </div>
         ))}
 
-        {isProcessing && (
-          <div className="agent-chat__message agent-chat__message--processing">
-            <div className="agent-chat__thinking">
-              <Loader2 size={14} className="agent-chat__spinner" />
-              <span>处理中…</span>
-            </div>
-          </div>
-        )}
+        {isProcessing && <ThinkingTimer />}
 
         {lastError && (
           <div className="agent-chat__message agent-chat__message--error">

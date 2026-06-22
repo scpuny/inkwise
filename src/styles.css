@@ -7547,6 +7547,12 @@ body {
   animation: spin 1s linear infinite;
 }
 
+.agent-chat__elapsed {
+  font-size: var(--text-2xs);
+  color: var(--fg-faint);
+  font-variant-numeric: tabular-nums;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
