@@ -1,10 +1,12 @@
 // AgentPanel.tsx — Agent 操作面板，替代原来的 AIDock
 // 三个 Tab：Chat（对话/结果） | Diff（差异对比） | History（操作历史）
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   MessageSquare, GitCompare, History, X, Check, Trash2,
-  Sparkles, Loader2, RefreshCw, FileDown,
+  Sparkles, Loader2, RefreshCw, FileDown, Edit3, Languages,
+  Maximize2, Search, PenTool, ListChecks, FileText, RotateCw,
+  BookOpen, Hash, Quote,
 } from "lucide-react";
 import { computeDiff } from "../lib/diff";
 import { useAgent, getSkillDisplayLabel } from "../lib/agent";
@@ -172,6 +174,101 @@ function renderMarkdown(text: string): React.ReactNode {
   return <>{elements}</>;
 }const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
 
+// Skill icons (shared with InlineToolbar)
+const skillIconMap: Record<string, React.ReactNode> = {
+  "polish": <Sparkles size={13} />,
+  "rewrite": <Edit3 size={13} />,
+  "translate": <Languages size={13} />,
+  "expand": <Maximize2 size={13} />,
+  "analysis": <Search size={13} />,
+  "continue-writing": <PenTool size={13} />,
+  "proofread": <ListChecks size={13} />,
+  "summary": <FileText size={13} />,
+  "outline": <ListChecks size={13} />,
+  "paraphrase": <RotateCw size={13} />,
+  "academic": <BookOpen size={13} />,
+  "creative": <PenTool size={13} />,
+  "headline": <Hash size={13} />,
+  "keyword-extract": <Search size={13} />,
+  "readability": <MessageSquare size={13} />,
+  "citation": <Quote size={13} />,
+  "blog": <FileText size={13} />,
+  "novel": <BookOpen size={13} />,
+  "email": <MessageSquare size={13} />,
+};
+
+// ─── Quick Action Dropdown (replaces native select for icon support) ───
+function QuickActionDropdown({
+  quickSkills, isProcessing, onChatInputChange, chatInputRef, execute,
+}: {
+  quickSkills: string[];
+  isProcessing: boolean;
+  onChatInputChange: (v: string) => void;
+  chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
+  execute: (input: string, opts?: any) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleSelect = (intent: string) => {
+    setOpen(false);
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor || editor.state.selection.empty) {
+      onChatInputChange("/" + intent + " ");
+      chatInputRef.current?.focus();
+      return;
+    }
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, " ");
+    const docContent = editor.getText() || "";
+    execute("/" + intent + " " + selectedText.slice(0, 40) + (selectedText.length > 40 ? "…" : ""), {
+      intent,
+      selection: { from, to },
+      beforeContent: docContent,
+    });
+  };
+
+  return (
+    <div className="agent-chat__tool-select-wrap" ref={wrapRef}>
+      <button
+        className="agent-chat__tool-select-btn"
+        onClick={() => setOpen(!open)}
+        title="快捷操作"
+      >
+        <Sparkles size={13} />
+        <span>快捷操作</span>
+      </button>
+      {open && (
+        <div className="agent-chat__tool-select-panel">
+          {quickSkills.map((s) => (
+            <button
+              key={s}
+              className="agent-chat__tool-select-item"
+              onClick={() => handleSelect(s)}
+              disabled={isProcessing}
+            >
+              {skillIconMap[s] || <Sparkles size={13} />}
+              <span>{skillLabels[s] || s}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatPanel({
   sessions, isProcessing, lastError, chatInput, onChatInputChange, chatInputRef, chatEndRef,
 }: {
@@ -285,33 +382,13 @@ function ChatPanel({
       <div className="agent-chat__bar">
       {/* Input row: dropdown + textarea + send */}
       <div className="agent-chat__input-area">
-        <select
-          className="agent-chat__tool-select"
-          defaultValue=""
-          onChange={(e) => {
-            const intent = e.target.value;
-            e.target.value = "";
-            if (!intent) return;
-            const editor = (window as any).editorInstance?.editor;
-            if (!editor || editor.state.selection.empty) {
-              onChatInputChange("/" + intent + " ");
-              chatInputRef.current?.focus();
-              return;
-            }
-            const { from, to } = editor.state.selection;
-            const selectedText = editor.state.doc.textBetween(from, to, " ");
-            const docContent = editor.getText() || "";
-            execute("/" + intent + " " + selectedText.slice(0, 40) + (selectedText.length > 40 ? "…" : ""), {
-              intent,
-              selection: { from, to },
-              beforeContent: docContent,
-            });
-          }}
-          title="快捷操作"
-        >
-          <option value="" disabled>快捷操作</option>
-          {quickSkills.map(s => <option key={s} value={s}>{skillLabels[s] || s}</option>)}
-        </select>
+        <QuickActionDropdown
+          quickSkills={quickSkills}
+          isProcessing={isProcessing}
+          onChatInputChange={onChatInputChange}
+          chatInputRef={chatInputRef}
+          execute={execute}
+        />
         <textarea
           ref={chatInputRef}
           className="agent-chat__input"

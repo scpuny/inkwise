@@ -7573,39 +7573,73 @@ body {
   padding: 6px 12px 8px;
 }
 
-/* Tool select - lightning icon button on left */
-.agent-chat__tool-select {
-  appearance: none;
-  -webkit-appearance: none;
+/* Tool select - custom dropdown with icons */
+.agent-chat__tool-select-wrap {
+  position: relative;
   flex-shrink: 0;
-  width: 28px;
+}
+.agent-chat__tool-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
   height: 28px;
-  padding: 0;
-  background: transparent;
   border: none;
   border-radius: 6px;
+  background: transparent;
   color: var(--fg-dim);
-  font-size: 0;
+  font-size: var(--text-xs);
   cursor: pointer;
-  outline: none;
   transition: background var(--dur-fast) ease;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 16px;
+  white-space: nowrap;
   align-self: flex-end;
   margin-bottom: 2px;
 }
-
-.agent-chat__tool-select:hover {
+.agent-chat__tool-select-btn:hover {
   background-color: var(--bg-elev-2);
   color: var(--fg);
 }
-
-.agent-chat__tool-select option {
-  font-size: var(--text-sm);
-  color: var(--fg);
+.agent-chat__tool-select-panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 150px;
+  max-height: 300px;
+  overflow-y: auto;
   background: var(--bg-elev);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  z-index: calc(var(--z-floating-menu) + 1);
+  animation: tool-select-in 0.12s var(--ease-out);
+}
+@keyframes tool-select-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.agent-chat__tool-select-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+  text-align: left;
+}
+.agent-chat__tool-select-item:hover {
+  background: var(--bg-hover, var(--sidebar-hover));
+  color: var(--fg);
+}
+.agent-chat__tool-select-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .agent-chat__input-area .agent-chat__input {
