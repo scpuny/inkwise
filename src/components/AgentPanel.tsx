@@ -111,7 +111,7 @@ function ChatPanel({
 
   const handleSend = useCallback(() => {
     if (!chatInput.trim() || isProcessing) return;
-    execute(chatInput);
+    execute(chatInput, { intent: "chat" });
     onChatInputChange("");
   }, [chatInput, isProcessing, execute, onChatInputChange]);
 

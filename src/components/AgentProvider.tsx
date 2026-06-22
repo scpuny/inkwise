@@ -53,7 +53,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     // Detect intent
     const intent = options?.intent
-      ? { id: options.intent, mode: "inline" as const, skill: options.intent, label: getSkillDisplayLabel(options.intent), description: "" }
+      ? { id: options.intent, mode: options.intent === "chat" ? ("agent" as const) : ("inline" as const), skill: options.intent, label: options.intent === "chat" ? "对话" : getSkillDisplayLabel(options.intent), description: "" }
       : detectIntent(input, selection ? Math.abs(selection.to - selection.from) : 0);
 
     // Get provider
@@ -305,6 +305,7 @@ function buildSystemPrompt(intent: string, documentContent: string, selection?: 
     "proofread": "你是一位专业校对员。请检查文本中的语法错误、错别字和标点问题，输出修正后的版本并用括号标注修改处。",
     "paraphrase": "你是一位语言专家。请用不同的句式重新表达用户的文本，保留原意。直接输出结果。",
     "academic": "你是一位学术写作专家。请以严谨、客观、规范的学术风格处理文本。使用正式的学术语言。直接输出结果。",
+    "chat": "你是 AI 写作助手，可以与用户进行多轮对话。回答用户的问题，提供建议，协助分析文章。根据对话历史理解上下文，给出有针对性的回复。直接输出回答。",
     "creative": "你是一位富有创意的文学家。请以文学性强的风格处理文本，注重修辞、意象和节奏感。直接输出结果。",
   };
 
