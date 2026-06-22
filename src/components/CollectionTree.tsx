@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FileText, FolderClosed, FolderOpen, Plus, Trash2, Pencil, RefreshCw, RotateCcw, X, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft } from "lucide-react";
+import { FileText, FolderClosed, FolderOpen, Plus, Trash2, Pencil, RefreshCw, RotateCcw, X, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft, FolderInput, BookOpen, Loader2 } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { PopoverMenu, type MenuItem } from "./PopoverMenu";
 import type { Collection, Article, TrashItem } from "../lib/collections";
@@ -7,7 +7,9 @@ import {
   loadCollections, saveCollections, addCollection, renameCollection, removeCollection,
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, genId,
+  linkCollectionFolder, rescanProjectFolder, unlinkCollectionFolder,
 } from "../lib/collections";
+import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { loadArticleContent } from "../lib/articles";
 
@@ -25,6 +27,9 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const [sortBy, setSortBy] = useState<"name" | "date" | "articleCount">("name");
   const [articleSortBy, setArticleSortBy] = useState<Record<string, "name" | "created" | "words">>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+  const [folderScanning, setFolderScanning] = useState<Record<string, boolean>>({});
 
   const handleArticleSort = useCallback((colId: string, mode: "name" | "created" | "words") => {
     setArticleSortBy((prev) => ({ ...prev, [colId]: mode }));
@@ -62,7 +67,47 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setLoaded(true);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);  useEffect(() => { refresh(); }, [refresh]);
+
+  // ── Folder linking ──
+
+  const handleLinkFolder = useCallback(async (colId: string) => {
+    if (!isTauriEnv()) return;
+    try {
+      const path = await tryInvoke<string | null>("pick_folder", {});
+      if (path) {
+        setFolderScanning((prev) => ({ ...prev, [colId]: true }));
+        try {
+          await linkCollectionFolder(colId, path);
+        } finally {
+          setFolderScanning((prev) => ({ ...prev, [colId]: false }));
+        }
+        await refresh();
+      }
+    } catch {}
+  }, [refresh]);
+
+  const handleUnlinkFolder = useCallback(async (colId: string) => {
+    await unlinkCollectionFolder(colId);
+    await refresh();
+  }, [refresh]);
+
+  const handleRescanFolder = useCallback(async (colId: string) => {
+    const col = collections.find((c) => c.id === colId);
+    if (!col?.linkedFolder) return;
+    setFolderScanning((prev) => ({ ...prev, [colId]: true }));
+    try {
+      await rescanProjectFolder(col.linkedFolder);
+    } finally {
+      setFolderScanning((prev) => ({ ...prev, [colId]: false }));
+    }
+  }, [collections, refresh]);
+
+  // ── Series planning ──
+
+  const handlePlanSeries = useCallback(async (colId: string) => {
+    window.dispatchEvent(new CustomEvent("plan-series", { detail: { collectionId: colId } }));
+  }, []);
 
   // Listen for external collection changes (e.g. article created via plan)
   useEffect(() => {
@@ -199,7 +244,23 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
           <button className="collection-tree__action" onClick={toggleCollapseAll} title={allExpanded ? "全部收起" : "全部展开"}><ListCollapse size={12} /></button>
           <button ref={sortBtnRef} className={`collection-tree__action${sortBy !== "name" ? " collection-tree__action--active" : ""}`} onClick={() => setSortMenuOpen(!sortMenuOpen)} title="排序"><ArrowUpDown size={12} /></button>
           <PopoverMenu items={sortItems} anchorRef={sortBtnRef} open={sortMenuOpen} onClose={() => setSortMenuOpen(false)} />
-          <button className="collection-tree__action" onClick={() => { void handleNewCollection(); }} title="新建合集"><Plus size={13} /></button>
+          <button ref={addBtnRef} className="collection-tree__action" onClick={() => setAddMenuOpen(!addMenuOpen)} title="新建">
+            <Plus size={13} />
+          </button>
+          {addMenuOpen && (
+            <PopoverMenu
+              anchorRef={addBtnRef}
+              open={addMenuOpen}
+              onClose={() => setAddMenuOpen(false)}
+              items={[
+                { id: "new-collection", label: "新建合集", icon: <FolderClosed size={13} />, onClick: () => { void handleNewCollection(); } },
+                ...(collections.some((c) => c.linkedFolder)
+                  ? [{ id: "plan-series", label: "规划系列文章", icon: <BookOpen size={13} />, subtitle: "基于关联的项目目录", onClick: () => { const fc = collections.find((c) => c.linkedFolder); if (fc) handlePlanSeries(fc.id); } }
+                  ] as MenuItem[]
+                  : []),
+              ]}
+            />
+          )}
         </div>
       </div>
 
@@ -230,7 +291,12 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                   <>
                     <span className="collection-tree__chevron"><ChevronRight size={12} className={isExpanded ? "collection-tree__chevron--open" : ""} /></span>
                     <span className="collection-tree__icon">{isExpanded ? <FolderOpen size={14} /> : <FolderClosed size={14} />}</span>
-                    <span className="collection-tree__label">{col.title}</span>
+                    <span className="collection-tree__label">
+                          {col.title}
+                          {col.linkedFolder && <span className="collection-tree__folder-badge" title={col.linkedFolder}>
+                            {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
+                          </span>}
+                        </span>
                     <span className="collection-tree__count">{col.articles.length}</span>
                     <button
                       className="collection-tree__add-btn"

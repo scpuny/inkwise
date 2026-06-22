@@ -204,18 +204,19 @@ export function ArticleManager({
     setShowColForm(true);
   };
 
-  const handleSaveCollection = async (title: string, description: string, coverImage: string) => {
+  const handleSaveCollection = async (title: string, description: string, coverImage: string, linkedFolder?: string) => {
     if (editingCollection) {
       // Edit existing
       editingCollection.title = title;
       editingCollection.description = description || undefined;
       editingCollection.coverImage = coverImage || undefined;
+      editingCollection.linkedFolder = linkedFolder || undefined;
       if (isTauriEnv()) { try { await tryInvoke("rename_collection_db", { id: editingCollection.id, title }); } catch {} }
     } else {
       // New collection
-      const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, articles: [], createdAt: Date.now() };
+      const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, linkedFolder: linkedFolder || undefined, articles: [], createdAt: Date.now() };
       collections.push(col);
-      if (isTauriEnv()) { try { await tryInvoke("create_collection_db", { title, linkedFolder: null }); } catch {} }
+      if (isTauriEnv()) { try { await tryInvoke("create_collection_db", { title, linkedFolder: linkedFolder || null }); } catch {} }
     }
     await saveCollections(collections);
     setShowColForm(false);

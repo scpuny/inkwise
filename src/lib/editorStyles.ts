@@ -1291,10 +1291,22 @@ export function applyBgPattern(pattern: string): void {
     tag.id = "editor-bg-pattern";
     document.head.appendChild(tag);
   }
+  if (!pattern) {
+    tag.textContent = "";
+    return;
+  }
+  // Read theme's background color so patterns layer on top correctly
+  const themeTag = document.getElementById("editor-article-theme") as HTMLStyleElement;
+  let bgColor = "";
+  if (themeTag) {
+    const match = themeTag.textContent?.match(/background-color:\s*([^!;]+)/);
+    if (match) bgColor = match[1].trim();
+  }
+  const bgRule = bgColor ? `background-color: ${bgColor} !important;` : '';
   const patterns: Record<string, string> = {
-    'grid': `.editor-container .tiptap.ProseMirror { background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 20px 20px; }`,
-    'dots': `.editor-container .tiptap.ProseMirror { background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px); background-size: 16px 16px; }`,
-    'stripes': `.editor-container .tiptap.ProseMirror { background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px); }`,
+    'grid': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
+    'dots': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
+    'stripes': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
   };
   tag.textContent = patterns[pattern] || "";
 }

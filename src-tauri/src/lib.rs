@@ -696,7 +696,7 @@ fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: St
 
 /// Unlink a folder from a collection
 #[tauri::command]
-fn unlink_folder_db(state: tauri::State<AppState>, _collection_id: String) -> Result<(), String> {
+fn unlink_folder_db(state: tauri::State<AppState>, collection_id: String) -> Result<(), String> {
     let db_opt = state.db.lock().unwrap();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.update_collection_folder(&collection_id, None).map_err(|e| e.to_string())
@@ -942,12 +942,12 @@ fn save_series_plan(state: tauri::State<'_, AppState>, collection_id: String, pl
 }
 
 #[tauri::command]
-fn load_series_plan(state: tauri::State<'_, AppState>, _collection_id: String) -> Result<Option<SeriesPlan>, String> {
+fn load_series_plan(state: tauri::State<'_, AppState>, collection_id: String) -> Result<Option<SeriesPlan>, String> {
     Ok(state.store.lock().unwrap().load_series_plan(&collection_id))
 }
 
 #[tauri::command]
-fn delete_series_plan(state: tauri::State<'_, AppState>, _collection_id: String) -> Result<(), String> {
+fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String) -> Result<(), String> {
     state.store.lock().unwrap().delete_series_plan(&collection_id)
 }
 

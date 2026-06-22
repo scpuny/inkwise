@@ -12404,6 +12404,7 @@ body {
   flex: 1;
   min-width: 0;
 }
+  overflow: hidden;
 
 /* ═══════════════════════════════════════════════════════════════════
    32. STYLE PANEL CHIPS — 选项组 + 自定义输入
@@ -12686,4 +12687,184 @@ body {
   flex-shrink: 0;
   white-space: nowrap;
   font-size: 11px;
+}
+
+/* ─── Collection Form: Folder Linking ─── */
+
+.collection-form__folder-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 4px;
+}
+
+.collection-form__folder-section label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+
+.collection-form__folder-section label svg {
+  opacity: 0.7;
+}
+
+.collection-form__folder-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.collection-form__folder-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.collection-form__folder-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collection-form__folder-path {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.collection-form__folder-path code {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.collection-form__folder-icon-wrap {
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.collection-form__folder-unlink {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.collection-form__folder-unlink:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.collection-form__scan-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.collection-form__scan-status--scanning {
+  color: var(--text-faint);
+}
+
+.collection-form__scan-status--error {
+  color: var(--danger);
+}
+
+.collection-form__scan-status--done {
+  color: var(--success);
+}
+
+.collection-form__spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.collection-form__scan-retry {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.collection-form__scan-retry:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.collection-form__project-langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.collection-form__lang-tag {
+  display: inline-flex;
+  padding: 2px 6px;
+  font-size: 10px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.collection-form__lang-tag--codegraph {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+
+/* ─── Collection Tree: Folder Linking ─── */
+
+.collection-tree__icon--linked {
+  color: var(--accent);
+}
+
+.collection-tree__folder-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  opacity: 0.6;
+  vertical-align: middle;
+}
+
+.collection-tree__folder-badge:hover {
+  opacity: 1;
+}
+
+.collection-tree__spinner {
+  animation: spin 1s linear infinite;
 }
