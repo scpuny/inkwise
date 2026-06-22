@@ -417,6 +417,18 @@ function SkillsSection() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+
+  // New skill form state
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formRunAs, setFormRunAs] = useState<"Inline" | "Subagent">("Inline");
+  const [formTools, setFormTools] = useState<string[]>(["read_document"]);
+  const [formModel, setFormModel] = useState("");
+  const [formEffort, setFormEffort] = useState("");
+  const [formGenerating, setFormGenerating] = useState(false);
+  const [formSaving, setFormSaving] = useState(false);
+  const formNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -437,11 +449,60 @@ function SkillsSection() {
     } catch {}
   };
 
+  const deleteSkillFn = async (name: string) => {
+    try {
+      const { deleteSkill } = await import("../lib/skill");
+      await deleteSkill(name);
+      setSkills(prev => prev.filter(s => s.name !== name));
+    } catch {}
+  };
+
+  const toggleTool = (tool: string) => {
+    setFormTools(prev =>
+      prev.includes(tool) ? prev.filter(t => t !== tool) : [...prev, tool]
+    );
+  };
+
+  const handleGenerateBody = async () => {
+    if (!formName.trim() || !formDesc.trim()) return;
+    setFormGenerating(true);
+    try {
+      const { generateSkillBody } = await import("../lib/skill");
+      // Body is AI-generated, saved via installSkill
+      setFormGenerating(false);
+    } catch {
+      setFormGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim() || !formDesc.trim()) return;
+    setFormSaving(true);
+    try {
+      const { installSkill } = await import("../lib/skill");
+      await installSkill(formName.trim(), formDesc.trim(), "", formRunAs);
+      // Reload skills
+      const { listSkills } = await import("../lib/skill");
+      const list = await listSkills();
+      setSkills(list);
+      setShowEditor(false);
+      // Reset form
+      setFormName("");
+      setFormDesc("");
+      setFormRunAs("Inline");
+      setFormTools(["read_document"]);
+      setFormModel("");
+      setFormEffort("");
+    } catch {}
+    setFormSaving(false);
+  };
+
   return (
     <SettingsPage title="技能" desc="管理 AI 写作技能，启用或禁用特定功能">
       {loading ? (
         <div style={{padding: 24, textAlign: "center", color: "var(--text-tertiary)" }}>加载中…</div>
       ) : (
+        <>
         <div className="skills-list">
           {skills.map((s) => (
             <div key={s.name} className={"skills-list__item" + (expandedSkill === s.name ? " skills-list__item--expanded" : "")}>
@@ -461,13 +522,10 @@ function SkillsSection() {
               </div>
               {expandedSkill === s.name && (
                 <div className="skills-list__body">
-                  {/* 图标 + 名称预览 */}
                   <div className="skills-list__preview">
                     <span className="skills-list__preview-icon">{SKILL_ICONS[s.name] || <Sparkles size={13} />}</span>
                     <span className="skills-list__preview-label">{SKILL_LABELS[s.name] || s.name}</span>
                   </div>
-
-                  {/* 执行方式 */}
                   <div className="skills-list__meta">
                     <span className="skills-list__meta-key">执行方式</span>
                     <span className={"skills-list__badge skills-list__badge--" + (s.run_as?.toLowerCase() || "inline")}>
@@ -477,22 +535,18 @@ function SkillsSection() {
                       {s.run_as === "Subagent" ? "适合复杂任务，独立推理执行" : "轻量快速，直接在对话中完成"}
                     </span>
                   </div>
-
-                  {/* 可用工具 */}
                   {s.allowed_tools && s.allowed_tools.length > 0 && (
                     <div className="skills-list__meta">
                       <span className="skills-list__meta-key">工具权限</span>
                       <div className="skills-list__tags">
                         {s.allowed_tools.map(t => (
-                          <span key={t} className="skills-list__tag">{
-                            {"read_document": "读取文档", "write_document": "写入文档", "search_document": "搜索文档"}[t] || t
-                          }</span>
+                          <span key={t} className="skills-list__tag">{{
+                            "read_document": "读取文档", "write_document": "写入文档", "search_document": "搜索文档"
+                          }[t] || t}</span>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {/* 模型配置 */}
                   {(s.model || s.effort) && (
                     <div className="skills-list__meta">
                       <span className="skills-list__meta-key">模型配置</span>
@@ -503,30 +557,116 @@ function SkillsSection() {
                       </span>
                     </div>
                   )}
-
-                  {/* 所在位置 */}
                   <div className="skills-list__meta">
                     <span className="skills-list__meta-key">出现位置</span>
                     <div className="skills-list__locations">
                       <span className={"skills-list__loc" + (PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
-                        快捷工具栏
-                        {PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                        快捷工具栏 {PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
                       </span>
                       <span className={"skills-list__loc" + (!PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
-                        更多面板
-                        {!PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                        更多面板 {!PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
                       </span>
                       <span className={"skills-list__loc" + (SKILL_LABELS[s.name] ? " skills-list__loc--active" : "")}>
-                        Chat 快捷操作
-                        {SKILL_LABELS[s.name] && s.enabled ? "✓" : ""}
+                        Chat 快捷操作 {SKILL_LABELS[s.name] && s.enabled ? "✓" : ""}
                       </span>
                     </div>
                   </div>
+                  {/* Delete button for non-Builtin skills */}
+                  {s.scope !== "Builtin" && (
+                    <div className="skills-list__meta" style={{marginTop: 8}}>
+                      <button className="btn btn--danger" onClick={() => deleteSkillFn(s.name)} style={{fontSize: 11, padding: "2px 10px"}}>
+                        <Trash2 size={10} /> 删除此技能
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           ))}
         </div>
+
+        {/* Add Skill Button */}
+        <div style={{padding: "12px 0", textAlign: "center"}}>
+          <button className="btn btn--primary" onClick={() => setShowEditor(true)} style={{fontSize: 12, padding: "6px 16px"}}>
+            <Plus size={12} /> 新建技能
+          </button>
+        </div>
+
+        {/* New Skill Editor Modal */}
+        {showEditor && (
+          <div className="settings-overlay" onClick={() => setShowEditor(false)}>
+            <div className="settings-dialog" onClick={(e) => e.stopPropagation()} style={{maxWidth: 480}}>
+              <div className="settings-dialog__header">
+                <h3>新建技能</h3>
+                <button className="settings-dialog__close" onClick={() => setShowEditor(false)}>
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="settings-dialog__body" style={{display: "flex", flexDirection: "column", gap: 12}}>
+                <SettingsField label="技能 ID">
+                  <input className="settings-input" ref={formNameRef} value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="英文标识，如 my-polish" />
+                </SettingsField>
+                <SettingsField label="中文名称">
+                  <input className="settings-input" value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="如：我的润色" />
+                </SettingsField>
+                <SettingsField label="描述">
+                  <input className="settings-input" value={formDesc}
+                    onChange={e => setFormDesc(e.target.value)}
+                    placeholder="技能的作用说明" />
+                </SettingsField>
+                <SettingsField label="执行方式">
+                  <select className="settings-select" value={formRunAs}
+                    onChange={e => setFormRunAs(e.target.value as any)}>
+                    <option value="Inline">内联（轻量快速）</option>
+                    <option value="Subagent">子代理（复杂独立推理）</option>
+                  </select>
+                </SettingsField>
+                <SettingsField label="工具权限">
+                  <div className="skills-list__tags">
+                    {["read_document", "write_document", "search_document"].map(t => (
+                      <label key={t} className="skills-list__tag" style={{cursor: "pointer",
+                        background: formTools.includes(t) ? "var(--accent-soft)" : "var(--hover)",
+                        color: formTools.includes(t) ? "var(--accent)" : "var(--text-secondary)",
+                      }}>
+                        <input type="checkbox" checked={formTools.includes(t)}
+                          onChange={() => toggleTool(t)} style={{display: "none"}} />
+                        {{"read_document": "读取", "write_document": "写入", "search_document": "搜索"}[t]}
+                      </label>
+                    ))}
+                  </div>
+                </SettingsField>
+                <SettingsField label="模型（可选）">
+                  <input className="settings-input" value={formModel}
+                    onChange={e => setFormModel(e.target.value)}
+                    placeholder="如 gpt-4o，留空使用默认" />
+                </SettingsField>
+                <SettingsField label="推理力度（可选）">
+                  <select className="settings-select" value={formEffort}
+                    onChange={e => setFormEffort(e.target.value)}>
+                    <option value="">默认</option>
+                    <option value="low">低</option>
+                    <option value="medium">中</option>
+                    <option value="high">高</option>
+                  </select>
+                </SettingsField>
+              </div>
+              <div className="settings-dialog__footer">
+                <button className="btn" onClick={() => setShowEditor(false)} style={{fontSize: 12, padding: "6px 14px"}}>
+                  取消
+                </button>
+                <button className="btn btn--primary" onClick={handleSave} disabled={!formName.trim() || formSaving}
+                  style={{fontSize: 12, padding: "6px 14px"}}>
+                  {formSaving ? "保存中…" : "保存"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </SettingsPage>
   );

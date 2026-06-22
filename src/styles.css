@@ -12221,3 +12221,76 @@ body {
 .article-manager__th--pin {
   width: 30px;
 }
+
+/* ─── Skill Editor Dialog ─── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.settings-dialog {
+  background: var(--bg);
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.settings-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.settings-dialog__header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+.settings-dialog__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.settings-dialog__close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.settings-dialog__body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+.settings-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-soft);
+}
+.btn--danger {
+  background: transparent;
+  border: 1px solid var(--err);
+  color: var(--err);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn--danger:hover {
+  background: color-mix(in srgb, var(--err) 10%, transparent);
+}
