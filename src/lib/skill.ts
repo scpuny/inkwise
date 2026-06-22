@@ -59,7 +59,7 @@ export async function runSkill(
         currentSectionId: currentSectionId ?? null,
       });
     } catch (e: any) {
-      return { content: `调用失败: ${e?.message ?? e}`, steps: [] };
+      throw new Error(`调用失败: ${e?.message ?? e}`);
     }
   }
   // Browser fallback
