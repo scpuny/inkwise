@@ -77,17 +77,21 @@ export function InlineToolbar() {
       const editorContainer = document.querySelector(".editor-container");
       if (!editorContainer) { setVisible(false); return; }
 
+      const sel = window.getSelection();
+      const hasDomSelection = sel && !sel.isCollapsed && sel.rangeCount > 0 && sel.toString().trim().length >= 2;
+      const hasStoredSelection = !!(window as any).__lastEditorSelection && !hasDomSelection;
+
       // For mouse events, check if the click originated inside the editor
+      // but keep visible if we have a stored selection (user clicked on AgentPanel etc.)
       if (e.type === "mouseup") {
         const target = e.target as Node;
-        if (!editorContainer.contains(target)) {
+        if (!editorContainer.contains(target) && !hasStoredSelection) {
           setVisible(false);
           return;
         }
       }
 
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      if (!hasDomSelection && !hasStoredSelection) {
         setVisible(false);
         return;
       }
@@ -96,15 +100,30 @@ export function InlineToolbar() {
       const editor = (window as any).editorInstance?.editor;
       if (!editor) return;
 
-      const text = sel.toString().trim();
+      const text = hasDomSelection ? sel!.toString().trim() : (hasStoredSelection ? editor.state.doc.textBetween(
+        (window as any).__lastEditorSelection.from,
+        (window as any).__lastEditorSelection.to,
+        " "
+      ).trim() : "");
       if (text.length < 2) {
         setVisible(false);
         return;
       }
 
-      // Get position from selection
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+      // Get position from selection (use stored range for stored selection)
+      let rect: DOMRect;
+      if (hasDomSelection) {
+        const range = sel!.getRangeAt(0);
+        rect = range.getBoundingClientRect();
+      } else {
+        // For stored selection, try to get coords from editor
+        try {
+          rect = editor.view.coordsAtPos((window as any).__lastEditorSelection.from);
+        } catch {
+          setVisible(false);
+          return;
+        }
+      }
       const containerRect = editorContainer.getBoundingClientRect();
 
       // Position: above the selection, centered
@@ -115,8 +134,13 @@ export function InlineToolbar() {
 
       // Try to get character offset from editor
       try {
-        const { from, to } = editor.state.selection;
-        setSelectionRange({ from, to });
+        if (hasDomSelection) {
+          const { from, to } = editor.state.selection;
+          setSelectionRange({ from, to });
+        } else if (hasStoredSelection) {
+          const stored = (window as any).__lastEditorSelection;
+          setSelectionRange({ from: stored.from, to: stored.to });
+        }
       } catch {
         setSelectionRange(null);
       }

@@ -3,9 +3,11 @@ mod ai;
 mod skill;
 mod agent;
 mod db;
+mod project_indexer;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, SeriesArticle};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
+use project_indexer::{ProjectContext, scan_project, build_context_text};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -694,7 +696,7 @@ fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: St
 
 /// Unlink a folder from a collection
 #[tauri::command]
-fn unlink_folder_db(state: tauri::State<AppState>, collection_id: String) -> Result<(), String> {
+fn unlink_folder_db(state: tauri::State<AppState>, _collection_id: String) -> Result<(), String> {
     let db_opt = state.db.lock().unwrap();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.update_collection_folder(&collection_id, None).map_err(|e| e.to_string())
@@ -894,6 +896,62 @@ async fn build_folder_index(path: String) -> Result<String, String> {
     Ok(index.join("\n"))
 }
 
+
+#[tauri::command]
+async fn link_collection_folder(state: tauri::State<'_, AppState>, collection_id: String, path: String) -> Result<ProjectContext, String> {
+    // Validate path
+    let dir = std::path::Path::new(&path);
+    if !dir.is_dir() {
+        return Err("路径不是有效的文件夹".into());
+    }
+    // Scan the project
+    let ctx = scan_project(&path)?;
+    // Save the link info (via existing store - collections will be updated from frontend)
+    // The frontend calls set_collections after linking
+    Ok(ctx)
+}
+
+#[tauri::command]
+fn unlink_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: String) -> Result<(), String> {
+    // Frontend handles removing linkedFolder from collection data
+    // This is a placeholder for any server-side cleanup
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_project_context(path: String) -> Result<ProjectContext, String> {
+    scan_project(&path)
+}
+
+#[tauri::command]
+async fn get_project_context_text(path: String) -> Result<String, String> {
+    let ctx = scan_project(&path)?;
+    Ok(build_context_text(&ctx))
+}
+
+#[tauri::command]
+async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
+    scan_project(&path)
+}
+
+// ─── Series Plan commands ───
+
+#[tauri::command]
+fn save_series_plan(state: tauri::State<'_, AppState>, collection_id: String, plan: SeriesPlan) -> Result<(), String> {
+    state.store.lock().unwrap().save_series_plan(&collection_id, &plan)
+}
+
+#[tauri::command]
+fn load_series_plan(state: tauri::State<'_, AppState>, _collection_id: String) -> Result<Option<SeriesPlan>, String> {
+    Ok(state.store.lock().unwrap().load_series_plan(&collection_id))
+}
+
+#[tauri::command]
+fn delete_series_plan(state: tauri::State<'_, AppState>, _collection_id: String) -> Result<(), String> {
+    state.store.lock().unwrap().delete_series_plan(&collection_id)
+}
+
+
 fn collect_structure(
     dir: &std::path::Path,
     output: &mut Vec<String>,
@@ -1000,7 +1058,15 @@ pub fn run() {
             search_articles_db,
             list_all_articles_db,
             link_folder_db,
-            unlink_folder_db])
+            unlink_folder_db,
+            link_collection_folder,
+            unlink_collection_folder,
+            get_project_context,
+            get_project_context_text,
+            rescan_project_folder,
+            save_series_plan,
+            load_series_plan,
+            delete_series_plan])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

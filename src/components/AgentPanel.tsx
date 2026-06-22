@@ -258,20 +258,29 @@ function QuickActionDropdown({
 
   const handleSelect = (intent: string) => {
     setOpen(false);
-    const editor = (window as any).editorInstance?.editor;
-    let cmd = "/" + intent + " ";
-    // Use DOM selection to check if text is actually selected right now
-    const domSel = window.getSelection();
-    const hasRealSelection = domSel && !domSel.isCollapsed && domSel.toString().trim().length > 0;
-    if (editor && hasRealSelection) {
-      try {
-        const { from, to } = editor.state.selection;
-        const selectedText = editor.state.doc.textBetween(from, to, " ");
-        if (selectedText.trim()) cmd += selectedText;
-      } catch { /* ignore */ }
-    }
+    // Just put /skill in the input and let the user type their own prompt
+    const cmd = "/" + intent + " ";
     onChatInputChange(cmd);
     chatInputRef.current?.focus();
+  };
+
+  // Get currently selected text for preview
+  const getSelectedPreview = () => {
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return null;
+    const domSel = window.getSelection();
+    if (domSel && !domSel.isCollapsed && domSel.toString().trim().length > 2) {
+      return domSel.toString().trim().slice(0, 80);
+    }
+    // Fallback to stored selection
+    const stored = (window as any).__lastEditorSelection;
+    if (stored && editor) {
+      try {
+        const text = editor.state.doc.textBetween(stored.from, stored.to, " ");
+        if (text.trim().length > 2) return text.trim().slice(0, 80);
+      } catch {}
+    }
+    return null;
   };
 
   return (
@@ -286,6 +295,12 @@ function QuickActionDropdown({
       </button>
       {open && (
         <div className="agent-chat__tool-select-panel">
+          {getSelectedPreview() && (
+            <div className="agent-chat__tool-select-preview">
+              <span className="agent-chat__tool-select-preview-label">选中文本</span>
+              <span className="agent-chat__tool-select-preview-text">{getSelectedPreview()}</span>
+            </div>
+          )}
           {quickSkills.map((s) => (
             <button
               key={s}
@@ -444,7 +459,7 @@ function ChatPanel({
         <textarea
           ref={chatInputRef}
           className="agent-chat__input"
-          placeholder="输入指令… 例如：帮我分析文章结构"
+          placeholder="输入指令，或点左侧按钮选择技能…"
           rows={1}
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}

@@ -1246,11 +1246,13 @@ export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean):
   }
   const rules: string[] = [];
   if (firstLineIndent) {
-    rules.push(`.editor-container .tiptap p { text-indent: 2em !important; }`);
+    // Exclude list items — only indent "real" paragraphs
+    rules.push(`.editor-container .tiptap p:not(li p) { text-indent: 2em !important; }`);
   }
   if (justifyAlign) {
     rules.push(`.editor-container .tiptap.ProseMirror { text-align: justify !important; }`);
-    rules.push(`.editor-container .tiptap p { text-align: justify !important; }`);
+    // Exclude list items from justify
+    rules.push(`.editor-container .tiptap p:not(li p) { text-align: justify !important; }`);
   }
   tag.textContent = rules.join("\n");
 }

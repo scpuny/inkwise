@@ -20,6 +20,23 @@ export type Collection = {
   linkedFolder?: string;
 };
 
+
+
+export type SeriesPlan = {
+  id: string;
+  createdAt: number;
+  articles: SeriesArticle[];
+};
+
+export type SeriesArticle = {
+  id: string;
+  title: string;
+  description: string;
+  targetWordCount?: number;
+  status: "planned" | "outlining" | "writing" | "complete";
+  articleId?: string;
+};
+
 export type TrashItem = {
   id: string;
   title: string;
@@ -284,14 +301,6 @@ export async function emptyTrash(): Promise<void> {
 
 /* ─── Folder linking ─── */
 
-export async function linkCollectionFolder(collectionId: string, folderPath: string): Promise<void> {
-  const all = await loadCollections();
-  const c = all.find((x) => x.id === collectionId);
-  if (!c) return;
-  c.linkedFolder = folderPath;
-  await saveCollections(all);
-}
-
 export async function unlinkCollectionFolder(collectionId: string): Promise<void> {
   const all = await loadCollections();
   const c = all.find((x) => x.id === collectionId);
@@ -332,6 +341,138 @@ export async function getCollectionFolderContext(collectionId: string): Promise<
     } catch { return ""; }
   }
   return "";
+}
+
+
+
+/* ─── Project context (IPC) ─── */
+
+export interface ProjectContext {
+  name: string;
+  rootPath: string;
+  primaryLanguage: string | null;
+  structure: FileNode[];
+  summary: ProjectSummary;
+  configs: ConfigFile[];
+  symbols: SymbolInfo[];
+  imports: ImportEdge[];
+  codegraphAvailable: boolean;
+}
+
+export interface FileNode {
+  name: string;
+  path: string;
+  isDir: boolean;
+  language: string | null;
+  size: number;
+  children: FileNode[];
+}
+
+export interface ProjectSummary {
+  totalFiles: number;
+  totalDirs: number;
+  totalLines: number;
+  languages: LanguageStat[];
+  topFiles: FileInfo[];
+}
+
+export interface LanguageStat {
+  language: string;
+  count: number;
+  lines: number;
+}
+
+export interface FileInfo {
+  path: string;
+  language: string | null;
+  lines: number;
+  size: number;
+}
+
+export interface ConfigFile {
+  name: string;
+  content: string;
+  truncated: boolean;
+}
+
+export interface SymbolInfo {
+  name: string;
+  kind: string;
+  filePath: string;
+  line: number;
+  isExported: boolean;
+  docstring: string | null;
+  signature: string | null;
+}
+
+export interface ImportEdge {
+  source: string;
+  target: string;
+  kind: string;
+}
+
+export async function linkCollectionFolder(collectionId: string, path: string): Promise<ProjectContext> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<ProjectContext>('link_collection_folder', { collectionId, path }, () => {
+      throw new Error('Tauri 环境不可用');
+    });
+  }
+  throw new Error('浏览器环境下不支持目录关联');
+}
+
+export async function getProjectContext(path: string): Promise<ProjectContext> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<ProjectContext>('get_project_context', { path }, () => {
+      throw new Error('Tauri 环境不可用');
+    });
+  }
+  throw new Error('浏览器环境下不支持项目扫描');
+}
+
+export async function getProjectContextText(path: string): Promise<string> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<string>('get_project_context_text', { path }, () => '');
+  }
+  return '';
+}
+
+export async function rescanProjectFolder(path: string): Promise<ProjectContext> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<ProjectContext>('rescan_project_folder', { path }, () => {
+      throw new Error('Tauri 环境不可用');
+    });
+  }
+  throw new Error('浏览器环境下不支持项目扫描');
+}
+
+export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<void>('save_series_plan', { collectionId, plan }, () => {});
+  }
+  // Browser fallback
+  try {
+    localStorage.setItem(`series_plan:${collectionId}`, JSON.stringify(plan));
+  } catch {}
+}
+
+export async function loadSeriesPlan(collectionId: string): Promise<SeriesPlan | null> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<SeriesPlan | null>('load_series_plan', { collectionId }, () => null);
+  }
+  // Browser fallback
+  try {
+    const raw = localStorage.getItem(`series_plan:${collectionId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export async function deleteSeriesPlan(collectionId: string): Promise<void> {
+  if (isTauriEnv()) {
+    return invokeOrFallback<void>('delete_series_plan', { collectionId }, () => {});
+  }
+  try {
+    localStorage.removeItem(`series_plan:${collectionId}`);
+  } catch {}
 }
 
 /* ─── Search ─── */

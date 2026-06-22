@@ -515,6 +515,14 @@ function SkillsSection() {
                 </span>
                 <span className="skills-list__name">{SKILL_LABELS[s.name] || s.name}</span>
                 <span className="skills-list__desc">{s.description}</span>
+                <span className="skills-list__loc-badges">
+                  {PRIMARY_SKILLS.includes(s.name) && <span className="skills-list__loc-badge" title="出现在选中文本快捷工具栏">工具栏</span>}
+                  {SKILL_LABELS[s.name] ? (
+                    <span className="skills-list__loc-badge" title="出现在 Chat 输入框快捷操作">快捷</span>
+                  ) : (
+                    !PRIMARY_SKILLS.includes(s.name) && <span className="skills-list__loc-badge" title="在更多面板中可用">更多</span>
+                  )}
+                </span>
                 <button
                   className={"skills-list__toggle" + (s.enabled ? " skills-list__toggle--on" : "")}
                   onClick={(e) => { e.stopPropagation(); toggleSkill(s.name, !s.enabled); }}

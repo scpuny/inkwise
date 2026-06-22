@@ -12,7 +12,7 @@ import {
   detectIntent,
   getSkillDisplayLabel,
 } from "../lib/agent";
-import { runSkill } from "../lib/skill";
+import { runSkill, runSkillStream } from "../lib/skill";
 import { sendChat, type ChatMessage } from "../lib/ai";
 import { resolveModel } from "../lib/globalAIConfig";
 import { getProvidersSync } from "../lib/providerModels";
@@ -116,15 +116,25 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           }
         }
         const agentInput = conversationCtx ? input + conversationCtx : input;
-        const agentResult = await runSkill(
+        // Use streaming skill execution for real-time feedback
+        const streamSessionId = sessionId;
+        result = await runSkillStream(
           intent.skill,
           agentInput,
+          (accumulated) => {
+            // Update session content progressively (streaming)
+            setState((prev) => ({
+              ...prev,
+              sessions: prev.sessions.map((se) =>
+                se.id === streamSessionId ? { ...se, afterContent: accumulated } : se
+              ),
+            }));
+          },
           beforeContent,
           selection ? beforeContent.slice(selection.from, selection.to) : "",
           options?.blueprint,
           options?.currentSectionId,
         );
-        result = agentResult.content;
       } else {
         // Fallback to direct chat with conversation context
         const systemPrompt = buildSystemPrompt(intent.id, beforeContent, selection);

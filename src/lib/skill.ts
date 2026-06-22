@@ -141,3 +141,78 @@ export function getFallbackSkills(): Skill[] {
     { name: "citation", description: "引用格式生成（支持 APA/MLA/GB/T 等规范）", body: "", scope: "Builtin", path: "(builtin)", run_as: "Inline", allowed_tools: ["read_document"], model: null, effort: null, enabled: true },
   ];
 }
+
+/**
+ * Stream a skill execution via Tauri events.
+ * Falls back to non-streaming runSkill in browser mode.
+ */
+export async function runSkillStream(
+  name: string,
+  userInput: string,
+  onToken: (token: string) => void,
+  documentContent?: string,
+  selectedText?: string,
+  blueprint?: any,
+  currentSectionId?: string,
+): Promise<string> {
+  if (!isTauriEnv()) {
+    const result = await runSkill(name, userInput, documentContent, selectedText, blueprint, currentSectionId);
+    return result.content;
+  }
+
+  const { listen } = await import("@tauri-apps/api/event");
+  let accumulated = "";
+  let unlistenToken: () => void;
+  let unlistenDone: () => void;
+  let unlistenError: () => void;
+
+  return new Promise<string>((resolve, reject) => {
+    // Set up listeners first
+    (async () => {
+      try {
+        unlistenToken = await listen<{ token: string }>("chat:token", (event) => {
+          accumulated += event.payload.token;
+          onToken(accumulated);
+        });
+
+        unlistenDone = await listen<{ content: string }>("chat:done", async (event) => {
+          accumulated = event.payload.content;
+          onToken(accumulated);
+          unlistenToken();
+          unlistenDone();
+          unlistenError();
+          resolve(accumulated);
+        });
+
+        unlistenError = await listen<{ error: string }>("chat:error", async (event) => {
+          unlistenToken();
+          unlistenDone();
+          unlistenError();
+          const clean = event.payload.error
+            .replace(/^API 错误 \(\d+\): /, '')
+            .replace(/\{"error":\{.*?\}\}/s, '')
+            .replace(/OpenAIException - /, '')
+            .trim();
+          reject(new Error(clean || 'AI 服务暂时不可用'));
+        });
+
+        // Start the skill
+        tryInvoke("run_skill", {
+          name,
+          userInput,
+          documentContent: documentContent ?? "",
+          selectedText: selectedText ?? "",
+          blueprint: blueprint ?? null,
+          currentSectionId: currentSectionId ?? null,
+        }).catch((e: any) => {
+          unlistenToken?.();
+          unlistenDone?.();
+          unlistenError?.();
+          reject(new Error(e?.message || String(e)));
+        });
+      } catch (e: any) {
+        reject(new Error(e?.message || String(e)));
+      }
+    })();
+  });
+}

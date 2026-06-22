@@ -25,6 +25,26 @@ pub struct Collection {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct SeriesPlan {
+    pub id: String,
+    pub created_at: u64,
+    pub articles: Vec<SeriesArticle>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SeriesArticle {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub target_word_count: Option<u32>,
+    pub status: String,
+    pub article_id: Option<String>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashItem {
     pub id: String,
     pub title: String,
@@ -216,6 +236,36 @@ impl DataStore {
         }
         ids
     }
+
+
+    // ─── Series Plan ───
+
+    pub fn save_series_plan(&self, collection_id: &str, plan: &SeriesPlan) -> Result<(), String> {
+        let path = self.data_dir.join(format!("series_{}.json", collection_id));
+        let content = serde_json::to_string_pretty(plan).map_err(|e| e.to_string())?;
+        std::fs::write(&path, content).map_err(|e| e.to_string())
+    }
+
+    pub fn load_series_plan(&self, collection_id: &str) -> Option<SeriesPlan> {
+        let path = self.data_dir.join(format!("series_{}.json", collection_id));
+        if path.exists() {
+            std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|c| serde_json::from_str(&c).ok())
+        } else {
+            None
+        }
+    }
+
+    pub fn delete_series_plan(&self, collection_id: &str) -> Result<(), String> {
+        let path = self.data_dir.join(format!("series_{}.json", collection_id));
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())
+        } else {
+            Ok(())
+        }
+    }
+
 
     // ─── Future index paths ───
 
