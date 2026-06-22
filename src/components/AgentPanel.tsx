@@ -225,10 +225,15 @@ function QuickActionDropdown({
     setOpen(false);
     const editor = (window as any).editorInstance?.editor;
     let cmd = "/" + intent + " ";
-    if (editor && !editor.state.selection.empty) {
-      const { from, to } = editor.state.selection;
-      const selectedText = editor.state.doc.textBetween(from, to, " ");
-      cmd += selectedText;
+    // Use DOM selection to check if text is actually selected right now
+    const domSel = window.getSelection();
+    const hasRealSelection = domSel && !domSel.isCollapsed && domSel.toString().trim().length > 0;
+    if (editor && hasRealSelection) {
+      try {
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, " ");
+        if (selectedText.trim()) cmd += selectedText;
+      } catch { /* ignore */ }
     }
     onChatInputChange(cmd);
     chatInputRef.current?.focus();
@@ -274,7 +279,7 @@ function ChatPanel({
   chatInputRef: React.RefObject<HTMLTextAreaElement | null>;
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const { execute } = useAgent();
+  const { execute, cancel } = useAgent();
   const [quickSkills, setQuickSkills] = useState<string[]>([]);
 
   useEffect(() => {
@@ -392,12 +397,15 @@ function ChatPanel({
           onKeyDown={handleKey}
         />
         <button
-          className="agent-chat__send-btn"
-          disabled={!chatInput.trim() || isProcessing}
-          onClick={handleSend}
+          className={`agent-chat__send-btn ${isProcessing ? "agent-chat__stop-btn" : ""}`}
+          disabled={!chatInput.trim() && !isProcessing}
+          onClick={isProcessing ? cancel : handleSend}
+          title={isProcessing ? "停止" : "发送"}
         >
           {isProcessing ? (
-            <Loader2 size={16} className="agent-chat__spinner" />
+            <span className="agent-chat__stop-icon">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="2" width="10" height="10" rx="2"/></svg>
+            </span>
           ) : (
             <Sparkles size={16} />
           )}

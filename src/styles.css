@@ -7686,6 +7686,19 @@ body {
   cursor: not-allowed;
 }
 
+.agent-chat__stop-btn {
+  background: var(--danger, #ef4444) !important;
+  color: #fff !important;
+}
+.agent-chat__stop-btn:hover {
+  background: var(--danger-strong, #dc2626) !important;
+}
+.agent-chat__stop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 
 
