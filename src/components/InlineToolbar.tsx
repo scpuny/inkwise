@@ -264,16 +264,6 @@ export function InlineToolbar() {
           </div>
         </>
       )}
-      <div className="inline-toolbar__divider" />
-      <button
-        className="inline-toolbar__btn"
-        onClick={() => { setMoreOpen(false); handleAction("analysis"); }}
-        disabled={isProcessing}
-        title="分析"
-      >
-        <Search size={13} />
-        <span>分析</span>
-      </button>
     </div>,
     document.querySelector(".editor-container") || document.body
   );
