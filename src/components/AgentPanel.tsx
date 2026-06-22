@@ -393,7 +393,9 @@ function ChatPanel({
 
         {lastError && (
           <div className="agent-chat__message agent-chat__message--error">
-            <div className="agent-chat__error-text">{lastError}</div>
+            <div className="agent-chat__error-text">
+              {lastError?.length > 200 ? lastError.slice(0, 200) + "…" : lastError}
+            </div>
           </div>
         )}
 

@@ -59,7 +59,14 @@ export async function runSkill(
         currentSectionId: currentSectionId ?? null,
       });
     } catch (e: any) {
-      throw new Error(`调用失败: ${e?.message ?? e}`);
+      const msg = e?.message ?? String(e);
+      // Clean up verbose API errors for display
+      const clean = msg
+        .replace(/^API 错误 \(\d+\): /, '')
+        .replace(/\{"error":\{.*?\}\}/s, '')
+        .replace(/OpenAIException - /, '')
+        .trim();
+      throw new Error(clean || 'AI 服务暂时不可用，请检查 API 状态后重试');
     }
   }
   // Browser fallback
