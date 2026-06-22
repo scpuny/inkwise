@@ -36,6 +36,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
   const [modelName, setModelName] = useState("—");
   const [effort, setEffort] = useState("自动");
   const [hasDocs, setHasDocs] = useState(false);
+  const [targetWordCount, setTargetWordCount] = useState(0);
 
   const updateStats = useCallback(() => {
     const editor = (window as any).editorInstance?.editor;
@@ -102,6 +103,14 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
             <Type size={11} />
             <span className="stat__label">字数</span>
             <b>{wordCount.toLocaleString()}</b>
+            {targetWordCount > 0 && (
+              <span className="stat__progress">
+                <span className="stat__progress-bar">
+                  <span className="stat__progress-fill" style={{ width: Math.min(100, (wordCount / targetWordCount) * 100) + '%' }} />
+                </span>
+                <span className="stat__progress-text">{Math.min(100, Math.round((wordCount / targetWordCount) * 100))}%</span>
+              </span>
+            )}
           </span>
           <span className="statusbar__item stat">
             <span className="stat__label">字符</span>

@@ -7996,6 +7996,37 @@ body {
 }
 
 .article-header__word-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.article-header__word-target:hover {
+  background: var(--hover);
+}
+.article-header__word-target--unset {
+  opacity: 0.5;
+  border: 1px dashed var(--border);
+}
+.article-header__word-target--unset:hover {
+  opacity: 1;
+}
+.article-header__target-input {
+  width: 80px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
   display: flex;
   align-items: center;
   gap: 3px;

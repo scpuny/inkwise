@@ -22,6 +22,7 @@ export function ArticleHeader({
 }: ArticleHeaderProps) {
   const progress = computeWritingProgress(blueprint.outline);
   const [expanded, setExpanded] = useState(true);
+  const [editingTarget, setEditingTarget] = useState(false);
 
   return (
     <div className="article-header">
@@ -47,11 +48,29 @@ export function ArticleHeader({
             </span>
             <span className="article-header__progress-text">{progress}%</span>
           </span>
-          {blueprint.targetWordCount && (
-            <span className="article-header__word-target">
+          {blueprint.targetWordCount ? (
+            <span className="article-header__word-target article-header__word-target--set" onClick={() => setEditingTarget(true)} title="点击修改目标字数">
               <Target size={12} />
-              <span>{blueprint.targetWordCount} 字</span>
+              <span>{blueprint.targetWordCount.toLocaleString()} 字</span>
             </span>
+          ) : (
+            <span className="article-header__word-target article-header__word-target--unset" onClick={() => setEditingTarget(true)} title="设定目标字数">
+              <Target size={12} />
+              <span>设目标</span>
+            </span>
+          )}
+          {editingTarget && (
+            <input
+              className="article-header__target-input"
+              type="number"
+              autoFocus
+              defaultValue={blueprint.targetWordCount || ''}
+              min={0}
+              step={100}
+              onBlur={(e) => { setEditingTarget(false); const v = parseInt(e.target.value); if (v > 0) onUpdateBlueprint({ ...blueprint, targetWordCount: v }); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } if (e.key === 'Escape') { setEditingTarget(false); } }}
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
           <button className="article-header__edit-btn" onClick={onOpenBlueprintEditor} title="编辑文章信息">
             <Edit3 size={13} />

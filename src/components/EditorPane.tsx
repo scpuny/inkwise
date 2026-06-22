@@ -133,6 +133,14 @@ export function EditorPane({
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [blueprintEditorOpen, setBlueprintEditorOpen] = useState(false);
+
+  // Sync target word count to window for StatusBar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).editorInstance = (window as any).editorInstance || {};
+      (window as any).__blueprintTarget = blueprint?.targetWordCount || 0;
+    }
+  }, [blueprint?.targetWordCount]);
   const [writingSection, setWritingSection] = useState<string | null>(null); // section ID currently being written
   const writingAbortRef = useRef(false);
   const pendingArticleRef = useRef<{ articleId: string; collectionId: string } | null>(null);
