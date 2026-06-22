@@ -48,6 +48,7 @@ export function EditorPane({
   onOutlineChange,
   onSaveStateChange,
   onPhaseChange,
+  onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
 }: {
@@ -86,6 +87,7 @@ export function EditorPane({
   onPhaseChange?: (phase: string) => void;
   onToggleStylePanel?: () => void;
   onCloseStylePanel?: () => void;
+  onToggleFocus?: () => void;
 }) {
   const { state: streamState, startStream, cancelStream, clearResponse } = useChatStream();
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
@@ -652,6 +654,7 @@ ${augmentedContent}`
           styleTemplateId={styleTemplate?.id || "default"}
           onToggleStylePanel={onToggleStylePanel}
           onCloseStylePanel={onCloseStylePanel}
+          onToggleFocus={onToggleFocus}
         />
       ) : null}
       {hasActiveArticle && activeArticleId ? (

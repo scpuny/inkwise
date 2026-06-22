@@ -320,17 +320,18 @@ function EditorSection({ currentFormat = "rich", currentLineHeight = 1.75, onSet
    SHORTCUTS SECTION
    ════════════════════════════════════════════════ */
 const DEFAULT_SHORTCUTS = [
-  { label: "聚焦 AI 输入", keys: "Ctrl+K" },
+  { label: "命令面板", keys: "Ctrl+K" },
   { label: "切换侧栏", keys: "Ctrl+\\" },
   { label: "切换 AI 面板", keys: "Ctrl+Shift+\\" },
+  { label: "焦点模式", keys: "Ctrl+Shift+F" },
   { label: "新建文档", keys: "Ctrl+N" },
   { label: "保存", keys: "Ctrl+S" },
-  { label: "查找", keys: "Ctrl+F" },
-  { label: "接受 AI 建议", keys: "Tab" },
-  { label: "忽略 AI 建议", keys: "Esc" },
+  { label: "查找替换", keys: "Ctrl+F" },
+  { label: "打开设置", keys: "Ctrl+," },
   { label: "加粗", keys: "Ctrl+B" },
   { label: "斜体", keys: "Ctrl+I" },
-  { label: "打开设置", keys: "Ctrl+," },
+  { label: "接受 AI 建议", keys: "Tab" },
+  { label: "忽略 AI 建议 / 关闭面板", keys: "Esc" },
 ];
 
 function ShortcutsSection() {

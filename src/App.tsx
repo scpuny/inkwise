@@ -50,6 +50,7 @@ function AppContent() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(264);
   const [resizing, setResizing] = useState<"sidebar" | null>(null);
   const [hasActiveArticle, setHasActiveArticle] = useState(false);
@@ -268,7 +269,12 @@ function AppContent() {
         e.preventDefault();
         setCommandPaletteOpen(p => !p);
       }
+      if (ctrl && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setFocusMode(f => !f);
+      }
       if (e.key === "Escape") {
+        setFocusMode(false);
         setThemePickerOpen(false);
         setSettingsOpen(false);
         setCommandPaletteOpen(false);
@@ -286,13 +292,14 @@ function AppContent() {
     panelOpen ? "layout--ai-open" : "",
     stylePanelOpen ? "layout--style-open" : "",
     resizing ? "layout--resizing" : "",
+    focusMode ? "layout--focus" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
     <ErrorBoundary name="app">
-    <div className="app">
+    <div className={"app" + (focusMode ? " app--focus" : "")}>
       <div
         ref={layoutRef}
         className={layoutClass}
@@ -418,6 +425,7 @@ function AppContent() {
           }}
           onPlanComplete={handlePlanComplete}
           onEnterEditor={handleEnterEditor}
+          onToggleFocus={() => setFocusMode(f => !f)}
           onSaveStateChange={setSaveState}
           onPhaseChange={handlePhaseChange}
           editorMode={editorFormat}
@@ -460,6 +468,17 @@ function AppContent() {
         />
       </div>
 
+      {/* Focus mode exit button */}
+      {focusMode && (
+        <button
+          className="focus-exit-btn"
+          onClick={() => setFocusMode(false)}
+          title="退出焦点模式 (Esc)"
+        >
+          Exit Focus
+        </button>
+      )}
+
       {/* Status bar (full-width bottom) */}
       <StatusBar saveState={saveState} phase={articlePhase} />
 
@@ -495,6 +514,9 @@ function AppContent() {
       <CommandPalette
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
+        extraCommands={[
+          { id: "toggle-focus", label: focusMode ? "退出焦点模式" : "进入焦点模式", icon: null, shortcut: "⌘⇧F", action: () => { setFocusMode(f => !f); setCommandPaletteOpen(false); } },
+        ]}
       />
 
       {/* DocPicker */}

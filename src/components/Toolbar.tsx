@@ -225,6 +225,7 @@ export function Toolbar({
   editorMode,
   onStyleTemplate,
   styleTemplateId,
+  onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
 }: {
@@ -236,6 +237,7 @@ export function Toolbar({
   styleTemplateId?: string;
   onToggleStylePanel?: () => void;
   onCloseStylePanel?: () => void;
+  onToggleFocus?: () => void;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
@@ -451,6 +453,14 @@ export function Toolbar({
 
 
 
+        {/* Focus mode */}
+        <button
+          className="toolbar-btn"
+          onClick={() => onToggleFocus?.()}
+          title="焦点模式"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
         <span className="toolbar__divider" />
 
         <button
