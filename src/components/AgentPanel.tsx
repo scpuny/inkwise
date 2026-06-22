@@ -175,27 +175,30 @@ function renderMarkdown(text: string): React.ReactNode {
 }const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
 
 // Skill icons (shared with InlineToolbar)
-const skillIconMap: Record<string, React.ReactNode> = {
-  "polish": <Sparkles size={13} />,
-  "rewrite": <Edit3 size={13} />,
-  "translate": <Languages size={13} />,
-  "expand": <Maximize2 size={13} />,
-  "analysis": <Search size={13} />,
-  "continue-writing": <PenTool size={13} />,
-  "proofread": <ListChecks size={13} />,
-  "summary": <FileText size={13} />,
-  "outline": <ListChecks size={13} />,
-  "paraphrase": <RotateCw size={13} />,
-  "academic": <BookOpen size={13} />,
-  "creative": <PenTool size={13} />,
-  "headline": <Hash size={13} />,
-  "keyword-extract": <Search size={13} />,
-  "readability": <MessageSquare size={13} />,
-  "citation": <Quote size={13} />,
-  "blog": <FileText size={13} />,
-  "novel": <BookOpen size={13} />,
-  "email": <MessageSquare size={13} />,
-};
+function getSkillIcon(name: string): React.ReactNode {
+  const icons: Record<string, React.ReactNode> = {
+    "polish": <Sparkles size={13} />,
+    "rewrite": <Edit3 size={13} />,
+    "translate": <Languages size={13} />,
+    "expand": <Maximize2 size={13} />,
+    "analysis": <Search size={13} />,
+    "continue-writing": <PenTool size={13} />,
+    "proofread": <ListChecks size={13} />,
+    "summary": <FileText size={13} />,
+    "outline": <ListChecks size={13} />,
+    "paraphrase": <RotateCw size={13} />,
+    "academic": <BookOpen size={13} />,
+    "creative": <PenTool size={13} />,
+    "headline": <Hash size={13} />,
+    "keyword-extract": <Search size={13} />,
+    "readability": <MessageSquare size={13} />,
+    "citation": <Quote size={13} />,
+    "blog": <FileText size={13} />,
+    "novel": <BookOpen size={13} />,
+    "email": <MessageSquare size={13} />,
+  };
+  return icons[name] || <Sparkles size={13} />;
+}
 
 // ─── Quick Action Dropdown (replaces native select for icon support) ───
 function QuickActionDropdown({
@@ -258,7 +261,7 @@ function QuickActionDropdown({
               onClick={() => handleSelect(s)}
               disabled={isProcessing}
             >
-              {skillIconMap[s] || <Sparkles size={13} />}
+              {getSkillIcon(s)}
               <span>{skillLabels[s] || s}</span>
             </button>
           ))}
