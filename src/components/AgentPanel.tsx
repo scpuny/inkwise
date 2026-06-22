@@ -96,6 +96,8 @@ export function AgentPanel() {
 }
 
 /* ─── Chat Panel ─── */
+const skillLabels: Record<string, string> = {"continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译","academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲","expand":"扩写","paraphrase":"同义改写","proofread":"校对","blog":"博客","novel":"小说","headline":"标题","email":"邮件","keyword-extract":"关键词","readability":"可读性","citation":"引用"};
+
 function ChatPanel({
   sessions, isProcessing, lastError, chatInput, onChatInputChange, chatInputRef, chatEndRef,
 }: {
@@ -108,6 +110,17 @@ function ChatPanel({
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { execute } = useAgent();
+  const [quickSkills, setQuickSkills] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listSkills } = await import("../lib/skill");
+        const skills = await listSkills();
+        setQuickSkills(skills.filter(s => s.enabled !== false).map(s => s.name).filter(n => skillLabels[n]));
+      } catch { setQuickSkills(["polish","rewrite","translate","expand","continue-writing","proofread","paraphrase","summary"]); }
+    })();
+  }, []);
 
   const handleSend = useCallback(() => {
     if (!chatInput.trim() || isProcessing) return;
@@ -220,14 +233,7 @@ function ChatPanel({
           title="快捷操作"
         >
           <option value="" disabled>快捷操作</option>
-          <option value="polish">润色</option>
-          <option value="rewrite">改写</option>
-          <option value="translate">翻译</option>
-          <option value="expand">扩写</option>
-          <option value="continue-writing">续写</option>
-          <option value="proofread">校对</option>
-          <option value="paraphrase">同义改写</option>
-          <option value="summary">摘要</option>
+          {quickSkills.map(s => <option key={s} value={s}>{skillLabels[s] || s}</option>)}
         </select>
         <textarea
           ref={chatInputRef}

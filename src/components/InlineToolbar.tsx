@@ -23,6 +23,18 @@ const ACTIONS: InlineAction[] = [
 
 export function InlineToolbar() {
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
+  const [enabledSkills, setEnabledSkills] = useState<string[]>(["polish","rewrite","translate","expand","analysis"]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listSkills } = await import("../lib/skill");
+        const skills = await listSkills();
+        setEnabledSkills(skills.filter(s => s.enabled !== false).map(s => s.name));
+      } catch {}
+    })();
+  }, []);
+
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [selectedText, setSelectedText] = useState("");
@@ -131,7 +143,7 @@ export function InlineToolbar() {
       style={{ top: position.top, left: position.left }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {ACTIONS.map((action) => (
+      {ACTIONS.filter(a => enabledSkills.includes(a.intent) || a.intent === "analysis").map((action) => (
         <button
           key={action.id}
           className="inline-toolbar__btn"
