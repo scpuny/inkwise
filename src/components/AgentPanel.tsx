@@ -376,7 +376,17 @@ function ChatPanel({
                       {!["analysis","summary","chat","readability","keyword-extract","citation","outline","headline"].includes(session.intent) && (
                         <button className="agent-chat__action agent-chat__action--accept" onClick={() => {
                           const editor = (window as any).editorInstance?.editor;
-                          if (editor) editor.commands.insertContent(session.afterContent);
+                          if (editor) {
+                            const sel = session.selectionRange;
+                            if (sel && sel.from !== undefined && sel.to !== undefined) {
+                              // Replace selected text: delete range then insert at position
+                              editor.commands.deleteRange({ from: sel.from, to: sel.to });
+                              editor.commands.insertContentAt(sel.from, session.afterContent);
+                            } else {
+                              // No selection info, just insert at cursor
+                              editor.commands.insertContent(session.afterContent);
+                            }
+                          }
                         }}>
                           <Check size={12} /> 插入
                         </button>
