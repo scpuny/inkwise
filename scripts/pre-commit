@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-commit hook — verify Vite build passes before committing
+# 提交前自动校验构建是否通过
+
+echo "🔍 正在校验构建…"
+
+# Run vite build quietly, capture output
+BUILD_OUTPUT=$(cd "$(git rev-parse --show-toplevel)" && npx vite build --logLevel error 2>&1)
+
+if [ $? -ne 0 ]; then
+  echo "❌ 构建失败，请修复后重新提交："
+  echo "$BUILD_OUTPUT"
+  exit 1
+fi
+
+echo "✅ 构建通过"
