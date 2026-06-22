@@ -4,6 +4,7 @@ import {
   FolderOpen,
   Trash2,
   Clock,
+  Pin,
   FileText,
   Plus,
   X,
@@ -31,6 +32,7 @@ interface ArticleEntry {
   phase: string;
   status: string;
   updatedAt: number;
+  pinned?: boolean;
 }
 
 function formatDate(ts: number): string {
@@ -105,6 +107,7 @@ export function ArticleManager({
             phase: "writing",
             status: "draft",
             updatedAt: art.updatedAt,
+            pinned: art.pinned,
           });
         }
       }
@@ -146,6 +149,24 @@ export function ArticleManager({
   };
 
   // Delete articles
+  const handleTogglePin = useCallback(async (articleId: string) => {
+    const col = collections.find(c => c.articles.some(a => a.id === articleId));
+    if (!col) return;
+    const article = col.articles.find(a => a.id === articleId);
+    if (!article) return;
+    article.pinned = !article.pinned;
+    // Move to top/bottom in list
+    const idx = col.articles.indexOf(article);
+    col.articles.splice(idx, 1);
+    if (article.pinned) {
+      col.articles.unshift(article);
+    } else {
+      col.articles.push(article);
+    }
+    await saveCollections(collections);
+    await loadData();
+  }, [collections, loadData]);
+
   const handleDeleteArticles = async () => {
     for (const id of selectedIds) {
       for (const col of collections) {
@@ -365,6 +386,7 @@ export function ArticleManager({
                       <th className="article-manager__th--check">
                         <input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={selectAll} />
                       </th>
+                      <th className="article-manager__th--pin"></th>
                       <th className="article-manager__th--sortable" onClick={() => toggleSort("title")}>
                         标题 {sortField === "title" && (sortDir === "asc" ? "↑" : "↓")}
                       </th>
@@ -393,6 +415,15 @@ export function ArticleManager({
                         <td><span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span></td>
                         <td>{getStatusLabel(article.status)}</td>
                         <td className="article-manager__cell-date">{formatDate(article.updatedAt)}</td>
+                        <td className="article-manager__cell-pin">
+                          <button
+                            className={`article-manager__pin-btn ${article.pinned ? "is-pinned" : ""}`}
+                            onClick={(e) => { e.stopPropagation(); handleTogglePin(article.id); }}
+                            title={article.pinned ? "取消置顶" : "置顶"}
+                          >
+                            <Pin size={12} />
+                          </button>
+                        </td>
                         <td className="article-manager__cell-actions">
                           <button
                             className="article-manager__version-btn"
@@ -430,6 +461,14 @@ export function ArticleManager({
                           <span>{formatDate(article.updatedAt)}</span>
                         </div>
                       </div>
+                      <button
+                        className={`article-manager__pin-btn ${article.pinned ? "is-pinned" : ""}`}
+                        onClick={(e) => { e.stopPropagation(); handleTogglePin(article.id); }}
+                        title={article.pinned ? "取消置顶" : "置顶"}
+                        style={{background:"none",border:"none",cursor:"pointer",padding:"4px",color: article.pinned ? "var(--accent)" : "var(--text-faint)"}}
+                      >
+                        <Pin size={11} />
+                      </button>
                       <div className="article-manager__list-card-actions">
                         <button
                           className="article-manager__version-btn"

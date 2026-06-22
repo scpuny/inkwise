@@ -7,6 +7,7 @@ export type Article = {
   title: string;
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
 };
 
 export type Collection = {

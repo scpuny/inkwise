@@ -12007,3 +12007,31 @@ body {
   align-items: center;
   padding-right: 8px;
 }
+
+/* Pin button */
+.article-manager__pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.article-manager__pin-btn:hover {
+  background: var(--hover);
+  color: var(--accent);
+}
+.article-manager__pin-btn.is-pinned {
+  color: var(--accent);
+}
+.article-manager__cell-pin {
+  width: 30px;
+  text-align: center;
+}
+.article-manager__th--pin {
+  width: 30px;
+}
