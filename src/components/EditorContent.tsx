@@ -262,11 +262,20 @@ export function EditorContent({
     // after user edits when the parent re-renders with the same prop value)
     if (cleanCurrent !== cleanContent && lastContentFromProps.current !== content) {
       const newContent = content || "";
-      // Markdown 内容需明确指定 contentType 让 @tiptap/markdown 解析
-      if (isHTML(newContent)) {
-        editor.commands.setContent(newContent);
-      } else {
-        editor.commands.setContent(newContent, { contentType: "markdown" as any });
+      // 设置内容时不加入撤销历史，防止首次加载按 Ctrl+Z 清空文档
+      try {
+        const json = editor.markdown.parse(newContent);
+        const node = editor.schema.nodeFromJSON(json);
+        const tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, node);
+        tr.setMeta("addToHistory", false);
+        editor.view.dispatch(tr);
+      } catch {
+        // Fallback: 用常规 setContent
+        if (isHTML(newContent)) {
+          editor.commands.setContent(newContent);
+        } else {
+          editor.commands.setContent(newContent, { contentType: "markdown" as any });
+        }
       }
       prevMdRef.current = content;
       lastContentFromProps.current = content;
