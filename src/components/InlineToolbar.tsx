@@ -21,7 +21,7 @@ const ACTIONS: InlineAction[] = [
 ];
 
 export function InlineToolbar() {
-  const { execute, isProcessing, openCommandBar } = useAgent();
+  const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [selectedText, setSelectedText] = useState("");
@@ -111,12 +111,15 @@ export function InlineToolbar() {
     });
 
     setVisible(false);
-  }, [selectedText, selectionRange, execute, getDocumentContent]);
+    openPanel();
+    setPanelTab("chat");
+  }, [selectedText, selectionRange, execute, getDocumentContent, openPanel, setPanelTab]);
 
   const handleMore = useCallback(() => {
     setVisible(false);
-    openCommandBar();
-  }, [openCommandBar]);
+    openPanel();
+    setPanelTab("chat");
+  }, [openPanel, setPanelTab]);
 
   if (!visible) return null;
 

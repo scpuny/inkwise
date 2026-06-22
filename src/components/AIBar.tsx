@@ -51,7 +51,9 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     try { localStorage.setItem("aiwriter-default-model", id); } catch {}
     window.dispatchEvent(new CustomEvent("providers-changed"));
   }, []);
-  const [selectedEffort, setSelectedEffort] = useState(EFFORTS[0].id);
+  const [selectedEffort, setSelectedEffort] = useState(() => {
+    try { return localStorage.getItem("aiwriter-effort") || EFFORTS[0].id; } catch { return EFFORTS[0].id; }
+  });
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [effortMenuOpen, setEffortMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -143,7 +145,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const effortItems: MenuItem[] = EFFORTS.map((e) => ({
     ...e,
     checked: selectedEffort === e.id,
-    onClick: () => setSelectedEffort(e.id),
+    onClick: () => { setSelectedEffort(e.id); try { localStorage.setItem("aiwriter-effort", e.id); window.dispatchEvent(new CustomEvent("providers-changed")); } catch {} },
   }));
 
   // Token presets menu items

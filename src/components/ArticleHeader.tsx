@@ -43,7 +43,7 @@ export function ArticleHeader({
           </span>
           <span className="article-header__progress">
             <span className="article-header__progress-bar">
-              <span className="article-header__progress-fill" style={{ width: `${progress}%` }} />
+              <span className="article-header__progress-fill" style={{ width: `${progress}%`, background: progress >= 100 ? '#22c55e' : progress >= 60 ? '#3b82f6' : progress > 0 ? '#f59e0b' : '#94a3b8' }} />
             </span>
             <span className="article-header__progress-text">{progress}%</span>
           </span>

@@ -8,6 +8,7 @@ import {
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, genId,
 } from "../lib/collections";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { loadArticleContent } from "../lib/articles";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null }) {
@@ -20,7 +21,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const [editingDraft, setEditingDraft] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ items: ContextMenuItem[]; x: number; y: number } | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "collection" | "article"; id: string; collectionId?: string; title: string } | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "date" | "articleCount">("name");
   const [articleSortBy, setArticleSortBy] = useState<Record<string, "name" | "created" | "words">>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -62,6 +63,13 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Listen for external collection changes (e.g. article created via plan)
+  useEffect(() => {
+    const handler = () => { refresh(); };
+    window.addEventListener("collections-changed", handler);
+    return () => window.removeEventListener("collections-changed", handler);
+  }, [refresh]);
 
   // Load word counts for articles in expanded collections
   useEffect(() => {
@@ -127,21 +135,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     await refresh();
   }, [editingDraft, collections, refresh]);
 
-  const handleRemoveCollection = useCallback(async (id: string) => {
-    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+  const handleRemoveCollection = useCallback((id: string) => {
     const c = collections.find((x) => x.id === id);
-    if (c) {
-      const currentTrash = await loadTrash();
-      for (const a of c.articles) {
-        currentTrash.push({ id: a.id, title: a.title, collectionId: id, collectionTitle: c.title, deletedAt: Date.now() });
-      }
-      await saveTrash(currentTrash);
-      setTrash(currentTrash);
-    }
-    await removeCollection(id);
-    setConfirmDeleteId(null);
-    await refresh();
-  }, [confirmDeleteId, collections, refresh]);
+    setConfirmDelete(c ? { type: "collection", id, title: c.title } : null);
+  }, [collections]);
 
   // ── Article ops ──
   const handleNewArticle = useCallback(async (collectionId?: string) => {
@@ -155,13 +152,9 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     }
   }, [getOrCreateDefaultCollection, onSelectArticle, refresh]);
 
-  const handleTrashArticle = useCallback(async (collectionId: string, articleId: string) => {
-    if (confirmDeleteId !== articleId) { setConfirmDeleteId(articleId); return; }
-    await trashArticle(collectionId, articleId);
-    setConfirmDeleteId(null);
-    if (externalActiveId === articleId) { /* no-op, controlled externally */ }
-    await refresh();
-  }, [confirmDeleteId, externalActiveId, refresh]);
+  const handleTrashArticle = useCallback((collectionId: string, articleId: string, articleTitle: string) => {
+    setConfirmDelete({ type: "article", id: articleId, collectionId, title: articleTitle });
+  }, []);
 
   // ── Trash ops ──
   const handleRestore = useCallback(async (id: string) => { await restoreArticle(id); await refresh(); }, [refresh]);
@@ -221,7 +214,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               <div className="collection-tree__row collection-tree__row--folder" onClick={() => toggleExpanded(col.id)} onContextMenu={(e) => onCtx(e, [
                 { icon: <Plus size={13} />, label: "新建文章", onClick: () => { void handleNewArticle(col.id); } },
                 { icon: <Pencil size={13} />, label: "重命名", onClick: () => handleRenameCollection(col.id, col.title) },
-                { icon: <Trash2 size={13} />, label: confirmDeleteId === col.id ? "确认删除" : "删除合集", danger: true, onClick: () => handleRemoveCollection(col.id) },
+                { icon: <Trash2 size={13} />, label: "删除合集", danger: true, onClick: () => handleRemoveCollection(col.id) },
                 { icon: <ArrowUpDown size={13} />, label: "文章排序", children: [
                   { icon: <Type size={12} />, label: `按名称${(articleSortBy[col.id] || "created") === "name" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "name") },
                   { icon: <FileText size={12} />, label: `按时间${(articleSortBy[col.id] || "created") === "created" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "created") },
@@ -268,7 +261,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                         onClick={() => { onSelectArticle?.(article.id); }}
                         onContextMenu={(e) => onCtx(e, [
                           { icon: <Pencil size={13} />, label: "重命名", onClick: () => { setEditingId(`art:${article.id}`); setEditingDraft(article.title); } },
-                          { icon: <Trash2 size={13} />, label: confirmDeleteId === article.id ? "确认删除" : "移到回收站", danger: true, onClick: () => handleTrashArticle(col.id, article.id) },
+                          { icon: <Trash2 size={13} />, label: "移到回收站", danger: true, onClick: () => handleTrashArticle(col.id, article.id, article.title) },
                         ])}>
                         {isEditingArt ? (
                           <input ref={editInputRef} className="collection-tree__input collection-tree__input--leaf" value={editingDraft}
@@ -314,6 +307,37 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       </div>
 
       {ctxMenu && <ContextMenu items={ctxMenu.items} position={{ x: ctxMenu.x, y: ctxMenu.y }} onClose={() => setCtxMenu(null)} />}
+      {confirmDelete && (
+        <ConfirmDialog
+          open={true}
+          title={confirmDelete.type === "collection" ? "删除合集" : "移到回收站"}
+          message={confirmDelete.type === "collection"
+            ? `确定要删除合集「${confirmDelete.title}」吗？合集内的所有文章将移入回收站。`
+            : `确定将文章「${confirmDelete.title}」移到回收站吗？`}
+          confirmLabel={confirmDelete.type === "collection" ? "删除" : "移入回收站"}
+          danger
+          onConfirm={async () => {
+            if (confirmDelete.type === "collection") {
+              const c = collections.find((x) => x.id === confirmDelete.id);
+              if (c) {
+                const currentTrash = await loadTrash();
+                for (const a of c.articles) {
+                  currentTrash.push({ id: a.id, title: a.title, collectionId: confirmDelete.id, collectionTitle: c.title, deletedAt: Date.now() });
+                }
+                await saveTrash(currentTrash);
+                setTrash(currentTrash);
+              }
+              await removeCollection(confirmDelete.id);
+            } else {
+              await trashArticle(confirmDelete.collectionId!, confirmDelete.id);
+              if (externalActiveId === confirmDelete.id) { /* no-op */ }
+            }
+            setConfirmDelete(null);
+            await refresh();
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 }

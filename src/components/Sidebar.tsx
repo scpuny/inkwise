@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, List, Settings, SquarePen } from "lucide-react";
+import { FileText, List, Settings, SquarePen, Library } from "lucide-react";
 import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
@@ -103,7 +103,7 @@ export function Sidebar({
       <nav className="sidebar__nav">
         <SidebarNavItem icon={<FileText size={15} />} label="文件" active={activeTab === "files"} onClick={() => setActiveTab("files")} />
         <SidebarNavItem icon={<List size={15} />} label="大纲" active={activeTab === "outline"} onClick={() => setActiveTab("outline")} />
-        <SidebarNavItem icon={<FileText size={15} />} label="管理" onClick={() => onManageArticles?.()} />
+        <SidebarNavItem icon={<Library size={15} />} label="管理" onClick={() => onManageArticles?.()} />
         <SidebarNavItem icon={<Settings size={15} />} label="设置" onClick={onOpenSettings} />
       </nav>
     </aside>

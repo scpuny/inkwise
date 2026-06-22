@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
-  Brain, Gauge, CircleDollarSign, FileText, Clock, Type,
+  Brain, Gauge, CircleDollarSign, FileText, Clock, Type, CheckCircle2,
 } from "lucide-react";
 import { getProvidersSync } from "../lib/providerModels";
+import { getPhaseLabel } from "../lib/articleBlueprint";
 
 export type SaveState = "idle" | "saving" | "saved";
 
-export function StatusBar({ saveState: _saveState }: { saveState?: SaveState }) {
+export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveState; phase?: string }) {
   const saveState = _saveState || "idle";
   const [visibleSave, setVisibleSave] = useState<SaveState>("idle");
   const fadeTimer = useRef<any>(undefined);
@@ -69,6 +70,10 @@ export function StatusBar({ saveState: _saveState }: { saveState?: SaveState }) 
         const enabled = providers.find((p) => p.enabled && p.models.length > 0);
         setModelName(enabled && enabled.models.length > 0 ? enabled.models[0] : "—");
       }
+      try {
+        const savedEffort = localStorage.getItem("aiwriter-effort");
+        if (savedEffort) setEffort(savedEffort);
+      } catch {}
     };
     updateModel();
     window.addEventListener("providers-changed", updateModel);
@@ -121,6 +126,17 @@ export function StatusBar({ saveState: _saveState }: { saveState?: SaveState }) 
           <span className="statusbar__item stat statusbar__save">
             <span className={`statusbar__save-dot statusbar__save-dot--${visibleSave}`} />
             <b>{saveLabel}</b>
+          </span>
+        </span>
+      )}
+
+      {/* Phase */}
+      {phase && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat">
+            <CheckCircle2 size={12} />
+            <span className="stat__label">阶段</span>
+            <b>{getPhaseLabel(phase as any) || phase}</b>
           </span>
         </span>
       )}

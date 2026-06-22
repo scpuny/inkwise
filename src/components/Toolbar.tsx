@@ -6,8 +6,6 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { getAllTemplates, type EditorStyleTemplate } from "../lib/editorStyles";
-import { Wand2, PenLine } from "lucide-react";
 import { useAgent } from "../lib/agent";
 
 // ── TipTap helper ──
@@ -227,6 +225,8 @@ export function Toolbar({
   editorMode,
   onStyleTemplate,
   styleTemplateId,
+  onToggleStylePanel,
+  onCloseStylePanel,
 }: {
   onToggleAIDock: () => void;
   aiDockOpen: boolean;
@@ -234,6 +234,8 @@ export function Toolbar({
   editorMode?: "rich" | "markdown";
   onStyleTemplate?: (id: string) => void;
   styleTemplateId?: string;
+  onToggleStylePanel?: () => void;
+  onCloseStylePanel?: () => void;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
@@ -241,8 +243,7 @@ export function Toolbar({
   const [headingOpen, setHeadingOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [styleOpen, setStyleOpen] = useState(false);
-  const { openCommandBar, togglePanel, panelOpen } = useAgent();
+  const { togglePanel, panelOpen } = useAgent();
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const [popoverPos, setPopoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -289,24 +290,8 @@ export function Toolbar({
       {/* AI Quick Actions */}
       <div className="toolbar__group toolbar__group--ai">
         <button
-          className="toolbar-btn toolbar-btn--ai"
-          title="续写 (Ctrl+K)"
-          onClick={() => openCommandBar()}
-        >
-          <Wand2 size={14} />
-          <span className="toolbar-btn__label">续写</span>
-        </button>
-        <button
-          className="toolbar-btn toolbar-btn--ai"
-          title="润色选中文本"
-          onClick={() => openCommandBar()}
-        >
-          <PenLine size={14} />
-          <span className="toolbar-btn__label">润色</span>
-        </button>
-        <button
           className={`toolbar-btn${panelOpen ? " toolbar-btn--active" : ""}`}
-          onClick={togglePanel}
+          onClick={() => { onCloseStylePanel?.(); togglePanel(); }}
           title="Agent 面板 (Ctrl+Shift+\)"
         >
           <Sparkles size={14} />
@@ -441,37 +426,17 @@ export function Toolbar({
       {/* Right: Mode + Style + AI + Search */}
       <div className="toolbar__group toolbar__group--right">
 
-        {/* Style template */}
-        {onStyleTemplate && (
-          <div style={{ position: "relative" }}>
-            <button
-              className="toolbar-btn toolbar-dropdown-btn"
-              title="排版样式"
-              onClick={() => { setStyleOpen((o) => !o); setLinkOpen(false); }}
-            >
-              <Palette size={14} />
-            </button>
-            {styleOpen && (
-              <div className="toolbar-popover" style={{ right: 0, left: "auto" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 1, padding: "3px 0", minWidth: 160 }}>
-                  {getAllTemplates().map((t) => (
-                    <button
-                      key={t.id}
-                      className="heading-dropdown-item"
-                      style={{
-                        fontWeight: styleTemplateId === t.id ? 600 : 400,
-                        color: styleTemplateId === t.id ? "var(--accent)" : "var(--fg-dim)",
-                      }}
-                      onClick={() => { onStyleTemplate(t.id); setStyleOpen(false); }}
-                    >
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Style panel toggle */}
+        {onToggleStylePanel && (
+          <button
+            className="toolbar-btn"
+            title="文章样式面板"
+            onClick={onToggleStylePanel}
+          >
+            <Palette size={14} />
+          </button>
         )}
+
 
         {/* Editor mode switch */}
         {onModeSwitch && (

@@ -15,7 +15,7 @@ export type ChatOptions = {
 
 export async function sendChat(options: ChatOptions): Promise<string> {
   if (!isTauriEnv()) {
-    return "聊天功能仅在桌面应用中可用。请运行 `npm run tauri:dev` 启动桌面版。";
+    throw new Error("聊天功能仅在桌面应用中可用。请运行 `npm run tauri:dev` 启动桌面版。");
   }
 
   try {
@@ -28,6 +28,6 @@ export async function sendChat(options: ChatOptions): Promise<string> {
     });
   } catch (e) {
     console.error("Chat API error:", e);
-    return `**API 调用失败**: ${e}`;
+    throw e;
   }
 }

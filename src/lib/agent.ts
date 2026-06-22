@@ -133,6 +133,7 @@ export interface AgentActions {
   rejectSession: (id: string) => void;
   removeSession: (id: string) => void;
   setGhostText: (text: string | null) => void;
+  insertGhost: (content: string) => void;
 }
 
 export type AgentContextValue = AgentState & AgentActions;

@@ -191,13 +191,49 @@ function ChatPanel({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Bottom bar (matching AICommandBar style) */}
+      <div className="agent-chat__bar">
+      {/* Input row: dropdown + textarea + send */}
       <div className="agent-chat__input-area">
+        <select
+          className="agent-chat__tool-select"
+          defaultValue=""
+          onChange={(e) => {
+            const intent = e.target.value;
+            e.target.value = "";
+            if (!intent) return;
+            const editor = (window as any).editorInstance?.editor;
+            if (!editor || editor.state.selection.empty) {
+              onChatInputChange("/" + intent + " ");
+              chatInputRef.current?.focus();
+              return;
+            }
+            const { from, to } = editor.state.selection;
+            const selectedText = editor.state.doc.textBetween(from, to, " ");
+            const docContent = editor.getText() || "";
+            execute("/" + intent + " " + selectedText.slice(0, 40) + (selectedText.length > 40 ? "…" : ""), {
+              intent,
+              selection: { from, to },
+              beforeContent: docContent,
+            });
+          }}
+          title="快捷操作"
+        >
+          <option value="" disabled>快捷操作</option>
+          <option value="polish">润色</option>
+          <option value="rewrite">改写</option>
+          <option value="translate">翻译</option>
+          <option value="expand">扩写</option>
+          <option value="continue-writing">续写</option>
+          <option value="proofread">校对</option>
+          <option value="paraphrase">同义改写</option>
+          <option value="summary">摘要</option>
+        </select>
         <textarea
           ref={chatInputRef}
           className="agent-chat__input"
           placeholder="输入指令… 例如：帮我分析文章结构"
-          rows={2}
+          rows={1}
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={handleKey}
@@ -214,6 +250,18 @@ function ChatPanel({
           )}
         </button>
       </div>
+
+      {/* Footer hints */}
+      <div className="agent-chat__footer">
+        <div className="agent-chat__hints">
+          <span className="agent-chat__hint-key">Ctrl+Enter</span>
+          <span className="agent-chat__hint-label">发送</span>
+          <span className="agent-chat__hint-key">Shift+Enter</span>
+          <span className="agent-chat__hint-label">换行</span>
+        </div>
+      </div>
+      </div>
+
     </div>
   );
 }

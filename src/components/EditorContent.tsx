@@ -4,6 +4,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { common, createLowlight } from "lowlight";
 import Link from "@tiptap/extension-link";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
@@ -11,7 +13,7 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { X, Loader2 } from "lucide-react";
-import { applyEditorStyle, resetEditorStyle, type EditorStyleTemplate } from "../lib/editorStyles";
+import { applyEditorStyle, resetEditorStyle, applyCodeTheme, type EditorStyleTemplate } from "../lib/editorStyles";
 import { InlineGhostText } from "./InlineGhostText";
 
 export type EditorMode = "rich" | "markdown";
@@ -31,6 +33,18 @@ export interface EditorContentProps {
   paragraphGap?: string;
   onOutlineChange?: (items: OutlineItem[]) => void;
   styleTemplate?: EditorStyleTemplate;
+  /** Font size override (px), applied on top of template CSS */
+  editorFontSize?: number;
+  /** Editor max-width override (px), applied on top of template CSS */
+  editorMaxWidth?: number;
+  /** Font family override */
+  editorFontFamily?: string;
+  /** Paragraph gap override (em) */
+  editorParagraphGap?: number;
+  /** Code theme ID */
+  codeThemeId?: string;
+  onCodeThemeChange?: (id: string) => void;
+  showHeadingNumber?: boolean;
 }
 
 export interface OutlineItem {
@@ -76,10 +90,16 @@ export function EditorContent({
   paragraphGap = "1.25em",
   onOutlineChange,
   styleTemplate,
+  editorFontSize,
+  editorMaxWidth,
+  editorFontFamily,
+  editorParagraphGap,
+  codeThemeId,
+  showHeadingNumber = false,
 }: EditorContentProps) {
   const editorModeRef = useRef<EditorMode>(mode);
   const prevMdRef = useRef<string | undefined>(undefined);
-  const syncFromProps = useRef(true);
+  const lastContentFromProps = useRef<string>("");
   const outlineTimer = useRef<any>(undefined);
   const [rawMd, setRawMd] = useState("");
 
@@ -113,6 +133,9 @@ export function EditorContent({
         codeBlock: false,
       }),
       Underline,
+      CodeBlockLowlight.configure({
+        lowlight: createLowlight(common),
+      }),
       Placeholder.configure({
         placeholder: mode === "markdown" ? "使用 Markdown 语法写作…" : "开始写作…",
       }),
@@ -177,17 +200,27 @@ export function EditorContent({
   // Sync content from props (initial load or article switch)
   useEffect(() => {
     if (!editor || content === undefined) return;
-    if (!syncFromProps.current) return;
 
     const currentMd = editor.getMarkdown();
-    const cleanCurrent = currentMd.replace(/\s+$/, "");
+    const cleanCurrent = (currentMd || "").replace(/\s+$/, "");
     const cleanContent = (content || "").replace(/\s+$/, "");
 
-    if (cleanCurrent !== cleanContent) {
-      editor.commands.setContent(isHTML(content) ? content : content || "");
+    // Diff check: only sync when content prop differs from editor content
+    // AND the content prop has actually changed to something new (avoids re-syncing
+    // after user edits when the parent re-renders with the same prop value)
+    if (cleanCurrent !== cleanContent && lastContentFromProps.current !== content) {
+      const newContent = content || "";
+      // Markdown 内容需明确指定 contentType 让 @tiptap/markdown 解析
+      if (isHTML(newContent)) {
+        editor.commands.setContent(newContent);
+      } else {
+        editor.commands.setContent(newContent, { contentType: "markdown" as any });
+      }
       prevMdRef.current = content;
+      lastContentFromProps.current = content;
+
+      updateOutline(content);
     }
-    syncFromProps.current = false;
   }, [editor, content]);
 
   // Sync editor mode changes
@@ -197,7 +230,12 @@ export function EditorContent({
 
     if (mode === "rich") {
       // Switching FROM markdown TO rich: push textarea content into editor
-      editor.commands.setContent(rawMd || content || "");
+      const mdContent = rawMd || content || "";
+      if (isHTML(mdContent)) {
+        editor.commands.setContent(mdContent);
+      } else {
+        editor.commands.setContent(mdContent, { contentType: "markdown" as any });
+      }
     } else {
       // Switching FROM rich TO markdown: sync textarea with current editor state
       const currentMd = editor.getMarkdown();
@@ -225,9 +263,68 @@ export function EditorContent({
     }
   }, [styleTemplate]);
 
+  // Dynamic overrides for font-size, max-width, line-height on top of template CSS
+  const overrideTagRef = useRef<HTMLStyleElement | null>(null);
+  useEffect(() => {
+    if (!overrideTagRef.current) {
+      overrideTagRef.current = document.createElement("style");
+      overrideTagRef.current.id = "editor-style-overrides";
+      document.head.appendChild(overrideTagRef.current);
+    }
+    const tag = overrideTagRef.current;
+    const parts: string[] = [];
+    if (editorFontSize) parts.push(`font-size: ${editorFontSize}px`);
+    if (editorMaxWidth) parts.push(`max-width: ${editorMaxWidth}px`);
+    parts.push(`line-height: ${lineHeight}`);
+    // paragraph gap + heading numbering
+    let cssText = `.editor-container .tiptap { ${parts.join("; ")}; }\n`;
+    if (showHeadingNumber) {
+      cssText += `.editor-container .tiptap { counter-reset: h1-counter; }
+      .editor-container .tiptap h1 { counter-reset: h2-counter; }
+      .editor-container .tiptap h2 { counter-reset: h3-counter; }
+      .editor-container .tiptap h3 { counter-reset: h4-counter; }
+      .editor-container .tiptap h1:before { counter-increment: h1-counter; content: counter(h1-counter) ". "; color: var(--accent); font-weight: 700; }
+      .editor-container .tiptap h2:before { counter-increment: h2-counter; content: counter(h1-counter) "." counter(h2-counter) " "; color: var(--accent); }
+      .editor-container .tiptap h3:before { counter-increment: h3-counter; content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) " "; color: var(--accent); }
+      .editor-container .tiptap h4:before { counter-increment: h4-counter; content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) "." counter(h4-counter) " "; color: var(--accent); }\n`;
+    }
+    tag.textContent = cssText;
+  }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber]);
+
+  // Code theme
+  useEffect(() => {
+    if (codeThemeId) {
+      applyCodeTheme(codeThemeId);
+    }
+  }, [codeThemeId]);
+
+  // Apply font-family + paragraph gap via !important injected style
+  const [fontStyleTag, setFontStyleTag] = useState<HTMLStyleElement | null>(null);
+  useEffect(() => {
+    // Create or reuse a dedicated style tag for font-family (with !important to beat everything)
+    let tag = document.getElementById('editor-font-style') as HTMLStyleElement;
+    if (!tag) {
+      tag = document.createElement('style');
+      tag.id = 'editor-font-style';
+      document.head.appendChild(tag);
+    }
+    const rules: string[] = [];
+    if (editorFontFamily) {
+      rules.push(`.tiptap, .tiptap * { font-family: ${editorFontFamily} !important; }`);
+    }
+    if (editorParagraphGap !== undefined) {
+      rules.push(`.tiptap p { margin-bottom: ${editorParagraphGap}em !important; }`);
+    }
+    tag.textContent = rules.join('\n');
+  }, [editorFontFamily, editorParagraphGap]);
+
   // Expose editor globally
   useEffect(() => {
     window.editorInstance = { editor };
+    // Expose insert method for ghost text
+    (window as any).__insertGhostContent = (content: string) => {
+      editor.commands.insertContent(content);
+    };
     return () => { window.editorInstance = undefined; };
   }, [editor]);
 

@@ -14,6 +14,7 @@ import {
 } from "../lib/agent";
 import { runSkill } from "../lib/skill";
 import { sendChat, type ChatMessage } from "../lib/ai";
+import { resolveModel } from "../lib/globalAIConfig";
 import { getProvidersSync } from "../lib/providerModels";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
@@ -64,7 +65,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
 
     const sessionId = generateSessionId();
-    const model = enabled.models[0];
+    const model = resolveModel() || enabled.models[0];
 
     // Create initial session
     const session: AgentSession = {
@@ -195,11 +196,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     const ghost = state.ghostText;
     if (!ghost) return;
 
-    // Insert into editor via the editor instance
-    const editor = (window as any).editorInstance?.editor;
-    if (editor && editor.commands) {
-      editor.commands.insertContent(ghost);
-    }
+    // Insert via callback (provided by EditorPane)
+    insertGhost(ghost);
 
     // Update session
     setState((s) => ({
@@ -268,6 +266,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     rejectSession,
     removeSession,
     setGhostText,
+    insertGhost: (content: string) => {
+      // Default: try to insert via editorInstance (fallback)
+      const editor = (window as any).editorInstance?.editor;
+      if (editor && editor.commands) {
+        editor.commands.insertContent(content);
+      }
+    },
   };
 
   return (

@@ -550,6 +550,17 @@ function ModelsSection() {
     const pid = ref.split("/")[0];
     return { ref, provider: pid, model: ref.slice(pid.length + 1), keySet: !!providers.find((x) => x.id === pid)?.apiKey };
   });
+  // Read saved model from localStorage for display
+  const [selectedModelRef, setSelectedModelRef] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("aiwriter-default-model");
+      if (saved) {
+        const match = allRefs.find(r => r.endsWith("/" + saved) || r === saved);
+        if (match) return match;
+      }
+    } catch {}
+    return pickerOptions[0]?.ref ?? "";
+  });
 
   return (
     <SettingsPage title="模型" desc="配置 AI 写作模型和提供商">
@@ -561,7 +572,7 @@ function ModelsSection() {
         <>
           <SettingsSection title="模型选择">
             <SettingsField label="默认模型">
-              <ModelPicker providers={providers} refs={allRefs} value={pickerOptions[0]?.ref ?? ""} onPick={() => {}} />
+              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("aiwriter-default-model", modelName || ref); window.dispatchEvent(new CustomEvent("providers-changed")); } catch {} }} />
             </SettingsField>
           </SettingsSection>
           <SettingsSection title="生成参数">
@@ -821,7 +832,7 @@ function CustomProviderEditor({ onSave, onCancel }: { onSave: (p: Provider) => v
     try {
       const fetched = await tryInvoke<string[]>("fetch_models_from_url", { kind: "custom", baseUrl: baseUrl.trim(), apiKey: keyDraft.trim() });
       if (fetched.length > 0) {
-        setModels(fetched.join(",\n"));
+        setModels(fetched.filter(Boolean).join(",\n"));
         setFetchStatus(`获取到 ${fetched.length} 个模型`);
       } else {
         setFetchErr("未获取到模型");
@@ -1138,7 +1149,7 @@ function ProviderEditor({ provider, onSave, onSaveKey, onClearKey, group, onCanc
     try {
       const fetched = await tryInvoke<string[]>("fetch_models_from_url", { kind: "custom", baseUrl: baseUrl.trim(), apiKey: effectiveKey });
       if (fetched.length > 0) {
-        setModels(fetched.join(", "));
+        setModels(fetched.filter(Boolean).join(", "));
         setFetchStatus(`获取到 ${fetched.length} 个模型`);
       } else {
         setFetchErr("未获取到模型");
