@@ -149,22 +149,19 @@ fn build_user_prompt(context: &AgentContext) -> String {
         }
     }
 
-    // Add document context
+        // Add document context
     if !context.document_content.is_empty() {
         prompt.push_str("## 当前文档内容\n");
-        // The frontend already prepends blueprint context to document_content,
-        // so this may already include the full article structure info
         prompt.push_str("```\n");
-        let doc = if context.document_content.len() > 3000 {
-            let target = context.document_content.len() - 3000;
-            // Find the nearest char boundary to avoid slicing in the middle of a multi-byte char
-            let start = if target > 0 && !context.document_content.is_char_boundary(target) {
-                (target..context.document_content.len()).find(|&i| context.document_content.is_char_boundary(i)).unwrap_or(target)
-            } else {
-                target
-            };
-            let truncated = &context.document_content[start..];
-            format!("...(前略)\n{}", truncated)
+        let total_chars: usize = context.document_content.chars().count();
+        let max_tail = 4000;
+        let max_head = 500;
+        let doc = if total_chars > max_tail + max_head {
+            // Include beginning (title + intro) + tail (recent content)
+            let head: String = context.document_content.chars().take(max_head).collect();
+            let tail_start = total_chars - max_tail;
+            let tail: String = context.document_content.chars().skip(tail_start).take(max_tail).collect();
+            format!("{}...(中间略去 {} 字)\n{}", head, total_chars - max_head - max_tail, tail)
         } else {
             context.document_content.clone()
         };
