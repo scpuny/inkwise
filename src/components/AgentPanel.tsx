@@ -21,6 +21,7 @@ const TABS: { id: TabId; icon: React.ReactNode; label: string }[] = [
 export function AgentPanel() {
   const {
     panelOpen, panelTab, setPanelTab, closePanel,
+    currentSessionId,
     sessions, isProcessing, lastError,
     acceptSession, rejectSession, removeSession,
   } = useAgent();
@@ -73,6 +74,7 @@ export function AgentPanel() {
             isProcessing={isProcessing}
             lastError={lastError}
             chatInput={chatInput}
+            currentSessionId={currentSessionId}
             onChatInputChange={setChatInput}
             chatInputRef={chatInputRef}
             chatEndRef={chatEndRef}
@@ -195,7 +197,7 @@ function getSkillIcon(name: string): React.ReactNode {
 // ─── Thinking Timer — shows elapsed time while AI is processing ───
 function ThinkingTimer() {
   const [elapsed, setElapsed] = useState(0);
-  const [hint, setHint] = useState("AI 思考中…");
+  const [hint, setHint] = useState("正在分析请求…");
 
   useEffect(() => {
     const start = Date.now();
@@ -203,6 +205,10 @@ function ThinkingTimer() {
       const sec = Math.floor((Date.now() - start) / 1000);
       setElapsed(sec);
       if (sec > 30) setHint("仍在处理中，模型响应较慢或网络延迟…");
+      else if (sec > 20) setHint("正在生成最终内容…");
+      else if (sec > 10) setHint("AI 正在写作…");
+      else if (sec > 5) setHint("正在生成内容…");
+      else if (sec > 2) setHint("AI 思考中…");
       else if (sec > 15) setHint("AI 生成中，请稍候…");
     }, 1000);
     return () => clearInterval(timer);
@@ -297,7 +303,7 @@ function QuickActionDropdown({
 }
 
 function ChatPanel({
-  sessions, isProcessing, lastError, chatInput, onChatInputChange, chatInputRef, chatEndRef,
+  sessions, isProcessing, currentSessionId, lastError, chatInput, onChatInputChange, chatInputRef, chatEndRef,
 }: {
   sessions: AgentSession[];
   isProcessing: boolean;
@@ -308,6 +314,9 @@ function ChatPanel({
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { execute, cancel, acceptSession } = useAgent();
+  // Hide timer when content has started streaming
+  const curSession = currentSessionId ? sessions.find(s => s.id === currentSessionId) : null;
+  const showTimer = isProcessing && (!curSession || !curSession.afterContent || curSession.afterContent.length < 20);
   const [quickSkills, setQuickSkills] = useState<string[]>([]);
 
   useEffect(() => {
@@ -405,7 +414,7 @@ function ChatPanel({
           </div>
         ))}
 
-        {isProcessing && <ThinkingTimer />}
+        {showTimer && <ThinkingTimer />}
 
         {lastError && (
           <div className="agent-chat__message agent-chat__message--error">
