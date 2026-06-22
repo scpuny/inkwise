@@ -15,6 +15,7 @@ import Image from "@tiptap/extension-image";
 import { X, Loader2 } from "lucide-react";
 import { applyEditorStyle, resetEditorStyle, applyCodeTheme, type EditorStyleTemplate } from "../lib/editorStyles";
 import { InlineGhostText } from "./InlineGhostText";
+import { useAgent } from "../lib/agent";
 
 export type EditorMode = "rich" | "markdown";
 
@@ -102,6 +103,12 @@ export function EditorContent({
   const lastContentFromProps = useRef<string>("");
   const outlineTimer = useRef<any>(undefined);
   const [rawMd, setRawMd] = useState("");
+  const { execute, ghostText, isProcessing } = useAgent();
+  const ghostTextRef = useRef(ghostText);
+  const isProcessingRef = useRef(isProcessing);
+  ghostTextRef.current = ghostText;
+  isProcessingRef.current = isProcessing;
+  const autoCompleteTimer = useRef<any>(undefined);
 
   // Debounced outline sync
   const updateOutline = useCallback((content: string) => {
@@ -215,6 +222,18 @@ export function EditorContent({
     onUpdate: ({ editor }) => {
       const md = editor.getMarkdown();
       updateOutline(md);
+
+      // Auto-complete: trigger after 2s typing pause
+      if (autoCompleteTimer.current) clearTimeout(autoCompleteTimer.current);
+      autoCompleteTimer.current = setTimeout(() => {
+        const text = editor.getText().trim();
+        // Only trigger if: has content, no ghost text, not processing, cursor near end
+        if (!text || text.length < 80) return;
+        if (ghostTextRef.current || isProcessingRef.current) return;
+        const { from } = editor.state.selection;
+        if (from < text.length - 20) return; // cursor not near end
+        execute("", { intent: "continue-writing", beforeContent: text });
+      }, 2000);
     },
   });
 
@@ -348,6 +367,11 @@ export function EditorContent({
     };
     return () => { window.editorInstance = undefined; };
   }, [editor]);
+
+  // Clean up auto-complete timer
+  useEffect(() => {
+    return () => { if (autoCompleteTimer.current) clearTimeout(autoCompleteTimer.current); };
+  }, []);
 
   // AI insert at cursor position
   const handleInsertResponse = useCallback(() => {
