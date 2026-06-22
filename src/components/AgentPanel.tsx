@@ -322,7 +322,9 @@ function ChatPanel({
 
   const handleSend = useCallback(() => {
     if (!chatInput.trim() || isProcessing) return;
-    execute(chatInput, { intent: "chat" });
+    const editor = (window as any).editorInstance?.editor;
+    const docContent = editor ? editor.getText() || "" : "";
+    execute(chatInput, { intent: "chat", beforeContent: docContent });
     onChatInputChange("");
   }, [chatInput, isProcessing, execute, onChatInputChange]);
 
