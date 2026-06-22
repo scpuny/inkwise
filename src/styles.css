@@ -3740,9 +3740,6 @@ body {
   font-size: var(--text-sm);
   color: var(--fg-dim);
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .settings-field__hint {
@@ -12398,7 +12395,7 @@ body {
   border-top: 1px solid var(--border-soft);
 }
 .settings-dialog .settings-field {
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 110px 1fr;
 }
 .btn--danger {
   background: transparent;
