@@ -137,7 +137,14 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         );
       } else {
         // Fallback to direct chat with conversation context
-        const systemPrompt = buildSystemPrompt(intent.id, beforeContent, selection);
+        // Include enabled writing styles so AI knows available options
+        let enabledSkills: { name: string; description: string }[] = [];
+        try {
+          const { listSkills } = await import("../lib/skill");
+          const skills = await listSkills();
+          enabledSkills = skills.filter(s => s.enabled !== false).map(s => ({ name: s.name, description: s.description }));
+        } catch {}
+        const systemPrompt = buildSystemPrompt(intent.id, beforeContent, selection, enabledSkills);
         
         // Build conversation history from recent sessions (agent mode only)
         const messages: ChatMessage[] = [
@@ -349,12 +356,26 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function buildSystemPrompt(intent: string, documentContent: string, selection?: { from: number; to: number }): string {
+function buildSystemPrompt(intent: string, documentContent: string, selection?: { from: number; to: number }, enabledSkills?: { name: string; description: string }[]): string {
   const hasContent = documentContent.trim().length > 0;
   const isNewArticle = !hasContent || documentContent.trim().split("\n").length < 3;
 
+  // Build skills context block
+  let skillsContext = "";
+  if (enabledSkills && enabledSkills.length > 0) {
+    const writingStyles = enabledSkills.filter(s => ["academic","creative","blog","novel","email"].includes(s.name));
+    if (writingStyles.length > 0) {
+      skillsContext = "\n\n## 用户启用的写作风格\n以下写作风格已启用，用户可能要求你使用其中某种风格：\n";
+      for (const s of writingStyles) {
+        skillsContext += `- ${s.name}: ${s.description}
+`;
+      }
+      skillsContext += "\n请根据用户指令选择合适风格，或主动建议适合当前内容的写作风格。\n";
+    }
+  }
+
   if (isNewArticle) {
-    return "你是一位资深中文写作者。请根据用户要求写一篇完整的文章。\n\n## 要求\n- 结构完整：标题 → 引言 → 正文 → 总结\n- 每个段落至少 3-5 句\n- 使用流畅自然的中文\n- 使用 Markdown 格式\n- 直接输出文章内容，无需额外说明";
+    return "你是一位资深中文写作者。请根据用户要求写一篇完整的文章。\n\n## 要求\n- 结构完整：标题 → 引言 → 正文 → 总结\n- 每个段落至少 3-5 句\n- 使用流畅自然的中文\n- 使用 Markdown 格式\n- 直接输出文章内容，无需额外说明" + skillsContext;
   }
 
   const systemPrompts: Record<string, string> = {
@@ -374,5 +395,5 @@ function buildSystemPrompt(intent: string, documentContent: string, selection?: 
     "creative": "你是一位富有创意的文学家。请以文学性强的风格处理文本，注重修辞、意象和节奏感。直接输出结果。",
   };
 
-  return systemPrompts[intent] || "你是一位专业的 AI 写作助手。请根据用户的指令完成写作任务。直接输出结果，无需额外解释。";
+  return (systemPrompts[intent] || "你是一位专业的 AI 写作助手。请根据用户的指令完成写作任务。直接输出结果，无需额外解释。") + skillsContext;
 }
