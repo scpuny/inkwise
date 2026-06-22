@@ -423,7 +423,7 @@ function SkillsSection() {
                 </button>
               </div>
             </div>
-          ))})
+          ))}
         </div>
       )}
     </SettingsPage>
