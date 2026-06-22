@@ -56,7 +56,12 @@ function AppContent() {
   const [hasActiveArticle, setHasActiveArticle] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
-  const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+  const [activeArticleId, setLocalArticleId] = useState<string | null>(null);
+  const { setActiveArticleId: setCtxArticleId } = useAgent();
+  const setActiveArticleId = useCallback((id: string | null) => {
+    setLocalArticleId(id);
+    if (setCtxArticleId) setCtxArticleId(id);
+  }, [setCtxArticleId]);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [editorFormat, setEditorFormat] = useState<"rich" | "markdown">("rich");
   const [editorLineHeight, setEditorLineHeight] = useState(1.75);

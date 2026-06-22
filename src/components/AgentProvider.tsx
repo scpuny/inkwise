@@ -16,9 +16,12 @@ import { runSkill } from "../lib/skill";
 import { sendChat, type ChatMessage } from "../lib/ai";
 import { resolveModel } from "../lib/globalAIConfig";
 import { getProvidersSync } from "../lib/providerModels";
+import { saveSessions, loadSessions } from "../lib/articleSessions";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AgentState>(() => ({ ...DEFAULT_AGENT_STATE }));
+  const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+  const prevArticleIdRef = useRef<string | null>(null);
 
   // Refs for ongoing operations
   const cancelledRef = useRef(false);
@@ -253,16 +256,59 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const removeSession = useCallback((id: string) => {
-    setState((s) => ({
-      ...s,
-      sessions: s.sessions.filter((se) => se.id !== id),
-    }));
+  // Auto-save sessions when they change
+  const persistSessions = useCallback((sessions: AgentSession[]) => {
+    if (prevArticleIdRef.current) {
+      saveSessions(prevArticleIdRef.current, sessions);
+    }
   }, []);
+
+  const removeSession = useCallback((id: string) => {
+    setState((s) => {
+      const updated = s.sessions.filter((se) => se.id !== id);
+      persistSessions(updated);
+      return { ...s, sessions: updated };
+    });
+  }, [persistSessions]);
+
+  // Load/save sessions when active article changes
+  useEffect(() => {
+    const prevId = prevArticleIdRef.current;
+    if (prevId && prevId !== activeArticleId) {
+      // Save current article's sessions
+      if (state.sessions.length > 0) saveSessions(prevId, state.sessions);
+    }
+    if (activeArticleId) {
+      // Load new article's sessions
+      loadSessions(activeArticleId).then((loaded) => {
+        if (loaded.length > 0) {
+          setState((s) => ({ ...s, sessions: loaded }));
+        } else {
+          // Clear sessions for new article if no saved ones
+          setState((s) => ({ ...s, sessions: [] }));
+        }
+      });
+    } else {
+      setState((s) => ({ ...s, sessions: [] }));
+    }
+    prevArticleIdRef.current = activeArticleId ?? null;
+  }, [activeArticleId]);
+
+  // Auto-save after session update (debounced)
+  const sessionSaveTimer = useRef<any>(undefined);
+  useEffect(() => {
+    if (!prevArticleIdRef.current) return;
+    if (sessionSaveTimer.current) clearTimeout(sessionSaveTimer.current);
+    sessionSaveTimer.current = setTimeout(() => {
+      saveSessions(prevArticleIdRef.current, state.sessions);
+    }, 1000);
+    return () => { if (sessionSaveTimer.current) clearTimeout(sessionSaveTimer.current); };
+  }, [state.sessions]);
 
   const value: AgentContextValue = {
     ...state,
     openPanel,
+    setActiveArticleId,
     closePanel,
     setPanelTab,
     togglePanel,
