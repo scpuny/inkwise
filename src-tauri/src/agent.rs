@@ -156,7 +156,13 @@ fn build_user_prompt(context: &AgentContext) -> String {
         // so this may already include the full article structure info
         prompt.push_str("```\n");
         let doc = if context.document_content.len() > 3000 {
-            let start = context.document_content.len() - 3000;
+            let target = context.document_content.len() - 3000;
+            // Find the nearest char boundary to avoid slicing in the middle of a multi-byte char
+            let start = if target > 0 && !context.document_content.is_char_boundary(target) {
+                (target..context.document_content.len()).find(|&i| context.document_content.is_char_boundary(i)).unwrap_or(target)
+            } else {
+                target
+            };
             let truncated = &context.document_content[start..];
             format!("...(前略)\n{}", truncated)
         } else {
