@@ -3847,6 +3847,40 @@ body {
 }
 
 /* ── Select input for settings ── */
+
+.skills-list__body-preview {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  font-family: var(--mono);
+}
+.settings-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.settings-textarea:focus {
+  border-color: var(--accent);
+}
+
 .settings-select {
   height: 32px;
   padding: 0 28px 0 10px;

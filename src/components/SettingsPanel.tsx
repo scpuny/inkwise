@@ -427,6 +427,7 @@ function SkillsSection() {
   const [formDesc, setFormDesc] = useState("");
   const [formRunAs, setFormRunAs] = useState<"Inline" | "Subagent">("Inline");
   const [formTools, setFormTools] = useState<string[]>(["read_document"]);
+  const [formBody, setFormBody] = useState("");
   const [formModel, setFormModel] = useState("");
   const [formEffort, setFormEffort] = useState("");
   const [formGenerating, setFormGenerating] = useState(false);
@@ -483,7 +484,7 @@ function SkillsSection() {
     setFormSaving(true);
     try {
       const { installSkill } = await import("../lib/skill");
-      await installSkill(formName.trim(), formDesc.trim(), "", formRunAs);
+      await installSkill(formName.trim(), formDesc.trim(), formBody.trim() || "", formRunAs);
       // Reload skills
       const { listSkills } = await import("../lib/skill");
       const list = await listSkills();
@@ -494,6 +495,7 @@ function SkillsSection() {
       setFormDesc("");
       setFormRunAs("Inline");
       setFormTools(["read_document"]);
+      setFormBody("");
       setFormModel("");
       setFormEffort("");
     } catch {}
@@ -582,6 +584,13 @@ function SkillsSection() {
                       </span>
                     </div>
                   </div>
+                  {/* Body content for non-Builtin skills */}
+                  {s.scope !== "Builtin" && s.body && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">指令模板</span>
+                      <pre className="skills-list__body-preview">{s.body.slice(0, 300)}{s.body.length > 300 ? "…" : ""}</pre>
+                    </div>
+                  )}
                   {/* Delete button for non-Builtin skills */}
                   {s.scope !== "Builtin" && (
                     <div className="skills-list__meta" style={{marginTop: 8}}>
@@ -628,6 +637,12 @@ function SkillsSection() {
                   <input className="settings-input" value={formDesc}
                     onChange={e => setFormDesc(e.target.value)}
                     placeholder="技能的作用说明" />
+                </SettingsField>
+                <SettingsField label="指令模板（body）">
+                  <textarea className="settings-textarea" value={formBody}
+                    onChange={e => setFormBody(e.target.value)}
+                    placeholder="技能的核心提示词，支持 Markdown 格式。留空则使用 AI 生成"
+                    style={{minHeight: 80, resize: "vertical"}} />
                 </SettingsField>
                 <SettingsField label="执行方式">
                   <select className="settings-select" value={formRunAs}
