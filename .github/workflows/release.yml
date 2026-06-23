@@ -34,11 +34,6 @@ jobs:
             target: aarch64-apple-darwin
             architecture: arm64
 
-          - name: macos-x64
-            os: macos-13
-            target: x86_64-apple-darwin
-            architecture: x64
-
           - name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
@@ -180,7 +175,6 @@ jobs:
             | 平台 | 架构 | 格式 |
             |---|---|---|
             | macOS | Apple Silicon (M芯片) | .dmg |
-            | macOS | Intel | .dmg |
             | Linux | x86_64 | .deb / .AppImage |
             | Linux | ARM64 | .deb / .AppImage |
             | Windows | x86_64 | .msi / .exe |
