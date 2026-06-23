@@ -1,0 +1,89 @@
+# InkWise — AI Writing Assistant
+
+> Immersive desktop writing app · Rich Text & Markdown dual-mode editor · AI-powered writing
+
+InkWise is a desktop writing application designed for Chinese writers, offering a smooth immersive editing experience with intelligent writing assistance. Built with React 19 + TypeScript + Tauri 2 + Rust, it supports multiple AI providers, series planning, multi-platform publishing, full-text search, and project context indexing.
+
+---
+
+## Features
+
+- **Dual-Mode Editor** — Seamless switching between rich text and Markdown source mode, powered by TipTap 3 (ProseMirror)
+- **AI Writing Assistance** — Continue writing, rewrite, polish, translate, summarize, and creative writing with streaming output and inline suggestions
+- **Multiple AI Providers** — Built-in support for OpenAI / Anthropic / DeepSeek, plus custom API-compatible providers
+- **Skill System** — Extensible Markdown-based skill files to customize AI writing behavior
+- **Series Planning** — Plan and manage article series with phased writing workflows (draft → revise → polish → final)
+- **Multi-Platform Publishing** — One-click publishing to WeChat Official Accounts, Toutiao, and more
+- **Full-Text Search** — SQLite FTS5 full-text search with real-time article indexing
+- **Project Context Indexing** — Scan local directories to inject project structure into AI context
+- **Theme System** — 6 visual styles × 3 theme modes (auto / dark / light)
+- **Keyboard Shortcuts** — Alt+1~5 for quick AI skills, Cmd+K command palette
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js ≥ 18
+- Rust ≥ 1.77.2
+- Tauri CLI 2.x (`cargo install tauri-cli --version "^2"`)
+
+### Install & Run
+
+```bash
+# Clone the repository
+git clone https://github.com/scpuny/inkwise.git
+cd inkwise
+
+# Install frontend dependencies
+npm install
+
+# Development in browser mode (AI features unavailable)
+npm run dev
+
+# Development in Tauri desktop mode
+npm run tauri:dev
+
+# Production build
+npm run tauri:build
+
+# Type checking
+npm run typecheck
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19 + TypeScript 6 + Vite 6 |
+| Editor Engine | TipTap 3 (ProseMirror) |
+| Desktop Shell | Tauri 2 (Rust) |
+| Backend | Rust (edition 2021) |
+| Database | SQLite (rusqlite, FTS5) |
+| HTTP Client | reqwest 0.12 |
+| Icons | lucide-react |
+| Styling | Single-file CSS, CSS Variables + BEM |
+
+## Project Structure
+
+```
+inkwise/
+├── src/                     # React frontend
+│   ├── components/          # 40+ components
+│   └── lib/                 # Utilities
+├── src-tauri/               # Rust backend
+│   └── src/
+│       ├── store.rs         # JSON persistence
+│       ├── db.rs            # SQLite persistence + FTS5
+│       ├── ai.rs            # AI API calls
+│       ├── skill.rs         # Skill management
+│       ├── agent.rs         # Agent execution
+│       ├── publisher.rs     # Multi-platform publishing
+│       └── project_indexer.rs # Project indexing
+├── DESIGN.md                # Design document (Chinese)
+├── AGENT.md                 # Development guide (for AI agents)
+└── LICENSE                  # MIT License
+```
+
+## License
+
+[MIT](LICENSE) © 2026 Scpuny
