@@ -2,6 +2,7 @@
 // 不依赖 JSON 输出，每一步返回纯文本，逐层推进
 
 import { sendChat, type ChatMessage } from "./ai";
+import { findSkill, getEffectivePhaseConfig, loadCustomSkills, type SkillPhase, type WritingSkill } from "./writingSkill";
 import { getProvidersSync } from "./providerModels";
 import type { OutlineSection } from "./articleBlueprint";
 
@@ -25,6 +26,7 @@ export interface PlanInput {
   projectContext?: string;
   projectName?: string;
   articleDescription?: string;
+  skillId?: string;
 }
 
 /* ─── 分步生成器 ───
@@ -34,26 +36,61 @@ export interface PlanInput {
 
 
 
-/** 构建项目上下文提示块（注入到每一步的 system prompt 中） */
-function buildProjectContextPrompt(ctx?: string, name?: string): string {
-  if (!ctx) return "";
-  const header = name ? `项目「${name}」的上下文信息` : "项目上下文信息";
-  return `
-
-## ${header}
-当前写作关联了以下本地项目目录，请参考项目结构、代码符号和配置来进行写作。
-\`\`\`
-${ctx.slice(0, 4000)}
-\`\`\`
-`;
-}
-
 let _stepId = 0;
 
 /** 获取可用的 provider */
 function getProvider() {
   const providers = getProvidersSync();
   return providers.find((p) => p.enabled && p.models.length > 0) || null;
+}
+
+/* ─── 技能辅助 ─── */
+
+/** 模块级自定义技能缓存 */
+let _customCache: WritingSkill[] | null = null;
+
+export async function ensureSkillCache(): Promise<void> {
+  if (_customCache === null) {
+    try { _customCache = await loadCustomSkills(); }
+    catch { _customCache = []; }
+  }
+}
+
+export function clearSkillCache(): void {
+  _customCache = null;
+}
+
+function resolveSkill(skillId?: string): WritingSkill | undefined {
+  if (!skillId) return undefined;
+  if (_customCache) {
+    const c = _customCache.find(s => s.id === skillId);
+    if (c) return c;
+  }
+  return findSkill(skillId);
+}
+
+/** 构建项目上下文提示块 */
+function buildProjectContextBlock(ctx?: string, name?: string): string {
+  if (!ctx) return "";
+  const header = name ? `项目「${name}」的上下文信息` : "项目上下文信息";
+  return `\n\n## ${header}\n当前写作关联了以下本地项目目录，请参考项目结构、代码符号和配置来进行写作。\n\`\`\`\n${ctx.slice(0, 4000)}\n\`\`\``;
+}
+
+/** 根据技能 ID 和阶段构建 system prompt，自动注入上下文 */
+function buildSystemPrompt(phase: SkillPhase, skillId?: string, tone?: string, projectContext?: string, projectName?: string): string {
+  const skill = resolveSkill(skillId);
+  const config = getEffectivePhaseConfig(skill, phase);
+  let prompt = config.systemPrompt;
+
+  // 技能声明了 project 上下文且可用时自动注入
+  if (skill?.contextSources?.some(cs => cs.type === "project") && projectContext) {
+    prompt += buildProjectContextBlock(projectContext, projectName);
+  }
+
+  if (tone && tone.trim()) {
+    prompt += `\n\n## 额外的风格提示\n用户偏好的风格基调：${tone}。请在不违背上述核心规则的前提下，融入这个基调。`;
+  }
+  return prompt;
 }
 
 /** 通用单步 AI 请求 */
@@ -78,13 +115,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 1024)
 /* ─── Step 1: 标题 ─── */
 
 export async function generateTitle(input: PlanInput): Promise<string> {
-  const sysPrompt = `你是一位标题创作专家。根据用户的灵感和偏好，生成一个吸引人的文章标题。
-
-## 规则
-- 标题要准确反映内容
-- 控制在 8-25 字
-- 直接输出标题，不要有任何前缀、引号或额外文字
-- 只输出一行，不要换行`;
+  const sysPrompt = buildSystemPrompt("title", input.skillId, input.tone, input.projectContext, input.projectName);
 
   const userPrompt = [
     `灵感: ${input.inspiration}`,
@@ -99,18 +130,14 @@ export async function generateTitle(input: PlanInput): Promise<string> {
 /* ─── Step 2: 简介 ─── */
 
 export async function generateDescription(input: PlanInput, title: string): Promise<string> {
-  const sysPrompt = `你是一位专业的文章策划。根据文章的标题和灵感，写一句简洁有力的文章简介。
-
-## 规则
-- 一句话概括文章要表达的核心内容
-- 30-80 字
-- 直接输出简介，不要前缀和引号
-- 只输出一行`;
+  const sysPrompt = buildSystemPrompt("description", input.skillId, input.tone, input.projectContext, input.projectName);
 
   const userPrompt = [
     `灵感: ${input.inspiration}`,
     `标题: ${title}`,
     input.tone ? `风格: ${input.tone}` : "",
+    input.targetAudience ? `目标读者: ${input.targetAudience}` : "",
+    input.articleDescription ? `文章定位: ${input.articleDescription}` : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt);
@@ -120,25 +147,7 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 /* ─── Step 3: 大纲 ─── */
 
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
-  const projectCtx = buildProjectContextPrompt(input.projectContext, input.projectName);
-  const sysPrompt = `你是一位写作规划师。为文章生成大纲结构。
-
-## 输出格式
-输出一个编号列表，每行一个章节。格式为：
-1. 章节标题 - 章节描述
-2. 章节标题 - 章节描述
-
-- 如果章节有子章节，子章节缩进 2 个空格：
-  1. 主章节
-    1.1 子章节 - 子章节描述
-    1.2 子章节 - 子章节描述
-  2. 主章节
-
-## 规则
-- 3-6 个主章节
-- 章节标题简洁明了
-- 章节描述（可选）说明这章写什么
-- 直接输出列表，不要任何额外文字${projectCtx}`;
+  const sysPrompt = buildSystemPrompt("outline", input.skillId, input.tone, input.projectContext, input.projectName);
 
   const userPrompt = [
     input.projectName ? `关联项目: ${input.projectName}` : "",
@@ -146,6 +155,7 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     `标题: ${title}`,
     `简介: ${description}`,
     input.tone ? `风格: ${input.tone}` : "",
+    input.targetAudience ? `目标读者: ${input.targetAudience}` : "",
     input.articleDescription ? `文章定位: ${input.articleDescription}` : "",
   ].filter(Boolean).join("\n");
 
@@ -186,18 +196,13 @@ function parseOutline(text: string): OutlineSection[] {
 /* ─── Step 4: 标签 ─── */
 
 export async function generateTags(input: PlanInput, title: string, description: string): Promise<string[]> {
-  const sysPrompt = `你是标签生成专家。根据文章信息生成 3-5 个标签。
-
-## 规则
-- 标签要覆盖文章的核心主题、风格和领域
-- 每个标签 2-5 个字
-- 用逗号分隔输出，不要编号和前缀
-- 直接输出：标签1, 标签2, 标签3`;
+  const sysPrompt = buildSystemPrompt("tags", input.skillId, input.tone, input.projectContext, input.projectName);
 
   const userPrompt = [
     `灵感: ${input.inspiration}`,
     `标题: ${title}`,
     `简介: ${description}`,
+    input.targetAudience ? `目标读者: ${input.targetAudience}` : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
@@ -210,6 +215,7 @@ export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "
 export type PlanStepResult = { step: PlanStep; data: any };
 
 export async function* generatePlanStream(input: PlanInput): AsyncGenerator<PlanStepResult> {
+  await ensureSkillCache();
   // Step 1: Title
   yield { step: "title", data: null };
   const title = await generateTitle(input);
@@ -244,6 +250,7 @@ export interface ArticleGenInput {
   tone?: string;
   targetAudience?: string;
   targetWordCount?: number;
+  skillId?: string;
 }
 
 /**
@@ -256,17 +263,7 @@ export async function generateFullArticle(input: ArticleGenInput): Promise<strin
     return `${i + 1}. ${s.title}${desc}`;
   }).join('\n');
 
-  const sysPrompt = `你是一位资深中文写作者。根据文章规划信息，写一篇完整的文章。
-
-## 要求
-- 严格按照大纲结构写作，每个章节都要覆盖
-- 使用流畅自然的中文
-- 使用 Markdown 格式，## 章节标题使用 1. 2. 3. 编号（如 ## 1. 引言、## 2. 环境准备）
-- ### 子章节不要额外编号
-- 每个章节至少 2-3 个段落，每段 3-5 句
-- 章节之间要有自然的过渡
-- 直接输出完整的 Markdown 内容，无需额外说明
-- 开头不要重复文章标题（会在外部添加）`;
+  const sysPrompt = buildSystemPrompt("writing", input.skillId, input.tone);
 
   const userPrompt = [
     `标题: ${input.title}`,
@@ -337,6 +334,7 @@ export interface SectionWriteInput {
   articleDescription?: string;
   tone?: string;
   targetWordCount?: number;
+  skillId?: string;
   totalSections?: number;
   previousSectionTitle?: string;
   previousSectionContent?: string;
@@ -347,16 +345,7 @@ export interface SectionWriteInput {
  * 提供上下文（前节内容）保持文风连贯。
  */
 export async function writeArticleSection(input: SectionWriteInput): Promise<string> {
-  const sysPrompt = `你是一位资深中文写作者。根据文章规划和当前章节信息，撰写该章节的完整内容。
-
-## 要求
-- 仅输出章节正文内容，不要包含章节标题（外部会自动添加）
-- 子章节（###）不要额外编号
-- 段落之间用空行分隔，适当使用加粗、引用等 Markdown 格式增加可读性
-- 内容要具体充实，有细节、例子或数据支撑，不要空洞的套话
-- 根据目标字数决定段落数量和内容深度，该长则长该短则短
-- 如果提供了前节内容，保持文风和逻辑连贯
-- 直接输出纯内容，不要任何标题、不要额外说明文字`;
+  const sysPrompt = buildSystemPrompt("writing", input.skillId, input.tone);
 
   const perSectionWords = input.targetWordCount && input.totalSections
     ? Math.ceil(input.targetWordCount / input.totalSections)

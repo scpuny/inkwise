@@ -397,7 +397,6 @@ export function buildEditorThemeCss(vars: ArticleThemeVars): string {
   background: ${vars.blockquoteBg} !important;
   color: ${vars.textColor} !important;
 }
-.editor-container .tiptap p { margin: 0 0 ${vars.paragraphGap}em !important; }
 .editor-container .tiptap ul, .editor-container .tiptap ol { padding-left: 1.5em !important; margin: 0.5em 0 !important; }
 .editor-container .tiptap li { margin: 0.3em 0 !important; }
 .editor-container .tiptap img { max-width: 100% !important; height: auto !important; border-radius: 6px !important; margin: 1em 0 !important; }

@@ -425,9 +425,6 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     if (editorFontFamily) {
       rules.push(`.tiptap, .tiptap * { font-family: ${editorFontFamily} !important; }`);
     }
-    if (editorParagraphGap !== undefined) {
-      rules.push(`.tiptap p { margin-bottom: ${editorParagraphGap}em !important; }`);
-    }
     tag.textContent = rules.join('\n');
   }, [editorFontFamily, editorParagraphGap]);
 
