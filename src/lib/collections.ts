@@ -36,7 +36,7 @@ export type SeriesArticle = {
   title: string;
   description: string;
   targetWordCount?: number;
-  status: "planned" | "outlining" | "writing" | "complete";
+  status: "planned" | "outlining" | "writing" | "reviewing" | "complete";
   articleId?: string;
 };
 

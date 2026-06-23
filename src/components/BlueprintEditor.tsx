@@ -1,7 +1,7 @@
 // BlueprintEditor.tsx — 文章蓝图编辑面板（弹窗）
 // 标题、简介、大纲管理、语气、目标读者、配图
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
 } from "lucide-react";
@@ -18,6 +18,13 @@ interface BlueprintEditorProps {
 export function BlueprintEditor({ blueprint, open, onClose, onSave }: BlueprintEditorProps) {
   const [bp, setBp] = useState<ArticleBlueprint>(() => ({ ...blueprint, outline: blueprint.outline.map((s) => ({ ...s })) }));
   const [activeTab, setActiveTab] = useState<"basic" | "outline">("basic");
+
+  // Sync local state when modal opens with fresh blueprint data
+  useEffect(() => {
+    if (open) {
+      setBp({ ...blueprint, outline: blueprint.outline.map((s) => ({ ...s })) });
+    }
+  }, [open, blueprint]);
 
   const handleSave = useCallback(() => {
     onSave(bp);

@@ -52,6 +52,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     const westernWords = text.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
     const words = cnChars + westernWords;
     setWordCount(words);
+    setTargetWordCount((window as any).__blueprintTarget || 0);
     const html = editor.getHTML();
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
@@ -83,13 +84,39 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
 
   // Listen for editor content changes
   useEffect(() => {
-    const editorEl = document.getElementById("editorMain");
-    if (!editorEl) return;
-    // Call once immediately (editor may already be ready)
-    updateStats();
-    const observer = new MutationObserver(() => updateStats());
-    observer.observe(editorEl, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
+    // Try to attach observer to editor element immediately
+    let observer: MutationObserver | null = null;
+    let checkTimer: any = null;
+    
+    const attachObserver = () => {
+      const editorEl = document.getElementById("editorMain");
+      if (!editorEl) return false;
+      updateStats();
+      observer = new MutationObserver(() => updateStats());
+      observer.observe(editorEl, { childList: true, subtree: true, characterData: true });
+      return true;
+    };
+    
+    // Try immediately
+    if (!attachObserver()) {
+      // Editor not mounted yet — poll until it appears
+      checkTimer = setInterval(() => {
+        if (attachObserver()) {
+          clearInterval(checkTimer);
+          checkTimer = null;
+        }
+      }, 500);
+    }
+    
+    // Also listen for editor-ready event
+    const onReady = () => { updateStats(); };
+    window.addEventListener("editor-ready", onReady);
+    
+    return () => {
+      if (observer) observer.disconnect();
+      if (checkTimer) clearInterval(checkTimer);
+      window.removeEventListener("editor-ready", onReady);
+    };
   }, [updateStats]);
 
   const saveLabel = visibleSave === "saving" ? "保存中…" : visibleSave === "saved" ? "已保存" : "";

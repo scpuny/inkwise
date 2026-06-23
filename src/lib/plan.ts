@@ -350,14 +350,13 @@ export async function writeArticleSection(input: SectionWriteInput): Promise<str
   const sysPrompt = `你是一位资深中文写作者。根据文章规划和当前章节信息，撰写该章节的完整内容。
 
 ## 要求
-- 章节标题请包含序号（例如 ## 2. 环境准备），序号由外部提供
+- 仅输出章节正文内容，不要包含章节标题（外部会自动添加）
 - 子章节（###）不要额外编号
-- 使用流畅自然的中文
 - 段落之间用空行分隔，适当使用加粗、引用等 Markdown 格式增加可读性
 - 内容要具体充实，有细节、例子或数据支撑，不要空洞的套话
 - 根据目标字数决定段落数量和内容深度，该长则长该短则短
 - 如果提供了前节内容，保持文风和逻辑连贯
-- 直接输出章节内容，不要标题、不要额外说明`;
+- 直接输出纯内容，不要任何标题、不要额外说明文字`;
 
   const perSectionWords = input.targetWordCount && input.totalSections
     ? Math.ceil(input.targetWordCount / input.totalSections)

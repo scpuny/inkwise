@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { BookOpen, FileText, CheckCircle2, Clock, ArrowRight, Sparkles, ChevronRight, Loader2, MoreHorizontal, Pencil } from "lucide-react";
+import { BookOpen, FileText, Pencil, Trash2, Clock, Sparkles, ChevronRight, Loader2, MoreHorizontal } from "lucide-react";
 import type { SeriesPlan, SeriesArticle } from "../lib/collections";
 import { saveSeriesPlan, loadSeriesPlan } from "../lib/collections";
+import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { loadArticleContent } from "../lib/articles";
 
 interface SeriesOverviewProps {
   plan: SeriesPlan;
@@ -11,20 +13,6 @@ interface SeriesOverviewProps {
   onEditPlan?: () => void;
   onDeletePlan?: () => void;
 }
-
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-  planned: <Clock size={12} style={{ opacity: 0.5 }} />,
-  outlining: <Loader2 size={12} className="series-overview__spinner" />,
-  writing: <Loader2 size={12} className="series-overview__spinner" />,
-  complete: <CheckCircle2 size={12} className="series-overview__check" />,
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  planned: "待规划",
-  outlining: "生成大纲中",
-  writing: "写作中",
-  complete: "已完成",
-};
 
 export function SeriesOverview({
   plan,
@@ -37,9 +25,51 @@ export function SeriesOverview({
   const [expanded, setExpanded] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [editingArtId, setEditingArtId] = useState<string | null>(null);
+  const [editingArtDraft, setEditingArtDraft] = useState("");
+  const [ctxMenu, setCtxMenu] = useState<{ items: ContextMenuItem[]; x: number; y: number } | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const [titleDraft, setTitleDraft] = useState(plan.title);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const completedCount = plan.articles.filter((a) => a.status === "complete").length;
+  const [statsCache, setStatsCache] = useState<Record<string, number>>({});
+  
+  const calcWords = useCallback((text: string) => {
+    const cnChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+    const westernWords = text.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+    return cnChars + westernWords;
+  }, []);
+  
+  // Load stats for articles that have articleId
+  useEffect(() => {
+    plan.articles.forEach(a => {
+      if (a.articleId && !statsCache[a.articleId]) {
+        loadArticleContent(a.articleId).then(content => {
+          if (content) setStatsCache(prev => ({ ...prev, [a.articleId!]: calcWords(content) }));
+        });
+      }
+    });
+  }, [plan.articles, statsCache, calcWords]);
+
+  const handleRenameArticle = useCallback(async (articleId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    const updated = {
+      ...plan,
+      articles: plan.articles.map(a => a.id === articleId ? { ...a, title: trimmed } : a)
+    };
+    await saveSeriesPlan(collectionId, updated);
+    window.dispatchEvent(new Event("collections-changed"));
+  }, [plan, collectionId]);
+
+  const handleRemoveArticle = useCallback(async (articleId: string) => {
+    const updated = {
+      ...plan,
+      articles: plan.articles.filter(a => a.id !== articleId)
+    };
+    await saveSeriesPlan(collectionId, updated);
+    window.dispatchEvent(new Event("collections-changed"));
+  }, [plan, collectionId]);
 
   const handleSaveTitle = useCallback(async () => {
     const trimmed = titleDraft.trim();
@@ -60,7 +90,10 @@ export function SeriesOverview({
     if (editingTitle) {
       setTimeout(() => titleInputRef.current?.focus(), 50);
     }
-  }, [editingTitle]);
+    if (editingArtId) {
+      setTimeout(() => editInputRef.current?.focus(), 50);
+    }
+  }, [editingTitle, editingArtId]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -106,41 +139,60 @@ export function SeriesOverview({
 
       {expanded && (
         <div className="series-overview__list">
-          {plan.articles.map((article, i) => (
-            <div key={article.id} className="series-overview__article">
-              <div className="series-overview__article-status">
-                {STATUS_ICONS[article.status] || <Clock size={12} style={{ opacity: 0.3 }} />}
-              </div>
-              <div className="series-overview__article-body">
-                <div className="series-overview__article-title">{article.title}</div>
-                {article.description && (
-                  <div className="series-overview__article-desc">{article.description}</div>
-                )}
-              </div>
-              <div className="series-overview__article-actions">
-                {article.status === "planned" && (
-                  <button
-                    className="series-overview__action-btn"
-                    onClick={() => onPlanArticle?.(article)}
-                    title="开始写作"
-                  >
-                    <Sparkles size={11} />
-                  </button>
-                )}
-                {article.articleId && (
-                  <button
-                    className="series-overview__action-btn"
-                    onClick={() => onOpenArticle?.(article.articleId!)}
-                    title="打开文章"
-                  >
-                    <FileText size={11} />
-                  </button>
-                )}
-              </div>
+          {plan.articles.map((article, i) => {
+            const isEditing = editingArtId === article.id;
+            return (
+            <div key={article.id} className="collection-tree__leaf" onClick={() => {
+                if (article.status === "planned") return; // 未开始 — 仅 AI 图标可触发
+                if (article.status === "complete" || article.status === "reviewing") {
+                  onOpenArticle?.(article.articleId!);
+                } else {
+                  onPlanArticle?.(article); // writing/outlining → 进入规划页面
+                }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                setCtxMenu({
+                  items: [
+                    { icon: <Pencil size={13} />, label: "重命名", onClick: () => { setEditingArtId(article.id); setEditingArtDraft(article.title); } },
+                    { icon: <Trash2 size={13} />, label: "从系列删除", danger: true, onClick: () => handleRemoveArticle(article.id) },
+                  ],
+                  x: e.clientX, y: e.clientY
+                });
+              }}>
+              {isEditing ? (
+                <input ref={editInputRef} className="collection-tree__input collection-tree__input--leaf" value={editingArtDraft}
+                  onChange={(e) => setEditingArtDraft(e.target.value)}
+                  onBlur={() => { handleRenameArticle(article.id, editingArtDraft); setEditingArtId(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { handleRenameArticle(article.id, editingArtDraft); setEditingArtId(null); } if (e.key === "Escape") setEditingArtId(null); }}
+                  onClick={(e) => e.stopPropagation()} />
+              ) : (
+                <><span className="collection-tree__leaf-icon-wrap">
+                  {article.status === "complete" || article.status === "reviewing" ? (
+                    <FileText size={13} className="collection-tree__leaf-icon series-status-icon--complete" />
+                  ) : article.status === "writing" ? (
+                    <FileText size={13} className="collection-tree__leaf-icon series-status-icon--writing" />
+                  ) : (
+                    <FileText size={13} className="collection-tree__leaf-icon series-status-icon--planned" />
+                  )}
+                </span>
+                <span className="collection-tree__leaf-label">{article.title}</span>
+                {article.articleId && statsCache[article.articleId] ? (
+                  <span className="collection-tree__leaf-stats">{statsCache[article.articleId]}字</span>
+                ) : null}
+                <div className="series-overview__article-actions">
+                  {article.status === "planned" && (
+                    <button className="series-overview__action-btn" onClick={(e) => { e.stopPropagation(); onPlanArticle?.(article); }} title="开始规划">
+                      <Sparkles size={11} />
+                    </button>
+                  )}
+                </div></>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       )}
+      {ctxMenu && <ContextMenu items={ctxMenu.items} position={{ x: ctxMenu.x, y: ctxMenu.y }} onClose={() => setCtxMenu(null)} />}
     </div>
   );
 }

@@ -453,6 +453,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
   // Expose editor globally
   useEffect(() => {
     window.editorInstance = { editor };
+    window.dispatchEvent(new Event("editor-ready"));
     // Expose insert method for ghost text
     (window as any).__insertGhostContent = (content: string) => {
       editor?.commands.insertContent(content);

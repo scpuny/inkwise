@@ -220,7 +220,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
             sectionStart = li;
             continue;
           }
-          if (sectionStart >= 0 && li > sectionStart && trimmed.startsWith("#") && !trimmed.startsWith(heading + " ")) {
+          if (sectionStart >= 0 && li > sectionStart && trimmed.startsWith("#")) {
             const hLevel = trimmed.match(/^#+/)?.[0].length || 0;
             if (hLevel <= headingLevel) {
               sectionEnd = li;
@@ -243,6 +243,11 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         // Track content for editor handoff
         writtenContentRef.current = currentContent;
         contentRef.current = currentContent;
+
+        // Normalize: collapse 3+ consecutive blank lines to a single blank line (sections 2+)
+        if (currentContent.includes("\n\n\n")) {
+          currentContent = currentContent.replace(/\n{3,}/g, "\n\n");
+        }
 
         // Mark section as complete
         setBlueprint(prev => {
@@ -274,6 +279,11 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       });
     }
     setWritingSection(null);
+    // Final blank-line normalization across all sections
+    if (currentContent.includes("\n\n\n")) {
+      currentContent = currentContent.replace(/\n{3,}/g, "\n\n");
+      await saveArticleContent(articleId, currentContent);
+    }
     return true;
   }
 
@@ -554,10 +564,9 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       bp.phase = "writing";
       setBlueprint(bp);
 
-      // Save skeleton content (already saved by onPlanComplete, but ensure it's persisted)
+      // Save minimal skeleton (just description + spacing for section injection)
       const skelDoc = (partialPlan.description || "") + "\n\n";
-
-      saveArticleContent(result.articleId, skelDoc);
+      await saveArticleContent(result.articleId, skelDoc);
 
       // Start writing phase
       setPlanState("writing");
@@ -577,6 +586,13 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
 
       // Show article review
       setPlanState("article-review");
+      // If this is a series article, update its status to reviewing (deferred to avoid render-phase state conflict)
+      if (pendingArticleRef.current) {
+        const detail = { ...pendingArticleRef.current };
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("series-article-review", { detail }));
+        }, 0);
+      }
     } catch (e: any) {
       console.error("Plan execution failed:", e);
       setPlanError(e?.message || "写作过程出错");
@@ -676,10 +692,11 @@ ${augmentedContent}`
 
   // Extract planning logic so it can be called from both UI and auto-plan event
   const handleStartPlan = useCallback(async (input: PlanInput) => {
-    // Cancel any previous plan
+    // Cancel any previous plan and writing
     if (abortPlanRef.current) {
       abortPlanRef.current.abort();
     }
+    writingAbortRef.current = true;
     const abortController = new AbortController();
     abortPlanRef.current = abortController;
     
@@ -765,6 +782,7 @@ ${augmentedContent}`
     window.addEventListener("auto-plan-article", handler);
     return () => window.removeEventListener("auto-plan-article", handler);
   }, [handleStartPlan]);
+
 
   // Load folder context when activeCollectionId changes
   useEffect(() => {

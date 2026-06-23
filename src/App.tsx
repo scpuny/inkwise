@@ -86,6 +86,7 @@ function AppContent() {
   const [seriesPlannerExistingPlan, setSeriesPlannerExistingPlan] = useState<any>(null);
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([]);
   const [seriesRefreshKey, setSeriesRefreshKey] = useState(0);
+  const pendingSeriesArticleRef = useRef<{ collectionId: string; articleId: string } | null>(null);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [articlePhase, setArticlePhase] = useState<string | undefined>(undefined);
@@ -152,33 +153,100 @@ function AppContent() {
     if (!targetId || !cols.some(c => c.id === targetId)) {
       targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
     }
-    // Create article
-    const article = await addArticle(targetId, plan.title || "无标题");
-    if (!article) return null;
-    // Save blueprint with writing phase
-    const bp = createDefaultBlueprint(plan.title || "无标题");
-    bp.workingTitle = plan.title || "无标题";
-    bp.description = plan.description || "";
-    bp.tone = plan.tone || undefined;
-    bp.targetAudience = plan.targetAudience || undefined;
-    bp.targetWordCount = plan.targetWordCount || undefined;
-    bp.tags = plan.tags || [];
-    bp.outline = plan.outline || [];
-    bp.phase = "writing";
-    await saveBlueprint(article.id, bp);
-    // Build article content skeleton from outline structure
-    let doc = "# " + (plan.title || "无标题");
-    if (plan.description) {
-      doc += "\n\n> " + plan.description + "\n";
-    }
-    if (plan.outline && plan.outline.length > 0) {
-      doc += "\n";
-      for (const section of plan.outline) {
-        const heading = "#".repeat(Math.min(section.level + 1, 4));
-        doc += heading + " " + section.title + "\n\n\n";
+    // Check if this is from a series plan that already has an articleId
+    let existingArticleId: string | null = null;
+    if (pendingSeriesArticleRef.current && pendingSeriesArticleRef.current.collectionId === targetId) {
+      const seriesPlan = await loadSeriesPlan(pendingSeriesArticleRef.current.collectionId);
+      if (seriesPlan) {
+        const seriesArt = seriesPlan.articles.find(a => a.id === pendingSeriesArticleRef.current!.articleId);
+        if (seriesArt && seriesArt.articleId) {
+          existingArticleId = seriesArt.articleId;
+        }
       }
     }
-    await saveArticleContent(article.id, doc);
+    
+    let article;
+    if (existingArticleId) {
+      // Update existing article
+      article = { id: existingArticleId };
+      const bp = createDefaultBlueprint(plan.title || "无标题");
+      bp.workingTitle = plan.title || "无标题";
+      bp.description = plan.description || "";
+      bp.tone = plan.tone || undefined;
+      bp.targetAudience = plan.targetAudience || undefined;
+      bp.targetWordCount = plan.targetWordCount || undefined;
+      bp.tags = plan.tags || [];
+      bp.outline = plan.outline || [];
+      bp.phase = "writing";
+      await saveBlueprint(existingArticleId, bp);
+      let doc = "";
+      if (plan.description) {
+        doc += plan.description + "\n\n";
+      }
+      if (plan.outline && plan.outline.length > 0) {
+        for (const section of plan.outline) {
+          const heading = "#".repeat(Math.min(section.level + 1, 4));
+          doc += heading + " " + section.title + "\n\n\n";
+        }
+      }
+      await saveArticleContent(existingArticleId, doc);
+    } else if (pendingSeriesArticleRef.current && pendingSeriesArticleRef.current.collectionId === targetId) {
+      // Series article: use its own id, no duplicate collection entry
+      const seriesId = pendingSeriesArticleRef.current.articleId;
+      article = { id: seriesId };
+      const bp = createDefaultBlueprint(plan.title || "无标题");
+      bp.workingTitle = plan.title || "无标题";
+      bp.description = plan.description || "";
+      bp.tone = plan.tone || undefined;
+      bp.targetAudience = plan.targetAudience || undefined;
+      bp.targetWordCount = plan.targetWordCount || undefined;
+      bp.tags = plan.tags || [];
+      bp.outline = plan.outline || [];
+      bp.phase = "writing";
+      await saveBlueprint(seriesId, bp);
+      // Don't save skeleton content — writeAllSections will build from scratch
+    } else {
+      // Create new article (non-series)
+      const newArticle = await addArticle(targetId, plan.title || "无标题");
+      if (!newArticle) return null;
+      article = newArticle;
+      const bp = createDefaultBlueprint(plan.title || "无标题");
+      bp.workingTitle = plan.title || "无标题";
+      bp.description = plan.description || "";
+      bp.tone = plan.tone || undefined;
+      bp.targetAudience = plan.targetAudience || undefined;
+      bp.targetWordCount = plan.targetWordCount || undefined;
+      bp.tags = plan.tags || [];
+      bp.outline = plan.outline || [];
+      bp.phase = "writing";
+      await saveBlueprint(article.id, bp);
+      let doc = "";
+      if (plan.description) {
+        doc += plan.description + "\n\n";
+      }
+      if (plan.outline && plan.outline.length > 0) {
+        for (const section of plan.outline) {
+          const heading = "#".repeat(Math.min(section.level + 1, 4));
+          doc += heading + " " + section.title + "\n\n\n";
+        }
+      }
+      await saveArticleContent(article.id, doc);
+    }
+    
+    // Link series article if applicable
+    if (pendingSeriesArticleRef.current && pendingSeriesArticleRef.current.collectionId === targetId) {
+      const seriesPlan = await loadSeriesPlan(pendingSeriesArticleRef.current.collectionId);
+      if (seriesPlan) {
+        const updated = seriesPlan.articles.map((a: any) =>
+          a.id === pendingSeriesArticleRef.current!.articleId
+            ? { ...a, status: "writing", articleId: article.id }
+            : a
+        );
+        await saveSeriesPlan(pendingSeriesArticleRef.current.collectionId, { ...seriesPlan, articles: updated });
+      }
+      pendingSeriesArticleRef.current = null;
+    }
+    
     window.dispatchEvent(new CustomEvent("collections-changed"));
     return { articleId: article.id, collectionId: targetId };
   }, []);
@@ -341,40 +409,30 @@ function AppContent() {
     return () => window.removeEventListener("edit-series-plan", handler);
   }, []);
 
-  // Listen for plan-series-article event (from SeriesOverview)
+  // Listen for plan-series-article event (from SeriesOverview → navigate to planning)
   useEffect(() => {
     const handler = async (e: Event) => {
       const { collectionId, article } = (e as CustomEvent).detail;
       if (!collectionId || !article) return;
       try {
-        // Create article
-        const newArticle = await addArticle(collectionId, article.title);
-        if (!newArticle) return;
+        // Don't create article yet — handlePlanComplete will do it on confirm
+        // Store the series article info so we can link after creation
+        pendingSeriesArticleRef.current = { collectionId, articleId: article.id };
         
-        // Update series plan status
-        const plan = await loadSeriesPlan(collectionId);
-        if (plan) {
-          const updated = plan.articles.map((a: any) =>
-            a.id === article.id ? { ...a, status: "writing", articleId: newArticle.id } : a
-          );
-          await saveSeriesPlan(collectionId, { ...plan, articles: updated });
-        }
-        
-        // Navigate to StartupSplash and auto-trigger AI planning
+        // Navigate to StartupSplash
         setActiveArticleId(null);
         setActiveCollectionId(collectionId);
         setHasActiveArticle(false);
         
         // Read tone/audience from series plan
-        const series = plan || await loadSeriesPlan(collectionId);
-        const seriesTone = series?.tone;
-        const seriesAudience = series?.targetAudience;
+        const seriesPlan = await loadSeriesPlan(collectionId);
+        const seriesTone = seriesPlan?.tone;
+        const seriesAudience = seriesPlan?.targetAudience;
         
         // Dispatch event for EditorPane to auto-start planning
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent("auto-plan-article", {
             detail: { 
-              articleId: newArticle.id,
               collectionId,
               title: article.title,
               description: article.description || "",
@@ -393,6 +451,26 @@ function AppContent() {
     return () => window.removeEventListener("plan-series-article", handler);
   }, []);
 
+  // Listen for series-article-review (writing complete → update status to reviewing)
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { articleId, collectionId } = (e as CustomEvent).detail;
+      if (!articleId || !collectionId) return;
+      try {
+        const seriesPlan = await loadSeriesPlan(collectionId);
+        if (!seriesPlan) return;
+        const updated = seriesPlan.articles.map(a =>
+          a.id === articleId ? { ...a, status: "reviewing" as const } : a
+        );
+        await saveSeriesPlan(collectionId, { ...seriesPlan, articles: updated });
+        window.dispatchEvent(new Event("collections-changed"));
+      } catch (err) {
+        console.warn("series-article-review 更新状态失败:", err);
+      }
+    };
+    window.addEventListener("series-article-review", handler);
+    return () => window.removeEventListener("series-article-review", handler);
+  }, []);
   // Layout class
   const { panelOpen, closePanel } = useAgent();
   const layoutClass = [
