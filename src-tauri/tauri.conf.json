@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "AI 写作助手",
+  "productName": "InkWise",
   "version": "0.1.0",
-  "identifier": "com.aiwriter.desktop",
+  "identifier": "com.inkwise.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:5173",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "AI 写作助手",
+        "title": "InkWise",
         "width": 1280,
         "height": 800,
         "resizable": true,
@@ -26,14 +26,28 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/app.svg",
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/Square30x30Logo.png",
+      "icons/Square44x44Logo.png",
+      "icons/Square71x71Logo.png",
+      "icons/Square89x89Logo.png",
+      "icons/Square107x107Logo.png",
+      "icons/Square142x142Logo.png",
+      "icons/Square150x150Logo.png",
+      "icons/Square284x284Logo.png",
+      "icons/Square310x310Logo.png",
+      "icons/StoreLogo.png"
     ],
-    "android": {
-      "debugApplicationIdSuffix": ".debug"
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      }
     }
   }
 }

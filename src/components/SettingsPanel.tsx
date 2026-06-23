@@ -1025,11 +1025,9 @@ function AboutSection() {
     <SettingsPage title="关于">
       <div className="about-card">
         <div className="about-card__logo">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
+          <img src="/inkwise-icon.svg" width="100" height="100" alt="InkWise" />
         </div>
-        <h3>AI 写作助手</h3>
+        <h3>InkWise · 墨智</h3>
         <p className="about-card__version">版本 0.0.1</p>
         <p className="about-card__desc">基于 React + TypeScript + Vite 构建，UI 设计参考 Reasonix 风格。</p>
         <div className="about-card__tech">

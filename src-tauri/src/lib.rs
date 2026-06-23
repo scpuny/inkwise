@@ -4,8 +4,9 @@ mod skill;
 mod agent;
 mod db;
 mod project_indexer;
+mod publisher;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, SeriesArticle};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
@@ -952,6 +953,94 @@ fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String) 
 }
 
 
+
+// ─── Platform Config ───
+
+#[tauri::command]
+fn get_platform_configs(state: tauri::State<AppState>) -> Vec<PlatformConfig> {
+    state.store.lock().unwrap().load_platform_configs()
+}
+
+#[tauri::command]
+fn save_platform_config(state: tauri::State<AppState>, config: PlatformConfig) -> Result<(), String> {
+    let mut configs = state.store.lock().unwrap().load_platform_configs();
+    if let Some(existing) = configs.iter_mut().find(|c| c.id == config.id) {
+        *existing = config;
+    } else {
+        configs.push(config);
+    }
+    state.store.lock().unwrap().save_platform_configs(&configs)
+}
+
+#[tauri::command]
+fn delete_platform_config(state: tauri::State<AppState>, id: String) -> Result<(), String> {
+    let mut configs = state.store.lock().unwrap().load_platform_configs();
+    configs.retain(|c| c.id != id);
+    state.store.lock().unwrap().save_platform_configs(&configs)
+}
+
+#[tauri::command]
+async fn verify_platform_credentials(_state: tauri::State<'_, AppState>, _platform: String, app_id: String, app_secret: String) -> Result<bool, String> {
+    publisher::verify_wechat_credentials(&app_id, &app_secret).await
+}
+
+// ─── Publish Records ───
+
+#[tauri::command]
+fn get_publish_history(state: tauri::State<AppState>, article_id: String) -> Vec<PublishRecord> {
+    let records = state.store.lock().unwrap().load_publish_records();
+    records.into_iter().filter(|r| r.article_id == article_id).collect()
+}
+
+
+// ─── Publish ───
+
+#[tauri::command]
+async fn publish_to_platform(
+    state: tauri::State<'_, AppState>,
+    article_id: String,
+    platform: String,
+    markdown: String,
+    options: publisher::PublishOptions,
+    action: String,
+) -> Result<publisher::PublishResult, String> {
+    if platform != "wechat" {
+        return Err(format!("不支持的平台: {}", platform));
+    }
+
+    let (app_id, app_secret) = {
+        let store = state.store.lock().unwrap();
+        let configs = store.load_platform_configs();
+        let wechat = configs.iter().find(|c| c.platform == "wechat" && c.enabled)
+            .ok_or("未找到已启用的微信公众号配置")?.clone();
+        (wechat.app_id, wechat.app_secret)
+    };
+
+    let article_dir = {
+        let store = state.store.lock().unwrap();
+        store.articles_dir().to_string_lossy().to_string()
+    };
+
+    // Extract article dir from article_id path if needed
+    let dir = std::path::Path::new(&article_dir);
+
+    publisher::publish_to_wechat(
+        &article_id,
+        &dir.to_string_lossy(),
+        &app_id,
+        &app_secret,
+        &markdown,
+        &options,
+        &action,
+    ).await
+}
+
+
+#[tauri::command]
+fn save_publish_records(state: tauri::State<AppState>, records: Vec<PublishRecord>) -> Result<(), String> {
+    state.store.lock().unwrap().save_publish_records(&records)
+}
+
 fn collect_structure(
     dir: &std::path::Path,
     output: &mut Vec<String>,
@@ -987,12 +1076,50 @@ fn collect_structure(
     }
     Ok(())
 }
+/// Recursively copy a directory
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else if !dst_path.exists() {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let app_dir = app.path().app_data_dir().expect("failed to get app data dir");
             std::fs::create_dir_all(&app_dir).ok();
+            // Migrate data from old com.aiwriter.desktop if fresh install
+            let old_app_dir = app_dir.parent().map(|p| p.join("com.aiwriter.desktop"));
+            if let Some(ref old_dir) = old_app_dir {
+                if !app_dir.join("data/collections.json").exists()
+                    && old_dir.join("data/collections.json").exists()
+                {
+                    let _ = std::fs::create_dir_all(&app_dir.join("data"));
+                    if let Ok(entries) = std::fs::read_dir(old_dir.join("data")) {
+                        for entry in entries.flatten() {
+                            let src = entry.path();
+                            let dst = app_dir.join("data").join(src.file_name().unwrap_or_default());
+                            if dst.exists() { continue; }
+                            if src.is_dir() {
+                                let _ = copy_dir_recursive(&src, &dst);
+                            } else {
+                                let _ = std::fs::copy(&src, &dst);
+                            }
+                        }
+                    }
+                }
+            }
             let database = db::Database::open(&app_dir).ok();
             app.manage(AppState {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
@@ -1066,7 +1193,14 @@ pub fn run() {
             rescan_project_folder,
             save_series_plan,
             load_series_plan,
-            delete_series_plan])
+            delete_series_plan,
+            get_platform_configs,
+            save_platform_config,
+            delete_platform_config,
+            verify_platform_credentials,
+            get_publish_history,
+            save_publish_records,
+            publish_to_platform])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

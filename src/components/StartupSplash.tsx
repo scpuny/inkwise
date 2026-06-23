@@ -307,7 +307,7 @@ export function StartupSplash({
                   )}
                   <div className="startup-splash__actions" style={{marginTop:16}}>
                     <button className="btn btn--primary" style={{height:30}} onClick={onEnterEditor}>
-                      <PenLine size={14} /> 进入编辑
+                      <img src="/inkwise-icon.svg" width="16" height="16" alt="" style={{verticalAlign:"middle",marginRight:4}} /> 进入编辑
                     </button>
                     <button className="btn" onClick={onCancel}>
                       取消
@@ -326,7 +326,7 @@ export function StartupSplash({
           
             <>
               <div className="startup-splash__brand">
-                <PenLine size={22} strokeWidth={1.5} />
+                <img src="/inkwise-icon.svg" width="80" height="80" alt="InkWise" className="startup-splash__logo" />
                 <h1>开始写作</h1>
                 <p className="startup-splash__tagline">输入灵感，AI 帮你完成从规划到成文的全部工作</p>
               </div>

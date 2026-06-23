@@ -375,7 +375,7 @@ export async function exportPDF(
         <div class="print-body">
           <div class="print-header">${escapeHtml(title)}</div>
           ${renderMarkdownToHTML(content)}
-          <div class="print-footer">由 AI 写作助手生成 · ${new Date().toLocaleDateString("zh-CN")}</div>
+          <div class="print-footer">由 InkWise 生成 · ${new Date().toLocaleDateString("zh-CN")}</div>
         </div>
         <script>
           window.onload = function() {

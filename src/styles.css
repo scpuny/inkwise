@@ -1187,12 +1187,12 @@ body {
 .sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: 36px;
+  gap: 10px;
+  height: 44px;
   padding: 0 2px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   color: var(--fg);
-  font-size: var(--text-md);
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: .3px
 }
