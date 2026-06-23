@@ -27,7 +27,7 @@ h1 { font-size: 28px; font-weight: 700; margin: 1.2em 0 0.6em; line-height: 1.3;
 h2 { font-size: 22px; font-weight: 700; margin: 1em 0 0.5em; line-height: 1.35; }
 h3 { font-size: 18px; font-weight: 650; margin: 1em 0 0.5em; }
 h4 { font-size: 15px; font-weight: 650; margin: 0.8em 0 0.4em; }
-p { margin: 0 0 1.25em; }
+p { margin: 0 0; }
 a { color: #0969da; text-decoration: underline; }
 blockquote { margin: 1em 0; padding: 0.5em 1em; border-left: 4px solid #d0d7de; color: #656d76; background: #f6f8fa; border-radius: 0 6px 6px 0; }
 blockquote p { margin: 0; }
@@ -88,7 +88,7 @@ h1 { font-size: 26px; font-weight: 700; margin: 1.2em 0 0.5em; color: #e0e0e0; }
 h2 { font-size: 22px; font-weight: 700; margin: 1em 0 0.5em; color: #e0e0e0; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
 h3 { font-size: 18px; font-weight: 650; margin: 1em 0 0.5em; color: #e0e0e0; }
 h4 { font-size: 15px; font-weight: 650; margin: 0.8em 0 0.4em; color: #d0d0d0; }
-p { margin: 0 0 1.25em; }
+p { margin: 0 0; }
 a { color: #6cb6ff; text-decoration: underline; }
 blockquote { margin: 1em 0; padding: 0.5em 1em; border-left: 4px solid #565656; color: #9a9a9a; background: #2a2a2a; border-radius: 0 6px 6px 0; }
 blockquote p { margin: 0; }
@@ -1247,12 +1247,12 @@ export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean):
   const rules: string[] = [];
   if (firstLineIndent) {
     // Exclude list items — only indent "real" paragraphs
-    rules.push(`.editor-container .tiptap p:not(li p) { text-indent: 2em !important; }`);
+    rules.push(`.editor-container .tiptap p:not(li p, blockquote p, table tr td p) { text-indent: 2em !important; }`);
   }
   if (justifyAlign) {
     rules.push(`.editor-container .tiptap.ProseMirror { text-align: justify !important; }`);
     // Exclude list items from justify
-    rules.push(`.editor-container .tiptap p:not(li p) { text-align: justify !important; }`);
+    rules.push(`.editor-container .tiptap p:not(li p, blockquote p, table tr td p) { text-align: justify !important; }`);
   }
   tag.textContent = rules.join("\n");
 }

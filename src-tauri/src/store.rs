@@ -108,6 +108,51 @@ pub struct AppSettings {
     pub text_size: String,
 }
 
+// ─── WritingSkill ───
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaseConfig {
+    pub system_prompt: String,
+    pub temperature: Option<f64>,
+    pub model: Option<String>,
+    pub max_tokens: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextSource {
+    pub r#type: String,
+    pub label: String,
+    pub required: bool,
+    pub max_length: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StyleDimension {
+    pub name: String,
+    pub value: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WritingSkill {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub icon: String,
+    pub scope: String,
+    pub phase: Option<String>,
+    pub configs: std::collections::HashMap<String, PhaseConfig>,
+    pub context_sources: Vec<ContextSource>,
+    pub dimensions: Vec<StyleDimension>,
+    pub example_text: Option<String>,
+    pub builtin: bool,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
 // ─── DataStore ───
 
 pub struct DataStore {
@@ -226,6 +271,16 @@ impl DataStore {
     }
 
     /// Load article Markdown content. Returns None if not found.
+    // ─── Writing Skills ───
+
+    pub fn load_writing_skills(&self) -> Vec<WritingSkill> {
+        self.read_json("writing_skills").unwrap_or_default()
+    }
+
+    pub fn save_writing_skills(&self, skills: &[WritingSkill]) -> Result<(), String> {
+        self.write_json("writing_skills", skills)
+    }
+
     pub fn load_article_content(&self, id: &str) -> Option<String> {
         let path = self.articles_dir.join(format!("{}.md", id));
         if path.exists() {

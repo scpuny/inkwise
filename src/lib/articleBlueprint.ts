@@ -28,6 +28,7 @@ export interface ArticleBlueprint {
   phase: ArticlePhase;
   tags: string[];
   outline: OutlineSection[];
+  skillId?: string;
   updatedAt: number;
 }
 

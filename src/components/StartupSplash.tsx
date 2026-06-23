@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle, FolderInput } from "lucide-react";
+import { CustomSelect, type CustomSelectOption } from "./CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../lib/plan";
+import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../lib/writingSkill";
 import type { OutlineSection } from "../lib/articleBlueprint";
 
 const SUGGESTIONS = [
@@ -12,14 +14,6 @@ const SUGGESTIONS = [
   "用幽默的风格写一篇自我介绍",
 ];
 
-const TONE_OPTIONS = [
-  { value: "文艺", label: "文艺" },
-  { value: "正式", label: "正式" },
-  { value: "口语", label: "口语" },
-  { value: "学术", label: "学术" },
-  { value: "幽默", label: "幽默" },
-];
-
 const AUDIENCE_OPTIONS = [
   { value: "", label: "不限" },
   { value: "大众读者", label: "大众读者" },
@@ -28,6 +22,23 @@ const AUDIENCE_OPTIONS = [
   { value: "学生", label: "学生" },
   { value: "__custom__", label: "自定义…" },
 ];
+
+const BUILTIN_SKILLS = getAllBuiltinSkills();
+
+// 技能列表懒加载（含自定义）
+let _allSkills: WritingSkill[] = [];
+let _skillsLoaded = false;
+
+async function ensureSkills() {
+  if (!_skillsLoaded) {
+    try {
+      _allSkills = await getAllSkills();
+    } catch {
+      _allSkills = BUILTIN_SKILLS;
+    }
+    _skillsLoaded = true;
+  }
+}
 
 interface StartupSplashProps {
   onQuickStart: () => void;
@@ -52,6 +63,11 @@ interface StartupSplashProps {
   projectFiles?: string[];
 }
 
+function skillLabel(id: string): string {
+  const all = _allSkills.length > 0 ? _allSkills : BUILTIN_SKILLS;
+  return all.find(s => s.id === id)?.name || id;
+}
+
 export function StartupSplash({
   onQuickStart, onAIPlan,
   planState, planStep, partialPlan, planError, lastPlanInput,
@@ -60,13 +76,15 @@ export function StartupSplash({
   projectName, projectReady, projectFiles,
 }: StartupSplashProps) {
   const [inspiration, setInspiration] = useState("");
-  const [tone, setTone] = useState("");
+  const [skillId, setSkillId] = useState("");
   const [audience, setAudience] = useState("");
   const [customAudience, setCustomAudience] = useState("");
   const [wordCount, setWordCount] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
 
   const responseEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { ensureSkills(); }, []);
 
   // Use a stable scroll key derived from plan data (safe if partialPlan is undefined)
   const scrollKey = planStep + (partialPlan?.title || '') + (partialPlan?.description || '') + (partialPlan?.outline?.length || 0) + (partialPlan?.tags?.length || 0);
@@ -77,9 +95,11 @@ export function StartupSplash({
   const handlePlan = () => {
     if (!inspiration.trim()) return;
     setShowSuggestions(false);
+    const skill = skillId ? _allSkills.find(s => s.id === skillId) : undefined;
     onAIPlan({
       inspiration: inspiration.trim(),
-      tone: tone || undefined,
+      skillId: skillId || undefined,
+      tone: skill?.name || undefined,
       targetAudience: audience === "__custom__" ? customAudience.trim() : (audience || undefined),
       targetWordCount: wordCount ? parseInt(wordCount) : undefined,
     });
@@ -107,7 +127,7 @@ export function StartupSplash({
                 <p>{lastPlanInput.inspiration}</p>
                 {(lastPlanInput.tone || lastPlanInput.targetAudience || lastPlanInput.targetWordCount) && (
                   <div className="startup-splash__msg-meta">
-                    {lastPlanInput.tone && <span>风格: {lastPlanInput.tone}</span>}
+                    {lastPlanInput.tone && <span>风格: {lastPlanInput.tone}</span>}{lastPlanInput.skillId && !lastPlanInput.tone && <span>技能: {skillLabel(lastPlanInput.skillId)}</span>}
                     {lastPlanInput.targetAudience && <span>读者: {lastPlanInput.targetAudience}</span>}
                     {lastPlanInput.targetWordCount && <span>字数: ~{lastPlanInput.targetWordCount}</span>}
                   </div>
@@ -352,16 +372,19 @@ export function StartupSplash({
               </div>
 
               <div className="startup-splash__options-bar">
-                <select className="startup-splash__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
-                  <option value="">写作风格</option>
-                  {TONE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-                </select>
-
+                <CustomSelect
+                  value={skillId}
+                  onChange={setSkillId}
+                  placeholder="写作风格"
+                  options={(_allSkills.length > 0 ? _allSkills : BUILTIN_SKILLS).map(s => ({ value: s.id, label: `${s.icon} ${s.name}` }))}
+                />
                 <div className="startup-splash__option-with-custom">
-                  <select className="startup-splash__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
-                    <option value="">目标读者</option>
-                    {AUDIENCE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-                  </select>
+                  <CustomSelect
+                    value={audience}
+                    onChange={setAudience}
+                    placeholder="目标读者"
+                    options={AUDIENCE_OPTIONS}
+                  />
                   {audience === "__custom__" && (
                     <input className="startup-splash__option-input" placeholder="输入读者" value={customAudience}
                       onChange={(e) => setCustomAudience(e.target.value)} />

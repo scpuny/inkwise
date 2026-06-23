@@ -68,6 +68,7 @@ export function EditorPane({
     outline: OutlineSection[];
     tags: string[];
     tone: string;
+    skillId?: string;
     targetAudience: string;
     targetWordCount: number;
   }, collectionId: string) => Promise<{ articleId: string; collectionId: string } | null>;
@@ -201,6 +202,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           articleDescription: bp.description,
           tone: bp.tone,
           targetWordCount: bp.targetWordCount,
+          skillId: bp.skillId,
           totalSections: bp.outline.length,
           previousSectionTitle: prevSectionTitle,
           previousSectionContent: prevSectionContent,
@@ -537,6 +539,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         outline: partialPlan.outline,
         tags: partialPlan.tags,
         tone: lastPlanInput?.tone || partialPlan.tone || "",
+        skillId: lastPlanInput?.skillId || undefined,
         targetAudience: lastPlanInput?.targetAudience || partialPlan.targetAudience || "",
         targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
       }, activeCollectionId ?? "");
@@ -557,6 +560,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       bp.workingTitle = partialPlan.title || "";
       bp.description = partialPlan.description || "";
       bp.tone = lastPlanInput?.tone || partialPlan.tone || undefined;
+      bp.skillId = lastPlanInput?.skillId || undefined;
       bp.targetAudience = lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined;
       bp.targetWordCount = lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0;
       bp.tags = partialPlan.tags || [];

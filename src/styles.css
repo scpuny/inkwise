@@ -103,36 +103,36 @@ body {
 
 /* font scale overrides */
 :root[data-text-size="small"] {
-  --font-scale: .94
+  --font-scale: .94;
 }
 
 :root[data-text-size="large"] {
-  --font-scale: 1.08
+  --font-scale: 1.08;
 }
 
 :root[data-text-size="xlarge"] {
-  --font-scale: 1.16
+  --font-scale: 1.16;
 }
 
 /* font-family presets */
 :root[data-font-family="yahei"] {
-  --sans: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+  --sans: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root[data-font-family="pingfang"] {
-  --sans: "PingFang SC", "苹方-简", "Noto Sans SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+  --sans: "PingFang SC", "苹方-简", "Noto Sans SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root[data-font-family="noto"] {
-  --sans: "Noto Sans SC", "Noto Sans", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+  --sans: "Noto Sans SC", "Noto Sans", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root[data-font-family="serif"] {
-  --sans: "Noto Serif SC", "Source Han Serif SC", "STSong", Georgia, "Times New Roman", serif
+  --sans: "Noto Serif SC", "Source Han Serif SC", "STSong", Georgia, "Times New Roman", serif;
 }
 
 :root[data-font-family="custom"] {
-  --sans: var(--font-family-custom, "PingFang SC"), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+  --sans: var(--font-family-custom, "PingFang SC"), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -151,9 +151,20 @@ body {
   --bg-elev-2: #242730;
   --sidebar-bg: #0e1014;
   --sidebar-hover: #1a1d26;
+  --bg-hover: var(--sidebar-hover);
   --sidebar-active: rgba(217, 119, 87, 0.13);
   --panel-bg: var(--bg-elev);
   --chat-bg: var(--bg);
+
+  --bg-base: var(--bg);
+
+  --bg-secondary: var(--bg-soft);
+
+  --bg-tertiary: var(--bg-elev);
+
+  --bg-subtle: var(--bg-soft);
+
+  --hover: var(--sidebar-hover);
 
   /* borders */
   --border: #2e323e;
@@ -168,9 +179,20 @@ body {
   --text-2: var(--fg-dim);
   --text-3: var(--fg-faint);
 
+  --text-primary: var(--fg);
+
+  --text-secondary: var(--fg-dim);
+
+  --text-tertiary: var(--fg-faint);
+
+  --text-muted: var(--fg-faint);
+
+  --text-faint: var(--fg-faint);
+
   /* font scale */
   --font-scale: 1;
   --sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-custom: "PingFang SC";
   --text-2xs: calc(10px*var(--font-scale));
   --text-xs: calc(11px*var(--font-scale));
   --text-sm: calc(12px*var(--font-scale));
@@ -181,17 +203,40 @@ body {
   --text-2xl: calc(22px*var(--font-scale));
   --text-3xl: calc(28px*var(--font-scale));
 
+  --text-3xs: calc(9px*var(--font-scale));
+
+  --mono: ui-monospace, "SF Mono", Consolas, "Noto Sans Mono", monospace;
+
   /* brand + semantic */
   --accent: #d97757;
   --accent-fg: #1a0f0a;
   --accent-text: #1a0f0a;
   --accent-soft: rgba(217, 119, 87, 0.14);
+  --accent-bg: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-dim: var(--border-2);
+  --accent-soft-2: var(--accent-soft);
   --accent-strong: #e58a6b;
   --grad: linear-gradient(120deg, var(--accent), var(--accent-strong));
+  --card-accent: var(--accent);
+  --card-accent-soft: var(--accent-soft);
+  --card-border: var(--border);
+  --card-border-hover: var(--button-border-hover);
   --ok: #74b87a;
   --warn: #d9a441;
   --err: #e0696a;
   --danger: #e5484d;
+
+  --bad: var(--err);
+
+  --red: var(--err);
+
+  --danger-bg: color-mix(in srgb, var(--danger) 15%, transparent);
+
+  --danger-strong: #dc2626;
+
+  --success: var(--ok);
+
+  --success-bg: color-mix(in srgb, var(--ok) 15%, transparent);
 
   /* controls */
   --control-primary-bg: var(--accent);
@@ -262,6 +307,7 @@ body {
   --editor-padding-v: 48px;
   --editor-padding-h: clamp(32px, 8vw, 96px);
   --editor-content-maxw: min(780px, 100%);
+  --composer-height: 200px;
   --editor-bg: rgba(255, 255, 255, 0.015);
   --toolbar-btn-size: 28px;
 }
@@ -447,17 +493,23 @@ body {
   --accent-fg: #ffffff;
   --accent-soft: rgba(255, 90, 44, 0.12);
   --accent-strong: #df471f;
+  --text: #1c1a17;
+  --text-2: #5c554b;
+  --text-3: #948c80;
   --ok: #1f9d57;
   --warn: #d98a1f;
   --err: #d83a2a;
+  --accent-text: #ffffff;
   --control-primary-bg: #ff5a2c;
   --control-primary-fg: #ffffff;
   --button-bg: #ffffff;
   --button-bg-hover: #f6f5f1;
   --button-border: var(--border);
+  --code-bg: #f0efe9;
   --button-border-hover: var(--border-2);
   --button-fg: var(--fg);
   --button-muted-fg: var(--fg-dim);
+  --grad: linear-gradient(120deg, #ff5a2c, #ff7a4e);
   --control-disabled-bg: #f0ece5;
   --control-disabled-fg: #948c80;
   --shadow-1: 0 1px 2px rgba(20, 18, 16, 0.06);
@@ -479,21 +531,39 @@ body {
     --fg: #1c1a17;
     --fg-dim: #5c554b;
     --fg-faint: #948c80;
+    --stage: #e6e6e1;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --surface-3: #f0efe9;
+    --panel: #ffffff;
+    --chat-bg: #f4f3ef;
+    --workspace-preview-bg: #ffffff;
+    --workspace-files-bg: #ffffff;
+    --workspace-files-hover: #f0efe9;
+    --workspace-selection-bg: rgba(255, 90, 44, 0.12);
+    --workspace-selection-fg: #df471f;
+    --workspace-selection-bar: #ff5a2c;
     --accent: #ff5a2c;
     --accent-fg: #ffffff;
     --accent-soft: rgba(255, 90, 44, 0.12);
     --accent-strong: #df471f;
+    --text: #1c1a17;
+    --text-2: #5c554b;
+    --text-3: #948c80;
     --ok: #1f9d57;
     --warn: #d98a1f;
     --err: #d83a2a;
+    --accent-text: #ffffff;
     --control-primary-bg: #ff5a2c;
     --control-primary-fg: #ffffff;
     --button-bg: #ffffff;
     --button-bg-hover: #f6f5f1;
     --button-border: var(--border);
+    --code-bg: #f0efe9;
     --button-border-hover: var(--border-2);
     --button-fg: var(--fg);
     --button-muted-fg: var(--fg-dim);
+    --grad: linear-gradient(120deg, #ff5a2c, #ff7a4e);
     --control-disabled-bg: #f0ece5;
     --control-disabled-fg: #948c80;
     --shadow-1: 0 1px 2px rgba(20, 18, 16, 0.06);
@@ -514,6 +584,18 @@ body {
   --sidebar-bg: #17162a;
   --sidebar-hover: #201f38;
   --sidebar-active: rgba(139, 124, 255, 0.18);
+  --stage: #090812;
+  --surface: #17162a;
+  --surface-2: #1d1b34;
+  --surface-3: #121120;
+  --panel: #17162a;
+  --chat-bg: #0e0d18;
+  --workspace-preview-bg: #121120;
+  --workspace-files-bg: #17162a;
+  --workspace-files-hover: #201f38;
+  --workspace-selection-bg: rgba(139, 124, 255, 0.18);
+  --workspace-selection-fg: #38d6e6;
+  --workspace-selection-bar: #8b7cff;
   --border: rgba(255, 255, 255, 0.07);
   --border-soft: rgba(255, 255, 255, 0.055);
   --border-2: rgba(255, 255, 255, 0.14);
@@ -532,7 +614,11 @@ body {
   --control-primary-fg: #0e0d18;
   --control-disabled-bg: var(--bg-elev-2);
   --control-disabled-fg: var(--fg-faint);
+  --code-bg: var(--bg-soft);
   --button-bg: var(--bg-elev);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
   --button-bg-hover: var(--bg-elev-2);
   --button-border: var(--border);
   --button-border-hover: var(--border-2);
@@ -554,6 +640,18 @@ body {
   --border: rgba(20, 18, 26, 0.09);
   --border-soft: rgba(20, 18, 26, 0.06);
   --border-2: rgba(20, 18, 26, 0.16);
+  --stage: #e6e4ec;
+  --surface: #ffffff;
+  --surface-2: #f6f4fc;
+  --surface-3: #edecf5;
+  --panel: #ffffff;
+  --chat-bg: #f4f2fa;
+  --workspace-preview-bg: #edecf5;
+  --workspace-files-bg: #ffffff;
+  --workspace-files-hover: #edecf5;
+  --workspace-selection-bg: rgba(123, 107, 235, 0.12);
+  --workspace-selection-fg: #38d6e6;
+  --workspace-selection-bar: #7b6beb;
   --fg: #1c1a22;
   --fg-dim: #5c5570;
   --fg-faint: #928ba3;
@@ -561,17 +659,23 @@ body {
   --accent-fg: #ffffff;
   --accent-soft: rgba(123, 107, 235, 0.12);
   --accent-strong: #38d6e6;
+  --text: #1c1a22;
+  --text-2: #5c5570;
+  --text-3: #928ba3;
   --ok: #1f9d57;
   --warn: #d98a1f;
   --err: #d83a2a;
+  --accent-text: #ffffff;
   --control-primary-bg: #7b6beb;
   --control-primary-fg: #ffffff;
   --button-bg: #ffffff;
   --button-bg-hover: #f6f4fc;
   --button-border: var(--border);
+  --code-bg: #edecf5;
   --button-border-hover: var(--border-2);
   --button-fg: var(--fg);
   --button-muted-fg: var(--fg-dim);
+  --grad: linear-gradient(120deg, #7b6beb, #a78bfa);
   --control-disabled-bg: #f0ecf5;
   --control-disabled-fg: #928ba3;
   --shadow-1: 0 1px 2px rgba(20, 18, 26, 0.06);
@@ -593,21 +697,39 @@ body {
     --fg: #1c1a22;
     --fg-dim: #5c5570;
     --fg-faint: #928ba3;
+    --stage: #e6e4ec;
+    --surface: #ffffff;
+    --surface-2: #f6f4fc;
+    --surface-3: #edecf5;
+    --panel: #ffffff;
+    --chat-bg: #f4f2fa;
+    --workspace-preview-bg: #edecf5;
+    --workspace-files-bg: #ffffff;
+    --workspace-files-hover: #edecf5;
+    --workspace-selection-bg: rgba(123, 107, 235, 0.12);
+    --workspace-selection-fg: #38d6e6;
+    --workspace-selection-bar: #7b6beb;
     --accent: #7b6beb;
     --accent-fg: #ffffff;
     --accent-soft: rgba(123, 107, 235, 0.12);
     --accent-strong: #38d6e6;
+    --text: #1c1a22;
+    --text-2: #5c5570;
+    --text-3: #928ba3;
     --ok: #1f9d57;
     --warn: #d98a1f;
     --err: #d83a2a;
+    --accent-text: #ffffff;
     --control-primary-bg: #7b6beb;
     --control-primary-fg: #ffffff;
     --button-bg: #ffffff;
     --button-bg-hover: #f6f4fc;
     --button-border: var(--border);
+    --code-bg: #edecf5;
     --button-border-hover: var(--border-2);
     --button-fg: var(--fg);
     --button-muted-fg: var(--fg-dim);
+    --grad: linear-gradient(120deg, #7b6beb, #a78bfa);
     --control-disabled-bg: #f0ecf5;
     --control-disabled-fg: #928ba3;
     --shadow-1: 0 1px 2px rgba(20, 18, 26, 0.06);
@@ -624,6 +746,18 @@ body {
   --sidebar-bg: #15181d;
   --sidebar-hover: #1f242b;
   --sidebar-active: rgba(77, 141, 246, 0.16);
+  --stage: #080a0d;
+  --surface: #15181d;
+  --surface-2: #1b1f25;
+  --surface-3: #0f1216;
+  --panel: #15181d;
+  --chat-bg: #0d0f12;
+  --workspace-preview-bg: #0f1216;
+  --workspace-files-bg: #15181d;
+  --workspace-files-hover: #1f242b;
+  --workspace-selection-bg: rgba(77, 141, 246, 0.16);
+  --workspace-selection-fg: #6ea4f9;
+  --workspace-selection-bar: #4d8df6;
   --border: rgba(255, 255, 255, 0.08);
   --border-soft: rgba(255, 255, 255, 0.06);
   --border-2: rgba(255, 255, 255, 0.15);
@@ -642,7 +776,11 @@ body {
   --control-primary-fg: #061129;
   --control-disabled-bg: var(--bg-elev-2);
   --control-disabled-fg: var(--fg-faint);
+  --code-bg: var(--bg-soft);
   --button-bg: var(--bg-elev);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
   --button-bg-hover: var(--bg-elev-2);
   --button-border: var(--border);
   --button-border-hover: var(--border-2);
@@ -662,6 +800,18 @@ body {
   --sidebar-hover: #eef0f4;
   --sidebar-active: rgba(47, 111, 224, 0.12);
   --border: rgba(20, 28, 46, 0.1);
+  --stage: #e7e8eb;
+  --surface: #ffffff;
+  --surface-2: #f7f8fb;
+  --surface-3: #eef0f4;
+  --panel: #ffffff;
+  --chat-bg: #f5f6f9;
+  --workspace-preview-bg: #eef0f4;
+  --workspace-files-bg: #ffffff;
+  --workspace-files-hover: #eef0f4;
+  --workspace-selection-bg: rgba(47, 111, 224, 0.12);
+  --workspace-selection-fg: #1f5cc4;
+  --workspace-selection-bar: #2f6fe0;
   --border-soft: rgba(20, 28, 46, 0.07);
   --border-2: rgba(20, 28, 46, 0.18);
   --fg: #15181f;
@@ -670,13 +820,18 @@ body {
   --accent: #2f6fe0;
   --accent-fg: #ffffff;
   --accent-soft: rgba(47, 111, 224, 0.12);
+  --text: #15181f;
+  --text-2: #4a5160;
+  --text-3: #828a99;
   --accent-strong: #1f5cc4;
+  --accent-text: #ffffff;
   --ok: #1f9d57;
   --warn: #d98a1f;
   --err: #d83a2a;
   --control-primary-bg: #2f6fe0;
   --control-primary-fg: #ffffff;
   --control-disabled-bg: #eceff5;
+  --code-bg: #eef0f4;
   --control-disabled-fg: #828a99;
   --button-bg: #ffffff;
   --button-bg-hover: #f7f8fb;
@@ -701,19 +856,36 @@ body {
     --border: rgba(20, 28, 46, 0.1);
     --border-soft: rgba(20, 28, 46, 0.07);
     --border-2: rgba(20, 28, 46, 0.18);
+    --stage: #e7e8eb;
+    --surface: #ffffff;
+    --surface-2: #f7f8fb;
+    --surface-3: #eef0f4;
+    --panel: #ffffff;
+    --chat-bg: #f5f6f9;
+    --workspace-preview-bg: #eef0f4;
+    --workspace-files-bg: #ffffff;
+    --workspace-files-hover: #eef0f4;
+    --workspace-selection-bg: rgba(47, 111, 224, 0.12);
+    --workspace-selection-fg: #1f5cc4;
+    --workspace-selection-bar: #2f6fe0;
     --fg: #15181f;
     --fg-dim: #4a5160;
     --fg-faint: #828a99;
     --accent: #2f6fe0;
     --accent-fg: #ffffff;
     --accent-soft: rgba(47, 111, 224, 0.12);
+    --text: #15181f;
+    --text-2: #4a5160;
+    --text-3: #828a99;
     --accent-strong: #1f5cc4;
+    --accent-text: #ffffff;
     --ok: #1f9d57;
     --warn: #d98a1f;
     --err: #d83a2a;
     --control-primary-bg: #2f6fe0;
     --control-primary-fg: #ffffff;
     --control-disabled-bg: #eceff5;
+    --code-bg: #eef0f4;
     --control-disabled-fg: #828a99;
     --button-bg: #ffffff;
     --button-bg-hover: #f7f8fb;
@@ -736,6 +908,18 @@ body {
   --sidebar-bg: #171614;
   --sidebar-hover: #23211f;
   --sidebar-active: rgba(45, 212, 191, 0.16);
+  --stage: #090807;
+  --surface: #171614;
+  --surface-2: #1e1c1a;
+  --surface-3: #100f0e;
+  --panel: #171614;
+  --chat-bg: #0e0d0c;
+  --workspace-preview-bg: #100f0e;
+  --workspace-files-bg: #171614;
+  --workspace-files-hover: #23211f;
+  --workspace-selection-bg: rgba(45, 212, 191, 0.16);
+  --workspace-selection-fg: #57e1ce;
+  --workspace-selection-bar: #2dd4bf;
   --border: rgba(255, 250, 240, 0.08);
   --border-soft: rgba(255, 250, 240, 0.06);
   --border-2: rgba(255, 250, 240, 0.15);
@@ -754,7 +938,11 @@ body {
   --control-primary-fg: #001a16;
   --control-disabled-bg: var(--bg-elev-2);
   --control-disabled-fg: var(--fg-faint);
+  --code-bg: var(--bg-soft);
   --button-bg: var(--bg-elev);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
   --button-bg-hover: var(--bg-elev-2);
   --button-border: var(--border);
   --button-border-hover: var(--border-2);
@@ -774,6 +962,18 @@ body {
   --sidebar-hover: #efece6;
   --sidebar-active: rgba(13, 148, 136, 0.12);
   --border: rgba(30, 26, 20, 0.1);
+  --stage: #e8e6e2;
+  --surface: #ffffff;
+  --surface-2: #f8f6f2;
+  --surface-3: #efece6;
+  --panel: #ffffff;
+  --chat-bg: #f6f4f0;
+  --workspace-preview-bg: #efece6;
+  --workspace-files-bg: #ffffff;
+  --workspace-files-hover: #efece6;
+  --workspace-selection-bg: rgba(13, 148, 136, 0.12);
+  --workspace-selection-fg: #0a7a70;
+  --workspace-selection-bar: #0d9488;
   --border-soft: rgba(30, 26, 20, 0.07);
   --border-2: rgba(30, 26, 20, 0.2);
   --fg: #1a1714;
@@ -782,13 +982,18 @@ body {
   --accent: #0d9488;
   --accent-fg: #ffffff;
   --accent-soft: rgba(13, 148, 136, 0.12);
+  --text: #1a1714;
+  --text-2: #544e46;
+  --text-3: #8a8378;
   --accent-strong: #0a7a70;
+  --accent-text: #ffffff;
   --ok: #1f9d57;
   --warn: #c47f1a;
   --err: #d83a2a;
   --control-primary-bg: #0d9488;
   --control-primary-fg: #ffffff;
   --control-disabled-bg: #ece8e0;
+  --code-bg: #efece6;
   --control-disabled-fg: #8a8378;
   --button-bg: #ffffff;
   --button-bg-hover: #f8f6f2;
@@ -813,19 +1018,36 @@ body {
     --border: rgba(30, 26, 20, 0.1);
     --border-soft: rgba(30, 26, 20, 0.07);
     --border-2: rgba(30, 26, 20, 0.2);
+    --stage: #e8e6e2;
+    --surface: #ffffff;
+    --surface-2: #f8f6f2;
+    --surface-3: #efece6;
+    --panel: #ffffff;
+    --chat-bg: #f6f4f0;
+    --workspace-preview-bg: #efece6;
+    --workspace-files-bg: #ffffff;
+    --workspace-files-hover: #efece6;
+    --workspace-selection-bg: rgba(13, 148, 136, 0.12);
+    --workspace-selection-fg: #0a7a70;
+    --workspace-selection-bar: #0d9488;
     --fg: #1a1714;
     --fg-dim: #544e46;
     --fg-faint: #8a8378;
     --accent: #0d9488;
     --accent-fg: #ffffff;
     --accent-soft: rgba(13, 148, 136, 0.12);
+    --text: #1a1714;
+    --text-2: #544e46;
+    --text-3: #8a8378;
     --accent-strong: #0a7a70;
+    --accent-text: #ffffff;
     --ok: #1f9d57;
     --warn: #c47f1a;
     --err: #d83a2a;
     --control-primary-bg: #0d9488;
     --control-primary-fg: #ffffff;
     --control-disabled-bg: #ece8e0;
+    --code-bg: #efece6;
     --control-disabled-fg: #8a8378;
     --button-bg: #ffffff;
     --button-bg-hover: #f8f6f2;
@@ -848,6 +1070,18 @@ body {
   --sidebar-bg: #191a27;
   --sidebar-hover: #24253a;
   --sidebar-active: rgba(129, 140, 248, 0.18);
+  --stage: #0b0b13;
+  --surface: #191a27;
+  --surface-2: #20212f;
+  --surface-3: #13131e;
+  --panel: #191a27;
+  --chat-bg: #101019;
+  --workspace-preview-bg: #13131e;
+  --workspace-files-bg: #191a27;
+  --workspace-files-hover: #24253a;
+  --workspace-selection-bg: rgba(129, 140, 248, 0.18);
+  --workspace-selection-fg: #a78bfa;
+  --workspace-selection-bar: #818cf8;
   --border: rgba(255, 255, 255, 0.07);
   --border-soft: rgba(255, 255, 255, 0.055);
   --border-2: rgba(255, 255, 255, 0.14);
@@ -866,7 +1100,11 @@ body {
   --control-primary-fg: #101019;
   --control-disabled-bg: var(--bg-elev-2);
   --control-disabled-fg: var(--fg-faint);
+  --code-bg: var(--bg-soft);
   --button-bg: var(--bg-elev);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
   --button-bg-hover: var(--bg-elev-2);
   --button-border: var(--border);
   --button-border-hover: var(--border-2);
@@ -886,6 +1124,18 @@ body {
   --sidebar-hover: #efedf7;
   --sidebar-active: rgba(99, 102, 241, 0.12);
   --border: rgba(30, 24, 70, 0.09);
+  --stage: #e8e7ed;
+  --surface: #fdfcff;
+  --surface-2: #ffffff;
+  --surface-3: #efedf7;
+  --panel: #fdfcff;
+  --chat-bg: #f6f5fb;
+  --workspace-preview-bg: #efedf7;
+  --workspace-files-bg: #fdfcff;
+  --workspace-files-hover: #efedf7;
+  --workspace-selection-bg: rgba(99, 102, 241, 0.12);
+  --workspace-selection-fg: #8b5cf6;
+  --workspace-selection-bar: #6366f1;
   --border-soft: rgba(30, 24, 70, 0.065);
   --border-2: rgba(30, 24, 70, 0.16);
   --fg: #1c1930;
@@ -894,13 +1144,18 @@ body {
   --accent: #6366f1;
   --accent-fg: #ffffff;
   --accent-soft: rgba(99, 102, 241, 0.12);
+  --text: #1c1930;
+  --text-2: #564f70;
+  --text-3: #8a84a2;
   --accent-strong: #8b5cf6;
+  --accent-text: #ffffff;
   --ok: #1f9d57;
   --warn: #d98a1f;
   --err: #d83a2a;
   --control-primary-bg: #6366f1;
   --control-primary-fg: #ffffff;
   --control-disabled-bg: #ece8f5;
+  --code-bg: #efedf7;
   --control-disabled-fg: #8a84a2;
   --button-bg: #fdfcff;
   --button-bg-hover: #f4f0fb;
@@ -925,19 +1180,36 @@ body {
     --border: rgba(30, 24, 70, 0.09);
     --border-soft: rgba(30, 24, 70, 0.065);
     --border-2: rgba(30, 24, 70, 0.16);
+    --stage: #e8e7ed;
+    --surface: #fdfcff;
+    --surface-2: #ffffff;
+    --surface-3: #efedf7;
+    --panel: #fdfcff;
+    --chat-bg: #f6f5fb;
+    --workspace-preview-bg: #efedf7;
+    --workspace-files-bg: #fdfcff;
+    --workspace-files-hover: #efedf7;
+    --workspace-selection-bg: rgba(99, 102, 241, 0.12);
+    --workspace-selection-fg: #8b5cf6;
+    --workspace-selection-bar: #6366f1;
     --fg: #1c1930;
     --fg-dim: #564f70;
     --fg-faint: #8a84a2;
     --accent: #6366f1;
     --accent-fg: #ffffff;
     --accent-soft: rgba(99, 102, 241, 0.12);
+    --text: #1c1930;
+    --text-2: #564f70;
+    --text-3: #8a84a2;
     --accent-strong: #8b5cf6;
+    --accent-text: #ffffff;
     --ok: #1f9d57;
     --warn: #d98a1f;
     --err: #d83a2a;
     --control-primary-bg: #6366f1;
     --control-primary-fg: #ffffff;
     --control-disabled-bg: #ece8f5;
+    --code-bg: #efedf7;
     --control-disabled-fg: #8a84a2;
     --button-bg: #fdfcff;
     --button-bg-hover: #f4f0fb;
@@ -960,6 +1232,18 @@ body {
   --sidebar-bg: #1a1611;
   --sidebar-hover: #24201a;
   --sidebar-active: rgba(212, 99, 47, 0.16);
+  --stage: #0b0805;
+  --surface: #1a1611;
+  --surface-2: #201c16;
+  --surface-3: #14100c;
+  --panel: #1a1611;
+  --chat-bg: #100d0a;
+  --workspace-preview-bg: #14100c;
+  --workspace-files-bg: #1a1611;
+  --workspace-files-hover: #24201a;
+  --workspace-selection-bg: rgba(212, 99, 47, 0.16);
+  --workspace-selection-fg: #de7a4b;
+  --workspace-selection-bar: #d4632f;
   --border: rgba(255, 240, 220, 0.09);
   --border-soft: rgba(255, 240, 220, 0.065);
   --border-2: rgba(255, 240, 220, 0.15);
@@ -978,7 +1262,11 @@ body {
   --control-primary-fg: #0f0c08;
   --control-disabled-bg: var(--bg-elev-2);
   --control-disabled-fg: var(--fg-faint);
+  --code-bg: var(--bg-soft);
   --button-bg: var(--bg-elev);
+  --text: var(--fg);
+  --text-2: var(--fg-dim);
+  --text-3: var(--fg-faint);
   --button-bg-hover: var(--bg-elev-2);
   --button-border: var(--border);
   --button-border-hover: var(--border-2);
@@ -998,6 +1286,18 @@ body {
   --sidebar-hover: #f1ebe3;
   --sidebar-active: rgba(221, 91, 40, 0.12);
   --border: rgba(40, 30, 20, 0.1);
+  --stage: #eae5df;
+  --surface: #ffffff;
+  --surface-2: #f8f4ee;
+  --surface-3: #f1ebe3;
+  --panel: #ffffff;
+  --chat-bg: #f8f3ed;
+  --workspace-preview-bg: #f1ebe3;
+  --workspace-files-bg: #ffffff;
+  --workspace-files-hover: #f1ebe3;
+  --workspace-selection-bg: rgba(221, 91, 40, 0.12);
+  --workspace-selection-fg: #ef8a4a;
+  --workspace-selection-bar: #dd5b28;
   --border-soft: rgba(40, 30, 20, 0.07);
   --border-2: rgba(40, 30, 20, 0.18);
   --fg: #1e1914;
@@ -1006,13 +1306,18 @@ body {
   --accent: #dd5b28;
   --accent-fg: #ffffff;
   --accent-soft: rgba(221, 91, 40, 0.12);
+  --text: #1e1914;
+  --text-2: #595146;
+  --text-3: #8d8478;
   --accent-strong: #ef8a4a;
+  --accent-text: #ffffff;
   --ok: #1f9d57;
   --warn: #c47f1a;
   --err: #d83a2a;
   --control-primary-bg: #dd5b28;
   --control-primary-fg: #ffffff;
   --control-disabled-bg: #ece4da;
+  --code-bg: #f1ebe3;
   --control-disabled-fg: #8d8478;
   --button-bg: #ffffff;
   --button-bg-hover: #f8f4ee;
@@ -1037,19 +1342,36 @@ body {
     --border: rgba(40, 30, 20, 0.1);
     --border-soft: rgba(40, 30, 20, 0.07);
     --border-2: rgba(40, 30, 20, 0.18);
+    --stage: #eae5df;
+    --surface: #ffffff;
+    --surface-2: #f8f4ee;
+    --surface-3: #f1ebe3;
+    --panel: #ffffff;
+    --chat-bg: #f8f3ed;
+    --workspace-preview-bg: #f1ebe3;
+    --workspace-files-bg: #ffffff;
+    --workspace-files-hover: #f1ebe3;
+    --workspace-selection-bg: rgba(221, 91, 40, 0.12);
+    --workspace-selection-fg: #ef8a4a;
+    --workspace-selection-bar: #dd5b28;
     --fg: #1e1914;
     --fg-dim: #595146;
     --fg-faint: #8d8478;
     --accent: #dd5b28;
     --accent-fg: #ffffff;
     --accent-soft: rgba(221, 91, 40, 0.12);
+    --text: #1e1914;
+    --text-2: #595146;
+    --text-3: #8d8478;
     --accent-strong: #ef8a4a;
+    --accent-text: #ffffff;
     --ok: #1f9d57;
     --warn: #c47f1a;
     --err: #d83a2a;
     --control-primary-bg: #dd5b28;
     --control-primary-fg: #ffffff;
     --control-disabled-bg: #ece4da;
+    --code-bg: #f1ebe3;
     --control-disabled-fg: #8d8478;
     --button-bg: #ffffff;
     --button-bg-hover: #f8f4ee;
@@ -3769,12 +4091,104 @@ body {
   background: var(--bg-soft)
 }
 
+.settings-section__body--no-bg {
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+}
+
+/* ── Quick Skill Items (settings list) ── */
+
+.quick-skill-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color var(--dur-fast);
+}
+
+.quick-skill-item:hover {
+  border-color: var(--border-2);
+}
+
+.quick-skill-item__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.quick-skill-item__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--fg-dim);
+}
+
+.quick-skill-item__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.quick-skill-item__desc {
+  font-size: 11px;
+  color: var(--fg-faint);
+  margin-top: 1px;
+}
+
+.quick-skill-item__toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+}
+
+.quick-skill-item__toggle--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
 .settings-field {
   display: grid;
   grid-template-columns: 1fr minmax(200px, 1fr);
   align-items: center;
   gap: 12px;
   min-height: 32px
+}
+
+/* Fixed label width variant for writing styles form */
+.settings-field--style {
+  display: flex;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.settings-field--style .settings-field__label {
+  width: 80px;
+  flex-shrink: 0;
+  padding-top: 7px;
+}
+
+.settings-field--style > :nth-child(2) {
+  flex: 1;
+  min-width: 0;
 }
 
 .settings-field__label {
@@ -5395,7 +5809,7 @@ body {
   --font-control: var(--text-md);
   --font-control-small: var(--text-sm);
   --font-caption: var(--text-2xs);
-  --fg-muted: var(--fg-faint)
+  --fg-muted: var(--fg-faint);
 }
 
 /* ── Missing Reasonix component CSS ── */
@@ -6713,20 +7127,20 @@ body {
 
   .editor-content {
     --editor-padding-h: 24px;
-    --editor-padding-v: 32px
+    --editor-padding-v: 32px;
   }
 }
 
 @media(max-width:1200px) {
   :root {
-    --ai-dock-width: min(420px, 40vw)
+    --ai-dock-width: min(420px, 40vw);
   }
 }
 
 @media(min-width:1600px) {
   :root {
     --sidebar-width: 300px;
-    --ai-dock-width: 480px
+    --ai-dock-width: 480px;
   }
 }
 
@@ -9754,7 +10168,8 @@ body {
 }
 
 .startup-splash__option-select {
-  padding: 6px 28px 6px 10px;
+  padding: 5px 28px 5px 10px;
+  height: 30px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -9784,6 +10199,103 @@ body {
   background: var(--bg);
 }
 
+
+/* ── CustomSelect (replaces native <select> for theme-consistent popup) ── */
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 28px 5px 10px;
+  min-width: 80px;
+  height: 30px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--fg);
+  font-size: 12px;
+  font-family: var(--sans);
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.custom-select__trigger:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.custom-select__trigger:hover {
+  border-color: var(--accent-dim, var(--border-2));
+  background: var(--bg);
+}
+
+.custom-select__placeholder {
+  color: var(--fg-faint);
+  white-space: nowrap;
+}
+
+.custom-select__text {
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.custom-select__arrow {
+  flex-shrink: 0;
+  color: var(--fg-dim);
+  pointer-events: none;
+}
+
+.custom-select__panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 2px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  min-width: max-content;
+}
+
+.custom-select__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font-size: 12px;
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast);
+}
+
+.custom-select__item:hover,
+.custom-select__item--selected {
+  background: var(--accent-soft);
+}
+
+.custom-select__item--selected {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 .startup-splash__option-with-custom {
   display: flex;
   align-items: center;
@@ -9792,9 +10304,10 @@ body {
 
 .startup-splash__option-input {
   padding: 5px 8px;
+  height: 30px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--fg);
   font-size: var(--text-xs);
   font-family: var(--sans);
@@ -9807,7 +10320,7 @@ body {
 }
 
 .startup-splash__option-input--short {
-  width: 70px;
+  width: 80px;
 }
 
 /* ── Action group ── */
@@ -15115,4 +15628,139 @@ body {
 .final-topbar__mode-btn--active:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* ─── Writing Styles Section ─── */
+.settings-page__toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.settings-page__toolbar-btn {
+  font-size: 12px;
+  height: 28px;
+}
+.settings-page__subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 0 4px;
+}
+.settings-card__details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.settings-card__summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg-secondary);
+  user-select: none;
+}
+.settings-card__summary:hover {
+  background: var(--bg-tertiary);
+}
+.settings-card__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.settings-card__close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.skills-list__action-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.skills-list__action-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+/* ─── Writing Styles Section ─── */
+.settings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.settings-card.settings-card--empty {
+  background: transparent;
+  border: 1px dashed var(--border);
+}
+.settings-card__details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.settings-card__summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-secondary);
+}
+.settings-card__summary:hover {
+  background: var(--bg-tertiary);
+}
+.settings-card__close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.settings-card__close-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.settings-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+}
+
+/* ─── Per-phase skill selector ─── */
+.startup-splash__skill-section {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  flex: 1;
+}
+.startup-splash__mode-btn {
+  font-size: 10px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.startup-splash__mode-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }

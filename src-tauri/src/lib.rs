@@ -6,7 +6,7 @@ mod db;
 mod project_indexer;
 mod publisher;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
@@ -249,6 +249,35 @@ fn save_article_meta(state: tauri::State<AppState>, meta: ArticleMeta) -> Result
 fn load_article_meta(state: tauri::State<AppState>, id: String) -> Option<ArticleMeta> {
     let store = state.store.lock().unwrap();
     store.load_article_meta(&id)
+}
+
+// ─── Writing Skills ───
+
+#[tauri::command]
+fn list_writing_skills(state: tauri::State<AppState>) -> Vec<WritingSkill> {
+    let store = state.store.lock().unwrap();
+    store.load_writing_skills()
+}
+
+#[tauri::command]
+fn save_writing_skill(state: tauri::State<AppState>, skill: WritingSkill) -> Result<(), String> {
+    let store = state.store.lock().unwrap();
+    let mut skills = store.load_writing_skills();
+    // Replace existing or add new
+    if let Some(pos) = skills.iter().position(|s| s.id == skill.id) {
+        skills[pos] = skill;
+    } else {
+        skills.push(skill);
+    }
+    store.save_writing_skills(&skills)
+}
+
+#[tauri::command]
+fn delete_writing_skill(state: tauri::State<AppState>, id: String) -> Result<(), String> {
+    let store = state.store.lock().unwrap();
+    let mut skills = store.load_writing_skills();
+    skills.retain(|s| s.id != id);
+    store.save_writing_skills(&skills)
 }
 
 // ─── Skills ───
@@ -1141,6 +1170,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+        list_writing_skills,
+        save_writing_skill,
+        delete_writing_skill,
             get_collections,
             set_collections,
             get_trash,
