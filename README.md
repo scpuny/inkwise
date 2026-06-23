@@ -1,4 +1,19 @@
-# InkWise 墨智 — AI 写作助手
+<div align="center">
+  <img src="./public/inkwise-icon.svg" width="100" alt="InkWise Logo" />
+  <h1>InkWise 墨智 — AI 写作助手</h1>
+
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT" /></a>
+    <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" /></a>
+    <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white" alt="TypeScript 6" /></a>
+    <a href="https://v2.tauri.app"><img src="https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=white" alt="Tauri 2" /></a>
+    <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.77-000000?logo=rust&logoColor=white" alt="Rust" /></a>
+    <a href="https://tiptap.dev"><img src="https://img.shields.io/badge/TipTap-3-FF6B6B?logo=prosemirror&logoColor=white" alt="TipTap 3" /></a>
+    <a href="https://vite.dev"><img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite 6" /></a>
+  </p>
+</div>
+
+---
 
 > 沉浸式桌面写作应用 · 富文本 & Markdown 双模编辑 · AI 辅助写作
 
@@ -79,6 +94,7 @@ inkwise/
 │       ├── agent.rs         # Agent 执行
 │       ├── publisher.rs     # 多平台发布
 │       └── project_indexer.rs # 项目索引
+├── public/inkwise-icon.svg  # 应用图标
 ├── DESIGN.md                # 设计文档
 ├── AGENT.md                 # 开发指南（AI Agent 用）
 └── LICENSE                  # MIT 协议
