@@ -8,12 +8,15 @@ import {
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, genId,
   linkCollectionFolder, rescanProjectFolder, unlinkCollectionFolder,
+  loadSeriesPlan, deleteSeriesPlan,
+  type SeriesPlan,
 } from "../lib/collections";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { SeriesOverview } from "./SeriesOverview";
 import { loadArticleContent } from "../lib/articles";
 
-export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null }) {
+export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [trash, setTrash] = useState<TrashItem[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -26,6 +29,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const [confirmDelete, setConfirmDelete] = useState<{ type: "collection" | "article"; id: string; collectionId?: string; title: string } | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "date" | "articleCount">("name");
   const [articleSortBy, setArticleSortBy] = useState<Record<string, "name" | "created" | "words">>({});
+  const [seriesPlans, setSeriesPlans] = useState<Record<string, SeriesPlan>>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -65,29 +69,71 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setCollections(cols);
     setTrash(tr);
     setLoaded(true);
-  }, []);
+    // Load series plans
+    const plans: Record<string, SeriesPlan> = {};
+    for (const col of cols) {
+      const plan = await loadSeriesPlan(col.id);
+      if (plan) plans[col.id] = plan;
+    }
+    setSeriesPlans(plans);
+    // Auto-expand collections that have series plans
+    setExpanded(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const colId of Object.keys(plans)) {
+        if (!next.has(colId)) {
+          next.add(colId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [seriesRefreshKey]);
 
-  useEffect(() => { refresh(); }, [refresh]);  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   // ── Folder linking ──
 
-  const handleLinkFolder = useCallback(async (colId: string) => {
-    if (!isTauriEnv()) return;
-    try {
-      const path = await tryInvoke<string | null>("pick_folder", {});
-      if (path) {
-        setFolderScanning((prev) => ({ ...prev, [colId]: true }));
-        try {
-          await linkCollectionFolder(colId, path);
-        } finally {
+    const handleLinkFolder = useCallback(async (colId: string) => {
+      if (!isTauriEnv()) return;
+      try {
+        const path = await tryInvoke<string | null>("pick_folder", {});
+        if (path) {
+          // 1. Immediately save linkedFolder to collection
+          const all = await loadCollections();
+          const col = all.find(x => x.id === colId);
+          if (!col) return;
+          col.linkedFolder = path;
+          await saveCollections(all);
+          await refresh();
+        
+          // 2. Show scanning state - force React to flush
+          setFolderScanning((prev) => ({ ...prev, [colId]: true }));
+          await new Promise(r => setTimeout(r, 50));
+        
+          // 3. Scan project and capture result
+          try {
+            const ctx = await linkCollectionFolder(colId, path);
+            if (ctx) {
+              // Scan succeeded — feedback is via badge icon change
+            }
+          } catch {}
+        
+          // 4. Clear scanning state
           setFolderScanning((prev) => ({ ...prev, [colId]: false }));
+          await refresh();
         }
-        await refresh();
-      }
-    } catch {}
-  }, [refresh]);
+      } catch {}
+    }, [refresh]);
 
   const handleUnlinkFolder = useCallback(async (colId: string) => {
+    // Clear linkedFolder from collection
+    const all = await loadCollections();
+    const col = all.find(x => x.id === colId);
+    if (col) {
+      col.linkedFolder = undefined;
+      await saveCollections(all);
+    }
     await unlinkCollectionFolder(colId);
     await refresh();
   }, [refresh]);
@@ -114,6 +160,19 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     const handler = () => { refresh(); };
     window.addEventListener("collections-changed", handler);
     return () => window.removeEventListener("collections-changed", handler);
+  }, [refresh]);
+
+  // Listen for plan-series-saved to force expand and refresh
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { collectionId } = (e as CustomEvent).detail;
+      if (collectionId) {
+        setExpanded(prev => new Set(prev).add(collectionId));
+      }
+      refresh();
+    };
+    window.addEventListener("plan-series-saved", handler);
+    return () => window.removeEventListener("plan-series-saved", handler);
   }, [refresh]);
 
   // Load word counts for articles in expanded collections
@@ -187,15 +246,21 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   // ── Article ops ──
   const handleNewArticle = useCallback(async (collectionId?: string) => {
-    const targetId = collectionId ?? await getOrCreateDefaultCollection();
-    const a = await addArticle(targetId, "新文章");
-    if (a) {
-      setExpanded((prev) => new Set(prev).add(targetId));
-      onSelectArticle?.(a.id);
-      setEditingId(`art:${a.id}`); setEditingDraft("新文章");
-      await refresh();
+    if (!collectionId) {
+      // Top-level fallback: direct creation
+      const targetId = await getOrCreateDefaultCollection();
+      const a = await addArticle(targetId, "新文章");
+      if (a) {
+        setExpanded((prev) => new Set(prev).add(targetId));
+        onSelectArticle?.(a.id);
+        setEditingId(`art:${a.id}`); setEditingDraft("新文章");
+        await refresh();
+      }
+      return;
     }
-  }, [getOrCreateDefaultCollection, onSelectArticle, refresh]);
+    // Always go to single article planning flow (project context injected by EditorPane)
+    onNewArticleInCollection?.(collectionId);
+  }, [getOrCreateDefaultCollection, onSelectArticle, refresh, onNewArticleInCollection]);
 
   const handleTrashArticle = useCallback((collectionId: string, articleId: string, articleTitle: string) => {
     setConfirmDelete({ type: "article", id: articleId, collectionId, title: articleTitle });
@@ -254,10 +319,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               onClose={() => setAddMenuOpen(false)}
               items={[
                 { id: "new-collection", label: "新建合集", icon: <FolderClosed size={13} />, onClick: () => { void handleNewCollection(); } },
-                ...(collections.some((c) => c.linkedFolder)
-                  ? [{ id: "plan-series", label: "规划系列文章", icon: <BookOpen size={13} />, subtitle: "基于关联的项目目录", onClick: () => { const fc = collections.find((c) => c.linkedFolder); if (fc) handlePlanSeries(fc.id); } }
-                  ] as MenuItem[]
-                  : []),
+                { id: "plan-series", label: "规划系列文章", icon: <BookOpen size={13} />, subtitle: "规划当前集合的文章系列", onClick: () => { if (collections.length > 0) handlePlanSeries(collections[0].id); } },
               ]}
             />
           )}
@@ -275,6 +337,17 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               <div className="collection-tree__row collection-tree__row--folder" onClick={() => toggleExpanded(col.id)} onContextMenu={(e) => onCtx(e, [
                 { icon: <Plus size={13} />, label: "新建文章", onClick: () => { void handleNewArticle(col.id); } },
                 { icon: <Pencil size={13} />, label: "重命名", onClick: () => handleRenameCollection(col.id, col.title) },
+                ...(isTauriEnv()
+                  ? [
+                      { icon: <BookOpen size={13} />, label: "规划系列文章", onClick: () => { void handlePlanSeries(col.id); } },
+                      ...(col.linkedFolder
+                        ? [
+                            { icon: <RefreshCw size={13} />, label: "重新扫描目录", onClick: () => { void handleRescanFolder(col.id); } },
+                            { icon: <FolderInput size={13} />, label: "取消关联目录", onClick: () => { void handleUnlinkFolder(col.id); } },
+                          ]
+                        : [{ icon: <FolderInput size={13} />, label: "关联本地目录…", onClick: () => { void handleLinkFolder(col.id); } }]),
+                    ]
+                  : []),
                 { icon: <Trash2 size={13} />, label: "删除合集", danger: true, onClick: () => handleRemoveCollection(col.id) },
                 { icon: <ArrowUpDown size={13} />, label: "文章排序", children: [
                   { icon: <Type size={12} />, label: `按名称${(articleSortBy[col.id] || "created") === "name" ? "  ✓" : ""}`, onClick: () => handleArticleSort(col.id, "name") },
@@ -290,10 +363,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                 ) : (
                   <>
                     <span className="collection-tree__chevron"><ChevronRight size={12} className={isExpanded ? "collection-tree__chevron--open" : ""} /></span>
-                    <span className="collection-tree__icon">{isExpanded ? <FolderOpen size={14} /> : <FolderClosed size={14} />}</span>
+                    <span className="collection-tree__icon">{isExpanded ? <FolderOpen size={14} /> : (col.linkedFolder ? <FolderInput size={14} style={{color: "var(--accent)"}} /> : <FolderClosed size={14} />)}</span>
                     <span className="collection-tree__label">
                           {col.title}
-                          {col.linkedFolder && <span className="collection-tree__folder-badge" title={col.linkedFolder}>
+                          {col.linkedFolder && <span className="collection-tree__folder-badge" title={folderScanning[col.id] ? "正在扫描项目结构…" : col.linkedFolder}>
                             {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
                           </span>}
                         </span>
@@ -342,8 +415,37 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                       </div>
                     );
                   })}
-                </div>
+                {seriesPlans[col.id] && (
+                  <div className="collection-tree__series-divider" />
+                )}
+                {seriesPlans[col.id] && (
+                  <SeriesOverview
+                  plan={seriesPlans[col.id]}
+                  collectionId={col.id}
+                  onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
+                  onPlanArticle={(article) => {
+                    window.dispatchEvent(new CustomEvent("plan-series-article", {
+                      detail: { collectionId: col.id, article }
+                    }));
+                  }}
+                  onEditPlan={() => {
+                    window.dispatchEvent(new CustomEvent("edit-series-plan", {
+                      detail: { collectionId: col.id }
+                    }));
+                  }}
+                  onDeletePlan={async () => {
+                    await deleteSeriesPlan(col.id);
+                    setSeriesPlans(prev => {
+                      const next = { ...prev };
+                      delete next[col.id];
+                      return next;
+                    });
+                    await refresh();
+                  }}
+                />
               )}
+            </div>
+          )}
             </div>
           );
         })}

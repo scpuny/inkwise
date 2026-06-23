@@ -1,14 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { FolderInput, FileText } from "lucide-react";
 import { Toolbar } from "./Toolbar";
 import { EditorContent, type EditorMode } from "./EditorContent";
 import { InlineToolbar } from "./InlineToolbar";
 import { ArticleHeader } from "./ArticleHeader";
 import { BlueprintEditor } from "./BlueprintEditor";
 import { StartupSplash } from "./StartupSplash";
+import { ProjectFileTree } from "./ProjectFileTree";
 import { useChatStream } from "../lib/useChatStream";
 import { useAgent } from "../lib/agent";
 import { getProvidersSync } from "../lib/providerModels";
 import { loadCollections } from "../lib/collections";
+import type { FileNode } from "../lib/collections";
 import { saveArticleContent, loadArticleContent } from "../lib/articles";
 import { saveVersionSnapshot } from "../lib/articleVersions";
 import { parseOutlineFromMarkdown, type OutlineItem, type BlueprintOutlineItem } from "./OutlinePanel";
@@ -104,6 +107,11 @@ export function EditorPane({
   const writtenContentRef = useRef<string | null>(null); // written content from plan flow
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
+  const folderProjectNameRef = useRef<string>("");
+  const [folderProjectName, setFolderProjectName] = useState("");
+  const [projectFiles, setProjectFiles] = useState<string[]>([]);
+const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
+  const abortPlanRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<any>(undefined);
   const outlineTimer = useRef<any>(undefined);
 
@@ -338,6 +346,19 @@ export function EditorPane({
       setBlueprint(null);
       onOutlineChange?.([]);
       writtenContentRef.current = null;
+      contentInjectedFromPlanRef.current = false;
+      pendingArticleRef.current = null;
+      writingAbortRef.current = false;
+      // Reset plan state so StartupSplash is fresh
+      setPlanState("idle");
+      setPlanStep("idle");
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0 });
+      setLastPlanInput(null);
+      setPlanError(null);
+      // Reset folder context refs for fresh load
+      folderContextRef.current = "";
+      folderProjectNameRef.current = "";
+      setFolderProjectName("");
       return;
     }
 
@@ -363,21 +384,7 @@ export function EditorPane({
       });
     }
 
-    // Load folder context if collection has linked folder
-    if (activeCollectionId) {
-      loadCollections().then(cols => {
-        const col = cols.find(c => c.id === activeCollectionId);
-        if (col?.linkedFolder) {
-          import("../lib/collections").then(({ getCollectionFolderContext }) => {
-            getCollectionFolderContext(activeCollectionId!).then(ctx => {
-              if (ctx) {
-                folderContextRef.current = ctx;
-              }
-            });
-          });
-        }
-      });
-    }
+    // (folder context loading moved to separate useEffect)
 
     // Check for unfinished plan draft
     try {
@@ -667,6 +674,153 @@ ${augmentedContent}`
     });
   }, [activeArticleId, blueprint, activeSectionId, execute]);
 
+  // Extract planning logic so it can be called from both UI and auto-plan event
+  const handleStartPlan = useCallback(async (input: PlanInput) => {
+    // Cancel any previous plan
+    if (abortPlanRef.current) {
+      abortPlanRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortPlanRef.current = abortController;
+    
+    setLastPlanInput(input);
+    const enrichedInput: PlanInput = {
+      ...input,
+      projectContext: folderContextRef.current || undefined,
+      projectName: folderProjectNameRef.current || undefined,
+    };
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0 });
+    setPlanError(null);
+    setPlanState("planning");
+    try {
+      const gen = generatePlanStream(enrichedInput);
+      for await (const result of gen) {
+        // Check if cancelled
+        if (abortController.signal.aborted) {
+          setPlanState("idle");
+          setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0 });
+          return;
+        }
+        if (result.step === "title" && result.data) {
+          setPartialPlan(p => ({ ...p, title: result.data }));
+        } else if (result.step === "description" && result.data) {
+          setPartialPlan(p => ({ ...p, description: result.data }));
+        } else if (result.step === "outline" && result.data) {
+          setPartialPlan(p => ({ ...p, outline: result.data }));
+        } else if (result.step === "tags" && result.data) {
+          setPartialPlan(p => ({ ...p, tags: result.data }));
+        }
+        setPlanStep(result.step);
+      }
+      if (!abortController.signal.aborted) {
+        setPlanState("review");
+      }
+    } catch (e: any) {
+      if (!abortController.signal.aborted) {
+        setPlanError(e?.message || "生成失败");
+        setPlanState("review");
+      }
+    }
+  }, []);
+
+  // Cancel plan function exposed to StartupSplash
+  const cancelPlan = useCallback(() => {
+    if (abortPlanRef.current) {
+      abortPlanRef.current.abort();
+      abortPlanRef.current = null;
+    }
+    setPlanState("idle");
+    setPlanStep("idle");
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0 });
+    setLastPlanInput(null);
+    setPlanError(null);
+  }, []);
+
+  // Cleanup plan on unmount
+  useEffect(() => {
+    return () => {
+      if (abortPlanRef.current) {
+        abortPlanRef.current.abort();
+        abortPlanRef.current = null;
+      }
+    };
+  }, []);
+
+  // Listen for auto-plan-article event (from series planner)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { title, description, tone: articleTone, targetAudience } = (e as CustomEvent).detail;
+      if (!title) return;
+      // Auto-trigger the planning flow with the article title as inspiration
+      const inspiration = description 
+        ? `写一篇关于「${title}」的文章：${description}`
+        : `写一篇关于「${title}」的文章`;
+      handleStartPlan({
+        inspiration,
+        tone: articleTone || undefined,
+        targetAudience: targetAudience || undefined,
+        targetWordCount: undefined,
+      });
+    };
+    window.addEventListener("auto-plan-article", handler);
+    return () => window.removeEventListener("auto-plan-article", handler);
+  }, [handleStartPlan]);
+
+  // Load folder context when activeCollectionId changes
+  useEffect(() => {
+    // Always clear first
+    folderContextRef.current = "";
+    folderProjectNameRef.current = "";
+    setFolderProjectName("");
+
+    setProjectFiles([]);
+    // Reset plan state when switching collections on startup splash
+    if (!activeArticleId) {
+      setPlanState("idle");
+      setPlanStep("idle");
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0 });
+      setLastPlanInput(null);
+      setPlanError(null);
+    }
+
+    if (!activeCollectionId) return;
+
+    loadCollections().then(cols => {
+      const col = cols.find(c => c.id === activeCollectionId);
+      if (col?.linkedFolder) {
+        folderProjectNameRef.current = col.title;
+        setFolderProjectName(col.title);
+        import("../lib/projectContext").then(({ buildContextText }) => {
+          buildContextText(col.linkedFolder!, undefined).then(ctx => {
+            if (ctx) folderContextRef.current = ctx;
+          });
+        }).catch(() => {
+          import("../lib/collections").then(({ getCollectionFolderContext }) => {
+            getCollectionFolderContext(activeCollectionId!).then(ctx => {
+              if (ctx) folderContextRef.current = ctx;
+            });
+          });
+        });
+        // Load project context data for left panel
+        import("../lib/collections").then(({ getProjectContext }) => {
+          getProjectContext(col.linkedFolder!).then(ctx => {
+            // Store tree structure and extract top-level files for flat list fallback
+            setProjectTree(ctx.structure);
+            const topFiles = ctx.summary.topFiles
+              .filter(f => f.language)
+              .slice(0, 15)
+              .map(f => f.path.replace(ctx.rootPath + "/", ""));
+            const topSymbols = ctx.symbols
+              .filter(s => s.kind === "function" || s.kind === "class")
+              .slice(0, 10)
+              .map(s => s.name);
+            setProjectFiles([...topFiles, ...topSymbols]);
+          }).catch(() => {});
+        });
+      }
+    });
+  }, [activeCollectionId]);
+
   // Keyboard shortcut: Ctrl+K opens Agent panel
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -704,7 +858,7 @@ ${augmentedContent}`
 
   return (
     <section className="editor-pane">
-      {(hasActiveArticle && activeArticleId) || planState === "planning" || planState === "review" || planState === "article-review" ? (
+      {(hasActiveArticle && activeArticleId) ? (
         <Toolbar
           aiDockOpen={aiDockOpen}
           onToggleAIDock={onToggleAIDock}
@@ -754,34 +908,75 @@ ${augmentedContent}`
           />
           <InlineToolbar />
         </div>
+      ) : folderProjectName && projectFiles.length > 0 ? (
+        <div className="editor-pane__startup-split">
+          <div className="editor-pane__project-panel">
+            <div className="editor-pane__project-header">
+              <FolderInput size={13} />
+              <span>项目灵感</span>
+            </div>
+            <div className="editor-pane__project-name">{folderProjectName}</div>
+            <p className="editor-pane__project-hint">点击文件自动作为写作灵感</p>
+            <div className="editor-pane__project-files">
+              {projectTree ? (
+                <ProjectFileTree
+                  nodes={projectTree}
+                  maxDepth={3}
+                  onSelect={(path) => {
+                    handleStartPlan({
+                      inspiration: path,
+                      tone: undefined,
+                      targetAudience: undefined,
+                      targetWordCount: undefined,
+                    });
+                  }}
+                />
+              ) : (
+                projectFiles.map((f, i) => (
+                  <button key={i} className="editor-pane__file-chip"
+                    onClick={() => {
+                      handleStartPlan({
+                        inspiration: f,
+                        tone: undefined,
+                        targetAudience: undefined,
+                        targetWordCount: undefined,
+                      });
+                    }}
+                  >
+                    <FileText size={10} />
+                    <span>{f}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+          <StartupSplash
+            onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
+            onAIPlan={handleStartPlan}
+            planState={planState}
+            planStep={planStep}
+            partialPlan={partialPlan}
+            planError={planError}
+            lastPlanInput={lastPlanInput}
+            writingOutline={blueprint?.outline || partialPlan.outline}
+            writingSectionId={writingSection}
+            onConfirm={handlePlanConfirm}
+            onCancel={handlePlanCancel}
+            onCancelPlan={cancelPlan}
+            onEditTitle={handleEditTitle}
+            onEditDescription={handleEditDescription}
+            onEditOutline={handleEditOutline}
+            onRetry={handlePlanRetry}
+            onEnterEditor={handleEnterEditor}
+            projectName={folderProjectName || undefined}
+            projectReady={!!folderProjectName}
+            projectFiles={projectFiles}
+          />
+        </div>
       ) : (
         <StartupSplash
           onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
-          onAIPlan={async (input: PlanInput) => {
-            setLastPlanInput(input);
-            setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0 });
-            setPlanError(null);
-            setPlanState("planning");
-            try {
-              const gen = generatePlanStream(input);
-              for await (const result of gen) {
-                if (result.step === "title" && result.data) {
-                  setPartialPlan(p => ({ ...p, title: result.data }));
-                } else if (result.step === "description" && result.data) {
-                  setPartialPlan(p => ({ ...p, description: result.data }));
-                } else if (result.step === "outline" && result.data) {
-                  setPartialPlan(p => ({ ...p, outline: result.data }));
-                } else if (result.step === "tags" && result.data) {
-                  setPartialPlan(p => ({ ...p, tags: result.data }));
-                }
-                setPlanStep(result.step);
-              }
-              setPlanState("review");
-            } catch (e: any) {
-              setPlanError(e?.message || "生成失败");
-              setPlanState("review");
-            }
-          }}
+          onAIPlan={handleStartPlan}
           planState={planState}
           planStep={planStep}
           partialPlan={partialPlan}
@@ -791,11 +986,15 @@ ${augmentedContent}`
           writingSectionId={writingSection}
           onConfirm={handlePlanConfirm}
           onCancel={handlePlanCancel}
+          onCancelPlan={cancelPlan}
           onEditTitle={handleEditTitle}
           onEditDescription={handleEditDescription}
           onEditOutline={handleEditOutline}
           onRetry={handlePlanRetry}
           onEnterEditor={handleEnterEditor}
+          projectName={folderProjectName || undefined}
+          projectReady={!!folderProjectName}
+          projectFiles={projectFiles}
         />
       )}
 

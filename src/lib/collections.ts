@@ -24,7 +24,10 @@ export type Collection = {
 
 export type SeriesPlan = {
   id: string;
+  title: string;
   createdAt: number;
+  tone?: string;
+  targetAudience?: string;
   articles: SeriesArticle[];
 };
 
@@ -66,7 +69,7 @@ function fromTauriCollection(raw: Record<string, unknown>): Collection {
     id: (raw.id as string) ?? "",
     title: (raw.title as string) ?? "",
     createdAt: Number(raw.createdAt ?? raw.created_at ?? 0),
-    linkedFolder: (raw.linkedFolder as string) ?? undefined,
+    linkedFolder: (raw.linkedFolder as string) ?? (raw.linked_folder as string) ?? undefined,
     articles: Array.isArray(raw.articles)
       ? (raw.articles as Record<string, unknown>[]).map((a) => ({
           id: (a.id as string) ?? "",
@@ -446,33 +449,38 @@ export async function rescanProjectFolder(path: string): Promise<ProjectContext>
 }
 
 export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
-  if (isTauriEnv()) {
-    return invokeOrFallback<void>('save_series_plan', { collectionId, plan }, () => {});
-  }
-  // Browser fallback
   try {
     localStorage.setItem(`series_plan:${collectionId}`, JSON.stringify(plan));
   } catch {}
+  if (isTauriEnv()) {
+    try {
+      await invokeOrFallback<void>('save_series_plan', { collectionId, plan }, () => {});
+    } catch {}
+  }
 }
 
 export async function loadSeriesPlan(collectionId: string): Promise<SeriesPlan | null> {
+  // Try localStorage first (works in both browser and Tauri)
+  try {
+    const raw = localStorage.getItem(`series_plan:${collectionId}`);
+    if (raw) return JSON.parse(raw) as SeriesPlan;
+  } catch {}
+  // Tauri backend as fallback
   if (isTauriEnv()) {
     return invokeOrFallback<SeriesPlan | null>('load_series_plan', { collectionId }, () => null);
   }
-  // Browser fallback
-  try {
-    const raw = localStorage.getItem(`series_plan:${collectionId}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  return null;
 }
 
 export async function deleteSeriesPlan(collectionId: string): Promise<void> {
-  if (isTauriEnv()) {
-    return invokeOrFallback<void>('delete_series_plan', { collectionId }, () => {});
-  }
   try {
     localStorage.removeItem(`series_plan:${collectionId}`);
   } catch {}
+  if (isTauriEnv()) {
+    try {
+      await invokeOrFallback<void>('delete_series_plan', { collectionId }, () => {});
+    } catch {}
+  }
 }
 
 /* ─── Search ─── */

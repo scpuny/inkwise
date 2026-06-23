@@ -540,3 +540,11 @@ CollectionTree
 
 > 本文档对应「合集关联目录 → 项目系列文章」功能的完整设计方案。
 > 实现过程中会更新文档以反映最终实现。
+
+
+---
+## 9.待实现功能
+* tree-sitter 集成（Level 2）：在 project_indexer.rs 中加入 tree-sitter 解析，替代当前的正则符号提取
+* CodeGraph SQLite 读取（Level 3）：读取 .codegraph/codegraph.db 获取 docstring/signature/edges
+* 系列文章内链：生成时自动在前文后文间加引用链接
+* 增量扫描：文件 hash 变化时只扫变动的文件

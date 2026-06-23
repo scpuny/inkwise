@@ -33,9 +33,11 @@ import {
   type FontFamily,
 } from "./lib/fontFamily";
 import { loadCollections, addCollection, addArticle, renameArticle,
-  linkCollectionFolder, unlinkCollectionFolder,
+  linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan,
+  type SeriesPlan,
 } from "./lib/collections";
 
+import { SeriesPlanner } from "./components/SeriesPlanner";
 import { saveArticleContent } from "./lib/articles";
 import { useAgent } from "./lib/agent";
 import { getProviders } from "./lib/providerModels";
@@ -77,7 +79,13 @@ function AppContent() {
   const handleApplyHeadingNumbers = useCallback(() => {
     applyHeadingNumbersRef.current?.();
   }, []);
+  const [seriesPlannerOpen, setSeriesPlannerOpen] = useState(false);
+  const [seriesPlannerColId, setSeriesPlannerColId] = useState<string | null>(null);
+  const [seriesPlannerColTitle, setSeriesPlannerColTitle] = useState("");
+  const [seriesPlannerFolder, setSeriesPlannerFolder] = useState("");
+  const [seriesPlannerExistingPlan, setSeriesPlannerExistingPlan] = useState<any>(null);
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([]);
+  const [seriesRefreshKey, setSeriesRefreshKey] = useState(0);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [articlePhase, setArticlePhase] = useState<string | undefined>(undefined);
@@ -289,6 +297,102 @@ function AppContent() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+
+  // Listen for plan-series event (from CollectionTree)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { collectionId } = (e as CustomEvent).detail;
+      if (!collectionId) return;
+      loadCollections()
+        .then(cols => {
+          const col = cols.find(c => c.id === collectionId);
+          if (col) {
+            setSeriesPlannerColId(col.id);
+            setSeriesPlannerColTitle(col.title);
+            setSeriesPlannerFolder(col.linkedFolder || "");
+            setSeriesPlannerOpen(true);
+          } else {
+            console.warn("plan-series: 未找到合集", collectionId);
+          }
+        })
+        .catch(err => console.warn("plan-series: 加载合集失败", err));
+    };
+    window.addEventListener("plan-series", handler);
+    return () => window.removeEventListener("plan-series", handler);
+  }, []);
+
+  // Listen for edit-series-plan event (from SeriesOverview "编辑规划")
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { collectionId } = (e as CustomEvent).detail;
+      if (!collectionId) return;
+      const plan = await loadSeriesPlan(collectionId);
+      const cols = await loadCollections();
+      const col = cols.find(c => c.id === collectionId);
+      if (col) {
+        setSeriesPlannerColId(col.id);
+        setSeriesPlannerColTitle(col.title);
+        setSeriesPlannerFolder(col.linkedFolder || "");
+        setSeriesPlannerExistingPlan(plan || null);
+        setSeriesPlannerOpen(true);
+      }
+    };
+    window.addEventListener("edit-series-plan", handler);
+    return () => window.removeEventListener("edit-series-plan", handler);
+  }, []);
+
+  // Listen for plan-series-article event (from SeriesOverview)
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { collectionId, article } = (e as CustomEvent).detail;
+      if (!collectionId || !article) return;
+      try {
+        // Create article
+        const newArticle = await addArticle(collectionId, article.title);
+        if (!newArticle) return;
+        
+        // Update series plan status
+        const plan = await loadSeriesPlan(collectionId);
+        if (plan) {
+          const updated = plan.articles.map((a: any) =>
+            a.id === article.id ? { ...a, status: "writing", articleId: newArticle.id } : a
+          );
+          await saveSeriesPlan(collectionId, { ...plan, articles: updated });
+        }
+        
+        // Navigate to StartupSplash and auto-trigger AI planning
+        setActiveArticleId(null);
+        setActiveCollectionId(collectionId);
+        setHasActiveArticle(false);
+        
+        // Read tone/audience from series plan
+        const series = plan || await loadSeriesPlan(collectionId);
+        const seriesTone = series?.tone;
+        const seriesAudience = series?.targetAudience;
+        
+        // Dispatch event for EditorPane to auto-start planning
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("auto-plan-article", {
+            detail: { 
+              articleId: newArticle.id,
+              collectionId,
+              title: article.title,
+              description: article.description || "",
+              tone: seriesTone,
+              targetAudience: seriesAudience,
+            }
+          }));
+        }, 100);
+        
+        window.dispatchEvent(new Event("collections-changed"));
+      } catch (err) {
+        console.warn("创建系列文章失败:", err);
+      }
+    };
+    window.addEventListener("plan-series-article", handler);
+    return () => window.removeEventListener("plan-series-article", handler);
+  }, []);
+
   // Layout class
   const { panelOpen, closePanel } = useAgent();
   const layoutClass = [
@@ -317,6 +421,7 @@ function AppContent() {
       >
         {/* Sidebar */}
         <Sidebar
+          seriesRefreshKey={seriesRefreshKey}
           onOpenSettings={openSettings}
           onSelectArticle={async (id) => {
             setActiveArticleId(id);
@@ -335,6 +440,12 @@ function AppContent() {
             // Navigate to welcome/start page (StartupSplash)
             setActiveArticleId(null);
             setActiveCollectionId(null);
+            setHasActiveArticle(false);
+          }}
+          onNewArticleInCollection={async (collectionId: string) => {
+            // Navigate to StartupSplash with collection context
+            setActiveArticleId(null);
+            setActiveCollectionId(collectionId);
             setHasActiveArticle(false);
           }}
           onManageArticles={() => setManageOpen(true)}
@@ -537,6 +648,26 @@ function AppContent() {
         open={manageOpen}
         onClose={() => setManageOpen(false)}
         onOpenArticle={handleOpenArticle}
+      />
+
+      <SeriesPlanner
+        open={seriesPlannerOpen}
+        collectionId={seriesPlannerColId || ""}
+        collectionTitle={seriesPlannerColTitle}
+        linkedFolder={seriesPlannerFolder}
+        existingPlan={seriesPlannerExistingPlan}
+        onSave={async (plan: SeriesPlan) => {
+          if (seriesPlannerColId) {
+            await saveSeriesPlan(seriesPlannerColId, plan);
+            window.dispatchEvent(new CustomEvent("plan-series-saved", { detail: { collectionId: seriesPlannerColId } }));
+            setSeriesRefreshKey(k => k + 1);
+          }
+          setSeriesPlannerOpen(false);
+        }}
+        onClose={() => {
+          setSeriesPlannerOpen(false);
+          setSeriesPlannerExistingPlan(null);
+        }}
       />
 </div>
     </ErrorBoundary>

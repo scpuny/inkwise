@@ -22,12 +22,31 @@ export interface PlanInput {
   tone?: string;
   targetAudience?: string;
   targetWordCount?: number;
+  projectContext?: string;
+  projectName?: string;
+  articleDescription?: string;
 }
 
 /* ─── 分步生成器 ───
    每一步都只让 AI 输出一小段纯文本，前端解析。
    不依赖 JSON 格式，大大降低解析失败率。
 */
+
+
+
+/** 构建项目上下文提示块（注入到每一步的 system prompt 中） */
+function buildProjectContextPrompt(ctx?: string, name?: string): string {
+  if (!ctx) return "";
+  const header = name ? `项目「${name}」的上下文信息` : "项目上下文信息";
+  return `
+
+## ${header}
+当前写作关联了以下本地项目目录，请参考项目结构、代码符号和配置来进行写作。
+\`\`\`
+${ctx.slice(0, 4000)}
+\`\`\`
+`;
+}
 
 let _stepId = 0;
 
@@ -101,6 +120,7 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 /* ─── Step 3: 大纲 ─── */
 
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
+  const projectCtx = buildProjectContextPrompt(input.projectContext, input.projectName);
   const sysPrompt = `你是一位写作规划师。为文章生成大纲结构。
 
 ## 输出格式
@@ -118,13 +138,15 @@ export async function generateOutline(input: PlanInput, title: string, descripti
 - 3-6 个主章节
 - 章节标题简洁明了
 - 章节描述（可选）说明这章写什么
-- 直接输出列表，不要任何额外文字`;
+- 直接输出列表，不要任何额外文字${projectCtx}`;
 
   const userPrompt = [
+    input.projectName ? `关联项目: ${input.projectName}` : "",
     `灵感: ${input.inspiration}`,
     `标题: ${title}`,
     `简介: ${description}`,
     input.tone ? `风格: ${input.tone}` : "",
+    input.articleDescription ? `文章定位: ${input.articleDescription}` : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 2048);

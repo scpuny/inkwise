@@ -10,6 +10,7 @@ export function Sidebar({
   onOpenSettings,
   onSelectArticle,
   onNewArticle,
+  onNewArticleInCollection,
   activeArticleId,
   outlineItems,
   activeOutlineId,
@@ -18,10 +19,12 @@ export function Sidebar({
   onLinkFolder,
   onUnlinkFolder,
   onManageArticles,
+  seriesRefreshKey,
 }: {
   onOpenSettings: () => void;
   onSelectArticle?: (articleId: string) => void;
   onNewArticle?: () => Promise<void>;
+  onNewArticleInCollection?: (collectionId: string) => void;
   activeArticleId?: string | null;
   outlineItems?: OutlineItem[];
   activeOutlineId?: string | null | undefined;
@@ -30,6 +33,7 @@ export function Sidebar({
   onLinkFolder?: (collectionId: string) => void;
   onUnlinkFolder?: (collectionId: string) => void;
   onManageArticles?: () => void;
+  seriesRefreshKey?: number | undefined;
 }) {
   const [internalTab, setInternalTab] = useState<SidebarTab>("files");
   const activeTab = internalTab;
@@ -86,9 +90,11 @@ export function Sidebar({
             onClose={() => { setShowSearch(false); setSearchQuery(""); }}
           />
         ) : activeTab === "files" ? (
-          <CollectionTree
+          <CollectionTree key={seriesRefreshKey}
             onSelectArticle={onSelectArticle}
             activeArticleId={activeArticleId ?? null}
+            onNewArticleInCollection={onNewArticleInCollection}
+            seriesRefreshKey={seriesRefreshKey}
           />
         ) : (
           <OutlinePanel

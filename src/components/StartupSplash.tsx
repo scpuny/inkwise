@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle, FolderInput } from "lucide-react";
 import type { PlanInput, PlanStep, PartialPlan } from "../lib/plan";
 import type { OutlineSection } from "../lib/articleBlueprint";
 
@@ -41,18 +41,23 @@ interface StartupSplashProps {
   writingSectionId: string | null;
   onConfirm: () => void;
   onCancel: () => void;
+  onCancelPlan?: () => void;
   onEditTitle: (title: string) => void;
   onEditDescription: (desc: string) => void;
   onEditOutline: (outline: OutlineSection[]) => void;
   onRetry: () => void;
   onEnterEditor: () => void;
+  projectName?: string;
+  projectReady?: boolean;
+  projectFiles?: string[];
 }
 
 export function StartupSplash({
   onQuickStart, onAIPlan,
   planState, planStep, partialPlan, planError, lastPlanInput,
   writingOutline, writingSectionId,
-  onConfirm, onCancel, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
+  onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
+  projectName, projectReady, projectFiles,
 }: StartupSplashProps) {
   const [inspiration, setInspiration] = useState("");
   const [tone, setTone] = useState("");
@@ -190,6 +195,15 @@ export function StartupSplash({
                 </div>
               )}
 
+              {/* Cancel button during planning */}
+              {isGenerating && (
+                <div className="startup-splash__cancel-row">
+                  <button className="btn" onClick={onCancelPlan} style={{fontSize: 11, height: 24, padding: '0 8px'}}>
+                    取消规划
+                  </button>
+                </div>
+              )}
+
               {/* Step loading indicator */}
               {isGenerating && hasTitle && (
                 <div className="startup-splash__thinking startup-splash__thinking--next">
@@ -309,66 +323,68 @@ export function StartupSplash({
       ) : (
         /* ── Input View (welcome) ── */
         <>
-          <div className="startup-splash__brand">
-            <PenLine size={22} strokeWidth={1.5} />
-            <h1>开始写作</h1>
-            <p className="startup-splash__tagline">输入灵感，AI 帮你完成从规划到成文的全部工作</p>
-          </div>
+          
+            <>
+              <div className="startup-splash__brand">
+                <PenLine size={22} strokeWidth={1.5} />
+                <h1>开始写作</h1>
+                <p className="startup-splash__tagline">输入灵感，AI 帮你完成从规划到成文的全部工作</p>
+              </div>
 
-          {showSuggestions && inspiration.length === 0 && (
-            <div className="startup-splash__suggestions">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} className="startup-splash__suggestion-chip"
-                  onClick={() => { setInspiration(s); setShowSuggestions(false); }}>
-                  <Sparkles size={10} /> {s}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="startup-splash__input-area">
-            <textarea className="startup-splash__input" placeholder="你想写什么？输入一个主题、一句话或一段描述…"
-              rows={3} value={inspiration}
-              onChange={(e) => setInspiration(e.target.value)}
-              onFocus={() => setShowSuggestions(false)}
-              autoFocus
-            />
-          </div>
-
-          <div className="startup-splash__options-bar">
-            <select className="startup-splash__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
-              <option value="">写作风格</option>
-              {TONE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-            </select>
-
-            <div className="startup-splash__option-with-custom">
-              <select className="startup-splash__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
-                <option value="">目标读者</option>
-                {AUDIENCE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-              {audience === "__custom__" && (
-                <input className="startup-splash__option-input" placeholder="输入读者" value={customAudience}
-                  onChange={(e) => setCustomAudience(e.target.value)} />
+              {showSuggestions && inspiration.length === 0 && (
+                <div className="startup-splash__suggestions">
+                  {SUGGESTIONS.map((s) => (
+                    <button key={s} className="startup-splash__suggestion-chip"
+                      onClick={() => { setInspiration(s); setShowSuggestions(false); }}>
+                      <Sparkles size={10} /> {s}
+                    </button>
+                  ))}
+                </div>
               )}
-            </div>
 
-            <input className="startup-splash__option-input startup-splash__option-input--short" type="number"
-              placeholder="字数" min={100} max={100000} value={wordCount} onChange={(e) => setWordCount(e.target.value)} />
+              <div className="startup-splash__input-area">
+                <textarea className="startup-splash__input" placeholder="你想写什么？输入一个主题、一句话或一段描述…"
+                  rows={3} value={inspiration}
+                  onChange={(e) => setInspiration(e.target.value)}
+                  onFocus={() => setShowSuggestions(false)}
+                  autoFocus
+                />
+              </div>
 
-            <div className="startup-splash__action-group">
-              <button className="btn btn--primary"
-                disabled={!inspiration.trim()} onClick={handlePlan}>
-                <Sparkles size={14} /> AI 规划
-              </button>
-              <button className="btn" onClick={onQuickStart}>
-                <SquarePen size={14} /> 快速开始
-              </button>
-            </div>
-          </div>
+              <div className="startup-splash__options-bar">
+                <select className="startup-splash__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
+                  <option value="">写作风格</option>
+                  {TONE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                </select>
 
-          <p className="startup-splash__hint">
-            <ArrowRight size={11} /> 按 <kbd>⌘</kbd><kbd>⏎</kbd> 使用 AI 规划
-          </p>
+                <div className="startup-splash__option-with-custom">
+                  <select className="startup-splash__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
+                    <option value="">目标读者</option>
+                    {AUDIENCE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                  </select>
+                  {audience === "__custom__" && (
+                    <input className="startup-splash__option-input" placeholder="输入读者" value={customAudience}
+                      onChange={(e) => setCustomAudience(e.target.value)} />
+                  )}
+                </div>
+
+                <input className="startup-splash__option-input startup-splash__option-input--short" type="number"
+                  placeholder="字数" min={100} max={100000} value={wordCount} onChange={(e) => setWordCount(e.target.value)} />
+
+                <div className="startup-splash__action-group">
+                  <button className="btn btn--primary"
+                    disabled={!inspiration.trim()} onClick={handlePlan}>
+                    <Sparkles size={14} /> AI 规划
+                  </button>
+                  <button className="btn" onClick={onQuickStart}>
+                    <SquarePen size={14} /> 快速开始
+                  </button>
+                </div>
+              </div>
+              <p className="startup-splash__hint">
+                <ArrowRight size={11} /> 按 <kbd>⌘</kbd><kbd>⏎</kbd> 使用 AI 规划
+              </p>
+            </>
         </>
       )}
     </div>

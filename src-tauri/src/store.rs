@@ -19,6 +19,7 @@ pub struct Collection {
     pub id: String,
     pub title: String,
     pub created_at: u64,
+    pub linked_folder: Option<String>,
     /// Full article metadata stored inline for simple load/save.
     pub articles: Vec<ArticleMeta>,
 }
@@ -27,7 +28,10 @@ pub struct Collection {
 #[serde(rename_all = "camelCase")]
 pub struct SeriesPlan {
     pub id: String,
+    pub title: String,
     pub created_at: u64,
+    pub tone: Option<String>,
+    pub target_audience: Option<String>,
     pub articles: Vec<SeriesArticle>,
 }
 
