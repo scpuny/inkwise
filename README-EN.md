@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./public/inkwise-icon.png" width="100" alt="InkWise Logo" />
+  <img src="https://raw.githubusercontent.com/scpuny/inkwise/main/public/inkwise-icon.png" width="100" alt="InkWise Logo" />
   <h1>InkWise — AI Writing Assistant</h1>
 
   <p>
