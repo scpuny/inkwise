@@ -12,7 +12,7 @@ import { DocPicker, type DocPickerResult } from "./components/DocPicker";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CommandPalette } from "./components/CommandPalette";
 import type { SettingsTab } from "./components/SettingsPanel";
-import { saveBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "./lib/articleBlueprint";
+import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "./lib/articleBlueprint";
 import type { OutlineItem } from "./components/OutlinePanel";
 import {
   applyTheme,
@@ -32,12 +32,13 @@ import {
   getFontFamily,
   type FontFamily,
 } from "./lib/fontFamily";
-import { loadCollections, addCollection, addArticle, renameArticle,
+import { loadCollections, addCollection, addArticle, renameArticle, genId,
   linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan,
   type SeriesPlan,
 } from "./lib/collections";
 
 import { SeriesPlanner } from "./components/SeriesPlanner";
+import { ArticleFinalPage } from "./components/ArticleFinalPage";
 import { saveArticleContent } from "./lib/articles";
 import { useAgent } from "./lib/agent";
 import { getProviders } from "./lib/providerModels";
@@ -59,6 +60,7 @@ function AppContent() {
   const [manageOpen, setManageOpen] = useState(false);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [activeArticleId, setLocalArticleId] = useState<string | null>(null);
+  const [showFinalPage, setShowFinalPage] = useState(false);
   const { setActiveArticleId: setCtxArticleId } = useAgent();
   const setActiveArticleId = useCallback((id: string | null) => {
     setLocalArticleId(id);
@@ -251,10 +253,15 @@ function AppContent() {
     return { articleId: article.id, collectionId: targetId };
   }, []);
 
+  const handleBackToEdit = useCallback(() => {
+    setShowFinalPage(false);
+  }, []);
+
   const handleEnterEditor = useCallback((articleId: string, collectionId: string) => {
     setActiveArticleId(articleId);
     setActiveCollectionId(collectionId);
     setHasActiveArticle(true);
+    setShowFinalPage(false);
   }, []);
 
   const handleDocPickerResult = useCallback(async (result: DocPickerResult) => {
@@ -282,6 +289,9 @@ function AppContent() {
 
   const handlePhaseChange = useCallback((phase: string) => {
     setArticlePhase(phase);
+    if (phase !== "complete") {
+      setShowFinalPage(false);
+    }
   }, []);
 
   const openSettings = useCallback(() => {
@@ -511,16 +521,21 @@ function AppContent() {
                 break;
               }
             }
+            // Check if article is complete -> show final page
+            const bp = await loadBlueprint(id);
+            setShowFinalPage(bp?.phase === "complete");
           }}
           activeArticleId={activeArticleId}
           activeCollectionId={activeCollectionId}
           onNewArticle={async () => {
+            setShowFinalPage(false);
             // Navigate to welcome/start page (StartupSplash)
             setActiveArticleId(null);
             setActiveCollectionId(null);
             setHasActiveArticle(false);
           }}
           onNewArticleInCollection={async (collectionId: string) => {
+            setShowFinalPage(false);
             // Navigate to StartupSplash with collection context
             setActiveArticleId(null);
             setActiveCollectionId(collectionId);
@@ -594,7 +609,15 @@ function AppContent() {
           aria-label="调整侧栏宽度"
         />
 
-        {/* Editor */}
+        {/* Editor / Final Page */}
+        {showFinalPage && activeArticleId ? (
+          <ArticleFinalPage
+            articleId={activeArticleId}
+            collectionId={activeCollectionId ?? ""}
+            onBackToEdit={handleBackToEdit}
+            genId={genId}
+          />
+        ) : (
         <EditorPane
           aiDockOpen={false}
           onToggleAIDock={() => {}}
@@ -640,6 +663,7 @@ function AppContent() {
           onCloseStylePanel={() => setStylePanelOpen(false)}
         />
 
+        )}
         {/* Agent Panel */}
         <AgentPanel />
         {/* Style Panel */}
