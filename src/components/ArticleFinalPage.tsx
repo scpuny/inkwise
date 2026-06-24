@@ -25,6 +25,7 @@ const STYLE_TAG_IDS = [
   "editor-code-theme-style",
   "editor-text-style",
   "editor-heading-deco",
+  "editor-macos-codeblock-style",
   "editor-bg-pattern",
   "editor-article-theme",
 ];
