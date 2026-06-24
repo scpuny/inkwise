@@ -935,7 +935,7 @@ async fn link_collection_folder(state: tauri::State<'_, AppState>, collection_id
         return Err("路径不是有效的文件夹".into());
     }
     // Scan the project
-    let ctx = scan_project(&path)?;
+    let ctx = scan_project(&path, false)?;
     // Save the link info (via existing store - collections will be updated from frontend)
     // The frontend calls set_collections after linking
     Ok(ctx)
@@ -950,18 +950,51 @@ fn unlink_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: 
 
 #[tauri::command]
 async fn get_project_context(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path)
+    scan_project(&path, false)
 }
 
 #[tauri::command]
 async fn get_project_context_text(path: String) -> Result<String, String> {
-    let ctx = scan_project(&path)?;
+    let ctx = scan_project(&path, false)?;
     Ok(build_context_text(&ctx))
 }
 
 #[tauri::command]
 async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path)
+    scan_project(&path, true)
+}
+
+#[tauri::command]
+fn read_project_files(path: String, files: Vec<String>) -> Result<Vec<serde_json::Value>, String> {
+    let mut results = Vec::new();
+    for rel_path in &files {
+        let full_path = std::path::PathBuf::from(&path).join(rel_path);
+        match std::fs::read_to_string(&full_path) {
+            Ok(content) => {
+                let size = content.len();
+                // Truncate files larger than 50KB
+                let truncated = if size > 51200 {
+                    let truncated_content: String = content.chars().take(51200).collect();
+                    format!("{}...(文件过大，已截断前 50KB)", truncated_content)
+                } else {
+                    content
+                };
+                results.push(serde_json::json!({
+                    "path": rel_path,
+                    "content": truncated,
+                    "size": size,
+                    "truncated": size > 51200
+                }));
+            }
+            Err(e) => {
+                results.push(serde_json::json!({
+                    "path": rel_path,
+                    "error": format!("无法读取文件: {}", e)
+                }));
+            }
+        }
+    }
+    Ok(results)
 }
 
 // ─── Series Plan commands ───
@@ -972,13 +1005,23 @@ fn save_series_plan(state: tauri::State<'_, AppState>, collection_id: String, pl
 }
 
 #[tauri::command]
-fn load_series_plan(state: tauri::State<'_, AppState>, collection_id: String) -> Result<Option<SeriesPlan>, String> {
-    Ok(state.store.lock().unwrap().load_series_plan(&collection_id))
+fn save_all_series_plans(state: tauri::State<'_, AppState>, collection_id: String, plans: Vec<SeriesPlan>) -> Result<(), String> {
+    state.store.lock().unwrap().save_all_series_plans(&collection_id, &plans)
 }
 
 #[tauri::command]
-fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String) -> Result<(), String> {
-    state.store.lock().unwrap().delete_series_plan(&collection_id)
+fn load_all_series_plans(state: tauri::State<'_, AppState>, collection_id: String) -> Result<Vec<SeriesPlan>, String> {
+    Ok(state.store.lock().unwrap().load_all_series_plans(&collection_id))
+}
+
+#[tauri::command]
+fn load_series_plan(state: tauri::State<'_, AppState>, collection_id: String, series_id: String) -> Result<Option<SeriesPlan>, String> {
+    Ok(state.store.lock().unwrap().load_series_plan(&collection_id, &series_id))
+}
+
+#[tauri::command]
+fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String, series_id: String) -> Result<(), String> {
+    state.store.lock().unwrap().delete_series_plan(&collection_id, &series_id)
 }
 
 
@@ -1223,8 +1266,11 @@ pub fn run() {
             get_project_context,
             get_project_context_text,
             rescan_project_folder,
+            read_project_files,
             save_series_plan,
+            save_all_series_plans,
             load_series_plan,
+            load_all_series_plans,
             delete_series_plan,
             get_platform_configs,
             save_platform_config,

@@ -105,7 +105,18 @@ export function SeriesOverview({
 
   return (
     <div className="series-overview">
-      <div className="series-overview__header" onClick={() => setExpanded(!expanded)}>
+      <div className="series-overview__header" onClick={() => setExpanded(!expanded)}
+        onContextMenu={(e) => {
+          e.preventDefault(); e.stopPropagation();
+          setCtxMenu({
+            items: [
+              { icon: <BookOpen size={13} />, label: "编辑规划", onClick: () => onEditPlan?.() },
+              { icon: <Pencil size={13} />, label: "重命名", onClick: () => { setTitleDraft(plan.title); setEditingTitle(true); } },
+              { icon: <Trash2 size={13} />, label: "删除系列规划", danger: true, onClick: () => onDeletePlan?.() },
+            ],
+            x: e.clientX, y: e.clientY
+          });
+        }}>
         <ChevronRight size={11} className={`series-overview__chevron${expanded ? " series-overview__chevron--open" : ""}`} />
         <BookOpen size={13} className="series-overview__icon" />
         {editingTitle ? (

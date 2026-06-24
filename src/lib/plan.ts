@@ -15,6 +15,7 @@ export interface PartialPlan {
   tone: string;
   targetAudience: string;
   targetWordCount: number;
+  skillId?: string;
 }
 
 
@@ -82,14 +83,16 @@ function buildSystemPrompt(phase: SkillPhase, skillId?: string, tone?: string, p
   const config = getEffectivePhaseConfig(skill, phase);
   let prompt = config.systemPrompt;
 
+  // 语气放在最前面，让 AI 从一开始就知道基调
+  if (tone && tone.trim()) {
+    prompt = `整体基调：${tone}。\n\n` + prompt;
+  }
+
   // 技能声明了 project 上下文且可用时自动注入
   if (skill?.contextSources?.some(cs => cs.type === "project") && projectContext) {
     prompt += buildProjectContextBlock(projectContext, projectName);
   }
 
-  if (tone && tone.trim()) {
-    prompt += `\n\n## 额外的风格提示\n用户偏好的风格基调：${tone}。请在不违背上述核心规则的前提下，融入这个基调。`;
-  }
   return prompt;
 }
 
@@ -251,6 +254,9 @@ export interface ArticleGenInput {
   targetAudience?: string;
   targetWordCount?: number;
   skillId?: string;
+  projectContext?: string;
+  projectName?: string;
+  seriesContext?: string;
 }
 
 /**
@@ -265,6 +271,19 @@ export async function generateFullArticle(input: ArticleGenInput): Promise<strin
 
   const sysPrompt = buildSystemPrompt("writing", input.skillId, input.tone);
 
+  // 注入项目上下文（关联代码目录时使用）
+  let projectBlock = '';
+  if (input.projectContext) {
+    const name = input.projectName || '关联项目';
+    projectBlock = `\n## 关联项目上下文\n以下是与文章主题关联的本地项目「${name}」的代码结构和示例，请引用实际代码来支撑文章内容：\n\`\`\`\n${input.projectContext.slice(0, 4000)}\n\`\`\``;
+  }
+
+  // 注入系列文章上下文
+  let seriesBlock = '';
+  if (input.seriesContext) {
+    seriesBlock = `\n## 系列文章上下文\n${input.seriesContext}\n\n### 写作要求\n- 自然引用前文已讨论的概念，用「如上一篇文章所述」或 Markdown 链接 [上一篇: 标题](#article-{id}) 等方式衔接\n- 如果 context 中有提供「上一篇」的链接标记，用 Markdown 链接格式插入\n- 结尾处如果下文有预告，请附上自然的下一篇引子并用 Markdown 链接格式标记\n- 整体风格、术语体系与系列保持一致\n- 如果关联了项目目录，在涉及代码实现时可引用项目中的真实代码结构`;
+  }
+
   const userPrompt = [
     `标题: ${input.title}`,
     `简介: ${input.description}`,
@@ -274,12 +293,17 @@ export async function generateFullArticle(input: ArticleGenInput): Promise<strin
     '',
     '## 大纲',
     outlineText,
+    projectBlock,
+    seriesBlock,
     '',
-    '请根据以上大纲写一篇完整的文章。直接输出 Markdown 内容，从第一个章节开始。',
+    '请根据以上大纲写一篇完整的文章。大纲仅用于确定文章方向，并非写作顺序。你可以根据行文需要打乱顺序、倒叙、插叙或自由组织结构。开头、过渡、章节安排完全由你根据内容和风格自然决定。直接输出 Markdown 内容。',
   ].filter(Boolean).join('\n');
 
-  const result = await askAI(sysPrompt, userPrompt, 4096);
-  return normalizeMarkdownBreaks(result.trim());
+  const result = await askAI(sysPrompt, userPrompt, 8192);
+  
+  // 后处理：系列文章自动追加导航区块
+  const finalContent = appendSeriesNavigation(result.trim(), input);
+  return finalContent;
 }
 
 /**
@@ -370,4 +394,41 @@ export async function writeArticleSection(input: SectionWriteInput): Promise<str
 
   const result = await askAI(sysPrompt, userPrompt, 4096);
   return normalizeMarkdownBreaks(result.trim());
+}
+
+/**
+ * 系列文章后处理：检查内容末尾是否已有导航区块，
+ * 若没有则自动追加。
+ */
+function appendSeriesNavigation(content: string, input: ArticleGenInput): string {
+  // 仅当有系列上下文时才处理
+  if (!input.seriesContext) return content;
+  
+  // 提取上一篇/下一篇的信息（从 seriesContext 中解析）
+  const prevMatch = input.seriesContext.match(/上一篇：\[(.+?)\]\(#article-(.+?)\)/);
+  const nextMatch = input.seriesContext.match(/下一篇：\[(.+?)\]\(#article-(.+?)\)/);
+  
+  // 检查是否已有导航区块
+  if (content.includes("**系列导航**") || content.includes("系列导航")) {
+    return content;
+  }
+  
+  // 构建导航区块
+  const navLines: string[] = [];
+  navLines.push('');
+  navLines.push('---');
+  navLines.push('**系列导航**');
+  
+  if (prevMatch) {
+    navLines.push(`上一篇：[${prevMatch[1]}](#article-${prevMatch[2]})`);
+  }
+  if (nextMatch) {
+    navLines.push(`下一篇：[${nextMatch[1]}](#article-${nextMatch[2]})`);
+  }
+  
+  if (navLines.length > 1) {
+    return content + navLines.join('\n');
+  }
+  
+  return content;
 }

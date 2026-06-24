@@ -44,6 +44,8 @@ pub struct SeriesArticle {
     pub target_word_count: Option<u32>,
     pub status: String,
     pub article_id: Option<String>,
+    pub previous_article_id: Option<String>,
+    pub next_article_id: Option<String>,
 }
 
 
@@ -348,31 +350,85 @@ impl DataStore {
     }
 
 
-    // ─── Series Plan ───
+    // ─── Series Plan (Multi-series) ───
 
+    /// Save/upsert a series plan into the collection's plan array
     pub fn save_series_plan(&self, collection_id: &str, plan: &SeriesPlan) -> Result<(), String> {
+        let mut enriched = plan.clone();
+        for i in 0..enriched.articles.len() {
+            enriched.articles[i].previous_article_id = i.checked_sub(1).and_then(|j| enriched.articles[j].article_id.clone());
+            enriched.articles[i].next_article_id = if i + 1 < enriched.articles.len() {
+                enriched.articles[i + 1].article_id.clone()
+            } else {
+                None
+            };
+        }
+        let mut plans = self.load_all_series_plans(collection_id);
+        let idx = plans.iter().position(|p| p.id == enriched.id);
+        if let Some(i) = idx {
+            plans[i] = enriched;
+        } else {
+            plans.push(enriched);
+        }
+        self.write_series_plans(collection_id, &plans)
+    }
+
+    /// Load a single series plan by id
+    pub fn load_series_plan(&self, collection_id: &str, series_id: &str) -> Option<SeriesPlan> {
+        self.load_all_series_plans(collection_id)
+            .into_iter()
+            .find(|p| p.id == series_id)
+    }
+
+    /// Load all series plans for a collection
+    pub fn load_all_series_plans(&self, collection_id: &str) -> Vec<SeriesPlan> {
         let path = self.data_dir.join(format!("series_{}.json", collection_id));
-        let content = serde_json::to_string_pretty(plan).map_err(|e| e.to_string())?;
+        if !path.exists() {
+            return Vec::new();
+        }
+        // Try reading as array first
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            // Try array format
+            if let Ok(plans) = serde_json::from_str::<Vec<SeriesPlan>>(&content) {
+                return plans;
+            }
+            // Fallback: migrate old single-plan format
+            if let Ok(plan) = serde_json::from_str::<SeriesPlan>(&content) {
+                let plans = vec![plan];
+                let _ = self.write_series_plans(collection_id, &plans);
+                return plans;
+            }
+        }
+        Vec::new()
+    }
+
+    /// Write all series plans for a collection (replaces entire array)
+    fn write_series_plans(&self, collection_id: &str, plans: &[SeriesPlan]) -> Result<(), String> {
+        let path = self.data_dir.join(format!("series_{}.json", collection_id));
+        let content = serde_json::to_string_pretty(plans).map_err(|e| e.to_string())?;
         std::fs::write(&path, content).map_err(|e| e.to_string())
     }
 
-    pub fn load_series_plan(&self, collection_id: &str) -> Option<SeriesPlan> {
-        let path = self.data_dir.join(format!("series_{}.json", collection_id));
-        if path.exists() {
-            std::fs::read_to_string(&path)
-                .ok()
-                .and_then(|c| serde_json::from_str(&c).ok())
-        } else {
-            None
-        }
+    /// Save all series plans at once (replaces entire array)
+    pub fn save_all_series_plans(&self, collection_id: &str, plans: &[SeriesPlan]) -> Result<(), String> {
+        self.write_series_plans(collection_id, plans)
     }
 
-    pub fn delete_series_plan(&self, collection_id: &str) -> Result<(), String> {
-        let path = self.data_dir.join(format!("series_{}.json", collection_id));
-        if path.exists() {
-            std::fs::remove_file(&path).map_err(|e| e.to_string())
-        } else {
+    /// Delete a single series plan by id
+    pub fn delete_series_plan(&self, collection_id: &str, series_id: &str) -> Result<(), String> {
+        let mut plans = self.load_all_series_plans(collection_id);
+        let before = plans.len();
+        plans.retain(|p| p.id != series_id);
+        if plans.len() == before {
+            return Ok(()); // nothing to delete
+        }
+        if plans.is_empty() {
+            // Remove file entirely if no plans left
+            let path = self.data_dir.join(format!("series_{}.json", collection_id));
+            let _ = std::fs::remove_file(&path);
             Ok(())
+        } else {
+            self.write_series_plans(collection_id, &plans)
         }
     }
 

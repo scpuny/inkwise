@@ -8,7 +8,7 @@ import {
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, genId,
   linkCollectionFolder, rescanProjectFolder, unlinkCollectionFolder,
-  loadSeriesPlan, deleteSeriesPlan,
+  loadAllSeriesPlans, deleteSeriesPlan,
   type SeriesPlan,
 } from "../lib/collections";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
@@ -29,7 +29,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const [confirmDelete, setConfirmDelete] = useState<{ type: "collection" | "article"; id: string; collectionId?: string; title: string } | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "date" | "articleCount">("name");
   const [articleSortBy, setArticleSortBy] = useState<Record<string, "name" | "created" | "words">>({});
-  const [seriesPlans, setSeriesPlans] = useState<Record<string, SeriesPlan>>({});
+  const [seriesPlansList, setSeriesPlansList] = useState<Record<string, SeriesPlan[]>>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -70,17 +70,17 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setTrash(tr);
     setLoaded(true);
     // Load series plans
-    const plans: Record<string, SeriesPlan> = {};
+    const plansMap: Record<string, SeriesPlan[]> = {};
     for (const col of cols) {
-      const plan = await loadSeriesPlan(col.id);
-      if (plan) plans[col.id] = plan;
+      const colPlans = await loadAllSeriesPlans(col.id);
+      if (colPlans.length > 0) plansMap[col.id] = colPlans;
     }
-    setSeriesPlans(plans);
+    setSeriesPlansList(plansMap);
     // Auto-expand collections that have series plans
     setExpanded(prev => {
       const next = new Set(prev);
       let changed = false;
-      for (const colId of Object.keys(plans)) {
+      for (const colId of Object.keys(plansMap)) {
         if (!next.has(colId)) {
           next.add(colId);
           changed = true;
@@ -284,7 +284,11 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   const sortedCollections = [...collections].sort((a, b) => {
     if (sortBy === "name") return a.title.localeCompare(b.title, "zh");
-    if (sortBy === "articleCount") return b.articles.length - a.articles.length;
+    if (sortBy === "articleCount") {
+        const countA = a.articles.length + (seriesPlansList[a.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
+        const countB = b.articles.length + (seriesPlansList[b.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
+        return countB - countA;
+      }
     return b.createdAt - a.createdAt;
   });
 
@@ -370,7 +374,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                             {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
                           </span>}
                         </span>
-                    <span className="collection-tree__count">{col.articles.length}</span>
+                    <span className="collection-tree__count">{col.articles.length + (seriesPlansList[col.id] || []).reduce((sum, p) => sum + p.articles.length, 0)}</span>
                     <button
                       className="collection-tree__add-btn"
                       title="新建文章"
@@ -415,35 +419,41 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                       </div>
                     );
                   })}
-                {seriesPlans[col.id] && (
+                {seriesPlansList[col.id] && seriesPlansList[col.id].length > 0 && (
                   <div className="collection-tree__series-divider" />
                 )}
-                {seriesPlans[col.id] && (
+                {seriesPlansList[col.id] && seriesPlansList[col.id].map((plan) => (
                   <SeriesOverview
-                  plan={seriesPlans[col.id]}
+                  key={plan.id}
+                  plan={plan}
                   collectionId={col.id}
                   onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
                   onPlanArticle={(article) => {
                     window.dispatchEvent(new CustomEvent("plan-series-article", {
-                      detail: { collectionId: col.id, article }
+                      detail: { collectionId: col.id, seriesId: plan.id, article }
                     }));
                   }}
                   onEditPlan={() => {
                     window.dispatchEvent(new CustomEvent("edit-series-plan", {
-                      detail: { collectionId: col.id }
+                      detail: { collectionId: col.id, seriesId: plan.id }
                     }));
                   }}
                   onDeletePlan={async () => {
-                    await deleteSeriesPlan(col.id);
-                    setSeriesPlans(prev => {
+                    await deleteSeriesPlan(col.id, plan.id);
+                    const updatedPlans = await loadAllSeriesPlans(col.id);
+                    setSeriesPlansList(prev => {
                       const next = { ...prev };
-                      delete next[col.id];
+                      if (updatedPlans.length > 0) {
+                        next[col.id] = updatedPlans;
+                      } else {
+                        delete next[col.id];
+                      }
                       return next;
                     });
                     await refresh();
                   }}
                 />
-              )}
+              ))}
             </div>
           )}
             </div>

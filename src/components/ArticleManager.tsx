@@ -13,7 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, type Collection, type Article, genId } from "../lib/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, type Collection, type Article, type SeriesPlan, genId } from "../lib/collections";
 import { loadArticleContent } from "../lib/articles";
 import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -86,6 +86,7 @@ export function ArticleManager({
   const [editColTitle, setEditColTitle] = useState("");
   const [newColName, setNewColName] = useState("");
   const [showNewColInput, setShowNewColInput] = useState(false);
+  const [seriesPlansMap, setSeriesPlansMap] = useState<Record<string, SeriesPlan[]>>({});
   const [deleteColId, setDeleteColId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -93,6 +94,14 @@ export function ArticleManager({
     try {
       const cols = await loadCollections();
       setCollections(cols);
+
+      // Load series plans
+      const seriesPlans: Record<string, SeriesPlan[]> = {};
+      for (const col of cols) {
+        const plans = await loadAllSeriesPlans(col.id);
+        if (plans.length > 0) seriesPlans[col.id] = plans;
+      }
+      setSeriesPlansMap(seriesPlans);
 
       const entries: ArticleEntry[] = [];
       for (const col of cols) {
@@ -109,6 +118,33 @@ export function ArticleManager({
             updatedAt: art.updatedAt,
             pinned: art.pinned,
           });
+        }
+      }
+
+      // Add series article entries
+      for (const [colId, plans] of Object.entries(seriesPlans)) {
+        const col = cols.find(c => c.id === colId);
+        if (!col) continue;
+        for (const plan of plans) {
+          for (const art of plan.articles) {
+            const articleId = art.articleId || `series_${plan.id}_${art.id}`;
+            let wordCount = 0;
+            if (art.articleId) {
+              const artContent = await loadArticleContent(art.articleId);
+              if (artContent) wordCount = artContent.length;
+            }
+            entries.push({
+              id: articleId,
+              title: `[${plan.title}] ${art.title}`,
+              collectionId: colId,
+              collectionTitle: col.title,
+              wordCount,
+              phase: art.status === "planned" ? "planning" : art.status === "complete" ? "complete" : "writing",
+              status: art.status === "planned" ? "draft" : art.status === "reviewing" ? "draft" : art.status === "writing" ? "draft" : "published",
+              updatedAt: 0,
+              pinned: false,
+            });
+          }
         }
       }
       setArticles(entries);
@@ -281,7 +317,7 @@ export function ArticleManager({
               >
                 <FolderOpen size={14} />
                 <span className="article-manager__col-item-name">全部文章</span>
-                <span className="article-manager__col-item-count">{articles.length}</span>
+                <span className="article-manager__col-item-count">{articles.length + Object.values(seriesPlansMap).flatMap(plans => plans.flatMap(p => p.articles)).length}</span>
               </div>
 
               {collections.map((col) => (
@@ -301,7 +337,7 @@ export function ArticleManager({
                       <span className="article-manager__col-item-name">{col.title}</span>
                       {col.description && <span className="article-manager__col-item-desc">{col.description}</span>}
                     </div>
-                    <span className="article-manager__col-item-count">{col.articles.length}</span>
+                    <span className="article-manager__col-item-count">{col.articles.length + (seriesPlansMap[col.id] || []).reduce((sum, p) => sum + p.articles.length, 0)}</span>
                   </div>
                   <div className="article-manager__col-item-actions">
                     <button onClick={(e) => { e.stopPropagation(); handleOpenColForm(col); }} title="编辑">

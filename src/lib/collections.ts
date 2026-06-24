@@ -28,6 +28,7 @@ export type SeriesPlan = {
   createdAt: number;
   tone?: string;
   targetAudience?: string;
+  skillId?: string;
   articles: SeriesArticle[];
 };
 
@@ -38,6 +39,8 @@ export type SeriesArticle = {
   targetWordCount?: number;
   status: "planned" | "outlining" | "writing" | "reviewing" | "complete";
   articleId?: string;
+  previousArticleId?: string;
+  nextArticleId?: string;
 };
 
 export type TrashItem = {
@@ -448,37 +451,202 @@ export async function rescanProjectFolder(path: string): Promise<ProjectContext>
   throw new Error('浏览器环境下不支持项目扫描');
 }
 
-export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
+/** 读取项目中指定文件列表的实际源码内容 */
+export interface FileContent {
+  path: string;
+  content: string;
+  size: number;
+  truncated?: boolean;
+  error?: string;
+}
+
+export async function readProjectFiles(path: string, files: string[]): Promise<FileContent[]> {
+  if (!isTauriEnv() || files.length === 0) return [];
   try {
-    localStorage.setItem(`series_plan:${collectionId}`, JSON.stringify(plan));
+    const { isTauriEnv: checkEnv, tryInvoke } = await import("./tauri");
+    if (!checkEnv()) return [];
+    return await tryInvoke<FileContent[]>('read_project_files', { path, files });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 从项目文件树中筛选与文章关键词匹配的文件，并读取其源码。
+ * keywords: 文章标题 + 大纲中的关键词
+ * tree: 项目文件树
+ * projectPath: 项目根路径
+ */
+export async function findAndReadRelevantFiles(
+  keywords: string[],
+  tree: FileNode[],
+  projectPath: string,
+  maxFiles: number = 6,
+): Promise<{ matchedFiles: string[]; sourceCode: string }> {
+  if (!keywords.length || !tree.length) return { matchedFiles: [], sourceCode: '' };
+
+  // 展平文件树，收集所有文件
+  const allFiles: { path: string; name: string; score: number }[] = [];
+  function walk(nodes: FileNode[], dirPath: string = '') {
+    for (const node of nodes) {
+      if (node.isDir) {
+        walk(node.children || [], dirPath + node.name + '/');
+      } else {
+        const lower = node.name.toLowerCase();
+        let score = 0;
+        for (const kw of keywords) {
+          if (lower.includes(kw.toLowerCase())) score += 10;
+          // 优先匹配配置文件和源代码文件
+          if (/\.(java|kt|ts|js|py|go|rs|yml|yaml|xml|properties|conf)$/i.test(node.name)) {
+            if (lower.includes(kw.toLowerCase())) score += 5;
+          }
+        }
+        if (score > 0) {
+          allFiles.push({ path: dirPath + node.name, name: node.name, score });
+        }
+      }
+    }
+  }
+  walk(tree);
+
+  // 按匹配度排序，取 top N
+  allFiles.sort((a, b) => b.score - a.score);
+  const selected = allFiles.slice(0, maxFiles);
+  if (selected.length === 0) return { matchedFiles: [], sourceCode: '' };
+
+  const filePaths = selected.map(f => f.path);
+  const contents = await readProjectFiles(projectPath, filePaths);
+  
+  let sourceCode = '';
+  for (const file of contents) {
+    if (file.content && !file.error) {
+      sourceCode += `
+### ${file.path}
+\`\`\`
+${file.content}
+\`\`\`
+`;
+    }
+  }
+
+  return {
+    matchedFiles: filePaths,
+    sourceCode,
+  };
+}
+
+let _seriesIdCounter = 0;
+export function generateSeriesId(): string {
+  _seriesIdCounter++;
+  return `series_${Date.now()}_${_seriesIdCounter}`;
+}
+
+/** 旧 key → 新 key 迁移 */
+const OLD_SERIES_KEY = (id: string) => `series_plan:${id}`;
+const NEW_SERIES_KEY = (id: string) => `series_plans:${id}`;
+
+export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
+  // 自动计算前后文章引用关系
+  for (let i = 0; i < plan.articles.length; i++) {
+    plan.articles[i].previousArticleId = i > 0 ? (plan.articles[i - 1].articleId || undefined) : undefined;
+    plan.articles[i].nextArticleId = i < plan.articles.length - 1 ? (plan.articles[i + 1].articleId || undefined) : undefined;
+  }
+  try {
+    // Load existing plans, upsert by plan.id
+    let plans: SeriesPlan[] = [];
+    const raw = localStorage.getItem(NEW_SERIES_KEY(collectionId));
+    if (raw) {
+      try { plans = JSON.parse(raw); } catch {}
+    }
+    const idx = plans.findIndex(p => p.id === plan.id);
+    if (idx >= 0) {
+      plans[idx] = plan;
+    } else {
+      plans.push(plan);
+    }
+    localStorage.setItem(NEW_SERIES_KEY(collectionId), JSON.stringify(plans));
+    // Clean up old single-plan key
+    localStorage.removeItem(OLD_SERIES_KEY(collectionId));
   } catch {}
   if (isTauriEnv()) {
     try {
-      await invokeOrFallback<void>('save_series_plan', { collectionId, plan }, () => {});
+      // Send full plans array to Rust backend
+      const raw = localStorage.getItem(NEW_SERIES_KEY(collectionId));
+      if (raw) {
+        const allPlans = JSON.parse(raw);
+        await invokeOrFallback<void>('save_all_series_plans', { collectionId, plans: allPlans }, () => {});
+      }
     } catch {}
   }
 }
 
-export async function loadSeriesPlan(collectionId: string): Promise<SeriesPlan | null> {
-  // Try localStorage first (works in both browser and Tauri)
+export async function loadAllSeriesPlans(collectionId: string): Promise<SeriesPlan[]> {
   try {
-    const raw = localStorage.getItem(`series_plan:${collectionId}`);
-    if (raw) return JSON.parse(raw) as SeriesPlan;
+    // Try new multi-plan key first
+    const raw = localStorage.getItem(NEW_SERIES_KEY(collectionId));
+    if (raw) return JSON.parse(raw) as SeriesPlan[];
+    // Fallback: migrate old single-plan key
+    const oldRaw = localStorage.getItem(OLD_SERIES_KEY(collectionId));
+    if (oldRaw) {
+      const oldPlan = JSON.parse(oldRaw) as SeriesPlan;
+      // If old plan has no id, assign one
+      if (!oldPlan.id) oldPlan.id = generateSeriesId();
+      const plans = [oldPlan];
+      localStorage.setItem(NEW_SERIES_KEY(collectionId), JSON.stringify(plans));
+      localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+      return plans;
+    }
   } catch {}
-  // Tauri backend as fallback
+  // Tauri backend as fallback — load single plan and migrate
   if (isTauriEnv()) {
-    return invokeOrFallback<SeriesPlan | null>('load_series_plan', { collectionId }, () => null);
+    try {
+      const plans = await invokeOrFallback<SeriesPlan[]>('load_all_series_plans', { collectionId }, () => []);
+      if (plans.length > 0) {
+        try { localStorage.setItem(NEW_SERIES_KEY(collectionId), JSON.stringify(plans)); } catch {}
+        return plans;
+      }
+      // Fallback to old single-plan command
+      const oldPlan = await invokeOrFallback<SeriesPlan | null>('load_series_plan', { collectionId }, () => null);
+      if (oldPlan) {
+        if (!oldPlan.id) oldPlan.id = generateSeriesId();
+        const arr = [oldPlan];
+        try { localStorage.setItem(NEW_SERIES_KEY(collectionId), JSON.stringify(arr)); } catch {}
+        return arr;
+      }
+    } catch {}
   }
-  return null;
+  return [];
 }
 
-export async function deleteSeriesPlan(collectionId: string): Promise<void> {
+export async function loadSeriesPlan(collectionId: string, seriesId: string): Promise<SeriesPlan | null> {
+  const plans = await loadAllSeriesPlans(collectionId);
+  return plans.find(p => p.id === seriesId) || null;
+}
+
+export async function deleteSeriesPlan(collectionId: string, seriesId: string): Promise<void> {
   try {
-    localStorage.removeItem(`series_plan:${collectionId}`);
+    const raw = localStorage.getItem(NEW_SERIES_KEY(collectionId));
+    if (raw) {
+      const plans = JSON.parse(raw) as SeriesPlan[];
+      const filtered = plans.filter(p => p.id !== seriesId);
+      if (filtered.length > 0) {
+        localStorage.setItem(NEW_SERIES_KEY(collectionId), JSON.stringify(filtered));
+      } else {
+        localStorage.removeItem(NEW_SERIES_KEY(collectionId));
+      }
+      localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+    }
   } catch {}
   if (isTauriEnv()) {
     try {
-      await invokeOrFallback<void>('delete_series_plan', { collectionId }, () => {});
+      // Send updated plans array
+      const raw = localStorage.getItem(NEW_SERIES_KEY(collectionId));
+      if (raw) {
+        const allPlans = JSON.parse(raw);
+        await invokeOrFallback<void>('save_all_series_plans', { collectionId, plans: allPlans }, () => {});
+      } else {
+        await invokeOrFallback<void>('delete_series_plan', { collectionId }, () => {});
+      }
     } catch {}
   }
 }

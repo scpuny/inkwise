@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Sparkles, BookOpen, ArrowRight, Check, Loader2, X, Plus, Trash2, GripVertical, AlertCircle, FileText } from "lucide-react";
 import type { SeriesPlan, SeriesArticle, ProjectContext } from "../lib/collections";
+import { generateSeriesId } from "../lib/collections";
 import { buildContextText, formatContextText } from "../lib/projectContext";
+import { getAllBuiltinSkills } from "../lib/writingSkill";
 import { sendChat, type ChatMessage } from "../lib/ai";
 import { getProvidersSync } from "../lib/providerModels";
 
@@ -60,9 +62,12 @@ export function SeriesPlanner({
   const [step, setStep] = useState<PlannerStep>("input");
   const [direction, setDirection] = useState("");
   const [articleCount, setArticleCount] = useState(DEFAULT_ARTICLE_COUNT);
+const [defaultWordCount, setDefaultWordCount] = useState(800);
   const [tone, setTone] = useState("");
   const [audience, setAudience] = useState("");
-  const [customAudience, setCustomAudience] = useState("");
+  const [skillId, setSkillId] = useState("");
+const [customTone, setCustomTone] = useState("");
+const [customAudience, setCustomAudience] = useState("");
   const [articles, setArticles] = useState<SeriesArticle[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [projectCtx, setProjectCtx] = useState<ProjectContext | null>(null);
@@ -79,7 +84,9 @@ export function SeriesPlanner({
       // Edit existing plan: skip to review step
       setArticles(existingPlan.articles.map(a => ({ ...a, status: "planned" as const })));
       setDirection(existingPlan.title || "");
-      setTone(existingPlan.tone || "");
+      setTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? "__custom__" : (existingPlan.tone || ""));
+      setCustomTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? existingPlan.tone : "");
+      setSkillId(existingPlan.skillId || "");
       setAudience(existingPlan.targetAudience || "");
       setCustomAudience("");
       setArticleCount(existingPlan.articles.length);
@@ -174,7 +181,7 @@ export function SeriesPlanner({
     {
       "title": "文章标题",
       "description": "一句话简介，30-80字",
-      "targetWordCount": 800
+      "targetWordCount": ${defaultWordCount}
     }
   ]
 }
@@ -188,7 +195,8 @@ export function SeriesPlanner({
 - 直接输出 JSON，不要任何额外文字`;
 
       // Build style info
-      const styleInfo = [tone && `写作风格: ${tone}`, audience && `目标读者: ${audience === "__custom__" ? customAudience : audience}`].filter(Boolean).join("，");
+      const toneVal = tone === "__custom__" ? customTone.trim() : tone;
+      const styleInfo = [toneVal && `写作风格: ${toneVal}`, audience && `目标读者: ${audience === "__custom__" ? customAudience : audience}`].filter(Boolean).join("，");
 
       const userPrompt = [
         `## 项目信息\n项目名称: ${projectCtx?.name || collectionTitle}\n主要语言: ${projectCtx?.primaryLanguage || "未知"}\n文件数: ${projectCtx?.summary.totalFiles || 0} 文件`,
@@ -272,14 +280,16 @@ export function SeriesPlanner({
 
   /* 确认保存 */
   const handleConfirm = useCallback(async () => {
+    const toneVal = tone === "__custom__" ? customTone.trim() : tone;
     const audienceVal = audience === "__custom__" ? customAudience.trim() : audience;
     const planTitle = direction.trim() || collectionTitle || "系列文章";
     const plan: SeriesPlan = {
-      id: `series_${collectionId}`,
+      id: existingPlan?.id || generateSeriesId(),
       title: planTitle,
       createdAt: Date.now(),
-      tone: tone || undefined,
+      tone: toneVal || undefined,
       targetAudience: audienceVal || undefined,
+      skillId: skillId || undefined,
       articles: articles.filter((a) => a.title.trim()),
     };
     if (plan.articles.length === 0) return;
@@ -341,18 +351,30 @@ export function SeriesPlanner({
               />
 
               <div className="series-planner__options">
-                <span className="series-planner__count-label">文章数量:</span>
-                <input
-                  type="number"
-                  className="series-planner__count-input"
-                  min={2}
-                  max={20}
-                  value={articleCount}
-                  onChange={(e) => setArticleCount(Math.max(2, Math.min(20, parseInt(e.target.value) || 5)))}
-                />
+                <select className="series-planner__option-select" value={articleCount} onChange={(e) => setArticleCount(parseInt(e.target.value))}>
+                  {[2,3,4,5,6,7,8,9,10,12,15,20].map(n => <option key={n} value={n}>{n} 篇</option>)}
+                </select>
+                <select className="series-planner__option-select" value={defaultWordCount} onChange={(e) => setDefaultWordCount(parseInt(e.target.value))}>
+                  {[{v:500,l:"500 字/篇"},{v:800,l:"800 字/篇"},{v:1000,l:"1000 字/篇"},{v:1500,l:"1500 字/篇"},{v:2000,l:"2000 字/篇"},{v:3000,l:"3000 字/篇"}].map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                </select>
                 <select className="series-planner__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
-                  <option value="">写作风格</option>
-                  {["文艺","正式","口语","学术","幽默"].map(o => <option key={o} value={o}>{o}</option>)}
+                  <option value="">写作语气</option>
+                  <option value="正式">正式</option>
+                  <option value="幽默">幽默</option>
+                  <option value="轻松口语">轻松口语</option>
+                  <option value="热情激昂">热情激昂</option>
+                  <option value="冷静客观">冷静客观</option>
+                  <option value="犀利尖锐">犀利尖锐</option>
+                  <option value="温暖亲和">温暖亲和</option>
+                  <option value="__custom__">自定义…</option>
+                </select>
+                {tone === "__custom__" && (
+                  <input className="series-planner__option-input" placeholder="输入语气" value={customTone}
+                    onChange={(e) => setCustomTone(e.target.value)} />
+                )}
+                <select className="series-planner__option-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
+                  <option value="">写作技能</option>
+                  {getAllBuiltinSkills().map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
                 </select>
                 <select className="series-planner__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
                   <option value="">目标读者</option>

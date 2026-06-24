@@ -305,7 +305,7 @@ body {
   --editor-line-height: 1.75;
   --editor-paragraph-gap: 1.25em;
   --editor-padding-v: 48px;
-  --editor-padding-h: clamp(32px, 8vw, 96px);
+  --editor-padding-h: clamp(32px, 8vw, 46px);
   --editor-content-maxw: min(780px, 100%);
   --composer-height: 200px;
   --editor-bg: rgba(255, 255, 255, 0.015);
@@ -7150,7 +7150,6 @@ body {
 
 .editor-container {
   position: relative;
-  padding: var(--editor-padding-v) 0 60px;
   background: var(--editor-bg);
 }
 
@@ -7245,7 +7244,7 @@ body {
 .editor-container .tiptap {
   width: 100%;
   max-width: var(--editor-content-maxw);
-  padding: 0 var(--editor-padding-h);
+  padding: 8px var(--editor-padding-h);
   outline: none;
   margin: 0 auto;
 }
@@ -14033,7 +14032,7 @@ body {
 }
 
 .series-planner {
-  width: 640px;
+  width: 720px;
   max-height: 85vh;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -14144,9 +14143,9 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-top: 12px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .series-planner__count-label {

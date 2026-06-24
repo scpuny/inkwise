@@ -23,6 +23,18 @@ const AUDIENCE_OPTIONS = [
   { value: "__custom__", label: "自定义…" },
 ];
 
+const TONE_OPTIONS = [
+  { value: "", label: "不限（AI 自行决定）" },
+  { value: "正式", label: "正式" },
+  { value: "幽默", label: "幽默" },
+  { value: "轻松口语", label: "轻松口语" },
+  { value: "热情激昂", label: "热情激昂" },
+  { value: "冷静客观", label: "冷静客观" },
+  { value: "犀利尖锐", label: "犀利尖锐" },
+  { value: "温暖亲和", label: "温暖亲和" },
+  { value: "__custom__", label: "自定义…" },
+];
+
 const BUILTIN_SKILLS = getAllBuiltinSkills();
 
 // 技能列表懒加载（含自定义）
@@ -79,6 +91,8 @@ export function StartupSplash({
   const [skillId, setSkillId] = useState("");
   const [audience, setAudience] = useState("");
   const [customAudience, setCustomAudience] = useState("");
+const [tone, setTone] = useState("");
+const [customTone, setCustomTone] = useState("");
   const [wordCount, setWordCount] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
 
@@ -99,7 +113,7 @@ export function StartupSplash({
     onAIPlan({
       inspiration: inspiration.trim(),
       skillId: skillId || undefined,
-      tone: skill?.name || undefined,
+      tone: tone === "__custom__" ? customTone.trim() : (tone || undefined),
       targetAudience: audience === "__custom__" ? customAudience.trim() : (audience || undefined),
       targetWordCount: wordCount ? parseInt(wordCount) : undefined,
     });
@@ -378,6 +392,18 @@ export function StartupSplash({
                   placeholder="写作风格"
                   options={(_allSkills.length > 0 ? _allSkills : BUILTIN_SKILLS).map(s => ({ value: s.id, label: `${s.icon} ${s.name}` }))}
                 />
+                <div className="startup-splash__option-with-custom">
+                  <CustomSelect
+                    value={tone}
+                    onChange={setTone}
+                    placeholder="文章语气"
+                    options={TONE_OPTIONS}
+                  />
+                  {tone === "__custom__" && (
+                    <input className="startup-splash__option-input" placeholder="输入语气" value={customTone}
+                      onChange={(e) => setCustomTone(e.target.value)} />
+                  )}
+                </div>
                 <div className="startup-splash__option-with-custom">
                   <CustomSelect
                     value={audience}

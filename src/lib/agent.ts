@@ -106,8 +106,9 @@ const INTENT_KEYWORD_MAP: Record<string, { id: string; skill: string; label: str
 /* ─── AgentContext（React Context） ─── */
 
 export interface AgentState {
+  activeArticleId: string | null;
   panelOpen: boolean;
-  panelTab: "chat" | "diff" | "history";
+  panelTab: "chat" | "diff" | "history" | "review";
   commandBarOpen: boolean;
   commandBarText: string;
   isProcessing: boolean;
@@ -118,9 +119,10 @@ export interface AgentState {
 }
 
 export interface AgentActions {
+  activeArticleId: string | null;
   openPanel: () => void;
   closePanel: () => void;
-  setPanelTab: (tab: "chat" | "history") => void;
+  setPanelTab: (tab: "chat" | "history" | "review") => void;
   togglePanel: () => void;
   openCommandBar: () => void;
   closeCommandBar: () => void;
@@ -152,6 +154,7 @@ export function useAgent(): AgentContextValue {
 export const DEFAULT_AGENT_STATE: AgentState = {
   panelOpen: false,
   panelTab: "chat",
+  activeArticleId: null,
   commandBarOpen: false,
   commandBarText: "",
   isProcessing: false,

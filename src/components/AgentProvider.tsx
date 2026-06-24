@@ -30,7 +30,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const openPanel = useCallback(() => setState((s) => ({ ...s, panelOpen: true })), []);
   const closePanel = useCallback(() => setState((s) => ({ ...s, panelOpen: false })), []);
   const togglePanel = useCallback(() => setState((s) => ({ ...s, panelOpen: !s.panelOpen })), []);
-  const setPanelTab = useCallback((tab: "chat" | "history") => setState((s) => ({ ...s, panelTab: tab })), []);
+  const setPanelTab = useCallback((tab: "chat" | "history" | "review") => setState((s) => ({ ...s, panelTab: tab })), []);
 
   // ── Command Bar actions ──
   const openCommandBar = useCallback(() => setState((s) => ({ ...s, commandBarOpen: true })), []);
@@ -324,6 +324,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   const value: AgentContextValue = {
     ...state,
+    activeArticleId,
     openPanel,
     setActiveArticleId,
     closePanel,

@@ -33,7 +33,7 @@ import {
   type FontFamily,
 } from "./lib/fontFamily";
 import { loadCollections, addCollection, addArticle, renameArticle, genId,
-  linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan,
+  linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan, loadAllSeriesPlans,
   type SeriesPlan,
 } from "./lib/collections";
 
@@ -88,7 +88,7 @@ function AppContent() {
   const [seriesPlannerExistingPlan, setSeriesPlannerExistingPlan] = useState<any>(null);
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([]);
   const [seriesRefreshKey, setSeriesRefreshKey] = useState(0);
-  const pendingSeriesArticleRef = useRef<{ collectionId: string; articleId: string } | null>(null);
+  const pendingSeriesArticleRef = useRef<{ collectionId: string; seriesId: string; articleId: string } | null>(null);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [articlePhase, setArticlePhase] = useState<string | undefined>(undefined);
@@ -158,7 +158,8 @@ function AppContent() {
     // Check if this is from a series plan that already has an articleId
     let existingArticleId: string | null = null;
     if (pendingSeriesArticleRef.current && pendingSeriesArticleRef.current.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(pendingSeriesArticleRef.current.collectionId);
+      const ref = pendingSeriesArticleRef.current;
+      const seriesPlan = await loadSeriesPlan(ref.collectionId, ref.seriesId);
       if (seriesPlan) {
         const seriesArt = seriesPlan.articles.find(a => a.id === pendingSeriesArticleRef.current!.articleId);
         if (seriesArt && seriesArt.articleId) {
@@ -237,7 +238,8 @@ function AppContent() {
     
     // Link series article if applicable
     if (pendingSeriesArticleRef.current && pendingSeriesArticleRef.current.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(pendingSeriesArticleRef.current.collectionId);
+      const ref = pendingSeriesArticleRef.current;
+      const seriesPlan = await loadSeriesPlan(ref.collectionId, ref.seriesId);
       if (seriesPlan) {
         const updated = seriesPlan.articles.map((a: any) =>
           a.id === pendingSeriesArticleRef.current!.articleId
@@ -306,12 +308,12 @@ function AppContent() {
 
   const handleOutlineSelect = useCallback((id: string) => {
     setActiveOutlineId(id);
-    // Scroll editor to heading
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Find the heading text from outline items
+    const item = outlineItems.find(i => i.id === id);
+    if (item) {
+      window.dispatchEvent(new CustomEvent("outline-navigate", { detail: { headingText: item.text } }));
     }
-  }, []);
+  }, [outlineItems]);
 
   // Resize handlers
   const startResize = useCallback(
@@ -402,9 +404,12 @@ function AppContent() {
   // Listen for edit-series-plan event (from SeriesOverview "编辑规划")
   useEffect(() => {
     const handler = async (e: Event) => {
-      const { collectionId } = (e as CustomEvent).detail;
+      const { collectionId, seriesId } = (e as CustomEvent).detail;
       if (!collectionId) return;
-      const plan = await loadSeriesPlan(collectionId);
+      let plan: SeriesPlan | null = null;
+      if (seriesId) {
+        plan = await loadSeriesPlan(collectionId, seriesId);
+      }
       const cols = await loadCollections();
       const col = cols.find(c => c.id === collectionId);
       if (col) {
@@ -422,12 +427,12 @@ function AppContent() {
   // Listen for plan-series-article event (from SeriesOverview → navigate to planning)
   useEffect(() => {
     const handler = async (e: Event) => {
-      const { collectionId, article } = (e as CustomEvent).detail;
+      const { collectionId, seriesId: eventSeriesId, article } = (e as CustomEvent).detail;
       if (!collectionId || !article) return;
       try {
         // Don't create article yet — handlePlanComplete will do it on confirm
         // Store the series article info so we can link after creation
-        pendingSeriesArticleRef.current = { collectionId, articleId: article.id };
+        pendingSeriesArticleRef.current = { collectionId, seriesId: eventSeriesId || '', articleId: article.id };
         
         // Navigate to StartupSplash
         setActiveArticleId(null);
@@ -435,9 +440,10 @@ function AppContent() {
         setHasActiveArticle(false);
         
         // Read tone/audience from series plan
-        const seriesPlan = await loadSeriesPlan(collectionId);
+        const seriesPlan = await loadSeriesPlan(collectionId, eventSeriesId || "");
         const seriesTone = seriesPlan?.tone;
         const seriesAudience = seriesPlan?.targetAudience;
+        const seriesSkillId = seriesPlan?.skillId;
         
         // Dispatch event for EditorPane to auto-start planning
         setTimeout(() => {
@@ -448,6 +454,8 @@ function AppContent() {
               description: article.description || "",
               tone: seriesTone,
               targetAudience: seriesAudience,
+              skillId: seriesSkillId,
+              targetWordCount: article.targetWordCount,
             }
           }));
         }, 100);
@@ -464,10 +472,23 @@ function AppContent() {
   // Listen for series-article-review (writing complete → update status to reviewing)
   useEffect(() => {
     const handler = async (e: Event) => {
-      const { articleId, collectionId } = (e as CustomEvent).detail;
+      const { articleId, collectionId, seriesId: eventSeriesId } = (e as CustomEvent).detail;
       if (!articleId || !collectionId) return;
       try {
-        const seriesPlan = await loadSeriesPlan(collectionId);
+        // Try to find the series that contains this article
+        let seriesPlan: SeriesPlan | null = null;
+        if (eventSeriesId) {
+          seriesPlan = await loadSeriesPlan(collectionId, eventSeriesId);
+        } else {
+          // Scan all plans to find the one containing this articleId
+          const plans = await loadAllSeriesPlans(collectionId);
+          for (const p of plans) {
+            if (p.articles.some(a => a.id === articleId || a.articleId === articleId)) {
+              seriesPlan = p;
+              break;
+            }
+          }
+        }
         if (!seriesPlan) return;
         const updated = seriesPlan.articles.map(a =>
           a.id === articleId ? { ...a, status: "reviewing" as const } : a
