@@ -1,6 +1,6 @@
-import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered } from "lucide-react";
+import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, type EditorStyleTemplate, type CodeTheme } from "../lib/editorStyles";
+import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, applyAccentColor, applyImageCaptionFormat, applyCustomCSS, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../lib/editorStyles";
 import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, type ArticleTheme } from "../lib/articleThemes";
 
 interface StylePanelProps {
@@ -68,6 +68,9 @@ export function StylePanel({
     setHeadingDecos(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
   }, []);
   const [bgPattern, setBgPattern] = useState(localStorage.getItem('bg-pattern') || '');
+  const [accentColor, setAccentColor] = useState(localStorage.getItem("editor-accent-color") || "");
+  const [captionFormat, setCaptionFormat] = useState(localStorage.getItem("editor-caption-format") || "");
+  const [customCSS, setCustomCSS] = useState(localStorage.getItem("editor-custom-css") || "");
   const [headingLevelOpen, setHeadingLevelOpen] = useState(false);
     const [fontFamilyOpen, setFontFamilyOpen] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
@@ -113,6 +116,21 @@ export function StylePanel({
     localStorage.setItem('bg-pattern', bgPattern);
     applyBgPattern(bgPattern);
   }, [bgPattern]);
+
+  useEffect(() => {
+    localStorage.setItem("editor-accent-color", accentColor);
+    applyAccentColor(accentColor);
+  }, [accentColor]);
+
+  useEffect(() => {
+    localStorage.setItem("editor-caption-format", captionFormat);
+    applyImageCaptionFormat(captionFormat);
+  }, [captionFormat]);
+
+  useEffect(() => {
+    localStorage.setItem("editor-custom-css", customCSS);
+    applyCustomCSS(customCSS);
+  }, [customCSS]);
 
   const currentFontLabel = FONT_PRESETS.find(f => f.value === editorFontFamily)?.label || "系统默认";
 
@@ -219,6 +237,7 @@ export function StylePanel({
             <button className={`style-panel__chip${!macosCodeBlock ? " style-panel__chip--active" : ""}`} onClick={() => setMacosCodeBlock(false)}>默认</button>
           </div>
         </Section>
+        {/* ── 首行缩进 & 两端对齐 ── */}
         <div className="style-panel__row">
           <Section icon={<AlignLeft size={13} />} label="首行缩进" className="style-panel__row-half" horizontal>
             <button className={`style-panel__toggle${firstLineIndent ? " style-panel__toggle--on" : ""}`} onClick={() => setFirstLineIndent(!firstLineIndent)} role="switch" aria-checked={firstLineIndent}>
@@ -234,6 +253,36 @@ export function StylePanel({
 
 
 
+
+        {/* ── 主题色 ── */}
+        <Section icon={<Palette size={13} />} label="主题色" horizontal>
+          <div className="style-panel__chip-row" style={{flexWrap: "wrap"}}>
+            {getAllAccentColors().map(c => (
+              <button
+                key={c.value}
+                className={"style-panel__chip" + (accentColor === c.value ? " style-panel__chip--active" : "")}
+                onClick={() => setAccentColor(accentColor === c.value ? "" : c.value)}
+                title={c.label}
+              >
+                <span style={{display: "inline-block", width: 14, height: 14, borderRadius: "50%", background: c.value, marginRight: 4, verticalAlign: "middle"}} />
+                {c.label}
+              </button>
+            ))}
+            <button
+              className={"style-panel__chip" + (!accentColor ? " style-panel__chip--active" : "")}
+              onClick={() => setAccentColor("")}
+            >默认</button>
+          </div>
+        </Section>
+
+        {/* ── 图片题注 ── */}
+        <Section icon={<ImageIcon size={13} />} label="图片题注" horizontal>
+          <div className="style-panel__chip-row" style={{flexWrap: "wrap"}}>
+            {[["", "默认"], ["title", "仅标题"], ["alt", "仅描述"], ["filename", "文件名"], ["none", "隐藏"]].map(([v, l]) => (
+              <button key={v} className={"style-panel__chip" + (captionFormat === v ? " style-panel__chip--active" : "")} onClick={() => setCaptionFormat(v)}>{l}</button>
+            ))}
+          </div>
+        </Section>
 
         {/* ── 标题装饰 ── */}
         <Section icon={<Type size={13} />} label="标题装饰" horizontal>
@@ -267,6 +316,18 @@ export function StylePanel({
               return <button key={p} className={`style-panel__chip${bgPattern === p ? " style-panel__chip--active" : ""}`} onClick={() => setBgPattern(p)}>{labels[p]}</button>;
             })}
           </div>
+        </Section>
+
+        {/* ── 自定义 CSS ── */}
+        <Section icon={<Code2 size={13} />} label="自定义 CSS">
+          <textarea
+            className="style-panel__textarea"
+            value={customCSS}
+            onChange={e => setCustomCSS(e.target.value)}
+            placeholder={"/* 示例：调整正文颜色 */\nbody { color: #333; }\n\n/* 示例：自定义引用块 */\nblockquote { border-left: 3px solid #e67e22; background: #fef9f0; }\n\n/* 示例：标题装饰 */\nh2 { border-bottom: 2px solid #3498db; padding-bottom: 6px; }\n\n/* 示例：代码块圆角 */\npre { border-radius: 12px; }\n\n/* 示例：图片圆角阴影 */\nimg { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }"}
+            rows={8}
+            style={{width: "100%", fontFamily: '"SF Mono", Consolas, monospace', fontSize: 12, padding: 10, borderRadius: 8, border: "1px solid var(--border-soft)", background: "var(--bg-elev)", color: "var(--text)", resize: "vertical", lineHeight: 1.6}}
+          />
         </Section>
 
         {/* ── 分享主题 ── */}

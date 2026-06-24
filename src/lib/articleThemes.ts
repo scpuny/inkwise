@@ -222,6 +222,62 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     tags: ['暗色', '技术'],
     vars: { ...BASE_VARS, bgColor: '#1d1d1d', textColor: '#cccccc', headingColor: '#e0e0e0', linkColor: '#ff6b6b', codeBg: '#2b2b2b', codeText: '#ff6b6b', blockquoteBorder: '#ff6b6b', blockquoteBg: '#2a1a1a', maxWidth: '860' },
   },
+  // ═══ 今日头条 ═══
+  {
+    id: 'toutiao-dark',
+    label: '头条暗色',
+    desc: '深色版今日头条风格',
+    platform: 'toutiao',
+    tags: ['暗色', '醒目'],
+    vars: { ...BASE_VARS, bgColor: '#1a1a1a', textColor: '#d4d4d4', headingColor: '#ff4444', linkColor: '#ff4444', fontSize: '18', lineHeight: 1.6, maxWidth: '720', codeBg: '#2a2a2a', codeText: '#ff6b6b', blockquoteBorder: '#ff4444', blockquoteBg: '#221111' },
+  },
+
+  // ═══ Medium ═══
+  {
+    id: 'medium-dark',
+    label: 'Medium 暗色',
+    desc: '深色版 Medium 阅读体验',
+    platform: 'medium',
+    tags: ['暗色', '衬线'],
+    vars: { ...BASE_VARS, fontFamily: '"Georgia", "Noto Serif SC", serif', fontSize: '18', lineHeight: 1.8, paragraphGap: '1.5', maxWidth: '740', bgColor: '#121212', textColor: '#d4d4d4', headingColor: '#ffffff', linkColor: '#3ea660', codeBg: '#1e1e1e', codeText: '#d4d4d4', blockquoteBorder: '#333333', blockquoteBg: '#1a1a1a' },
+  },
+
+  // ═══ 简书 ═══
+  {
+    id: 'jianshu-dark',
+    label: '简书暗色',
+    desc: '深色版简书风格',
+    platform: 'jianshu',
+    tags: ['暗色', '舒适'],
+    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '760', bgColor: '#1c1c1c', textColor: '#cfcfcf', headingColor: '#f0f0f0', linkColor: '#58a6ff', codeBg: '#2a2a2a', codeText: '#e0e0e0', blockquoteBorder: '#444444', blockquoteBg: '#252525' },
+  },
+  {
+    id: 'jianshu-minimal',
+    label: '简书极简',
+    desc: '纯白底色，干净清爽',
+    platform: 'jianshu',
+    tags: ['简约', '干净'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", sans-serif', fontSize: '16', lineHeight: 1.8, maxWidth: '740', bgColor: '#ffffff', textColor: '#333333', linkColor: '#3194d0', codeBg: '#f8f8f8', blockquoteBorder: '#e0e0e0', blockquoteBg: '#fafafa' },
+  },
+
+  // ═══ 微信 ═══
+  {
+    id: 'wechat-grace',
+    label: '微信优雅',
+    desc: '精致微信排版，带阴影圆角',
+    platform: 'wechat',
+    tags: ['精致', '优雅'],
+    vars: { ...BASE_VARS, fontFamily: '"Optima-Regular", "PingFang SC", "Noto Serif SC", serif', fontSize: '16', lineHeight: 1.85, paragraphGap: '1.3', maxWidth: '660', textColor: '#3a3a3a', linkColor: '#8b7cff', codeBg: '#f3eefb', codeText: '#6b4fa0', blockquoteBorder: '#8b7cff', blockquoteBg: '#f8f6ff' },
+  },
+  {
+    id: 'wechat-simple',
+    label: '微信简洁',
+    desc: '极简微信排版，清爽干净',
+    platform: 'wechat',
+    tags: ['简约', '干净'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", sans-serif', fontSize: '16', lineHeight: 1.75, paragraphGap: '1.2', maxWidth: '660', textColor: '#2c2c2c', linkColor: '#4a90d9', codeBg: '#f5f5f5', codeText: '#555555', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f9fafb' },
+  },
+
 ];
 
 /* ─── 自定义主题存储 ─── */

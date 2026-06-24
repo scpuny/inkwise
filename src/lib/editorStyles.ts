@@ -737,6 +737,90 @@ th { background: #fafafa; font-weight: 600; }
 hr { border: none; border-top: 1px solid #eee; margin: 1.5em 0; }
 img { max-width: 100%; border-radius: 4px; margin: 1em 0; }`,
   },
+  // ═══ md-main 风格（经典/优雅/简洁）═══
+  {
+    id: "md-classic",
+    name: "经典",
+    builtIn: true,
+    desc: "md-main 经典风：居中标题 + 主题色标签，微信图文经典排版",
+    css: `/* 经典主题 — 源自 md-main default.css */
+body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.75; color: #333; max-width: 680px; margin: 0 auto; padding: 32px 20px; }
+h1 { font-size: 22px; font-weight: 700; margin: 1.5em auto 0.8em; text-align: center; padding-bottom: 10px; border-bottom: 2px solid #0F4C81; display: table; }
+h2 { font-size: 18px; font-weight: 700; margin: 2em auto 1em; padding: 4px 18px; background: #0F4C81; color: #fff; text-align: center; display: table; border-radius: 4px; }
+h3 { font-size: 16px; font-weight: 700; margin: 1.5em 0 0.6em; padding-left: 10px; border-left: 3px solid #0F4C81; }
+h4 { font-size: 15px; font-weight: 700; margin: 1.2em 0 0.4em; color: #0F4C81; }
+p { margin: 0.8em 0; letter-spacing: 0.03em; }
+a { color: #576b95; text-decoration: none; }
+blockquote { margin: 1em 0; padding: 0.8em 1.2em; border-left: 4px solid #0F4C81; background: #f5f7fa; border-radius: 0 6px 6px 0; color: #666; }
+blockquote p { margin: 0; }
+ul, ol { padding-left: 1.2em; margin: 0.5em 0; }
+li { margin: 0.3em 0; }
+code { font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 0.88em; color: #0F4C81; background: #eef2f7; padding: 2px 6px; border-radius: 4px; }
+pre { background: #f5f7fa; border-radius: 6px; padding: 14px; overflow-x: auto; margin: 1em 0; }
+pre code { background: transparent; padding: 0; font-size: 13px; color: #333; }
+table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 14px; }
+th, td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; }
+th { background: #f0f2f5; font-weight: 600; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 1.5em 0; }
+img { max-width: 100%; border-radius: 4px; margin: 0.8em auto; display: block; }
+figcaption { text-align: center; color: #999; font-size: 0.85em; margin-top: 4px; }`,
+  },
+  {
+    id: "md-graceful",
+    name: "优雅",
+    builtIn: true,
+    desc: "md-main 优雅风：阴影圆角 + 渐变分割，精致高级感",
+    css: `/* 优雅主题 — 源自 md-main grace.css */
+body { font-family: Optima-Regular, "PingFang SC", "Noto Serif SC", Georgia, serif; font-size: 16px; line-height: 1.85; color: #3a3a3a; max-width: 720px; margin: 0 auto; padding: 40px 28px; }
+h1 { font-size: 24px; font-weight: 700; margin: 1.5em 0 0.8em; padding-bottom: 10px; border-bottom: 2px solid #8b7cff; text-shadow: 1px 1px 3px rgba(0,0,0,0.08); }
+h2 { font-size: 20px; font-weight: 700; margin: 1.5em 0 0.6em; padding: 6px 16px; background: #8b7cff; color: #fff; border-radius: 8px; display: inline-block; box-shadow: 0 2px 8px rgba(139,124,255,0.2); }
+h3 { font-size: 18px; font-weight: 650; margin: 1.2em 0 0.5em; padding-left: 12px; border-left: 4px solid #8b7cff; border-bottom: 1px dashed #d0d0d0; }
+h4 { font-size: 16px; font-weight: 650; margin: 1em 0 0.4em; color: #8b7cff; }
+p { margin: 0 0 1em; }
+a { color: #8b7cff; text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote { margin: 1.2em 0; padding: 0.8em 1.5em 0.8em 2em; border-left: 4px solid #8b7cff; border-radius: 6px; color: #666; background: #f8f6ff; font-style: italic; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+blockquote p { margin: 0; }
+ul, ol { padding-left: 1.5em; margin: 0.5em 0; }
+li { margin: 0.4em 0; }
+code { font-family: "Fira Code", "SF Mono", Consolas, monospace; font-size: 0.88em; color: #6b4fa0; background: #f3eefb; padding: 2px 7px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+pre { background: #f8f6ff; border-radius: 8px; padding: 16px; overflow-x: auto; margin: 1.2em 0; box-shadow: inset 0 0 10px rgba(0,0,0,0.03); }
+pre code { background: transparent; padding: 0; font-size: 13px; color: #333; font-family: "Fira Code", "SF Mono", Consolas, monospace; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; margin: 1em 0; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+th, td { border: 1px solid #e0d8f0; padding: 8px 14px; text-align: left; }
+th { background: #8b7cff; color: #fff; font-weight: 600; }
+tr:nth-child(even) td { background: #faf8ff; }
+hr { border: none; height: 1px; margin: 2em 0; background: linear-gradient(to right, transparent, rgba(0,0,0,0.08), transparent); }
+img { max-width: 100%; border-radius: 8px; margin: 1em auto; display: block; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+figcaption { text-align: center; color: #aaa; font-size: 0.85em; margin-top: 6px; }`,
+  },
+  {
+    id: "md-simple",
+    name: "简洁",
+    builtIn: true,
+    desc: "md-main 简洁风：清爽干净，少即是多",
+    css: `/* 简洁主题 — 源自 md-main simple.css */
+body { font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif; font-size: 15px; line-height: 1.8; color: #2c2c2c; max-width: 700px; margin: 0 auto; padding: 48px 24px; }
+h1 { font-size: 24px; font-weight: 300; margin: 1.5em 0 0.6em; letter-spacing: 1px; color: #111; text-shadow: 1px 1px 2px rgba(0,0,0,0.03); }
+h2 { font-size: 19px; font-weight: 600; margin: 1.3em 0 0.5em; padding: 4px 16px; background: #f0f4f8; border-radius: 8px 24px 8px 24px; display: inline-block; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+h3 { font-size: 16px; font-weight: 600; margin: 1em 0 0.4em; padding-left: 12px; border-left: 4px solid #4a90d9; border-right: 1px solid #eef2f7; border-bottom: 1px solid #eef2f7; border-top: 1px solid #eef2f7; background: #f7faff; border-radius: 6px; line-height: 2.2em; }
+h4 { font-size: 15px; font-weight: 600; margin: 0.8em 0 0.3em; color: #4a90d9; }
+p { margin: 0 0 1em; }
+a { color: #4a90d9; text-decoration: none; }
+blockquote { margin: 1em 0; padding: 0.6em 1.2em 0.6em 1.8em; border-left: 3px solid #4a90d9; color: #666; font-style: italic; border-bottom: 1px solid #f0f0f0; border-top: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; border-radius: 0 6px 6px 0; }
+blockquote p { margin: 0; }
+ul, ol { padding-left: 1.2em; margin: 0.5em 0; }
+li { margin: 0.3em 0; }
+code { font-family: "Fira Code", "SF Mono", Consolas, monospace; font-size: 0.86em; color: #555; background: #f5f5f5; padding: 2px 6px; border-radius: 6px; border: 1px solid #eee; }
+pre { background: #f9fafb; border: 1px solid #eef2f7; border-radius: 8px; padding: 14px; overflow-x: auto; margin: 1em 0; }
+pre code { background: transparent; padding: 0; font-size: 13px; color: #333; font-family: "Fira Code", "SF Mono", Consolas, monospace; }
+table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 14px; }
+th, td { border: 1px solid #eef2f7; padding: 6px 12px; text-align: left; }
+th { background: #f5f7fa; font-weight: 500; }
+hr { border: none; height: 1px; margin: 2em 0; background: linear-gradient(to right, transparent, rgba(0,0,0,0.06), transparent); }
+img { max-width: 100%; border-radius: 6px; margin: 1em auto; display: block; border: 1px solid #f0f0f0; }
+figcaption { text-align: center; color: #aaa; font-size: 0.85em; margin-top: 4px; }`,
+  },
 ];
 
 // ─── Persistence ───
@@ -1359,3 +1443,164 @@ export function applyMacosCodeBlockStyle(enabled: boolean): void {
 }`;
 }
 
+
+
+/* ─── Accent color ─── */
+export function applyAccentColor(color: string): void {
+  let tag = document.getElementById("editor-accent-color") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-accent-color";
+    document.head.appendChild(tag);
+  }
+  if (!color) {
+    tag.textContent = "";
+    return;
+  }
+  tag.textContent = `.editor-container .tiptap.ProseMirror {
+  --article-accent: ${color};
+}
+.editor-container .tiptap a { color: ${color} !important; }
+.editor-container .tiptap blockquote { border-left-color: ${color} !important; }
+.editor-container .tiptap pre::before { background: ${color} !important; }`;
+}
+
+/* ─── Image caption format ─── */
+export function applyImageCaptionFormat(format: string): void {
+  let tag = document.getElementById("editor-img-caption") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-img-caption";
+    document.head.appendChild(tag);
+  }
+  switch (format) {
+    case "none":
+      tag.textContent = `.editor-container .tiptap figcaption { display: none !important; }`;
+      break;
+    case "title":
+      tag.textContent = `.editor-container .tiptap figcaption { display: block !important; font-style: normal !important; }
+.editor-container .tiptap figcaption img + br + em,
+.editor-container .tiptap figcaption em { font-style: normal !important; }`;
+      break;
+    case "alt":
+      tag.textContent = `.editor-container .tiptap figcaption { display: block !important; color: #888 !important; font-size: 0.85em !important; }`;
+      break;
+    case "filename":
+      tag.textContent = `.editor-container .tiptap figcaption { display: block !important; font-family: "SF Mono", Consolas, monospace !important; font-size: 0.8em !important; color: #999 !important; }`;
+      break;
+    default:
+      tag.textContent = `.editor-container .tiptap figcaption { display: block !important; }`;
+  }
+}
+
+/* ─── Custom CSS ─── */
+export function applyCustomCSS(css: string): void {
+  let tag = document.getElementById("editor-custom-css") as HTMLStyleElement;
+  if (!tag) {
+    tag = document.createElement("style");
+    tag.id = "editor-custom-css";
+    document.head.appendChild(tag);
+  }
+  tag.textContent = css;
+}
+
+/* ─── Per-article style config ─── */
+
+export interface ArticleStyleConfig {
+  editorStyleTemplateId: string;
+  lineHeight: number;
+  editorFontSize: number;
+  editorMaxWidth: number;
+  editorParagraphGap: number;
+  editorFontFamily: string;
+  codeThemeId: string;
+  macosCodeBlock: boolean;
+  firstLineIndent: boolean;
+  justifyAlign: boolean;
+  headingLevel: string;
+  headingDecos: string[];
+  bgPattern: string;
+  accentColor: string;
+  captionFormat: string;
+  customCSS: string;
+  articleThemeId: string;
+}
+
+export function saveArticleStyleConfig(articleId: string): void {
+  const config: ArticleStyleConfig = {
+    editorStyleTemplateId: localStorage.getItem('editor-style-template-id') || 'default',
+    lineHeight: parseFloat(localStorage.getItem('editor-line-height') || '1.75'),
+    editorFontSize: parseInt(localStorage.getItem('editor-font-size') || '15'),
+    editorMaxWidth: parseInt(localStorage.getItem('editor-max-width') || '820'),
+    editorParagraphGap: parseFloat(localStorage.getItem('editor-paragraph-gap') || '1.25'),
+    editorFontFamily: localStorage.getItem('editor-font-family') || '',
+    codeThemeId: localStorage.getItem('code-theme-id') || 'atom-one-light',
+    macosCodeBlock: localStorage.getItem('macos-code-block') === 'true',
+    firstLineIndent: localStorage.getItem('first-line-indent') === 'true',
+    justifyAlign: localStorage.getItem('justify-align') === 'true',
+    headingLevel: localStorage.getItem('heading-deco-level') || '',
+    headingDecos: (() => { try { return JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch { return []; } })(),
+    bgPattern: localStorage.getItem('bg-pattern') || '',
+    accentColor: localStorage.getItem('editor-accent-color') || '',
+    captionFormat: localStorage.getItem('editor-caption-format') || '',
+    customCSS: localStorage.getItem('editor-custom-css') || '',
+    articleThemeId: localStorage.getItem('aiwriter-selected-article-theme') || 'clean',
+  };
+  try {
+    localStorage.setItem('article-style-config:' + articleId, JSON.stringify(config));
+  } catch { /* ignore */ }
+}
+
+export function loadArticleStyleConfig(articleId: string): ArticleStyleConfig | null {
+  try {
+    const raw = localStorage.getItem('article-style-config:' + articleId);
+    if (!raw) return null;
+    return JSON.parse(raw) as ArticleStyleConfig;
+  } catch {
+    return null;
+  }
+}
+
+export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
+  localStorage.setItem('editor-style-template-id', config.editorStyleTemplateId);
+  localStorage.setItem('editor-line-height', String(config.lineHeight));
+  localStorage.setItem('editor-font-size', String(config.editorFontSize));
+  localStorage.setItem('editor-max-width', String(config.editorMaxWidth));
+  localStorage.setItem('editor-paragraph-gap', String(config.editorParagraphGap));
+  localStorage.setItem('editor-font-family', config.editorFontFamily);
+  localStorage.setItem('code-theme-id', config.codeThemeId);
+  localStorage.setItem('macos-code-block', String(config.macosCodeBlock));
+  localStorage.setItem('first-line-indent', String(config.firstLineIndent));
+  localStorage.setItem('justify-align', String(config.justifyAlign));
+  localStorage.setItem('heading-deco-level', config.headingLevel);
+  localStorage.setItem('heading-deco-styles', JSON.stringify(config.headingDecos));
+  localStorage.setItem('bg-pattern', config.bgPattern);
+  localStorage.setItem('editor-accent-color', config.accentColor);
+  localStorage.setItem('editor-caption-format', config.captionFormat);
+  localStorage.setItem('editor-custom-css', config.customCSS);
+  localStorage.setItem('aiwriter-selected-article-theme', config.articleThemeId);
+  // Apply visual effects immediately
+  applyAccentColor(config.accentColor);
+  applyImageCaptionFormat(config.captionFormat);
+  applyCustomCSS(config.customCSS);
+  applyMacosCodeBlockStyle(config.macosCodeBlock);
+  applyTextStyle(config.firstLineIndent, config.justifyAlign);
+  applyHeadingDecorations(config.headingLevel, config.headingDecos);
+  applyBgPattern(config.bgPattern);
+}
+
+export function getAllAccentColors(): { label: string; value: string }[] {
+  return [
+    { label: "经典蓝", value: "#0F4C81" },
+    { label: "翡翠绿", value: "#009874" },
+    { label: "活力橘", value: "#FA5151" },
+    { label: "柠檬黄", value: "#FECE00" },
+    { label: "薰衣紫", value: "#92617E" },
+    { label: "天空蓝", value: "#55C9EA" },
+    { label: "玫瑰金", value: "#B76E79" },
+    { label: "橄榄绿", value: "#556B2F" },
+    { label: "石墨黑", value: "#333333" },
+    { label: "雾烟灰", value: "#A9A9A9" },
+    { label: "樱花粉", value: "#FFB7C5" },
+  ];
+}
