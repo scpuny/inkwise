@@ -42,6 +42,7 @@ import { ArticleFinalPage } from "./components/ArticleFinalPage";
 import { saveArticleContent } from "./lib/articles";
 import { useAgent } from "./lib/agent";
 import { getProviders } from "./lib/providerModels";
+import { saveArticleStyleConfig, loadArticleStyleConfig, applyArticleStyleConfig } from "./lib/editorStyles";
 
 function AppContent() {
   const [themeStyle, setThemeStyle] = useState<ThemeStyle>(getThemeStyle());
@@ -92,6 +93,32 @@ function AppContent() {
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [articlePhase, setArticlePhase] = useState<string | undefined>(undefined);
+  const prevArticleRef = useRef<string | null>(null);
+  const [styleReady, setStyleReady] = useState(0);
+
+  // Per-article style persistence
+  useEffect(() => {
+    const prevId = prevArticleRef.current;
+    if (prevId && prevId !== activeArticleId && activeArticleId) {
+      saveArticleStyleConfig(prevId);
+    }
+    if (activeArticleId) {
+      const config = loadArticleStyleConfig(activeArticleId);
+      if (config) {
+        applyArticleStyleConfig(config);
+        setEditorStyleTemplate(config.editorStyleTemplateId);
+        setEditorLineHeight(config.lineHeight);
+        setEditorFontSize(config.editorFontSize);
+        setEditorMaxWidth(config.editorMaxWidth);
+        setEditorParagraphGap(config.editorParagraphGap);
+        setEditorFontFamily(config.editorFontFamily);
+        setCodeThemeId(config.codeThemeId);
+      }
+    }
+    prevArticleRef.current = activeArticleId;
+    // Trigger style panel re-mount
+    setStyleReady(n => n + 1);
+  }, [activeArticleId]);
   const layoutRef = useRef<HTMLDivElement>(null);
 
   // Theme handlers
@@ -644,6 +671,7 @@ function AppContent() {
           />
         ) : (
         <EditorPane
+          key={(activeArticleId ?? "") + styleReady}
           aiDockOpen={false}
           onToggleAIDock={() => {}}
           hasActiveArticle={hasActiveArticle}

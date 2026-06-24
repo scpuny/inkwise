@@ -15,6 +15,7 @@ import { isTauriEnv, tryInvoke } from "../lib/tauri";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SeriesOverview } from "./SeriesOverview";
 import { loadArticleContent } from "../lib/articles";
+import { loadBlueprint } from "../lib/articleBlueprint";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -42,6 +43,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   // Article stats cache: { articleId: { words, chars, paragraphs } }
   const [statsCache, setStatsCache] = useState<Record<string, { words: number; chars: number; paragraphs: number }>>({});
+  const [phaseCache, setPhaseCache] = useState<Record<string, string>>({});
 
   // Calculate stats from markdown text
   const calcStats = useCallback((text: string) => {
@@ -62,6 +64,14 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       setStatsCache((prev) => ({ ...prev, [articleId]: calcStats(content) }));
     }
   }, [statsCache, calcStats]);
+
+  const loadPhase = useCallback(async (articleId: string) => {
+    if (phaseCache[articleId]) return;
+    const bp = await loadBlueprint(articleId);
+    if (bp) {
+      setPhaseCache((prev) => ({ ...prev, [articleId]: bp.phase }));
+    }
+  }, [phaseCache]);
 
   // Load data
   const refresh = useCallback(async () => {
@@ -190,6 +200,18 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               }
             });
           }
+        }
+      }
+    }
+    // Load phases for all articles (load blueprint phase)
+    for (const col of collections) {
+      for (const article of col.articles) {
+        if (!phaseCache[article.id]) {
+          loadBlueprint(article.id).then((bp) => {
+            if (bp) {
+              setPhaseCache((prev) => ({ ...prev, [article.id]: bp.phase }));
+            }
+          });
         }
       }
     }
@@ -413,7 +435,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                             onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); await refresh(); } if (e.key === "Escape") setEditingId(null); }}
                             onClick={(e) => e.stopPropagation()} />
                         ) : (
-                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className="collection-tree__leaf-icon" /></span><span className="collection-tree__leaf-label">{article.title}</span>
+                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className={"collection-tree__leaf-icon" + (phaseCache[article.id] && phaseCache[article.id] !== "planning" ? " series-status-icon--" + phaseCache[article.id] : "")} /></span><span className="collection-tree__leaf-label">{article.title}</span>
                             {statsCache[article.id] && <span className="collection-tree__leaf-stats">{statsCache[article.id].words}字</span>}</>
                         )}
                       </div>
@@ -472,7 +494,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
           <div className="collection-tree__trash-list">
             {trash.length === 0 ? <div className="collection-tree__empty collection-tree__empty--trash">回收站为空</div> : trash.map((item) => (
               <div key={item.id} className="collection-tree__trash-item">
-                <FileText size={11} className="collection-tree__leaf-icon" />
+                <FileText size={11} className={"collection-tree__leaf-icon" + (phaseCache[item.id] && phaseCache[item.id] !== "planning" ? " series-status-icon--" + phaseCache[item.id] : "")} />
                 <span className="collection-tree__trash-label">{item.title}</span>
                 <span className="collection-tree__trash-source">{item.collectionTitle}</span>
                 <button className="collection-tree__trash-action" title="恢复" onClick={() => handleRestore(item.id)}><RotateCcw size={10} /></button>

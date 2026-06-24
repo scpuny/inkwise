@@ -28,7 +28,12 @@ const STATUS_ICON: Record<string, { icon: React.ReactNode; className: string }> 
 
 export function BlueprintProgress({ sections, phase }: BlueprintProgressProps) {
   const total = sections.length;
-  const done = sections.filter((s) => s.status === "complete").length;
+  // When article is completed, all sections are 100% done
+  const isComplete = phase === "complete";
+  const displaySections = isComplete
+    ? sections.map(s => ({ ...s, status: "complete" }))
+    : sections;
+  const done = displaySections.filter((s) => s.status === "complete").length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const phaseLabel: Record<string, string> = {
@@ -54,7 +59,7 @@ export function BlueprintProgress({ sections, phase }: BlueprintProgressProps) {
         <span className="final-blueprint__bar-label">{done}/{total}</span>
       </div>
       <div className="final-blueprint__list">
-        {sections.map((s) => {
+        {displaySections.map((s) => {
           const iconDef = STATUS_ICON[s.status] || STATUS_ICON.pending;
           return (
             <div key={s.id} className={`final-blueprint__item final-blueprint__item--${s.status}`}>

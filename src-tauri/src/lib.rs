@@ -1069,6 +1069,7 @@ fn get_publish_history(state: tauri::State<AppState>, article_id: String) -> Vec
 
 #[tauri::command]
 async fn publish_to_platform(
+    styled_html: String,
     state: tauri::State<'_, AppState>,
     article_id: String,
     platform: String,
@@ -1102,6 +1103,7 @@ async fn publish_to_platform(
         &app_id,
         &app_secret,
         &markdown,
+        &styled_html,
         &options,
         &action,
     ).await

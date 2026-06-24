@@ -699,6 +699,17 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         contentRef.current = articleContent;
       }
 
+      // Auto-promote phase to reviewing after full article generation
+      (async () => {
+        const bp = await loadBlueprint(result.articleId);
+        if (bp && bp.phase === "writing") {
+          bp.phase = "reviewing";
+          bp.updatedAt = Date.now();
+          await saveBlueprint(result.articleId, bp);
+          onPhaseChange?.("reviewing");
+        }
+      })();
+
       // Show article review
       setPlanState("article-review");
       // If this is a series article, update its status to reviewing
