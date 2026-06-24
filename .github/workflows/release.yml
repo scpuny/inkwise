@@ -146,8 +146,12 @@ jobs:
 
       - name: Setup multiarch and install cross-deps
         run: |
-          # 所有现有源固定为 amd64（避免加 arm64 架构后 apt 报 404）
-          sudo find /etc/apt/ -name '*.list' -exec sed -i 's/^deb /deb [arch=amd64] /' {} \;
+          # 只将标准 Ubuntu 源固定为 amd64（避免误改 microsoft-prod.list 等第三方源）
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list 2>/dev/null || true
+          for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/*.list; do
+            [ -f "$f" ] || continue
+            grep -l 'archive.ubuntu.com\|security.ubuntu.com' "$f" 2>/dev/null &&               sudo sed -i 's/^deb /deb [arch=amd64] /' "$f" || true
+          done
           # 添加 arm64 架构支持
           sudo dpkg --add-architecture arm64
           # 添加 ARM64 专用源（ports.ubuntu.com）
