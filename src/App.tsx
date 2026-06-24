@@ -580,6 +580,8 @@ function AppContent() {
           activeArticleId={activeArticleId}
           activeCollectionId={activeCollectionId}
           onNewArticle={async () => {
+            closePanel();
+            setStylePanelOpen(false);
             setShowFinalPage(false);
             // Navigate to welcome/start page (StartupSplash)
             setActiveArticleId(null);
@@ -587,6 +589,8 @@ function AppContent() {
             setHasActiveArticle(false);
           }}
           onNewArticleInCollection={async (collectionId: string) => {
+            closePanel();
+            setStylePanelOpen(false);
             setShowFinalPage(false);
             // Navigate to StartupSplash with collection context
             setActiveArticleId(null);
