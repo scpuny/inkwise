@@ -20906,9 +20906,11 @@ body {
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
+  padding: 40px 20px;
+  overflow-y: auto;
 }
 
 .dialog {
@@ -21340,7 +21342,7 @@ body {
   max-width: 680px !important;
   width: 680px !important;
   border-radius: 12px !important;
-  overflow: hidden !important;
+  
   box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
