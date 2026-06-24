@@ -1,15 +1,16 @@
-import { ArrowLeft, Send, Monitor, Smartphone } from "lucide-react";
+import { ArrowLeft, Send, Monitor, Smartphone, Copy } from "lucide-react";
 
 interface FinalTopBarProps {
   title: string;
   onBackToEdit: () => void;
   onPublish: () => void;
+  onCopyHtml: () => void;
   hasUnpublished: boolean;
   previewMode: "desktop" | "mobile";
   onPreviewModeChange: (mode: "desktop" | "mobile") => void;
 }
 
-export function FinalTopBar({ title, onBackToEdit, onPublish, hasUnpublished, previewMode, onPreviewModeChange }: FinalTopBarProps) {
+export function FinalTopBar({ title, onBackToEdit, onPublish, onCopyHtml, hasUnpublished, previewMode, onPreviewModeChange }: FinalTopBarProps) {
   return (
     <div className="final-topbar">
       <div className="final-topbar__left">
@@ -38,6 +39,10 @@ export function FinalTopBar({ title, onBackToEdit, onPublish, hasUnpublished, pr
             <Smartphone size={14} />
           </button>
         </div>
+        <button type="button" className="btn btn--small" onClick={onCopyHtml} title="复制为HTML">
+          <Copy size={14} />
+          <span>复制HTML</span>
+        </button>
         <button type="button" className={`btn btn--small${hasUnpublished ? " btn--primary" : ""}`} onClick={onPublish}>
           <Send size={16} />
           <span>发布</span>

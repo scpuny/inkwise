@@ -3,6 +3,7 @@ import { FinalTopBar } from "./FinalTopBar";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { ArticlePreview, markdownToHtml } from "./ArticlePreview";
 import { compileToInlinedHtml } from "../lib/compileHtml";
+import { copyAsHtml } from "../lib/importExport";
 import { PublishDialog } from "./PublishDialog";
 import { loadArticleContent, loadArticleMeta } from "../lib/articles";
 import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../lib/articleBlueprint";
@@ -28,6 +29,7 @@ const STYLE_TAG_IDS = [
   "editor-macos-codeblock-style",
   "editor-bg-pattern",
   "editor-article-theme",
+  "editor-accent-color",
 ];
 
 /** Re-scope a CSS string from `.editor-container .tiptap` → `.article-preview` */
@@ -106,7 +108,7 @@ function buildPublishHtml(markdown: string, articleTitle: string): string {
       parts.push(`position: relative; padding-left: 1.6em;`);
       extra.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: var(--accent, #0969da); font-size: 1.2em; font-weight: 700; }`);
     }
-    if (headingDecos.includes('badge')) parts.push(`background: var(--accent, #0969da) !important; color: #fff !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
+    if (headingDecos.includes('badge')) parts.push(`background: var(--accent, #0969da) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
     if (parts.length > 0) {
       cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
     }
@@ -126,6 +128,26 @@ function buildPublishHtml(markdown: string, articleTitle: string): string {
       'stripes': `.article-body { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
     };
     if (bgPatterns[bgPattern]) cssParts.push(bgPatterns[bgPattern]);
+  }
+
+  // Accent color (from editor-accent-color) — defines --article-accent for var() references in template CSS
+  const accentColor = localStorage.getItem("editor-accent-color") || "";
+  if (accentColor) {
+    cssParts.push(`.article-body {
+  --article-accent: ${accentColor};
+  --accent: ${accentColor};
+}
+.article-body h2 { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; padding: 0.2em 0.5em !important; display: inline-block !important; }
+.article-body h3 { border-left: 3px solid ${accentColor} !important; padding-left: 8px !important; }
+.article-body h4,
+.article-body h5,
+.article-body h6 { color: ${accentColor} !important; }
+.article-body blockquote { border-left: 4px solid ${accentColor} !important; }
+.article-body a { color: ${accentColor} !important; text-decoration-color: ${accentColor} !important; }
+.article-body code:not(pre code) { color: ${accentColor} !important; background: color-mix(in srgb, ${accentColor} 8%, transparent) !important; }
+.article-body th { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; }
+.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
+.article-body strong { color: ${accentColor} !important; }`);
   }
 
   const allCss = cssParts.join("\n\n");
@@ -295,6 +317,20 @@ export function ArticleFinalPage({
     return result;
   }, [articleId, markdown, articleTitle, genId]);
 
+
+  const handleCopyHtml = useCallback(async () => {
+    const ok = await copyAsHtml(articleId, articleTitle);
+    if (ok) {
+      // Brief visual feedback
+      const btn = document.querySelector('.final-topbar [title="复制为HTML"]');
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = "已复制 ✓";
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      }
+    }
+  }, [articleId, articleTitle]);
+
   const tags = blueprint?.tags || [];
   const sections = blueprint?.outline || [];
   const phase = blueprint?.phase || "complete";
@@ -311,6 +347,7 @@ export function ArticleFinalPage({
         title={articleTitle}
         onBackToEdit={handleBackWithReview}
         onPublish={handlePublish}
+        onCopyHtml={handleCopyHtml}
         hasUnpublished={publishRecords.length === 0}
         previewMode={previewMode}
         onPreviewModeChange={setPreviewMode}
