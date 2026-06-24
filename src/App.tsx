@@ -180,7 +180,7 @@ function AppContent() {
       bp.targetWordCount = plan.targetWordCount || undefined;
       bp.tags = plan.tags || [];
       bp.outline = plan.outline || [];
-      bp.phase = "writing";
+      bp.phase = "reviewing";
       await saveBlueprint(existingArticleId, bp);
       let doc = "";
       if (plan.description) {
@@ -205,7 +205,7 @@ function AppContent() {
       bp.targetWordCount = plan.targetWordCount || undefined;
       bp.tags = plan.tags || [];
       bp.outline = plan.outline || [];
-      bp.phase = "writing";
+      bp.phase = "reviewing";
       await saveBlueprint(seriesId, bp);
       // Don't save skeleton content — writeAllSections will build from scratch
     } else {
@@ -221,7 +221,7 @@ function AppContent() {
       bp.targetWordCount = plan.targetWordCount || undefined;
       bp.tags = plan.tags || [];
       bp.outline = plan.outline || [];
-      bp.phase = "writing";
+      bp.phase = "reviewing";
       await saveBlueprint(article.id, bp);
       let doc = "";
       if (plan.description) {
@@ -291,7 +291,9 @@ function AppContent() {
 
   const handlePhaseChange = useCallback((phase: string) => {
     setArticlePhase(phase);
-    if (phase !== "complete") {
+    if (phase === "complete") {
+      setShowFinalPage(true);
+    } else {
       setShowFinalPage(false);
     }
   }, []);
@@ -533,6 +535,8 @@ function AppContent() {
           seriesRefreshKey={seriesRefreshKey}
           onOpenSettings={openSettings}
           onSelectArticle={async (id) => {
+            closePanel();
+            setStylePanelOpen(false);
             setActiveArticleId(id);
             setHasActiveArticle(true);
             const cols = await loadCollections();

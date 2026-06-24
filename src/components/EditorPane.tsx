@@ -18,6 +18,7 @@ import { parseOutlineFromMarkdown, type OutlineItem, type BlueprintOutlineItem }
 import { getTemplate, getSelectedTemplateId, setSelectedTemplateId, addHeadingNumbers } from "../lib/editorStyles";
 import {
   ArticleBlueprint,
+  type ArticlePhase,
   type OutlineSection,
   loadBlueprint,
   saveBlueprint,
@@ -741,6 +742,18 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
   }, []);
 
   // Save blueprint
+  const handleCompleteArticle = useCallback(() => {
+    if (!activeArticleId || !blueprint) return;
+    const updated = {
+      ...blueprint,
+      phase: "complete" as ArticlePhase,
+      outline: blueprint.outline.map((s: any) => ({ ...s, status: "complete" as const })),
+    };
+    setBlueprint(updated);
+    onPhaseChange?.("complete");
+    import("../lib/articles").then(m => m.saveArticleContent(activeArticleId!, contentRef.current || ""));
+  }, [activeArticleId, blueprint, onPhaseChange]);
+
   const handleSaveBlueprint = useCallback((bp: ArticleBlueprint) => {
     setBlueprint(bp);
     onPhaseChange?.(bp.phase);
@@ -1018,6 +1031,7 @@ ${augmentedContent}`
               onUpdateBlueprint={handleSaveBlueprint}
               onSelectSection={setActiveSectionId}
               onOpenBlueprintEditor={() => setBlueprintEditorOpen(true)}
+              onSave={handleCompleteArticle}
             />
           )}
 

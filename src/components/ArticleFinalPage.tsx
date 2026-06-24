@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { FinalTopBar } from "./FinalTopBar";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { ArticlePreview, markdownToHtml } from "./ArticlePreview";
+import { compileToInlinedHtml } from "../lib/compileHtml";
 import { PublishDialog } from "./PublishDialog";
 import { loadArticleContent, loadArticleMeta } from "../lib/articles";
-import { loadBlueprint, type ArticleBlueprint } from "../lib/articleBlueprint";
+import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../lib/articleBlueprint";
 import { getPublishHistory, publishArticle, addPublishRecord, type PublishRecord, type PublishOptions, type PublishResult } from "../lib/platforms";
 import { getTemplate, getSelectedTemplateId } from "../lib/editorStyles";
 import { getSelectedArticleThemeId, getThemeById, buildThemeCss } from "../lib/articleThemes";
@@ -263,11 +264,22 @@ export function ArticleFinalPage({
 
   const handlePublish = useCallback(() => setPublishOpen(true), []);
 
+  const handleBackWithReview = useCallback(async () => {
+    if (articleId) {
+      const bp = await loadBlueprint(articleId);
+      if (bp) {
+        bp.phase = "reviewing";
+        await saveBlueprint(articleId, bp);
+      }
+    }
+    onBackToEdit();
+  }, [articleId, onBackToEdit]);
+
   const handlePublishSubmit = useCallback(async (
     platform: string, options: PublishOptions, action: "draft" | "publish"
   ): Promise<PublishResult> => {
     // Build the styled HTML for publishing
-    const styledHtml = buildPublishHtml(markdown, articleTitle);
+    const styledHtml = await compileToInlinedHtml(markdown);
     const result = await publishArticle(articleId, platform, markdown, styledHtml, options, action);
     if (result.success) {
       const record: PublishRecord = {
@@ -296,7 +308,7 @@ export function ArticleFinalPage({
     <div className="final-page">
       <FinalTopBar
         title={articleTitle}
-        onBackToEdit={onBackToEdit}
+        onBackToEdit={handleBackWithReview}
         onPublish={handlePublish}
         hasUnpublished={publishRecords.length === 0}
         previewMode={previewMode}

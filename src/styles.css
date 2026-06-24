@@ -9056,6 +9056,24 @@ body {
   outline: none;
 }
 
+.article-header__save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  background: #22c55e;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.article-header__save-btn:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+}
 .article-header__edit-btn {
   display: flex;
   align-items: center;

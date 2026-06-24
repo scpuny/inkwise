@@ -5,9 +5,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   FileText, Target, ListTree, ImagePlus, CheckCircle2,
   Clock, Edit3, Trash2, Plus, GripVertical, ChevronDown, ChevronRight,
+  Save,
 } from "lucide-react";
 import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../lib/articleBlueprint";
-import { getPhaseLabel, computeWritingProgress } from "../lib/articleBlueprint";
+import { getPhaseLabel } from "../lib/articleBlueprint";
 
 interface ArticleHeaderProps {
   blueprint: ArticleBlueprint;
@@ -15,13 +16,13 @@ interface ArticleHeaderProps {
   onUpdateBlueprint: (bp: ArticleBlueprint) => void;
   onSelectSection: (sectionId: string) => void;
   onOpenBlueprintEditor: () => void;
+  onSave?: () => void;
 }
 
 export function ArticleHeader({
-  blueprint, activeSectionId, onUpdateBlueprint, onSelectSection, onOpenBlueprintEditor,
+  blueprint, activeSectionId, onUpdateBlueprint, onSelectSection, onOpenBlueprintEditor, onSave,
 }: ArticleHeaderProps) {
-  const progress = computeWritingProgress(blueprint.outline);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [editingTarget, setEditingTarget] = useState(false);
 
   return (
@@ -41,12 +42,6 @@ export function ArticleHeader({
         <div className="article-header__meta">
           <span className={`article-header__phase article-header__phase--${blueprint.phase}`}>
             {getPhaseLabel(blueprint.phase)}
-          </span>
-          <span className="article-header__progress">
-            <span className="article-header__progress-bar">
-              <span className="article-header__progress-fill" style={{ width: `${progress}%`, background: progress >= 100 ? '#22c55e' : progress >= 60 ? '#3b82f6' : progress > 0 ? '#f59e0b' : '#94a3b8' }} />
-            </span>
-            <span className="article-header__progress-text">{progress}%</span>
           </span>
           {blueprint.targetWordCount ? (
             <span className="article-header__word-target article-header__word-target--set" onClick={() => setEditingTarget(true)} title="点击修改目标字数">
@@ -71,6 +66,11 @@ export function ArticleHeader({
               onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } if (e.key === 'Escape') { setEditingTarget(false); } }}
               onClick={(e) => e.stopPropagation()}
             />
+          )}
+          {onSave && (
+            <button className="article-header__save-btn" onClick={onSave} title="保存并进入成品页">
+              <Save size={13} />
+            </button>
           )}
           <button className="article-header__edit-btn" onClick={onOpenBlueprintEditor} title="编辑文章信息">
             <Edit3 size={13} />
