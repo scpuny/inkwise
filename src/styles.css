@@ -9057,22 +9057,22 @@ body {
 }
 
 .article-header__save-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  border: 1px solid #22c55e;
-  border-radius: 4px;
-  background: #22c55e;
-  color: #fff;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent);
   cursor: pointer;
-  transition: all 0.15s ease;
+  margin-right: 2px;
 }
+
 .article-header__save-btn:hover {
-  background: #16a34a;
-  border-color: #16a34a;
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1));
+  color: var(--accent);
 }
 .article-header__edit-btn {
   display: flex;
@@ -15780,4 +15780,9 @@ body {
 .startup-splash__mode-btn:hover {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
+}
+
+
+.series-status-icon--reviewing {
+  color: var(--success, #2dd4bf) !important;
 }
