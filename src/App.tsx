@@ -284,6 +284,8 @@ function AppContent() {
 
   const handleBackToEdit = useCallback(() => {
     setShowFinalPage(false);
+    closePanel();
+    setStylePanelOpen(false);
   }, []);
 
   const handleEnterEditor = useCallback((articleId: string, collectionId: string) => {

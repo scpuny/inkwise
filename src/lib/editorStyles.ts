@@ -1355,16 +1355,16 @@ export function applyHeadingDecorations(headingLevel: string, decos: string[]): 
   const sel = `.editor-container .tiptap ${headingLevel}`;
   const parts: string[] = [];
   const extraCss: string[] = [];
-  if (decos.includes('underline')) parts.push(`border-bottom: 2px solid var(--accent) !important; padding-bottom: 6px;`);
-  if (decos.includes('overline')) parts.push(`border-top: 2px solid var(--accent) !important; padding-top: 6px;`);
-  if (decos.includes('left-bar')) parts.push(`border-left: 4px solid var(--accent) !important; padding-left: 14px;`);
-  if (decos.includes('right-bar')) parts.push(`border-right: 4px solid var(--accent) !important; padding-right: 14px;`);
+  if (decos.includes('underline')) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
+  if (decos.includes('overline')) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
+  if (decos.includes('left-bar')) parts.push(`border-left: 4px solid currentColor !important; padding-left: 14px;`);
+  if (decos.includes('right-bar')) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
   if (decos.includes('bg-block')) parts.push(`background: color-mix(in srgb, var(--accent) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
   if (decos.includes('left-icon')) {
     parts.push(`position: relative; padding-left: 1.6em;`);
-    extraCss.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: var(--accent); font-size: 1.2em; font-weight: 700; }`);
+    extraCss.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
   }
-  if (decos.includes('badge')) parts.push(`background: var(--accent) !important; color: #fff !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
+  if (decos.includes('badge')) parts.push(`background: var(--accent) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
   tag.textContent = parts.length > 0 ? `${sel} { ${parts.join(' ')} }\n${extraCss.join('\n')}` : "";
 }
 
@@ -1457,12 +1457,25 @@ export function applyAccentColor(color: string): void {
     tag.textContent = "";
     return;
   }
-  tag.textContent = `.editor-container .tiptap.ProseMirror {
+  tag.textContent = `.editor-container .tiptap .ProseMirror:not(#_) {
   --article-accent: ${color};
+  --accent: ${color};
 }
-.editor-container .tiptap a { color: ${color} !important; }
-.editor-container .tiptap blockquote { border-left-color: ${color} !important; }
-.editor-container .tiptap pre::before { background: ${color} !important; }`;
+/* 行内代码（文字色 + 背景淡色） */
+.editor-container .tiptap code:not(pre code) { color: ${color} !important; background: color-mix(in srgb, ${color} 8%, transparent) !important; }
+/* 引用块左边框 */
+.editor-container .tiptap blockquote { border-left: 4px solid ${color} !important; }
+/* 链接 */
+.editor-container .tiptap a { color: ${color} !important; text-decoration-color: ${color} !important; }
+/* 表格表头 */
+.editor-container .tiptap th { background: ${color} !important; color: var(--accent-fg, #fff) !important; }
+/* 选中高亮 */
+.editor-container .tiptap ::selection { background: color-mix(in srgb, ${color} 30%, transparent) !important; }
+/* 代码块装饰点 */
+.editor-container .tiptap pre::before { background: ${color} !important; }
+/* 加粗文字 */
+.editor-container .tiptap strong,
+.editor-container .tiptap b { color: ${color} !important; }`;
 }
 
 /* ─── Image caption format ─── */

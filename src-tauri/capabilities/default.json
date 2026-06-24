@@ -36,6 +36,7 @@
     "fs:allow-desktop-write",
     "clipboard-manager:default",
     "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-write-html",
     "clipboard-manager:allow-read-text",
     "global-shortcut:default",
     "global-shortcut:allow-register",

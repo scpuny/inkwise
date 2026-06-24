@@ -13,7 +13,7 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { X, Loader2 } from "lucide-react";
-import { applyEditorStyle, resetEditorStyle, applyCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, type EditorStyleTemplate } from "../lib/editorStyles";
+import { applyEditorStyle, resetEditorStyle, applyAccentColor, applyCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, type EditorStyleTemplate } from "../lib/editorStyles";
 import { getSelectedArticleThemeId, getThemeById, buildEditorThemeCss } from "../lib/articleThemes";
 import { InlineGhostText } from "./InlineGhostText";
 import { useAgent } from "../lib/agent";
@@ -360,6 +360,9 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     } else {
       resetEditorStyle();
     }
+    // Apply saved accent color (from StylePanel)
+    const savedColor = localStorage.getItem("editor-accent-color");
+    if (savedColor) applyAccentColor(savedColor);
   }, [styleTemplate]);
 
   // Dynamic overrides for font-size, max-width, line-height on top of template CSS

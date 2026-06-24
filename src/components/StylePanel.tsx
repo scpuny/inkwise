@@ -120,6 +120,11 @@ export function StylePanel({
   useEffect(() => {
     localStorage.setItem("editor-accent-color", accentColor);
     applyAccentColor(accentColor);
+    // 主题色变化时重新应用标题装饰，使背景色跟随主题色
+    const savedLevel = localStorage.getItem('heading-deco-level') || '';
+    let savedDecos: string[] = [];
+    try { savedDecos = JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch {}
+    applyHeadingDecorations(savedLevel, savedDecos);
   }, [accentColor]);
 
   useEffect(() => {

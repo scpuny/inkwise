@@ -263,20 +263,37 @@ export async function copyAsHtml(articleId: string, title: string): Promise<bool
     ].join("\n");
 
     const plainText = "# " + title + "\n\n" + content;
-    const clipboardItem = new ClipboardItem({
-      "text/html": new Blob([fullHtml], { type: "text/html" }),
-      "text/plain": new Blob([plainText], { type: "text/plain" }),
-    });
-    await navigator.clipboard.write([clipboardItem]);
-    return true;
+
+    // Try native ClipboardItem API first (requires user gesture)
+    try {
+      const clipboardItem = new ClipboardItem({
+        "text/html": new Blob([fullHtml], { type: "text/html" }),
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([clipboardItem]);
+      return true;
+    } catch (e) {
+      console.warn("copyAsHtml: ClipboardItem failed, trying Tauri clipboard plugin", e);
+    }
+
+    // Fallback: Tauri clipboard plugin (no user gesture needed)
+    try {
+      await tryInvoke("plugin:clipboard-manager|write_html", { html: fullHtml });
+      return true;
+    } catch (e) {
+      console.warn("copyAsHtml: Tauri write_html failed, trying write_text", e);
+    }
+    try {
+      await tryInvoke("plugin:clipboard-manager|write_text", { text: plainText });
+      return true;
+    } catch (e) {
+      console.warn("copyAsHtml: Tauri write_text failed", e);
+    }
+
+    return false;
   } catch (e) {
     console.error("copyAsHtml failed:", e);
-    try {
-      await navigator.clipboard.writeText(content);
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
@@ -408,12 +425,31 @@ export async function exportAsHtml(articleId: string, title: string): Promise<Ex
   // Scope the CSS to .article-body instead of body for standalone HTML
   const scopedStyle = styleCss.replace(/\bbody\b/g, ".article-body");
 
+  // Accent color CSS
+  const accentColor = localStorage.getItem("editor-accent-color") || "";
+  let finalScopedStyle = scopedStyle;
+  if (accentColor) {
+    finalScopedStyle += `
+.article-body {
+  --article-accent: ${accentColor};
+  --accent: ${accentColor};
+}
+.article-body blockquote { border-left: 4px solid ${accentColor} !important; }
+.article-body a { color: ${accentColor} !important; text-decoration-color: ${accentColor} !important; }
+.article-body code:not(pre code) { color: ${accentColor} !important; background: color-mix(in srgb, ${accentColor} 8%, transparent) !important; }
+.article-body th { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; }
+.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
+.article-body strong,
+.article-body b { color: ${accentColor} !important; }
+`;
+  }
+
   const htmlContent = renderMarkdownToHTML(content);
   const fullHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(title)}</title>
-<style>${scopedStyle}</style></head>
+<style>${finalScopedStyle}</style></head>
 <body style="margin:0">
 <div class="article-body">${htmlContent}</div>
 </body></html>`;

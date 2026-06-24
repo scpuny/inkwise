@@ -186,10 +186,10 @@ function collectPublishCss(): string {
     const sel = `.article-body ${headingLevel}`;
     const parts: string[] = [];
     const extra: string[] = [];
-    if (headingDecos.includes("underline")) parts.push("border-bottom: 2px solid var(--accent, #0969da) !important; padding-bottom: 6px;");
-    if (headingDecos.includes("overline")) parts.push("border-top: 2px solid var(--accent, #0969da) !important; padding-top: 6px;");
-    if (headingDecos.includes("left-bar")) parts.push("border-left: 4px solid var(--accent, #0969da) !important; padding-left: 14px;");
-    if (headingDecos.includes("right-bar")) parts.push("border-right: 4px solid var(--accent, #0969da) !important; padding-right: 14px;");
+    if (headingDecos.includes("underline")) parts.push("border-bottom: 2px solid currentColor !important; padding-bottom: 6px;");
+    if (headingDecos.includes("overline")) parts.push("border-top: 2px solid currentColor !important; padding-top: 6px;");
+    if (headingDecos.includes("left-bar")) parts.push("border-left: 4px solid currentColor !important; padding-left: 14px;");
+    if (headingDecos.includes("right-bar")) parts.push("border-right: 4px solid currentColor !important; padding-right: 14px;");
     if (headingDecos.includes("bg-block")) parts.push("background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;");
     if (parts.length > 0) {
       cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
@@ -215,17 +215,13 @@ function collectPublishCss(): string {
   --article-accent: ${accentColor};
   --accent: ${accentColor};
 }
-.article-body h1 { border-bottom: 2px solid ${accentColor} !important; }
-.article-body h2 { background: ${accentColor} !important; color: #fff !important; padding: 0.2em 0.5em !important; display: inline-block !important; }
-.article-body h3 { border-left: 3px solid ${accentColor} !important; padding-left: 8px !important; }
-.article-body h4,
-.article-body h5,
-.article-body h6 { color: ${accentColor} !important; }
 .article-body blockquote { border-left: 4px solid ${accentColor} !important; }
 .article-body a { color: ${accentColor} !important; text-decoration-color: ${accentColor} !important; }
-.article-body code { border: 1px solid color-mix(in srgb, ${accentColor} 20%, transparent) !important; }
-.article-body th { background: ${accentColor} !important; color: #fff !important; }
-.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }`);
+.article-body code:not(pre code) { color: ${accentColor} !important; background: color-mix(in srgb, ${accentColor} 8%, transparent) !important; }
+.article-body th { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; }
+.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
+.article-body strong,
+.article-body b { color: ${accentColor} !important; }`);
   }
 
   // Code block base styles (macOS style dots)

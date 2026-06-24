@@ -762,6 +762,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     };
     setBlueprint(updated);
     onPhaseChange?.("complete");
+    saveBlueprint(activeArticleId, updated);
     import("../lib/articles").then(m => m.saveArticleContent(activeArticleId!, contentRef.current || ""));
   }, [activeArticleId, blueprint, onPhaseChange]);
 
