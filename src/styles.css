@@ -1,3 +1,62 @@
+/* ═══════════════════════════════════════════════
+   Dialog — base modal
+   ═══════════════════════════════════════════════ */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+
+.dialog {
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  margin: auto;
+}
+
+.dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.dialog__head h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0;
+}
+
+.dialog__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog__close:hover {
+  background: var(--bg-elev);
+  color: var(--fg);
+}
+
 /*
  * AI 写作助手 — 桌面端 UI
  *
@@ -26,11 +85,13 @@
    Publish Dialog
    ═══════════════════════════════════════════════ */
 .publish-dialog--wide {
-  max-width: 680px !important;
-  width: 680px !important;
-  border-radius: 12px !important;
-  overflow: hidden !important;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08) !important;
+  max-width: 680px;
+  width: 680px;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
 }
 
 .publish-dialog__body {
@@ -348,3 +409,10 @@
   color: #ef4444;
 }
 
+
+
+.publish-dialog--wide .publish-dialog__body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
