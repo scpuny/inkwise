@@ -1,15 +1,3 @@
-# InkWise 墨智 — GitHub Release Workflow
-# 基于 Git Tag 自动构建全平台安装包并发布
-#
-# 触发方式: git tag v1.0.0 && git push origin v1.0.0
-#
-# 构建产物:
-#   macOS ARM64  → InkWise_*.dmg (M-chip)
-#   macOS x86_64 → InkWise_*.dmg (Intel，在 ARM runner 上交叉编译)
-#   Linux x86_64 → InkWise_*_amd64.deb / .AppImage
-#   Linux ARM64  → InkWise_*_arm64.deb / .AppImage (QEMU 模拟)
-#   Windows      → InkWise_*.msi / .exe
-
 name: Release
 
 on:
@@ -21,9 +9,7 @@ env:
   APP_NAME: InkWise
 
 jobs:
-  # ──────────────────────────────────────────────
-  # 1. 原生构建：macOS (ARM + Intel) / Linux x86_64 / Windows x86_64
-  # ──────────────────────────────────────────────
+  # ---- Native builds: macOS / Linux x86_64 / Windows ----
   build-native:
     strategy:
       fail-fast: false
@@ -31,25 +17,18 @@ jobs:
         include:
           - name: macos
             os: macos-latest
-            target: universal
-            architecture: universal
-
           - name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            architecture: amd64
-
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            architecture: x64
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -65,8 +44,8 @@ jobs:
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
             libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev patchelf \
             libssl-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
@@ -74,7 +53,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # ── macOS: 构建双架构 ──
       - name: Build Tauri (macOS ARM64)
         if: matrix.name == 'macos'
         run: npx tauri build --target aarch64-apple-darwin
@@ -82,61 +60,48 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Build Tauri (macOS Intel x86_64)
+      - name: Build Tauri (macOS Intel)
         if: matrix.name == 'macos'
         run: npx tauri build --target x86_64-apple-darwin
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # ── 非 macOS: 单架构构建 ──
-      - name: Build Tauri application
+      - name: Build Tauri
         if: matrix.name != 'macos'
         run: npx tauri build --target ${{ matrix.target }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # ── 上传 macOS ARM64 ──
-      - name: Upload macOS ARM64 artifacts
+      - name: Upload macOS ARM64
         if: matrix.name == 'macos'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-macos-arm64
-          path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/
-          if-no-files-found: error
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/
 
-      # ── 上传 macOS Intel ──
-      - name: Upload macOS Intel artifacts
+      - name: Upload macOS Intel
         if: matrix.name == 'macos'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-macos-x64
-          path: |
-            src-tauri/target/x86_64-apple-darwin/release/bundle/
-          if-no-files-found: error
+          path: src-tauri/target/x86_64-apple-darwin/release/bundle/
 
-      # ── 上传其他平台 ──
-      - name: Upload build artifacts
+      - name: Upload other artifacts
         if: matrix.name != 'macos'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-${{ matrix.name }}
-          path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/
-          if-no-files-found: error
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/
 
-  # ──────────────────────────────────────────────
-  # 2. Linux ARM64 (原生交叉编译，无需 QEMU)
-  # ──────────────────────────────────────────────
+  # ---- Linux ARM64 via native cross-compilation ----
   build-linux-arm64:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -144,16 +109,12 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Setup multiarch and install cross-deps
+      - name: Setup multiarch and cross toolchain
         run: |
-          # 添加 arm64 架构（忽略 default 源的 404 警告）
           sudo dpkg --add-architecture arm64
-          # 添加 ARM64 专用源
-          echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe restricted multiverse' | sudo tee /etc/apt/sources.list.d/arm64-ports.list
-          echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
-          echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
-          echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
-          # update 即使有 404 也不中断（security.ubuntu.com 不支持 arm64）
+          for r in jammy jammy-updates jammy-backports jammy-security; do
+            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $r main universe restricted multiverse"
+          done | sudo tee /etc/apt/sources.list.d/arm64-ports.list
           sudo apt-get update -q || true
           sudo apt-get install -y -q \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
@@ -165,12 +126,13 @@ jobs:
             libssl-dev:arm64 \
             libsoup-3.0-dev:arm64 \
             libjavascriptcoregtk-4.1-dev:arm64
+
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Set cross-compilation environment
+      - name: Set cross-compilation env
         run: |
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
           echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
@@ -184,17 +146,13 @@ jobs:
       - name: Build Tauri for ARM64
         run: npx tauri build --target aarch64-unknown-linux-gnu
 
-      - name: Upload build artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APP_NAME }}-linux-arm64
-          path: |
-            src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/
-          if-no-files-found: error
+          path: src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/
 
-  # ──────────────────────────────────────────────
-  # 3. 创建 GitHub Release（合并全平台产物）
-  # ──────────────────────────────────────────────
+  # ---- Create GitHub Release ----
   create-release:
     needs: [build-native, build-linux-arm64]
     runs-on: ubuntu-latest
@@ -203,10 +161,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download all build artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
@@ -225,17 +182,13 @@ jobs:
           body: |
             ## InkWise ${{ github.ref_name }}
 
-            请根据您的系统选择对应安装包下载。
-
-            | 平台 | 架构 | 格式 |
+            | Platform | Architecture | Format |
             |---|---|---|
-            | macOS | Apple Silicon (M芯片) | .dmg |
+            | macOS | Apple Silicon | .dmg |
             | macOS | Intel | .dmg |
             | Linux | x86_64 | .deb / .AppImage |
             | Linux | ARM64 | .deb / .AppImage |
             | Windows | x86_64 | .msi / .exe |
-
-            完整更新日志见下方。
           generate_release_notes: true
           files: release-artifacts/*
           fail_on_unmatched_files: false
