@@ -9,6 +9,138 @@
  *  - 尊重 prefers-reduced-motion
  */
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    0. RESET & BASE
    ═══════════════════════════════════════════════════════════════════ */
@@ -19,6 +151,138 @@
   margin: 0;
   padding: 0
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    0b. GLOBAL SELECT STYLING — unified, dark-theme aware
@@ -134,6 +398,138 @@ body {
 :root[data-font-family="custom"] {
   --sans: var(--font-family-custom, "PingFang SC"), "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    1. CSS VARIABLES — 三层覆盖
@@ -407,6 +803,138 @@ body {
   color-scheme: dark
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    2. THEME STYLES — 6 种方向（与 Reasonix 完全一致）
    ═══════════════════════════════════════════════════════════════════ */
@@ -570,6 +1098,138 @@ body {
     --shadow-2: 0 12px 34px rgba(20, 18, 16, 0.12);
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    2. THEME STYLES — 6 种方向（与 Reasonix 完全一致）
@@ -1477,6 +2137,138 @@ body {
   color: var(--text);
 }
 
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2413,6 +3205,138 @@ body {
   white-space: nowrap;
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    5. RESIZERS
    ═══════════════════════════════════════════════════════════════════ */
@@ -2487,6 +3411,138 @@ body {
   background: var(--accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent)
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    6. EDITOR PANE
@@ -3660,6 +4716,138 @@ body {
   gap: 3px
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    7. AI DOCK
    ═══════════════════════════════════════════════════════════════════ */
@@ -3899,6 +5087,138 @@ body {
   font-weight: 600;
   color: var(--fg-faint)
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════
    8. SETTINGS PANEL
@@ -6667,6 +7987,138 @@ body {
   gap: 8px
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════
    9. THEME PICKER
    ═══════════════════════════════════════════════════════════════════ */
@@ -6825,6 +8277,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    15. ERROR BOUNDARY
    ═══════════════════════════════════════════════════════════════════ */
@@ -6915,6 +8499,138 @@ body {
 
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    18. STREAMING AI RESPONSE
    ═══════════════════════════════════════════════════════════════════ */
@@ -7002,6 +8718,138 @@ body {
 
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    19. STATUS BAR SAVE INDICATOR
    ═══════════════════════════════════════════════════════════════════ */
@@ -7043,6 +8891,138 @@ body {
   }
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    10. ANIMATIONS
    ═══════════════════════════════════════════════════════════════════ */
@@ -7069,6 +9049,138 @@ body {
   }
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    11. REDUCED MOTION
    ═══════════════════════════════════════════════════════════════════ */
@@ -7081,6 +9193,138 @@ body {
     transition-duration: .01ms !important
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    12. SCROLLBAR GLOBAL
@@ -7102,6 +9346,138 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover)
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    13. RESPONSIVE
@@ -7143,6 +9519,138 @@ body {
     --ai-dock-width: 480px;
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════
    14. TIP-TAP EDITOR
@@ -7292,6 +9800,138 @@ body {
 .editor-container .tiptap .tiptap-image[data-drag-handle] {
   cursor: grab;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    16. SEARCH PANEL
@@ -7482,6 +10122,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    17. TOAST NOTIFICATION
    ═══════════════════════════════════════════════════════════════════ */
@@ -7532,6 +10304,138 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -7738,6 +10642,138 @@ body {
   min-height: 0;
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    19. INLINE GHOST TEXT
    ═══════════════════════════════════════════════════════════════════ */
@@ -7843,6 +10879,138 @@ body {
     opacity: 1;
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    20. INLINE TOOLBAR — 选中文本浮动工具栏
@@ -7984,6 +11152,138 @@ body {
   background: var(--bg-hover, var(--sidebar-hover));
   color: var(--accent);
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    21. AGENT PANEL — 替代 AIDock
@@ -8860,6 +12160,138 @@ body {
   color: var(--err);
 }
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    22. TOOLBAR AI ACTIONS
    ═══════════════════════════════════════════════════════════════════ */
@@ -8882,6 +12314,138 @@ body {
 .toolbar-btn__label {
   font-size: var(--text-xs);
   font-weight: 500;
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -9183,6 +12747,138 @@ body {
   color: var(--fg-faint);
   margin-left: 4px;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    24. BLUEPRINT EDITOR — 文章信息编辑弹窗
@@ -9581,6 +13277,138 @@ body {
   border-color: var(--accent-soft);
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -9985,6 +13813,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    25b. PLAN REVIEW EXTENSIONS
    ═══════════════════════════════════════════════════════════════════ */
@@ -10067,6 +14027,138 @@ body {
   border-top: 1px solid color-mix(in srgb, var(--err) 20%, transparent);
   font-size: var(--text-sm);
   color: var(--err);
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -10676,6 +14768,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    99. CONFIRM DIALOG
    ═══════════════════════════════════════════════════════════════════ */
@@ -10829,6 +15053,138 @@ body {
 .confirm-dialog__btn--danger:hover {
   background: #d13b3b;
   border-color: #d13b3b;
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -11005,6 +15361,138 @@ body {
 .command-palette__item--selected .command-palette__item-arrow {
   opacity: 1;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    Article Manager — 文章管理页面
@@ -11807,6 +16295,138 @@ body {
 
 /* Sidebar manage placeholder */
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ══════════════════════════════════════════════════════════════
    DocPicker — 文章选择弹窗
    ══════════════════════════════════════════════════════════════ */
@@ -12214,6 +16834,138 @@ body {
   color: var(--fg-dim);
   font-size: 12px;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    Collection Form Modal — 合集编辑表单
@@ -12624,6 +17376,138 @@ body {
   background: var(--bg-elev);
   color: var(--fg);
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    STYLE PANEL (right-side article style settings)
@@ -13314,6 +18198,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    30. THEME PREVIEW — 分享主题预览
    ═══════════════════════════════════════════════════════════════════ */
@@ -13328,6 +18344,138 @@ body {
   height: 18px;
   border-radius: 4px;
   flex-shrink: 0;
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
@@ -13356,6 +18504,138 @@ body {
   flex: 1;
   min-width: 0;
 }
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════
    32. STYLE PANEL CHIPS — 选项组 + 自定义输入
@@ -13426,6 +18706,138 @@ body {
 
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    32. TOGGLE SWITCH
    ═══════════════════════════════════════════════════════════════════ */
@@ -13475,6 +18887,138 @@ body {
 }
 
 
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    33. TEMPLATE ROW — 两个下拉框并排
    ═══════════════════════════════════════════════════════════════════ */
@@ -13482,6 +19026,138 @@ body {
   display: flex;
   gap: 6px;
   align-items: flex-start;
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   Publish Dialog — Two-column + Cover image
+   ═══════════════════════════════════════════════ */
+.publish-dialog--wide {
+  max-width: 720px !important;
+  width: 720px !important;
+}
+
+.publish-dialog__body--two-col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  padding: 20px 24px !important;
+}
+
+.publish-dialog__col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.publish-dialog__cover-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__cover-remove {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.publish-dialog__cover-placeholder {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border-soft) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-faint) !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__cover-actions {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.btn--tiny {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+}
+
+.btn--tiny:hover {
+  background: var(--bg-elev) !important;
+}
+
+.btn--tiny.btn--active {
+  background: var(--accent-bg, rgba(9, 105, 218, 0.1)) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.publish-dialog__body-images {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+.publish-dialog__body-image-item {
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  background: var(--bg-elev) !important;
+}
+
+.publish-dialog__body-image-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.publish-dialog__body-image-item--active {
+  border-color: var(--accent) !important;
 }
 
 
