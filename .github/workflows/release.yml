@@ -95,56 +95,48 @@ jobs:
           name: ${{ env.APP_NAME }}-${{ matrix.name }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/
 
-  # ---- Linux ARM64 via native cross-compilation ----
+  # ---- Linux ARM64: build in native ARM64 Docker container via QEMU ----
   build-linux-arm64:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # QEMU Rust compilation is slow
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Setup multiarch and cross toolchain
+      - name: Build in ARM64 container
         run: |
-          sudo dpkg --add-architecture arm64
-          for r in jammy jammy-updates jammy-backports jammy-security; do
-            echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $r main universe restricted multiverse"
-          done | sudo tee /etc/apt/sources.list.d/arm64-ports.list
-          sudo apt-get update -q || true
-          sudo apt-get install -y -q \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            pkg-config-aarch64-linux-gnu \
-            libwebkit2gtk-4.1-dev:arm64 \
-            libgtk-3-dev:arm64 \
-            libayatana-appindicator3-dev:arm64 \
-            librsvg2-dev:arm64 \
-            libssl-dev:arm64 \
-            libsoup-3.0-dev:arm64 \
-            libjavascriptcoregtk-4.1-dev:arm64
+          docker run --rm --platform linux/arm64/v8 \
+            -v ${{ github.workspace }}:/workspace:rw \
+            -w /workspace \
+            -e CARGO_BUILD_JOBS=2 \
+            arm64v8/ubuntu:22.04 \
+            bash -c "
+              set -e
+              echo '=== Install system deps ==='
+              apt-get update -qq
+              apt-get install -y -qq \
+                curl build-essential pkg-config \
+                libwebkit2gtk-4.1-dev libgtk-3-dev \
+                libayatana-appindicator3-dev librsvg2-dev patchelf \
+                libssl-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
+              echo '=== Install Node.js ==='
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y -qq nodejs
 
-      - name: Set cross-compilation env
-        run: |
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig" >> $GITHUB_ENV
+              echo '=== Install Rust ==='
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+              . \"\$HOME/.cargo/env\"
+              rustup target add aarch64-unknown-linux-gnu
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build Tauri for ARM64
-        run: npx tauri build --target aarch64-unknown-linux-gnu
+              echo '=== Build ==='
+              cd /workspace
+              npm ci
+              npx tauri build --target aarch64-unknown-linux-gnu
+            "
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -173,7 +165,6 @@ jobs:
         run: |
           echo "=== Release artifacts ==="
           find release-artifacts -type f -exec ls -lh {} \;
-          echo "========================"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
