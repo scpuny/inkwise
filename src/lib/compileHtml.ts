@@ -208,6 +208,26 @@ function collectPublishCss(): string {
     if (bgPatterns[bgPattern]) cssParts.push(bgPatterns[bgPattern]);
   }
 
+  // Accent color (from editor-accent-color) — defines --article-accent for var() references in template CSS
+  const accentColor = localStorage.getItem("editor-accent-color") || "";
+  if (accentColor) {
+    cssParts.push(`.article-body {
+  --article-accent: ${accentColor};
+  --accent: ${accentColor};
+}
+.article-body h1 { border-bottom: 2px solid ${accentColor} !important; }
+.article-body h2 { background: ${accentColor} !important; color: #fff !important; padding: 0.2em 0.5em !important; display: inline-block !important; }
+.article-body h3 { border-left: 3px solid ${accentColor} !important; padding-left: 8px !important; }
+.article-body h4,
+.article-body h5,
+.article-body h6 { color: ${accentColor} !important; }
+.article-body blockquote { border-left: 4px solid ${accentColor} !important; }
+.article-body a { color: ${accentColor} !important; text-decoration-color: ${accentColor} !important; }
+.article-body code { border: 1px solid color-mix(in srgb, ${accentColor} 20%, transparent) !important; }
+.article-body th { background: ${accentColor} !important; color: #fff !important; }
+.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }`);
+  }
+
   // Code block base styles (macOS style dots)
   const macosCodeBlock = localStorage.getItem("macos-code-block") === "true";
   if (macosCodeBlock) {
