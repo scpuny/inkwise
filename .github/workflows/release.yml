@@ -146,32 +146,15 @@ jobs:
 
       - name: Setup multiarch and install cross-deps
         run: |
-          # 重写 ubuntu.sources（deb822 格式），限制为 amd64 架构
-          # 否则 dpkg --add-architecture arm64 后 apt 会从 security.ubuntu.com
-          # 拉取 arm64 索引导致 404
-          sudo tee /etc/apt/sources.list.d/ubuntu.sources << 'SOURCESEOF'
-Types: deb
-URIs: http://archive.ubuntu.com/ubuntu/
-Suites: noble noble-updates noble-backports
-Components: main universe restricted multiverse
-Architectures: amd64
-Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-
-Types: deb
-URIs: http://security.ubuntu.com/ubuntu/
-Suites: noble-security
-Components: main universe restricted multiverse
-Architectures: amd64
-Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
-SOURCESEOF
-          # 添加 arm64 架构支持
+          # 添加 arm64 架构（忽略 default 源的 404 警告）
           sudo dpkg --add-architecture arm64
-          # 添加 ARM64 专用源（ports.ubuntu.com）
+          # 添加 ARM64 专用源
           echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe restricted multiverse' | sudo tee /etc/apt/sources.list.d/arm64-ports.list
           echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
           echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
           echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main universe restricted multiverse' | sudo tee -a /etc/apt/sources.list.d/arm64-ports.list
-          sudo apt-get update -q
+          # update 即使有 404 也不中断（security.ubuntu.com 不支持 arm64）
+          sudo apt-get update -q || true
           sudo apt-get install -y -q \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             pkg-config-aarch64-linux-gnu \
@@ -182,7 +165,6 @@ SOURCESEOF
             libssl-dev:arm64 \
             libsoup-3.0-dev:arm64 \
             libjavascriptcoregtk-4.1-dev:arm64
-
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
