@@ -17,7 +17,8 @@ const initPromise: Promise<void> = (async () => {
     const mod = await import("@tauri-apps/api/core");
     _invoke = mod.invoke as InvokeFn;
   } catch {
-    _invoke = null;
+    // Fallback: use window.__TAURI_INTERNALS__.invoke (for mock/testing)
+    _invoke = (window as any).__TAURI_INTERNALS__?.invoke || null;
   }
 })();
 

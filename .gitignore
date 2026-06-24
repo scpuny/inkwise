@@ -42,3 +42,10 @@ src-tauri/target/
 
 # --- Misc ---
 *.tsbuildinfo
+
+# --- Test ---
+tests
+test-results.json
+test-results
+
+SECRET.text
