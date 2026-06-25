@@ -139,9 +139,10 @@ function markdownToHtml(content: string): string {
         }
         const code = codeBuf.join("\n");
         const hCode = (lang && hljs.getLanguage(lang))
-    ? hljs.highlight(code, { language: lang }).value
+    ? hljs.highlight(code, { language: lang }).value.replace(/<[^>]+>/g, "")
     : escapeHtml(code);
-out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${hCode}</code></pre>\n`);
+out.push(`<pre><code>${hCode}</code></pre>
+`);
         codeBuf = [];
         inCode = false;
       } else {
@@ -223,7 +224,8 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
       lang = "";
     }
     const code = codeBuf.join("\n");
-    out.push(`<pre><code${lang ? ` class="language-${lang}"` : ""}>${escapeHtml(code)}</code></pre>\n`);
+    out.push(`<pre><code>${escapeHtml(code)}</code></pre>
+`);
   }
 
   return out.join("");
