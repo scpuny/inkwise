@@ -54,6 +54,27 @@ hljs.registerLanguage("sh", bash);
 hljs.registerLanguage("html", xml);
 hljs.registerLanguage("shell", bash);
 hljs.registerLanguage("txt", plaintext);
+
+/** Resolve var(--accent, fallback) and color-mix() to concrete hex colors */
+function resolveCssColors(css: string, accentColor: string): string {
+  const accent = accentColor || "#0969da";
+  let result = css;
+  // Resolve var(--accent, #xxx) to actual color
+  result = result.replace(/var\(--accent-fg,\s*([^)]+)\)/g, "$1");
+  result = result.replace(/var\(--accent,\s*([^)]+)\)/g, accent);
+  result = result.replace(/var\(--accent\)/g, accent);
+  // Resolve color-mix(in srgb, <color> <pct>%, transparent) - blend over white
+  // color-mix with transparent: blend accent over white
+  result = result.replace(/color-mix\(in srgb,\s*([^\s]+)\s+(\d+)%,\s*transparent\)/g, (_m: string, color: string, pct: string) => {
+    const hex = color.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+    const alpha = parseInt(pct) / 100;
+    return "#" + [r,g,b].map(c => Math.round(c * alpha + 255 * (1 - alpha)).toString(16).padStart(2,"0")).join("");
+  });
+  // color-mix with currentColor: just use accent color directly
+  result = result.replace(/color-mix\(in srgb,\s*([^\s]+)\s+\d+%,\s*currentColor\)/g, "$1");
+  return result;
+}
 hljs.registerLanguage("c", c);
 hljs.registerLanguage("cpp", cpp);
 hljs.registerLanguage("csharp", csharp);
@@ -429,6 +450,10 @@ export async function compileToInlinedHtml(markdown: string): Promise<string> {
   // 2. Collect all CSS
   const cssText = collectPublishCss();
 
+  // Resolve CSS variables and color-mix for maximum platform compatibility
+  const accentColor = localStorage.getItem("editor-accent-color") || "";
+  const resolvedCss = resolveCssColors(cssText, accentColor);
+
   // 3. Build HTML with wrapper for juice
   const fontFamily =
     localStorage.getItem("article-font-family") ||
@@ -438,7 +463,7 @@ export async function compileToInlinedHtml(markdown: string): Promise<string> {
   const htmlWithCss = `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
-<style>${cssText}</style>
+<style>${resolvedCss}</style>
 </head>
 <body class="article-body">
 ${bodyHtml}
