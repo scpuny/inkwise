@@ -1318,7 +1318,20 @@ export function applyCodeTheme(themeId: string): void {
     tag.id = "editor-code-theme-style";
     document.head.appendChild(tag);
   }
-  tag.textContent = theme.css;
+  // Scope code theme CSS to same selector specificity as template CSS,
+  // preventing template from overriding code theme colors.
+  const scoped = theme.css
+    .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
+      return sel
+        .split(",")
+        .map((s: string) => {
+          const t = s.trim();
+          if (t.startsWith(".editor-container") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":")) return t;
+          return ".editor-container .tiptap " + t;
+        })
+        .join(", ") + " {";
+    });
+  tag.textContent = scoped;
 }
 
 export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean): void {
