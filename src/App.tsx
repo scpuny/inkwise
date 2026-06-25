@@ -555,7 +555,7 @@ function AppContent() {
         style={
           {
             "--sidebar-width": `${sidebarWidth}px`,
-            "--ai-dock-width": sidebarOpen ? "420px" : "420px",
+            "--ai-dock-width": "420px",
           } as React.CSSProperties
         }
       >
