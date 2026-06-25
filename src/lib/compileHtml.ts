@@ -499,7 +499,9 @@ ${bodyHtml}
   const bodyContent = bodyMatch ? bodyMatch[1].trim() : inlined;
 
   // Fix WeChat compatibility: strip !important from inline styles
-  const cleanedContent = bodyContent.replace(/\s*!important\s*/g, " ");
+  const cleanedContent = bodyContent
+    .replace(/\s*!important\s*/g, " ")
+    .replace(/\sclass="[^"]*"/g, "");
   // 6. Wrap in outer div with font settings as fallback
   return `<div style="font-family:${fontFamily};word-break:break-word;color:${fontColor};">${cleanedContent}</div>`;
 }
