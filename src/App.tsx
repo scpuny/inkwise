@@ -700,7 +700,7 @@ function AppContent() {
           onPlanComplete={handlePlanComplete}
           onEnterEditor={handleEnterEditor}
           onToggleFocus={() => setFocusMode(f => !f)}
-          onSaveStateChange={setSaveState}
+          onToggleSidebar={() => setSidebarOpen(o => !o)}          onSaveStateChange={setSaveState}
           onPhaseChange={handlePhaseChange}
           editorMode={editorFormat}
           editorLineHeight={editorLineHeight}

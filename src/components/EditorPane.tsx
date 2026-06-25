@@ -54,7 +54,7 @@ export function EditorPane({
   onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
-}: {
+  onToggleSidebar,}: {
   hasActiveArticle: boolean;
   activeArticleId?: string | null;
   activeCollectionId?: string | null;
@@ -90,7 +90,7 @@ export function EditorPane({
   onToggleStylePanel?: () => void;
   onCloseStylePanel?: () => void;
   onToggleFocus?: () => void;
-}) {
+  onToggleSidebar?: () => void;}) {
   const { state: streamState, startStream, cancelStream, clearResponse } = useChatStream();
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -1025,7 +1025,7 @@ ${augmentedContent}`
           onToggleStylePanel={onToggleStylePanel}
           onCloseStylePanel={onCloseStylePanel}
           onToggleFocus={onToggleFocus}
-        />
+          onToggleSidebar={onToggleSidebar}        />
       ) : null}
       {hasActiveArticle && activeArticleId ? (
         <div className="editor-content-area">

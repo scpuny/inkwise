@@ -3,6 +3,7 @@ import {
   Quote, List, ListOrdered, Type, Link as LinkIcon,
   Highlighter, Code2, ListTodo, SeparatorHorizontal,
   MoreHorizontal, Undo2, Redo2, Image, Search, Palette,
+  PanelLeft,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -226,7 +227,7 @@ export function Toolbar({
   onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
-}: {
+  onToggleSidebar,}: {
   onModeSwitch?: (mode: "rich" | "markdown") => void;
   editorMode?: "rich" | "markdown";
   onStyleTemplate?: (id: string) => void;
@@ -234,7 +235,7 @@ export function Toolbar({
   onToggleStylePanel?: () => void;
   onCloseStylePanel?: () => void;
   onToggleFocus?: () => void;
-}) {
+  onToggleSidebar?: () => void;}) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
   const [highlightOpen, setHighlightOpen] = useState(false);
@@ -279,6 +280,13 @@ export function Toolbar({
     <div className="toolbar">
       {/* AI Quick Actions */}
       <div className="toolbar__group toolbar__group--ai">
+        <button
+          className="toolbar-btn"
+          onClick={onToggleSidebar}
+          title="侧边栏 (Ctrl+\\)"
+        >
+          <PanelLeft size={14} />
+        </button>
         <button
           className={`toolbar-btn${panelOpen ? " toolbar-btn--active" : ""}`}
           onClick={() => { onCloseStylePanel?.(); togglePanel(); }}
