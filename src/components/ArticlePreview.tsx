@@ -1,4 +1,34 @@
 import { useMemo } from "react";
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import css from "highlight.js/lib/languages/css";
+import json from "highlight.js/lib/languages/json";
+import bash from "highlight.js/lib/languages/bash";
+import xml from "highlight.js/lib/languages/xml";
+import sql from "highlight.js/lib/languages/sql";
+import markdown from "highlight.js/lib/languages/markdown";
+import plaintext from "highlight.js/lib/languages/plaintext";
+
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("markdown", markdown);
+hljs.registerLanguage("plaintext", plaintext);
+// Aliases
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("shell", bash);
+hljs.registerLanguage("txt", plaintext);
 
 /** Convert Markdown string to HTML */
 export function markdownToHtml(content: string): string {
@@ -25,7 +55,10 @@ export function markdownToHtml(content: string): string {
       if (inCode) {
         const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
         const code = codeBuf.join("\n");
-        out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${escapeHtml(code)}</code></pre>\n`);
+        const hCode = (lang && hljs.getLanguage(lang))
+    ? hljs.highlight(code, { language: lang }).value
+    : escapeHtml(code);
+out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${hCode}</code></pre>\n`);
         codeBuf = [];
       } else {
         // First ``` line - the rest after ``` is the language
@@ -88,7 +121,10 @@ export function markdownToHtml(content: string): string {
   if (inCode && codeBuf.length > 0) {
     const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
     const code = codeBuf.join("\n");
-    out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${escapeHtml(code)}</code></pre>\n`);
+    const hCode = (lang && hljs.getLanguage(lang))
+    ? hljs.highlight(code, { language: lang }).value
+    : escapeHtml(code);
+out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${hCode}</code></pre>\n`);
   }
 
   return out.join("");
