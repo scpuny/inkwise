@@ -1,5 +1,6 @@
 import juice from "juice";
 import { getSelectedCodeThemeId, getCodeTheme } from "./editorStyles";
+import { getSelectedArticleThemeId, getThemeById } from "./articleThemes";
 import hljs from "highlight.js/lib/core";
 import javascript from "highlight.js/lib/languages/javascript";
 import typescript from "highlight.js/lib/languages/typescript";
@@ -271,13 +272,11 @@ function collectPublishCss(): string {
     cssParts.push(scoped);
   }
 
-  // Article theme CSS
-  const themeId = localStorage.getItem("article-theme-id") || "default-light";
-  const articleThemes = loadArticleThemes();
-  const theme = (articleThemes as any[]).find((t: any) => t.id === themeId);
+  // Article theme CSS (use same key as editor — aiwriter-selected-article-theme)
+  const themeId = getSelectedArticleThemeId();
+  const theme = getThemeById(themeId);
   if (theme) {
-    const v = theme.vars;
-    cssParts.push(buildThemeCss(v));
+    cssParts.push(buildThemeCss(theme.vars));
   }
 
   // Text style overrides
@@ -389,47 +388,64 @@ function loadTemplates(): any[] {
   } catch { return []; }
 }
 
-function loadArticleThemes(): any[] {
-  try {
-    const raw = localStorage.getItem("article-themes");
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function buildThemeCss(vars: Record<string, string>): string {
+function buildThemeCss(vars: any): string {
+  const fontFam = vars.fontFamily || "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
+  const fontSize = vars.fontSize || 16;
+  const lineH = vars.lineHeight || 1.75;
+  const txtColor = vars.textColor || "#333";
+  const bgC = vars.bgColor || "#fff";
+  const maxW = vars.maxWidth || 720;
+  const headColor = vars.headingColor || "inherit";
+  const linkC = vars.linkColor || "#0969da";
+  const cBg = vars.codeBg || "#f0f0f0";
+  const cTxt = vars.codeText || "#333";
+  const bqBorder = vars.blockquoteBorder || "#ddd";
+  const bqBg = vars.blockquoteBg || "#f9f9f9";
+  const pgGap = vars.paragraphGap || "0.5em";
   return `.article-body {
-  font-family: ${vars.fontFamily || "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif"};
-  font-size: ${vars.fontSize || 16}px;
-  line-height: ${vars.lineHeight || 1.75};
-  color: ${vars.textColor || "#333"};
-  max-width: ${vars.maxWidth || 720}px;
+  font-family: ${fontFam};
+  font-size: ${fontSize}px;
+  line-height: ${lineH};
+  color: ${txtColor};
+  max-width: ${maxW}px;
   margin: 0 auto;
   padding: 24px 20px;
-  background: ${vars.bgColor || "#fff"};
+  background: ${bgC};
+}
+.article-body p, .article-body li, .article-body blockquote, .article-body td, .article-body th {
+  font-family: ${fontFam};
+  font-size: ${fontSize}px;
+  line-height: ${lineH};
+  color: ${txtColor};
 }
 .article-body h1, .article-body h2, .article-body h3, .article-body h4 {
-  color: ${vars.headingColor || "inherit"};
+  color: ${headColor};
+  margin: 1.2em 0 0.5em;
+  line-height: 1.3;
 }
-.article-body a { color: ${vars.linkColor || "#0969da"}; }
+.article-body strong { color: ${headColor}; }
+.article-body a { color: ${linkC}; }
+.article-body p { margin: 0 0 ${pgGap}; }
 .article-body code {
-  background: ${vars.codeBg || "#f0f0f0"};
-  color: ${vars.codeText || "#333"};
+  background: ${cBg};
+  color: ${cTxt};
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.88em;
+  font-size: 0.9em;
   font-family: "SF Mono", Consolas, "Courier New", monospace;
 }
+.article-body pre { background: ${cBg}; color: ${cTxt}; padding: 12px 16px; overflow-x: auto; border-radius: 4px; }
+.article-body pre code { padding: 0; background: none; }
 .article-body blockquote {
-  border-left: 4px solid ${vars.blockquoteBorder || "#ddd"};
-  background: ${vars.blockquoteBg || "#f9f9f9"};
+  border-left: 3px solid ${bqBorder};
+  background: ${bqBg};
   margin: 1em 0;
   padding: 0.8em 1.2em;
   border-radius: 0 6px 6px 0;
-  color: #666;
 }
 .article-body blockquote p { margin: 0; }
 .article-body img { max-width: 100%; border-radius: 4px; margin: 1em auto; display: block; }
-.article-body figcaption { text-align: center; color: #999; font-size: 0.85em; margin-top: 4px; }
+.article-body figcaption { text-align: center; color: ${txtColor}; opacity: 0.6; font-size: 0.85em; margin-top: 4px; }
 .article-body table { width: 100%; border-collapse: collapse; margin: 1em 0; }
 .article-body th, .article-body td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; }
 .article-body th { background: #f0f2f5; font-weight: 600; }
@@ -474,19 +490,14 @@ ${bodyHtml}
   const inlined = await juice(htmlWithCss, {
     inlinePseudoElements: true,
     preserveImportant: true,
-    removeStyleTags: false,
+    removeStyleTags: true,
     preserveMediaQueries: false,
   });
 
-  // 5. Extract body content plus style tags (for pseudo-elements)
-  const styleMatch = inlined.match(/<style>([\s\S]*?)<\/style>/i);
-  const headStyles = styleMatch ? styleMatch[1].trim() : "";
+  // 5. Extract body content (style tags already removed by juice)
   const bodyMatch = inlined.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  let bodyContent = bodyMatch ? bodyMatch[1].trim() : inlined;
-  if (headStyles) {
-    bodyContent = `<style>\n${headStyles}\n</style>\n${bodyContent}`;
-  }
+  const bodyContent = bodyMatch ? bodyMatch[1].trim() : inlined;
 
-  // 6. Wrap in outer section with global font-family
-  return `<section style="font-family:${fontFamily};word-break:break-word;color:${fontColor};">${bodyContent}</section>`;
+  // 6. Wrap in outer div with font settings as fallback
+  return `<div style="font-family:${fontFamily};word-break:break-word;color:${fontColor};">${bodyContent}</div>`;
 }
