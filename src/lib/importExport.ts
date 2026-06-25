@@ -242,11 +242,9 @@ export async function copyAsHtml(articleId: string, title: string): Promise<bool
   if (!content) return false;
 
   try {
-    const { getThemeById, getSelectedArticleThemeId, buildThemeCss } = await import("./articleThemes");
-    const themeId = getSelectedArticleThemeId();
-    const theme = getThemeById(themeId);
-    const styleCss = theme ? buildThemeCss(theme.vars) : "";
-    const htmlContent = renderMarkdownToHtml(content);
+    // Use compileToInlinedHtml — proper markdown rendering + hljs + juice inline styles
+    const { compileToInlinedHtml } = await import("../lib/compileHtml");
+    const inlinedContent = await compileToInlinedHtml(content);
     const fullHtml = [
       "<!DOCTYPE html>",
       '<html lang="zh-CN">',
@@ -254,10 +252,9 @@ export async function copyAsHtml(articleId: string, title: string): Promise<bool
       '<meta charset="UTF-8">',
       '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
       "<title>" + title + "</title>",
-      "<style>" + styleCss + "</style>",
       "</head>",
       '<body style="margin:0;padding:20px">',
-      '<div class="article-body">' + htmlContent + "</div>",
+      inlinedContent,
       "</body>",
       "</html>",
     ].join("\n");
