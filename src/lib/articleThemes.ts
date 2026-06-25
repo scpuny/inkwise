@@ -439,6 +439,8 @@ export function buildEditorThemeCss(vars: ArticleThemeVars): string {
 .editor-container .tiptap h5,
 .editor-container .tiptap h6 {
   color: ${vars.headingColor} !important;
+  line-height: 1.3 !important;
+  margin: 1.2em 0 0.5em !important;
 }
 .editor-container .tiptap strong {
   color: ${vars.headingColor} !important;

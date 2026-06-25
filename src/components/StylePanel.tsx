@@ -109,6 +109,7 @@ export function StylePanel({
   }, [headingConfig]);
 
   useEffect(() => {
+    localStorage.setItem('bg-pattern', bgPattern);
     applyBgPattern(bgPattern);
   }, [bgPattern]);
 

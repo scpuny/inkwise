@@ -3,6 +3,7 @@
 import { isTauriEnv, tryInvoke } from "./tauri";
 import { addArticle } from "./collections";
 import { saveArticleContent, loadArticleContent } from "./articles";
+import { compileToWechatHtml } from "./compileHtml";
 
 export interface ImportResult {
   success: boolean;
@@ -311,6 +312,65 @@ export async function copyAsMarkdown(articleId: string): Promise<boolean> {
     document.execCommand("copy");
     document.body.removeChild(textarea);
     return true;
+  }
+}
+
+
+/**
+ * 复制为微信公众号格式 HTML
+ * base64 图片保持原样，粘贴到公众号编辑器后可正常显示
+ */
+export async function copyAsWechatHtml(articleId: string, title: string): Promise<boolean> {
+  const content = await loadArticleContent(articleId);
+  if (!content) return false;
+
+  try {
+    const { html } = await compileToWechatHtml(content);
+
+    const fullHtml = [
+      "<!DOCTYPE html>",
+      '<html lang="zh-CN">',
+      "<head>",
+      '<meta charset="UTF-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      "<title>" + title + "</title>",
+      "</head>",
+      '<body style="margin:0;padding:0">',
+      html,
+      "</body>",
+      "</html>",
+    ].join("\n");
+
+    const plainText = "# " + title + "\n\n" + content;
+
+    try {
+      const clipboardItem = new ClipboardItem({
+        "text/html": new Blob([fullHtml], { type: "text/html" }),
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([clipboardItem]);
+      return true;
+    } catch (e) {
+      console.warn("copyAsWechatHtml: ClipboardItem failed", e);
+    }
+
+    try {
+      await tryInvoke("plugin:clipboard-manager|write_html", { html: fullHtml });
+      return true;
+    } catch (e) {
+      console.warn("copyAsWechatHtml: Tauri write_html failed", e);
+    }
+    try {
+      await tryInvoke("plugin:clipboard-manager|write_text", { text: plainText });
+      return true;
+    } catch (e) {
+      console.warn("copyAsWechatHtml: Tauri write_text failed", e);
+    }
+
+    return false;
+  } catch (e) {
+    console.error("copyAsWechatHtml failed:", e);
+    return false;
   }
 }
 

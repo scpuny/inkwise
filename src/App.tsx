@@ -119,6 +119,24 @@ function AppContent() {
     // Trigger style panel re-mount
     setStyleReady(n => n + 1);
   }, [activeArticleId]);
+  // ─── Sync React style state → localStorage on every change ───
+  // Ensures export/compile functions read current values
+  useEffect(() => {
+    if (!activeArticleId) return;
+    localStorage.setItem('editor-style-template', editorStyleTemplate);
+    localStorage.setItem('editor-line-height', String(editorLineHeight));
+    localStorage.setItem('editor-font-size', String(editorFontSize));
+    localStorage.setItem('editor-max-width', String(editorMaxWidth));
+    localStorage.setItem('editor-paragraph-gap', String(editorParagraphGap));
+    localStorage.setItem('editor-font-family', editorFontFamily);
+    localStorage.setItem('code-theme-id', codeThemeId);
+    // Save per-article config so it persists
+    saveArticleStyleConfig(activeArticleId);
+  }, [
+    activeArticleId, editorStyleTemplate, editorLineHeight, editorFontSize,
+    editorMaxWidth, editorParagraphGap, editorFontFamily, codeThemeId,
+  ]);
+
   const layoutRef = useRef<HTMLDivElement>(null);
 
   // Theme handlers

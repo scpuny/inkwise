@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { FinalTopBar } from "./FinalTopBar";
 import { FinalSidePanel } from "./FinalSidePanel";
-import { ArticlePreview, markdownToHtml } from "./ArticlePreview";
+import { ArticlePreview } from "./ArticlePreview";
+import { markdownToHtml } from "../lib/markdown/renderer";
 import { compileToInlinedHtml } from "../lib/compileHtml";
-import { getCodeTheme, getSelectedCodeThemeId } from "../lib/editorStyles";
-import { copyAsHtml } from "../lib/importExport";
+import { getCodeTheme, getSelectedCodeThemeId, getSelectedTemplateId, getTemplate } from "../lib/editorStyles";
+import { copyAsHtml, copyAsWechatHtml } from "../lib/importExport";
 import { PublishDialog } from "./PublishDialog";
 import { loadArticleContent, loadArticleMeta } from "../lib/articles";
 import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../lib/articleBlueprint";
 import { getPublishHistory, publishArticle, addPublishRecord, type PublishRecord, type PublishOptions, type PublishResult } from "../lib/platforms";
-import { getTemplate, getSelectedTemplateId } from "../lib/editorStyles";
-import { getSelectedArticleThemeId, getThemeById, buildThemeCss } from "../lib/articleThemes";
+import { getSelectedArticleThemeId, getThemeById } from "../lib/articleThemes";
 
 const DEFAULT_CONTENT = "# 无标题\n\n开始写作…\n";
 
@@ -43,141 +43,6 @@ function rescopePreviewCss(css: string): string {
   return result;
 }
 
-/** Build a complete styled HTML document for publishing */
-function buildPublishHtml(markdown: string, articleTitle: string): string {
-  // 1. Convert markdown to HTML body
-  const bodyHtml = markdownToHtml(markdown);
-
-  // 2. Collect all CSS
-  const cssParts: string[] = [];
-
-  // Template CSS (body-scoped → article-body-scoped for publish)
-  const templateId = getSelectedTemplateId();
-  const template = getTemplate(templateId);
-  if (template) {
-    const scoped = template.css
-      .replace(/\bbody\b(?=\s*\{)/g, ".article-body")
-      .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
-        return sel
-          .split(",")
-          .map((s: string) => {
-            const t = s.trim();
-            if (t.startsWith(".article-body") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":")) return t;
-            return ".article-body " + t;
-          })
-          .join(", ") + " {";
-      });
-    cssParts.push(scoped);
-  }
-
-  // Article theme CSS
-  const themeId = getSelectedArticleThemeId();
-  const theme = getThemeById(themeId);
-  if (theme) {
-    cssParts.push(buildThemeCss(theme.vars));
-  }
-
-  // Text style overrides (from localStorage)
-  const firstLineIndent = localStorage.getItem('first-line-indent') === 'true';
-  const justifyAlign = localStorage.getItem('justify-align') === 'true';
-  const textStyleRules: string[] = [];
-  if (firstLineIndent) {
-    textStyleRules.push(`.article-body p:not(li p) { text-indent: 2em !important; }`);
-  }
-  if (justifyAlign) {
-    textStyleRules.push(`.article-body.ProseMirror { text-align: justify !important; }`);
-    textStyleRules.push(`.article-body p:not(li p) { text-align: justify !important; }`);
-  }
-  if (textStyleRules.length > 0) {
-    cssParts.push(textStyleRules.join("\n"));
-  }
-
-  // Heading decorations (from localStorage)
-  const headingConfig: Record<string, string[]> = (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}") || {}; } catch { return {}; } })();
-  const headingEntries = Object.entries(headingConfig).filter(([, v]) => v.length > 0);
-  if (headingEntries.length > 0) {
-    for (const [hl, decos] of headingEntries) {
-      const sel = `.article-body ${hl}`;
-      const parts: string[] = [];
-      const extra: string[] = [];
-      if (decos.includes("underline")) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
-      if (decos.includes("overline")) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
-      if (decos.includes("left-bar")) parts.push(`border-left: 4px solid var(--accent, #0969da) !important; padding-left: 14px;`);
-      if (decos.includes("right-bar")) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
-      if (decos.includes("bg-block")) parts.push(`background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
-      if (decos.includes("left-icon")) {
-        parts.push(`position: relative; padding-left: 1.6em;`);
-        extra.push(`${sel}::before { content: "▎"; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
-      }
-      if (decos.includes("badge")) parts.push(`background: var(--accent, #0969da) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
-      if (parts.length > 0) {
-        cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
-      }
-    }
-  }
-  // BG pattern (from localStorage)
-  const bgPattern = localStorage.getItem('bg-pattern') || '';
-  if (bgPattern) {
-    let bgColor = '';
-    if (theme) {
-      bgColor = theme.vars.bgColor;
-    }
-    const bgRule = bgColor ? `background-color: ${bgColor} !important;` : '';
-    const bgPatterns: Record<string, string> = {
-      'grid': `.article-body { ${bgRule} background-image: linear-gradient(90deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px), linear-gradient(0deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
-      'dots': `.article-body { ${bgRule} background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
-      'stripes': `.article-body { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
-    };
-    if (bgPatterns[bgPattern]) cssParts.push(bgPatterns[bgPattern]);
-  }
-
-  // Accent color (from editor-accent-color) — defines --article-accent for var() references in template CSS
-  const accentColor = localStorage.getItem("editor-accent-color") || "";
-  if (accentColor) {
-    cssParts.push(`.article-body {
-  --article-accent: ${accentColor};
-  --accent: ${accentColor};
-}
-.article-body blockquote { border-left: 4px solid ${accentColor} !important; }
-.article-body a { color: ${accentColor} !important; text-decoration-color: ${accentColor} !important; }
-.article-body code:not(pre code) { color: ${accentColor} !important; background: color-mix(in srgb, ${accentColor} 8%, transparent) !important; }
-.article-body th { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; }
-.article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
-.article-body strong,
-.article-body b { color: ${accentColor} !important; }`);
-  }
-
-  // Code theme CSS
-  const cThemeId = getSelectedCodeThemeId();
-  const cTheme = getCodeTheme(cThemeId);
-  if (cTheme) {
-    const codeThemeCss = cTheme.css
-      .replace(/\bbody\b(?=\s*\{)/g, ".article-body")
-      .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
-        return sel.split(",").map((s: string) => {
-          const t = s.trim();
-          if (t.startsWith(".article-body") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":") || t.startsWith(".")) return t;
-          return ".article-body " + t;
-        }).join(", ") + " {";
-      });
-    cssParts.push(codeThemeCss);
-  }
-
-  const allCss = cssParts.join("\n\n");
-
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeHtml(articleTitle)}</title>
-<style>${allCss}</style></head>
-<body style="margin:0;background:${theme ? theme.vars.bgColor : '#ffffff'}">
-<div class="article-body">${bodyHtml}</div>
-</body></html>`;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 export function ArticleFinalPage({
   articleId,
@@ -237,6 +102,13 @@ export function ArticleFinalPage({
       document.head.appendChild(s);
       tags.push(s);
     }
+
+    // 2.5 Add list-style:none to hide default markers (we use manual • / "1." prefixes)
+    const listStyleTag = document.createElement("style");
+    listStyleTag.id = "preview-list-style-override";
+    listStyleTag.textContent = ".article-preview ul, .article-preview ol { list-style: none !important; padding-left: 1.5em !important; }";
+    document.head.appendChild(listStyleTag);
+    tags.push(listStyleTag);
 
     // 3. If bg-pattern is set, ensure background-color from theme is also on .article-preview
     const bgPattern = localStorage.getItem('bg-pattern') || '';
@@ -336,6 +208,11 @@ export function ArticleFinalPage({
     return ok;
   }, [articleId, articleTitle]);
 
+  const handleCopyWechatHtml = useCallback(async () => {
+    const ok = await copyAsWechatHtml(articleId, articleTitle);
+    return ok;
+  }, [articleId, articleTitle]);
+
   const tags = blueprint?.tags || [];
   const sections = blueprint?.outline || [];
   const phase = blueprint?.phase || "complete";
@@ -353,6 +230,7 @@ export function ArticleFinalPage({
         onBackToEdit={handleBackWithReview}
         onPublish={handlePublish}
         onCopyHtml={handleCopyHtml}
+        onCopyWechatHtml={handleCopyWechatHtml}
         hasUnpublished={publishRecords.length === 0}
         previewMode={previewMode}
         onPreviewModeChange={setPreviewMode}

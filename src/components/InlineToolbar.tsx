@@ -100,11 +100,14 @@ export function InlineToolbar() {
       const editor = (window as any).editorInstance?.editor;
       if (!editor) return;
 
-      const text = hasDomSelection ? sel!.toString().trim() : (hasStoredSelection ? editor.state.doc.textBetween(
-        (window as any).__lastEditorSelection.from,
-        (window as any).__lastEditorSelection.to,
-        " "
-      ).trim() : "");
+      const text = hasDomSelection ? sel!.toString().trim() : (hasStoredSelection ? (() => {
+        const selPos = (window as any).__lastEditorSelection;
+        const docSize = editor.state.doc.content.size;
+        if (selPos.from > docSize || selPos.to > docSize || selPos.from < 0 || selPos.to < 0) {
+          return "";
+        }
+        return editor.state.doc.textBetween(selPos.from, selPos.to, " ").trim();
+      })() : "");
       if (text.length < 2) {
         setVisible(false);
         return;

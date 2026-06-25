@@ -1,35 +1,57 @@
-import { ArrowLeft, Send, Monitor, Smartphone, Copy, Check } from "lucide-react";
-import { useState, useCallback, useRef } from "react";
+import { ArrowLeft, Send, Monitor, Smartphone, Copy, Check, ChevronDown } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 interface FinalTopBarProps {
   title: string;
   onBackToEdit: () => void;
   onPublish: () => void;
   onCopyHtml: () => Promise<boolean>;
+  onCopyWechatHtml: () => Promise<boolean>;
   hasUnpublished: boolean;
   previewMode: "desktop" | "mobile";
   onPreviewModeChange: (mode: "desktop" | "mobile") => void;
 }
 
-export function FinalTopBar({ title, onBackToEdit, onPublish, onCopyHtml, hasUnpublished, previewMode, onPreviewModeChange }: FinalTopBarProps) {
+type CopyMode = "wechat" | "html";
+
+export function FinalTopBar({ title, onBackToEdit, onPublish, onCopyHtml, onCopyWechatHtml, hasUnpublished, previewMode, onPreviewModeChange }: FinalTopBarProps) {
   const [copied, setCopied] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [copyMode, setCopyMode] = useState<CopyMode>("wechat");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = useCallback(async () => {
     setCopied(true);
+    setDropdownOpen(false);
     try {
-      const ok = await onCopyHtml();
-      if (!ok) {
-        setCopied(false);
-        return;
-      }
-    } catch {
-      setCopied(false);
-      return;
-    }
+      const ok = copyMode === "wechat" ? await onCopyWechatHtml() : await onCopyHtml();
+      if (!ok) { setCopied(false); return; }
+    } catch { setCopied(false); return; }
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setCopied(false), 3000);
-  }, [onCopyHtml]);
+  }, [copyMode, onCopyHtml, onCopyWechatHtml]);
+
+  // 点击下拉外部区域关闭
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [dropdownOpen]);
+
+  const selectMode = useCallback((mode: CopyMode) => {
+    setCopyMode(mode);
+    setDropdownOpen(false);
+  }, []);
+
+  const modeLabel = copyMode === "wechat" ? "公众号格式" : "HTML 格式";
 
   return (
     <div className="final-topbar">
@@ -59,16 +81,44 @@ export function FinalTopBar({ title, onBackToEdit, onPublish, onCopyHtml, hasUnp
             <Smartphone size={14} />
           </button>
         </div>
-        <button
-          type="button"
-          className="btn btn--small"
-          onClick={handleCopy}
-          title="复制"
-          style={copied ? { color: "var(--green, #2da44e)" } : undefined}
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          <span>复制</span>
-        </button>
+        <div className="final-topbar__copy-group" ref={dropdownRef}>
+          <button
+            type="button"
+            className="btn btn--small final-topbar__copy-btn"
+            onClick={handleCopy}
+            title="复制"
+            style={copied ? { color: "var(--green, #2da44e)" } : undefined}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied ? "已复制" : modeLabel}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn--small final-topbar__copy-arrow"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            title="选择复制格式"
+          >
+            <ChevronDown size={12} />
+          </button>
+          {dropdownOpen && (
+            <div className="final-topbar__copy-dropdown">
+              <button
+                type="button"
+                className={`final-topbar__copy-option${copyMode === "wechat" ? " final-topbar__copy-option--active" : ""}`}
+                onClick={() => selectMode("wechat")}
+              >
+                公众号格式
+              </button>
+              <button
+                type="button"
+                className={`final-topbar__copy-option${copyMode === "html" ? " final-topbar__copy-option--active" : ""}`}
+                onClick={() => selectMode("html")}
+              >
+                HTML 格式
+              </button>
+            </div>
+          )}
+        </div>
         <button type="button" className={`btn btn--small${hasUnpublished ? " btn--primary" : ""}`} onClick={onPublish}>
           <Send size={16} />
           <span>发布</span>

@@ -1448,7 +1448,11 @@ export function applyMacosCodeBlockStyle(enabled: boolean): void {
     radial-gradient(circle at 5px 5px, #ff5f57 5px, transparent 5px),
     radial-gradient(circle at 19px 5px, #ffbd2e 5px, transparent 5px),
     radial-gradient(circle at 33px 5px, #28c840 5px, transparent 5px);
-}`;
+}
+.editor-container .tiptap pre .mac-dots {
+  display: none !important;
+}
+`;
 }
 
 
@@ -1548,7 +1552,7 @@ export interface ArticleStyleConfig {
 
 export function saveArticleStyleConfig(articleId: string): void {
   const config: ArticleStyleConfig = {
-    editorStyleTemplateId: localStorage.getItem('editor-style-template-id') || 'default',
+    editorStyleTemplateId: localStorage.getItem('editor-style-template') || 'default',
     lineHeight: parseFloat(localStorage.getItem('editor-line-height') || '1.75'),
     editorFontSize: parseInt(localStorage.getItem('editor-font-size') || '15'),
     editorMaxWidth: parseInt(localStorage.getItem('editor-max-width') || '820'),
@@ -1581,7 +1585,7 @@ export function loadArticleStyleConfig(articleId: string): ArticleStyleConfig | 
 }
 
 export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
-  localStorage.setItem('editor-style-template-id', config.editorStyleTemplateId);
+  localStorage.setItem('editor-style-template', config.editorStyleTemplateId);
   localStorage.setItem('editor-line-height', String(config.lineHeight));
   localStorage.setItem('editor-font-size', String(config.editorFontSize));
   localStorage.setItem('editor-max-width', String(config.editorMaxWidth));
@@ -1590,10 +1594,12 @@ export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
   localStorage.setItem('code-theme-id', config.codeThemeId);
   localStorage.setItem('macos-code-block', String(config.macosCodeBlock));
   localStorage.setItem('first-line-indent', String(config.firstLineIndent));
+	  localStorage.setItem('justify-align', String(config.justifyAlign));
   localStorage.setItem("heading-deco-config", JSON.stringify(config.headingConfig));
   localStorage.setItem('editor-accent-color', config.accentColor);
   localStorage.setItem('editor-caption-format', config.captionFormat);
   localStorage.setItem('editor-custom-css', config.customCSS);
+	  localStorage.setItem('bg-pattern', config.bgPattern);
   localStorage.setItem('aiwriter-selected-article-theme', config.articleThemeId);
   // Apply visual effects immediately
   applyAccentColor(config.accentColor);
