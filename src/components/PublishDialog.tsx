@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getPlatformConfigs } from "../lib/platforms";
+import { CustomSelect } from "./CustomSelect";
 import type { PlatformConfig, PublishOptions, PublishResult } from "../lib/platforms";
 
 interface PublishDialogProps {
@@ -20,7 +21,8 @@ function extractImagesFromMarkdown(md: string): string[] {
   return urls;
 }
 
-export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: PublishDialogProps) {
+export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, onSubmit }: PublishDialogProps) {
+  const [title, setTitle] = useState(_articleTitle);
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>("wechat");
   const [summary, setSummary] = useState("");
@@ -34,6 +36,7 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
 
   // Cover
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
   const [bodyImages, setBodyImages] = useState<string[]>([]);
   const [category, setCategory] = useState("");
@@ -54,6 +57,7 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
     const file = e.target.files?.[0];
     if (!file) return;
     setCoverFile(file);
+    setCoverError(null);
     const reader = new FileReader();
     reader.onload = (ev) => setCoverPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -62,14 +66,17 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
   const handleSelectBodyImage = (url: string) => {
     setCoverPreview(url);
     setCoverFile(null);
+    setCoverError(null);
   };
 
   const enabledPlatform = configs.find((c) => c.platform === selectedPlatform);
 
   const handleAction = async (action: "draft" | "publish") => {
     if (!enabledPlatform) { setError("请先在设置中配置平台凭据"); return; }
+    if (!coverPreview) { setCoverError("请上传或从正文选择封面图"); return; }
     setBusy(true); setError(null); setResult(null);
     const options: PublishOptions = {
+      title: title || undefined,
       coverImage: coverPreview || undefined,
       summary: summary || undefined,
       declareOriginal, allowReprint, chargeable,
@@ -106,28 +113,40 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
         ) : (
           <>
             <div className="publish-dialog__body">
-              {/* ── Row 1: Platform + Title (two-col) ── */}
-              <div className="publish-dialog__row publish-dialog__row--two">
-                <div className="publish-dialog__field">
-                  <label>发布平台</label>
-                  <select className="input" value={selectedPlatform}
-                    onChange={(e) => setSelectedPlatform(e.target.value)}>
-                    {configs.length === 0 ? (
-                      <option value="">未配置可用平台</option>
-                    ) : configs.map((cfg) => (
-                      <option key={cfg.id} value={cfg.platform}>{cfg.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="publish-dialog__field">
-                  <label>文章</label>
-                  <span className="publish-dialog__article-title">{articleTitle}</span>
+              {/* ── Row 1: Title (full width) ── */}
+              <div className="publish-dialog__row">
+                <div className="publish-dialog__field publish-dialog__field--h">
+                  <label>文章标题</label>
+                  <input type="text" className="input" value={title}
+                    onChange={(e) => setTitle(e.target.value)} placeholder="文章标题" />
                 </div>
               </div>
 
-              {/* ── Row 2: Cover image (two-col: upload + body images) ── */}
+              {/* ── Row 2: Platform + Author (two-col, horizontal labels) ── */}
               <div className="publish-dialog__row publish-dialog__row--two">
-                {/* Left: Upload box */}
+                <div className="publish-dialog__field publish-dialog__field--h">
+                  <label>发布平台</label>
+                  {configs.length === 0 ? (
+                    <span className="publish-dialog__empty-hint">未配置可用平台</span>
+                  ) : (
+                    <CustomSelect
+                      value={selectedPlatform}
+                      onChange={setSelectedPlatform}
+                      options={configs.map((cfg) => ({ value: cfg.platform, label: cfg.label }))}
+                      placeholder="选择平台"
+                    />
+                  )}
+                </div>
+                <div className="publish-dialog__field publish-dialog__field--h">
+                  <label>作者</label>
+                  <input type="text" className="input" value={author}
+                    onChange={(e) => setAuthor(e.target.value)} placeholder="公众号作者名" />
+                </div>
+              </div>
+
+              {/* ── Row 3: Cover image (two-col: upload left, body images right) ── */}
+              <div className="publish-dialog__cover-row">
+                {/* Left: Upload */}
                 <div className="publish-dialog__field">
                   <label>封面图</label>
                   <div
@@ -144,22 +163,29 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
                       </div>
                     ) : (
                       <div className="publish-dialog__cover-placeholder">
-                        <span>点击上传封面图</span>
-                        <span className="publish-dialog__cover-hint">建议尺寸 900×383（1.91:1）</span>
+                        <span className="publish-dialog__cover-placeholder-icon">
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                          </svg>
+                        </span>
+                        <span className="publish-dialog__cover-placeholder-text">点击上传封面</span>
+                        <span className="publish-dialog__cover-hint">建议 900×383</span>
                       </div>
                     )}
                     <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp"
                       style={{ display: "none" }} onChange={handleFilePick} />
                   </div>
+                  {coverError && <div className="publish-dialog__field-error">{coverError}</div>}
                 </div>
-
                 {/* Right: Body image thumbnails */}
                 <div className="publish-dialog__field">
-                  <label>正文图片</label>
+                  <label>从正文选择</label>
                   {bodyImages.length === 0 ? (
-                    <div className="publish-dialog__body-empty">正文中未检测到图片</div>
+                    <div className="publish-dialog__cover-body-empty">正文中未检测到图片</div>
                   ) : (
-                    <div className="publish-dialog__body-images">
+                    <div className="publish-dialog__cover-body-images">
                       {bodyImages.map((url, i) => (
                         <button key={i}
                           className={`publish-dialog__body-img${coverPreview === url ? " publish-dialog__body-img--active" : ""}`}
@@ -171,13 +197,10 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
                       ))}
                     </div>
                   )}
-                  {bodyImages.length > 6 && (
-                    <div className="publish-dialog__body-more">共 {bodyImages.length} 张图片，点击选择作为封面</div>
-                  )}
                 </div>
               </div>
 
-              {/* ── Row 3: Summary (full width) ── */}
+              {/* ── Row 4: Summary (full width) ── */}
               <div className="publish-dialog__row">
                 <div className="publish-dialog__field">
                   <label>摘要</label>
@@ -185,28 +208,6 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
                     onChange={(e) => setSummary(e.target.value)} rows={3} maxLength={120}
                     placeholder="选填，将在公众号卡片中显示" />
                   <span className="publish-dialog__counter">{summary.length}/120</span>
-                </div>
-              </div>
-
-              {/* ── Row 4: Author + Category + Tags + Options (two-col) ── */}
-              <div className="publish-dialog__row publish-dialog__row--two">
-                <div className="publish-dialog__field">
-                  <label>作者</label>
-                  <input type="text" className="input" value={author}
-                    onChange={(e) => setAuthor(e.target.value)} placeholder="公众号作者名" />
-                </div>
-                <div className="publish-dialog__field">
-                  <label>分类</label>
-                  <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
-                    <option value="">选择分类</option>
-                    <option value="tech">科技</option>
-                    <option value="life">生活</option>
-                    <option value="edu">教育</option>
-                    <option value="finance">财经</option>
-                    <option value="health">健康</option>
-                    <option value="culture">文化</option>
-                    <option value="other">其他</option>
-                  </select>
                 </div>
               </div>
 
@@ -235,15 +236,19 @@ export function PublishDialog({ articleTitle, markdown, onClose, onSubmit }: Pub
             </div>
 
             <div className="publish-dialog__actions">
-              <button type="button" className="btn btn--small" disabled={busy || configs.length === 0}
-                onClick={() => handleAction("draft")}>
-                {busy ? "处理中..." : "存入草稿箱"}
-              </button>
-              <button type="button" className="btn btn--small btn--primary" disabled={busy || configs.length === 0}
-                onClick={() => handleAction("publish")}>
-                {busy ? "处理中..." : "直接发布"}
-              </button>
-              <button type="button" className="btn btn--small" onClick={onClose} disabled={busy}>取消</button>
+              <div className="publish-dialog__actions-left">
+                <button type="button" className="btn btn--small" disabled={busy || configs.length === 0}
+                  onClick={() => handleAction("draft")}>
+                  {busy ? "处理中..." : "存入草稿箱"}
+                </button>
+              </div>
+              <div className="publish-dialog__actions-right">
+                <button type="button" className="btn btn--small" onClick={onClose} disabled={busy}>取消</button>
+                <button type="button" className="btn btn--small btn--primary" disabled={busy || configs.length === 0}
+                  onClick={() => handleAction("publish")}>
+                  {busy ? "处理中..." : "直接发布"}
+                </button>
+              </div>
             </div>
           </>
         )}

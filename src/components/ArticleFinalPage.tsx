@@ -5,12 +5,12 @@ import { ArticlePreview } from "./ArticlePreview";
 import { markdownToHtml } from "../lib/markdown/renderer";
 import { compileToInlinedHtml } from "../lib/compileHtml";
 import { getCodeTheme, getSelectedCodeThemeId, getSelectedTemplateId, getTemplate } from "../lib/editorStyles";
+import { collectPublishCss } from "../lib/styles/collector";
 import { copyAsHtml, copyAsWechatHtml } from "../lib/importExport";
 import { PublishDialog } from "./PublishDialog";
 import { loadArticleContent, loadArticleMeta } from "../lib/articles";
 import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../lib/articleBlueprint";
 import { getPublishHistory, publishArticle, addPublishRecord, type PublishRecord, type PublishOptions, type PublishResult } from "../lib/platforms";
-import { getSelectedArticleThemeId, getThemeById } from "../lib/articleThemes";
 
 const DEFAULT_CONTENT = "# 无标题\n\n开始写作…\n";
 
@@ -20,29 +20,6 @@ interface ArticleFinalPageProps {
   onBackToEdit: () => void;
   genId: () => string;
 }
-
-// Editor style tag IDs that need to be mirrored for preview
-const STYLE_TAG_IDS = [
-  "editor-style-overrides",
-  "editor-code-theme-style",
-  "editor-text-style",
-  "editor-heading-deco",
-  "editor-macos-codeblock-style",
-  "editor-bg-pattern",
-  "editor-article-theme",
-  "editor-accent-color",
-];
-
-/** Re-scope a CSS string from `.editor-container .tiptap` → `.article-preview` */
-function rescopePreviewCss(css: string): string {
-  if (!css) return "";
-  let result = css;
-  result = result.replace(/\.editor-container\s*\.tiptap\.ProseMirror/g, ".article-preview");
-  result = result.replace(/\.editor-container\s*\.tiptap/g, ".article-preview");
-  result = result.replace(/\.tiptap/g, ".article-preview");
-  return result;
-}
-
 
 export function ArticleFinalPage({
   articleId,
@@ -59,78 +36,27 @@ export function ArticleFinalPage({
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const styleRefs = useRef<HTMLStyleElement[]>([]);
 
-  // Clone all editor styles (template + overrides) scoped to .article-preview
+  // Use the same unified CSS pipeline as export (collectPublishCss)
+  // to ensure editor preview, final page, and WeChat export are always consistent.
   useEffect(() => {
     const tags: HTMLStyleElement[] = [];
 
-    // 1. Template CSS
-    const templateId = getSelectedTemplateId();
-    const template = getTemplate(templateId);
-    if (template) {
-      const scoped = template.css
-        .replace(/\bbody\b(?=\s*\{)/g, ".article-preview")
-        .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
-          return sel
-            .split(",")
-            .map((s: string) => {
-              const t = s.trim();
-              if (t.startsWith(".article-preview") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":")) return t;
-              return ".article-preview " + t;
-            })
-            .join(", ") + " {";
-        });
+    // 1. Collect all CSS from unified pipeline (template + theme + code + decorations + accent + etc.)
+    const cssText = collectPublishCss(".article-preview");
+    if (cssText.trim()) {
       const s = document.createElement("style");
-      s.id = "preview-template-style";
-      s.textContent = scoped;
+      s.id = "preview-unified-styles";
+      s.textContent = cssText;
       document.head.appendChild(s);
       tags.push(s);
     }
 
-    // 2. Clone all editor override style tags, re-scoped to .article-preview
-    for (const id of STYLE_TAG_IDS) {
-      const original = document.getElementById(id) as HTMLStyleElement | null;
-      if (!original || !original.textContent || !original.textContent.trim()) continue;
-      const s = document.createElement("style");
-      s.id = "preview-" + id;
-      let scopedCss = rescopePreviewCss(original.textContent);
-      // For bg-pattern, ensure !important background-image isn't overridden by template background shorthand
-      if (id === "editor-bg-pattern") {
-        // Add extra specificity to ensure bg-pattern works
-        scopedCss = scopedCss.replace(/\.article-preview/g, ".article-preview.article-preview");
-      }
-      s.textContent = scopedCss;
-      document.head.appendChild(s);
-      tags.push(s);
-    }
-
-    // 2.5 Add list-style:none to hide default markers (we use manual • / "1." prefixes)
+    // 2. Add list-style:none to hide default markers
     const listStyleTag = document.createElement("style");
     listStyleTag.id = "preview-list-style-override";
     listStyleTag.textContent = ".article-preview ul, .article-preview ol { list-style: none !important; padding-left: 1.5em !important; }";
     document.head.appendChild(listStyleTag);
     tags.push(listStyleTag);
-
-    // 3. If bg-pattern is set, ensure background-color from theme is also on .article-preview
-    const bgPattern = localStorage.getItem('bg-pattern') || '';
-    const hasBgPatternClone = tags.some(t => t.id === "preview-editor-bg-pattern");
-    if (bgPattern && !hasBgPatternClone) {
-      // Create bg-pattern style directly
-      const themeId = getSelectedArticleThemeId();
-      const theme = getThemeById(themeId);
-      const bgColor = theme ? theme.vars.bgColor : '#ffffff';
-      const bgPatterns: Record<string, string> = {
-        'grid': `.article-preview { background-color: ${bgColor} !important; background-image: linear-gradient(90deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px), linear-gradient(0deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
-        'dots': `.article-preview { background-color: ${bgColor} !important; background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
-        'stripes': `.article-preview { background-color: ${bgColor} !important; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
-      };
-      if (bgPatterns[bgPattern]) {
-        const s = document.createElement("style");
-        s.id = "preview-bg-pattern-direct";
-        s.textContent = bgPatterns[bgPattern];
-        document.head.appendChild(s);
-        tags.push(s);
-      }
-    }
 
     styleRefs.current = tags;
 
@@ -201,7 +127,6 @@ export function ArticleFinalPage({
     }
     return result;
   }, [articleId, markdown, articleTitle, genId]);
-
 
   const handleCopyHtml = useCallback(async () => {
     const ok = await copyAsHtml(articleId, articleTitle);

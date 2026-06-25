@@ -17,6 +17,7 @@ fn token_cache() -> &'static Mutex<HashMap<String, (String, u64)>> {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishOptions {
+    pub title: Option<String>,
     pub cover_image: Option<String>,
     pub summary: Option<String>,
     pub declare_original: bool,
@@ -666,8 +667,9 @@ pub async fn publish_to_wechat(
     let digest = options.summary.clone().unwrap_or_else(|| extract_digest(markdown, 120));
     let author = options.author.as_deref().unwrap_or("");
 
+    let article_title = options.title.clone().unwrap_or_else(|| extract_title(markdown));
     let media_id = create_draft(
-        &token, &extract_title(markdown), &final_html, &thumb_media_id, &digest, author, false,
+        &token, &article_title, &final_html, &thumb_media_id, &digest, author, false,
     ).await?;
 
     if action == "publish" {

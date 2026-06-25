@@ -25,6 +25,7 @@ export interface PublishRecord {
 }
 
 export interface PublishOptions {
+  title?: string;
   coverImage?: string;
   summary?: string;
   declareOriginal: boolean;
