@@ -287,6 +287,13 @@ export function Toolbar({
           <Sparkles size={14} />
           <span className="toolbar-btn__label">AI</span>
         </button>
+        <button
+          className="toolbar-btn"
+          title="文章样式面板"
+          onClick={onToggleStylePanel}
+        >
+          <Palette size={14} />
+        </button>
         <span className="toolbar__divider" />
       </div>
       
@@ -377,15 +384,6 @@ export function Toolbar({
             </div>
           )}
           </div>                {/* Style panel toggle */}
-        {onToggleStylePanel && (
-          <button
-            className="toolbar-btn"
-            title="文章样式面板"
-            onClick={onToggleStylePanel}
-          >
-            <Palette size={14} />
-          </button>
-        )}
 
 
         {/* Editor mode switch */}
