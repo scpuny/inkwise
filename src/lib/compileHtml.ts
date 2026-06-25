@@ -343,7 +343,7 @@ function collectPublishCss(): string {
 .article-body th { background: ${accentColor} !important; color: var(--accent-fg, #fff) !important; }
 .article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
 .article-body strong,
-.article-body b { color: ${accentColor} !important; }`);
+.article-body b { color: ${accentColor} !important; display: inline !important; }`);
   }
 
   // Code theme CSS
