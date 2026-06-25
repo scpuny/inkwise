@@ -4,7 +4,9 @@ mod skill;
 mod agent;
 mod db;
 mod project_indexer;
-mod publisher;
+mod platform;
+use platform::Platform;
+use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
@@ -1053,8 +1055,43 @@ fn delete_platform_config(state: tauri::State<AppState>, id: String) -> Result<(
 
 #[tauri::command]
 async fn verify_platform_credentials(_state: tauri::State<'_, AppState>, _platform: String, app_id: String, app_secret: String) -> Result<bool, String> {
-    publisher::verify_wechat_credentials(&app_id, &app_secret).await
+    platform::wechat::verify_credentials(&app_id, &app_secret).await
 }
+
+// ─── Network ───
+
+#[tauri::command]
+async fn check_public_ip() -> Result<String, String> {
+    let apis = vec![
+        "https://httpbin.org/ip",
+        "https://checkip.amazonaws.com",
+        "https://icanhazip.com",
+    ];
+    for url in apis {
+        match reqwest::get(url).await {
+            Ok(resp) => {
+                if !resp.status().is_success() { continue; }
+                let text = resp.text().await.unwrap_or_default();
+                let trimmed = text.trim();
+                // Try JSON response (httpbin)
+                if trimmed.starts_with('{') {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                        if let Some(origin) = json.get("origin").and_then(|v| v.as_str()) {
+                            return Ok(origin.to_string());
+                        }
+                    }
+                }
+                // Plain text response (checkip, icanhazip)
+                if !trimmed.is_empty() && trimmed.chars().all(|c| c.is_ascii_digit() || c == '.') {
+                    return Ok(trimmed.to_string());
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+    Err("无法获取公网 IP".into())
+}
+
 
 // ─── Publish Records ───
 
@@ -1074,9 +1111,9 @@ async fn publish_to_platform(
     article_id: String,
     platform: String,
     markdown: String,
-    options: publisher::PublishOptions,
+    options: platform::PublishOptions,
     action: String,
-) -> Result<publisher::PublishResult, String> {
+) -> Result<platform::PublishResult, String> {
     if platform != "wechat" {
         return Err(format!("不支持的平台: {}", platform));
     }
@@ -1084,9 +1121,9 @@ async fn publish_to_platform(
     let (app_id, app_secret) = {
         let store = state.store.lock().unwrap();
         let configs = store.load_platform_configs();
-        let wechat = configs.iter().find(|c| c.platform == "wechat" && c.enabled)
+        let wechat_cfg = configs.iter().find(|c| c.platform == "wechat" && c.enabled)
             .ok_or("未找到已启用的微信公众号配置")?.clone();
-        (wechat.app_id, wechat.app_secret)
+        (wechat_cfg.app_id, wechat_cfg.app_secret)
     };
 
     let article_dir = {
@@ -1094,19 +1131,8 @@ async fn publish_to_platform(
         store.articles_dir().to_string_lossy().to_string()
     };
 
-    // Extract article dir from article_id path if needed
-    let dir = std::path::Path::new(&article_dir);
-
-    publisher::publish_to_wechat(
-        &article_id,
-        &dir.to_string_lossy(),
-        &app_id,
-        &app_secret,
-        &markdown,
-        &styled_html,
-        &options,
-        &action,
-    ).await
+    let mut wechat = WeChat::new(app_id, app_secret);
+    wechat.publish(&article_dir, &markdown, &styled_html, &options, &action).await
 }
 
 
@@ -1278,6 +1304,7 @@ pub fn run() {
             save_platform_config,
             delete_platform_config,
             verify_platform_credentials,
+            check_public_ip,
             get_publish_history,
             save_publish_records,
             publish_to_platform])

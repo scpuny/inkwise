@@ -35,9 +35,9 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
   const [error, setError] = useState<string | null>(null);
 
   // Cover
-  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
+  const [coverFilePath, setCoverFilePath] = useState<string>("");
   const [bodyImages, setBodyImages] = useState<string[]>([]);
   const [category, setCategory] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,16 +56,22 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
   const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCoverFile(file);
     setCoverError(null);
-    const reader = new FileReader();
-    reader.onload = (ev) => setCoverPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    // Use Tauri's File.path for actual upload path, data URL for preview
+    const filePath = (file as any).path || "";
+    setCoverFilePath(filePath);
+    if (filePath) {
+      setCoverPreview(filePath);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => setCoverPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSelectBodyImage = (url: string) => {
     setCoverPreview(url);
-    setCoverFile(null);
+    setCoverFilePath(url);
     setCoverError(null);
   };
 
@@ -77,7 +83,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
     setBusy(true); setError(null); setResult(null);
     const options: PublishOptions = {
       title: title || undefined,
-      coverImage: coverPreview || undefined,
+      coverImage: coverFilePath || coverPreview || undefined,
       summary: summary || undefined,
       declareOriginal, allowReprint, chargeable,
       author: author || undefined,
@@ -158,7 +164,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
                         <img src={coverPreview} alt="封面" />
                         <button
                           className="publish-dialog__cover-remove"
-                          onClick={(e) => { e.stopPropagation(); setCoverPreview(""); setCoverFile(null); }}
+                          onClick={(e) => { e.stopPropagation(); setCoverPreview(""); setCoverFilePath(""); }}
                         >✕</button>
                       </div>
                     ) : (

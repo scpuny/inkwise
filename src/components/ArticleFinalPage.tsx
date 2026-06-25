@@ -3,7 +3,7 @@ import { FinalTopBar } from "./FinalTopBar";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { ArticlePreview } from "./ArticlePreview";
 import { markdownToHtml } from "../lib/markdown/renderer";
-import { compileToInlinedHtml } from "../lib/compileHtml";
+import { compileToInlinedHtml, compileToWechatHtml } from "../lib/compileHtml";
 import { getCodeTheme, getSelectedCodeThemeId, getSelectedTemplateId, getTemplate } from "../lib/editorStyles";
 import { collectPublishCss } from "../lib/styles/collector";
 import { copyAsHtml, copyAsWechatHtml } from "../lib/importExport";
@@ -114,7 +114,10 @@ export function ArticleFinalPage({
   ): Promise<PublishResult> => {
     // Build the styled HTML for publishing
     const styledHtml = await compileToInlinedHtml(markdown);
-    const result = await publishArticle(articleId, platform, markdown, styledHtml, options, action);
+    const wechatHtml = platform === "wechat"
+      ? (await compileToWechatHtml(markdown)).html
+      : styledHtml;
+    const result = await publishArticle(articleId, platform, markdown, wechatHtml, options, action);
     if (result.success) {
       const record: PublishRecord = {
         id: genId(), articleId, platform,
