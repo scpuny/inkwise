@@ -95,22 +95,26 @@ export function StylePanel({
   useEffect(() => {
     localStorage.setItem('macos-code-block', String(macosCodeBlock));
     applyMacosCodeBlockStyle(macosCodeBlock);
+    window.dispatchEvent(new CustomEvent('article-theme-changed'));
   }, [macosCodeBlock]);
 
   useEffect(() => {
     localStorage.setItem('first-line-indent', String(firstLineIndent));
     localStorage.setItem('justify-align', String(justifyAlign));
     applyTextStyle(firstLineIndent, justifyAlign);
+    window.dispatchEvent(new CustomEvent('article-theme-changed'));
   }, [firstLineIndent, justifyAlign]);
 
   useEffect(() => {
     localStorage.setItem("heading-deco-config", JSON.stringify(headingConfig));
     applyHeadingDecorations(headingConfig || {});
+    window.dispatchEvent(new CustomEvent('article-theme-changed'));
   }, [headingConfig]);
 
   useEffect(() => {
     localStorage.setItem('bg-pattern', bgPattern);
     applyBgPattern(bgPattern);
+    window.dispatchEvent(new CustomEvent('article-theme-changed'));
   }, [bgPattern]);
 
   useEffect(() => {
@@ -118,6 +122,7 @@ export function StylePanel({
     applyAccentColor(accentColor);
     localStorage.setItem("editor-caption-format", captionFormat);
     applyImageCaptionFormat(captionFormat);
+    window.dispatchEvent(new CustomEvent('article-theme-changed'));
   }, [accentColor, captionFormat]);
 
   useEffect(() => {

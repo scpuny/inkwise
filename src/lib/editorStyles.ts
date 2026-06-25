@@ -1371,14 +1371,14 @@ export function applyHeadingDecorations(config: Record<string, string[]>): void 
     const sel = `.editor-container .tiptap ${level}`;
     const parts: string[] = [];
     const extraCss: string[] = [];
-    if (decos.includes("underline")) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
-    if (decos.includes("overline")) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
+    if (decos.includes("underline")) parts.push(`border-bottom: 2px solid var(--accent) !important; padding-bottom: 6px;`);
+    if (decos.includes("overline")) parts.push(`border-top: 2px solid var(--accent) !important; padding-top: 6px;`);
     if (decos.includes("left-bar")) parts.push(`border-left: 4px solid var(--accent) !important; padding-left: 14px;`);
-    if (decos.includes("right-bar")) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
+    if (decos.includes("right-bar")) parts.push(`border-right: 4px solid var(--accent) !important; padding-right: 14px;`);
     if (decos.includes("bg-block")) parts.push(`background: color-mix(in srgb, var(--accent) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
     if (decos.includes("left-icon")) {
       parts.push(`position: relative; padding-left: 1.6em;`);
-      extraCss.push(`${sel}::before { content: "▎"; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
+      extraCss.push(`${sel}::before { content: "▎"; position: absolute; left: 0; color: var(--accent); font-size: 1.2em; font-weight: 700; }`);
     }
     if (decos.includes("badge")) parts.push(`background: var(--accent) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
     if (parts.length > 0) {

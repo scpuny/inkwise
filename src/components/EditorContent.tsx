@@ -13,8 +13,8 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { X, Loader2 } from "lucide-react";
-import { applyEditorStyle, resetEditorStyle, applyAccentColor, applyCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, type EditorStyleTemplate } from "../lib/editorStyles";
-import { getSelectedArticleThemeId, getThemeById, buildEditorThemeCss } from "../lib/articleThemes";
+import { type EditorStyleTemplate } from "../lib/editorStyles";
+import { collectPublishCss } from "../lib/styles/collector";
 import { InlineGhostText } from "./InlineGhostText";
 import { useAgent } from "../lib/agent";
 
@@ -353,19 +353,33 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     }
   }, [editor, mode]);
 
-  // Apply style template — inject full CSS into a <style> tag
-  useEffect(() => {
-    if (styleTemplate) {
-      applyEditorStyle(styleTemplate);
-    } else {
-      resetEditorStyle();
-    }
-    // Apply saved accent color (from StylePanel)
-    const savedColor = localStorage.getItem("editor-accent-color");
-    if (savedColor) applyAccentColor(savedColor);
-  }, [styleTemplate]);
+  // ─── 统一样式管线：使用 collectPublishCss 与导出保持一致 ───
+  const editorStyleTagRef = useRef<HTMLStyleElement | null>(null);
+  const [styleRevision, setStyleRevision] = useState(0);
 
-  // Dynamic overrides for font-size, max-width, line-height on top of template CSS
+  const refreshEditorStyles = useCallback(() => {
+    setStyleRevision(v => v + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!editorStyleTagRef.current) {
+      editorStyleTagRef.current = document.createElement("style");
+      editorStyleTagRef.current.id = "editor-unified-styles";
+      document.head.appendChild(editorStyleTagRef.current);
+    }
+    const cssText = collectPublishCss(".editor-container .tiptap");
+    // Editor safety overrides for code blocks (TipTap compatibility)
+    editorStyleTagRef.current.textContent = cssText + `
+.editor-container .tiptap pre { overflow: visible !important; }
+.editor-container .tiptap pre code { overflow: visible !important; white-space: inherit !important; min-height: 1.5em !important; }`;
+  }, [styleTemplate, codeThemeId, styleRevision]);
+
+  useEffect(() => {
+    window.addEventListener("article-theme-changed", refreshEditorStyles);
+    return () => window.removeEventListener("article-theme-changed", refreshEditorStyles);
+  }, [refreshEditorStyles]);
+
+  // Dynamic overrides for font-size, max-width, line-height on top of unified CSS
   const overrideTagRef = useRef<HTMLStyleElement | null>(null);
   useEffect(() => {
     if (!overrideTagRef.current) {
@@ -374,11 +388,10 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       document.head.appendChild(overrideTagRef.current);
     }
     const tag = overrideTagRef.current;
-    const parts: string[] = [];
-    if (editorFontSize) parts.push(`font-size: ${editorFontSize}px`);
-    if (editorMaxWidth) parts.push(`max-width: ${editorMaxWidth}px`);
-    parts.push(`line-height: ${lineHeight}`);
-    // paragraph gap + heading numbering
+    const parts = [];
+    if (editorFontSize) parts.push(`font-size: ${editorFontSize}px !important`);
+    if (editorMaxWidth) parts.push(`max-width: ${editorMaxWidth}px !important`);
+    parts.push(`line-height: ${lineHeight} !important`);
     let cssText = `.editor-container .tiptap { ${parts.join("; ")}; }\n`;
     if (showHeadingNumber) {
       cssText += `.editor-container .tiptap { counter-reset: h1-counter; }
@@ -393,30 +406,8 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     tag.textContent = cssText;
   }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber]);
 
-  // Code theme
+  // Font family !important override (from StylePanel)
   useEffect(() => {
-    if (codeThemeId) {
-      applyCodeTheme(codeThemeId);
-    }
-  }, [codeThemeId]);
-
-  // Initial code appearance settings
-  useEffect(() => {
-    applyMacosCodeBlockStyle(localStorage.getItem('macos-code-block') === 'true');
-    applyTextStyle(
-      localStorage.getItem('first-line-indent') === 'true',
-      localStorage.getItem('justify-align') === 'true'
-    );
-    applyHeadingDecorations(
-      (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}"); } catch { return {}; } })(),
-    );
-    applyBgPattern(localStorage.getItem('bg-pattern') || '');
-  }, []);
-
-  // Apply font-family + paragraph gap via !important injected style
-  const [fontStyleTag, setFontStyleTag] = useState<HTMLStyleElement | null>(null);
-  useEffect(() => {
-    // Create or reuse a dedicated style tag for font-family (with !important to beat everything)
     let tag = document.getElementById('editor-font-style') as HTMLStyleElement;
     if (!tag) {
       tag = document.createElement('style');
@@ -428,26 +419,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       rules.push(`.tiptap, .tiptap * { font-family: ${editorFontFamily} !important; }`);
     }
     tag.textContent = rules.join('\n');
-  }, [editorFontFamily, editorParagraphGap]);
-
-  // Apply article theme to editor
-  const themeTagRef = useRef<HTMLStyleElement | null>(null);
-  const applyTheme = useCallback(() => {
-    const themeId = getSelectedArticleThemeId();
-    const theme = getThemeById(themeId);
-    if (!theme) return;
-    if (!themeTagRef.current) {
-      themeTagRef.current = document.createElement('style');
-      themeTagRef.current.id = 'editor-article-theme';
-      document.head.appendChild(themeTagRef.current);
-    }
-    themeTagRef.current.textContent = buildEditorThemeCss(theme.vars);
-  }, []);
-  useEffect(() => {
-    applyTheme();
-    window.addEventListener('article-theme-changed', applyTheme);
-    return () => window.removeEventListener('article-theme-changed', applyTheme);
-  }, [applyTheme]);
+  }, [editorFontFamily]);
 
   // Expose editor globally
   useEffect(() => {

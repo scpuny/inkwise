@@ -204,9 +204,26 @@ export async function compileToWechatHtml(markdown: string): Promise<ExportResul
     // 修正已有 style 的 <li>：追加 list-style:none 和 display:block
     .replace(/(<li\b[^>]*style=")([^"]*)(")/gi, (_m: string, pre: string, styles: string, post: string) => { if (!/display\s*:\s*block/.test(styles)) styles = 'display:block;' + styles; if (!/list-style\s*:\s*none/.test(styles)) styles += ';list-style:none'; return pre + styles + post; })
 
-  // 7. 加语义 class并包装
+  // 7. 首行缩进后处理（juice 不处理 :not 伪类，需手动添加）
+  //    排除 <li> 和 <blockquote> 内的 <p>
+  let postHtml = fixed;
+  if (localStorage.getItem("first-line-indent") === "true") {
+    // 先标记所有 <p>
+    postHtml = postHtml.replace(/(<p\b)/g, '<p data-fi="1"');
+    // 移除 <li> 和 <blockquote> 内 <p> 的标记
+    postHtml = postHtml.replace(/<(li|blockquote)[^>]*>[\s\S]*?<\/\1>/g, m => m.replace(/data-fi="1"/g, ''));
+    // 给有标记的 <p> 添加 text-indent
+    postHtml = postHtml.replace(/<p data-fi="1"\b([^>]*style=")([^"]*)(")/g, (_m: string, pre: string, styles: string, post: string) => {
+      if (!/text-indent/.test(styles)) styles = 'text-indent:2em;' + styles;
+      return '<p' + pre + styles + post;
+    });
+    // 清理残留标记
+    postHtml = postHtml.replace(/ data-fi="1"/g, '');
+  }
+
+  // 8. 加语义 class并包装
   //    inlineCss 的输出已包含 <section class="wechat-wrapper">
-  const styledHtml = addStyledClasses(fixed);
+  const styledHtml = addStyledClasses(postHtml);
 
   // 提取图片
   const images: ImageItem[] = [];

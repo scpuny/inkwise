@@ -38,6 +38,13 @@ export function ArticleFinalPage({
 
   // Use the same unified CSS pipeline as export (collectPublishCss)
   // to ensure editor preview, final page, and WeChat export are always consistent.
+  const [previewRev, setPreviewRev] = useState(0);
+  const refreshPreview = useCallback(() => setPreviewRev(v => v + 1), []);
+  useEffect(() => {
+    const handler = () => setPreviewRev(v => v + 1);
+    window.addEventListener("article-theme-changed", handler);
+    return () => window.removeEventListener("article-theme-changed", handler);
+  }, []);
   useEffect(() => {
     const tags: HTMLStyleElement[] = [];
 
@@ -64,7 +71,7 @@ export function ArticleFinalPage({
       for (const t of styleRefs.current) t.remove();
       styleRefs.current = [];
     };
-  }, []);
+  }, [previewRev]);
 
   // Load article data
   useEffect(() => {

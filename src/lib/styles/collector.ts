@@ -35,24 +35,32 @@ interface ThemeVars {
 
 // ─── Helpers ───
 
-/** 将 body → .article-body 并 scope 所有选择器到 .article-body */
-function scopeCSS(css: string): string {
+/** 从模板 CSS 中提取主色调（取 a 标签的 color 值作为模板主题色） */
+function extractTemplateAccent(templateCss: string): string {
+  const match = templateCss.match(/a\s*\{[^}]*color\s*:\s*([^;}]+)/i);
+  return match ? match[1].trim() : '';
+}
+
+/** 将 body → {scope} 并 scope 所有选择器到 {scope} */
+function scopeCSS(css: string, scope: string = ".article-body"): string {
+  const bodyRe = new RegExp("\\bbody\\b(?=\\s*\\{)", "g");
+  const escScope = scope.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return css
-    .replace(/\bbody\b(?=\s*\{)/g, ".article-body")
-    .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) =>
+    .replace(bodyRe, scope)
+    .replace(new RegExp("^\\s*([^{}]+?)\\s*\\{", "gm"), (_m: string, sel: string) =>
       sel
         .split(",")
         .map((s: string) => {
           const t = s.trim();
-          if (/^(\.article-body|&|@|:)/.test(t)) return t;
-          return ".article-body " + t;
+          if (new RegExp("^(" + escScope + "|&|@|:)").test(t)) return t;
+          return scope + " " + t;
         })
         .join(", ") + " {",
     );
 }
 
 /** 从主题变量生成完整 CSS */
-function buildThemeCss(vars: ThemeVars): string {
+function buildThemeCss(vars: ThemeVars, scope: string = ".article-body"): string {
   const ff = vars.fontFamily || "-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif";
   const fs = vars.fontSize ?? 16;
   const lh = vars.lineHeight ?? 1.75;
@@ -66,7 +74,7 @@ function buildThemeCss(vars: ThemeVars): string {
 
   const pg = vars.paragraphGap || "0.5em";
 
-  return `.article-body {
+  return `${scope} {
   font-family: ${ff} !important;
   font-size: ${fs}px !important;
   line-height: ${lh} !important;
@@ -76,35 +84,34 @@ function buildThemeCss(vars: ThemeVars): string {
   padding: 24px 20px !important;
   background: ${bg} !important;
 }
-.article-body p, .article-body li, .article-body blockquote, .article-body td, .article-body th {
+${scope} p, ${scope} li, ${scope} blockquote, ${scope} td, ${scope} th {
   font-family: ${ff} !important; font-size: ${fs}px !important; line-height: ${lh} !important; color: ${tc} !important;
 }
-.article-body h1, .article-body h2, .article-body h3, .article-body h4 {
+${scope} h1, ${scope} h2, ${scope} h3, ${scope} h4 {
   color: ${hc} !important; margin: 1.2em 0 0.5em !important; line-height: 1.3 !important;
 }
-.article-body strong { color: ${hc} !important; }
-.article-body a { color: ${lc} !important; }
-.article-body p { margin: 0 0 ${pg} !important; }
-.article-body code {
+${scope} strong { color: ${hc} !important; }
+${scope} a { color: ${lc} !important; }
+${scope} p { margin: 0 0 ${pg} !important; }
+${scope} code {
   background: ${cb} !important; color: ${ct} !important; padding: 2px 6px !important; border-radius: 4px !important;
   font-size: 0.9em !important; font-family: "SF Mono", Consolas, "Courier New", monospace !important;
 }
-.article-body pre { background: ${cb}; color: ${ct}; padding: 12px 16px !important; overflow-x: auto !important; border-radius: 4px !important; }
-.article-body pre code { padding: 0 !important; background: none !important; }
-.article-body blockquote {
+${scope} pre { background: ${cb}; color: ${ct}; padding: 12px 16px !important; overflow-x: auto !important; border-radius: 4px !important; }
+${scope} pre code { padding: 0 !important; background: none !important; }
+${scope} blockquote {
   margin: 1em 0 !important;
-  padding: 0.8em 1.2em !important; border-radius: 0 6px 6px 0 !important;
+  border-radius: 0 6px 6px 0 !important;
 }
-.article-body blockquote p { margin: 0 !important; }
-.article-body img { max-width: 100% !important; border-radius: 4px !important; margin: 1em auto !important; display: block !important; }
-.article-body figcaption { text-align: center !important; color: ${tc} !important; opacity: 0.6 !important; font-size: 0.85em !important; margin-top: 4px !important; }
-.article-body table { width: 100% !important; border-collapse: collapse !important; margin: 1em 0 !important; }
-.article-body th, .article-body td { border: 1px solid #d0d7de !important; padding: 6px 10px !important; text-align: left !important; }
-.article-body th { background: #f0f2f5 !important; font-weight: 600 !important; }
-.article-body hr { border: none !important; border-top: 1px solid #eee !important; margin: 1.5em 0 !important; }
-.article-body ul, .article-body ol { margin: 0.5em 0 !important; padding-left: 1.5em !important; list-style: none !important; }
-.article-body li { margin: 0.3em 0 !important; word-break: keep-all !important; }
-.article-body li::marker { unicode-bidi: normal !important; font-variant-numeric: normal !important; text-transform: none !important; }
+${scope} blockquote > * { margin-left: 0 !important; padding-left: 0 !important; }
+${scope} img { max-width: 100% !important; border-radius: 4px !important; margin: 1em auto !important; display: block !important; }
+${scope} figcaption { text-align: center !important; color: ${tc} !important; opacity: 0.6 !important; font-size: 0.85em !important; margin-top: 4px !important; }
+${scope} table { width: 100% !important; border-collapse: collapse !important; margin: 1em 0 !important; }
+${scope} th, ${scope} td { border: 1px solid #d0d7de !important; padding: 6px 10px !important; text-align: left !important; }
+${scope} th { background: #f0f2f5 !important; font-weight: 600 !important; }
+${scope} hr { border: none !important; border-top: 1px solid #eee !important; margin: 1.5em 0 !important; }
+${scope} ul, ${scope} ol { margin: 0.5em 0 !important; padding-left: 1.2em !important; }
+${scope} li { margin: 0.3em 0 !important; word-break: keep-all !important; }
 `;
 }
 
@@ -120,7 +127,7 @@ export function collectPublishCss(scope = ".article-body"): string {
 
   // 1. 模板 CSS（内置 + 自定义）
   const template = getTemplate(getSelectedTemplateId());
-  if (template) parts.push(scopeCSS(template.css));
+  if (template) parts.push(scopeCSS(template.css, scope));
 
   // 2. 文章主题 CSS + 样式面板覆盖（样式面板值优先）
   const themeId = getSelectedArticleThemeId();
@@ -138,14 +145,14 @@ export function collectPublishCss(scope = ".article-body"): string {
     if (ovMw) overrideVars.maxWidth = ovMw;
     const ovPg = localStorage.getItem('editor-paragraph-gap');
     if (ovPg) overrideVars.paragraphGap = ovPg;
-    parts.push(buildThemeCss(overrideVars));
+    parts.push(buildThemeCss(overrideVars, scope));
   }
 
   // 3. 文本样式
   if (localStorage.getItem("first-line-indent") === "true")
-    parts.push(`${scope} p:not(li p) { text-indent: 2em !important; }`);
+    parts.push(`${scope} p:not(li p, blockquote p) { text-indent: 2em !important; }`);
   if (localStorage.getItem("justify-align") === "true")
-    parts.push(`${scope} { text-align: justify !important; } ${scope} p:not(li p) { text-align: justify !important; }`);
+    parts.push(`${scope} { text-align: justify !important; } ${scope} p:not(li p, blockquote p) { text-align: justify !important; }`);
 
   // 4. 标题装饰
   try {
@@ -155,14 +162,14 @@ export function collectPublishCss(scope = ".article-body"): string {
       const sel = `${scope} ${hl}`;
       const s: string[] = [];
       const extra: string[] = [];
-      if (decos.includes("underline")) s.push("border-bottom:2px solid currentColor!important;padding-bottom:6px");
-      if (decos.includes("overline")) s.push("border-top:2px solid currentColor!important;padding-top:6px");
+      if (decos.includes("underline")) s.push("border-bottom:2px solid var(--accent,#0969da)!important;padding-bottom:6px");
+      if (decos.includes("overline")) s.push("border-top:2px solid var(--accent,#0969da)!important;padding-top:6px");
       if (decos.includes("left-bar")) s.push("border-left:4px solid color-mix(in srgb,var(--accent,#0969da) 70%,currentColor)!important;padding-left:14px");
-      if (decos.includes("right-bar")) s.push("border-right:4px solid currentColor!important;padding-right:14px");
+      if (decos.includes("right-bar")) s.push("border-right:4px solid var(--accent,#0969da)!important;padding-right:14px");
       if (decos.includes("bg-block")) s.push("background:color-mix(in srgb,var(--accent,#0969da) 12%,transparent)!important;padding:4px 10px;border-radius:6px;display:inline-block");
       if (decos.includes("left-icon")) {
         s.push("position:relative;padding-left:1.6em");
-        extra.push(`${sel}::before{content:"\\258e";position:absolute;left:0;color:currentColor;font-size:1.2em;font-weight:700}`);
+        extra.push(`${sel}::before{content:"\\258e";position:absolute;left:0;color:var(--accent,#0969da);font-size:1.2em;font-weight:700}`);
       }
       if (decos.includes("badge")) s.push("background:var(--accent,#0969da)!important;color:var(--accent-fg,#fff)!important;padding:2px 12px;border-radius:12px;display:inline-block;font-size:.85em");
       if (s.length) parts.push(`${sel}{${s.join(";")}}${extra.join("")}`);
@@ -181,22 +188,42 @@ export function collectPublishCss(scope = ".article-body"): string {
     if (patterns[bgPattern]) parts.push(patterns[bgPattern]);
   }
 
-  // 6. 强调色
+  // 6. 强调色 + CSS 变量（始终设置 --accent，用于标题装饰等）
   const accentColor = localStorage.getItem("editor-accent-color") || "";
+  const headingColor = theme?.vars?.headingColor || "";
+  const templateAccent = template ? extractTemplateAccent(template.css) : "";
+  const effectiveAccent = accentColor || headingColor || templateAccent || "#0969da";
+  // 始终注入 --accent 变量（标题装饰、strong、代码块等依赖它）
+  const accentVarCss = `${scope}{--article-accent:${effectiveAccent};--accent:${effectiveAccent}}`;
+  // 始终注入 accent 元素样式，用 var(--accent) 跟随模版/主题主色
+  const accentElCss = `${scope} blockquote{border-left:4px solid var(--accent,#0969da)!important}
+${scope} a{color:var(--accent,#0969da)!important;text-decoration-color:var(--accent,#0969da)!important}
+${scope} code:not(pre code){color:var(--accent,#0969da)!important;background:color-mix(in srgb,var(--accent,#0969da) 8%,transparent)!important}
+${scope} th{background:var(--accent,#0969da)!important;color:var(--accent-fg,#fff)!important}
+${scope} ::selection{background:color-mix(in srgb,var(--accent,#0969da) 30%,transparent)!important}
+${scope} strong,${scope} b{color:var(--accent,#0969da)!important;display:inline!important}`;
   if (accentColor) {
-    parts.push(`${scope}{--article-accent:${accentColor};--accent:${accentColor}}
+    // 有明确强调色：用具体值（兼容不支持 CSS 变量的环境）+ CSS 变量
+    parts.push(`${accentVarCss}
 ${scope} blockquote{border-left:4px solid ${accentColor}!important}
 ${scope} a{color:${accentColor}!important;text-decoration-color:${accentColor}!important}
 ${scope} code:not(pre code){color:${accentColor}!important;background:color-mix(in srgb,${accentColor} 8%,transparent)!important}
 ${scope} th{background:${accentColor}!important;color:var(--accent-fg,#fff)!important}
 ${scope} ::selection{background:color-mix(in srgb,${accentColor} 30%,transparent)!important}
 ${scope} strong,${scope} b{color:${accentColor}!important;display:inline!important}`);
+  } else if (themeId !== 'clean') {
+    // 有选非默认文章主题：仅注入 --accent 变量，元素颜色由 buildThemeCss 控制
+    parts.push(`${accentVarCss}`);
+  } else {
+    // 无强调色 + 默认主题：a/strong/code/th/blockquote 用 var(--accent) 跟随模版
+    parts.push(`${accentVarCss}
+${accentElCss}`);
   }
 
   // 7. 代码主题
   const cThemeId = getSelectedCodeThemeId();
   const cTheme = getCodeTheme(cThemeId);
-  if (cTheme) parts.push(scopeCSS(cTheme.css));
+  if (cTheme) parts.push(scopeCSS(cTheme.css, scope));
 
   // 8. 代码块基础样式（微信兼容：mac-dots 使用普通 flex 布局，不使用 absolute）
   const macos = localStorage.getItem("macos-code-block") === "true";
@@ -210,6 +237,8 @@ ${scope} strong,${scope} b{color:${accentColor}!important;display:inline!importa
       macBarBg = accentColor_;
     } else if (theme?.vars?.headingColor) {
       macBarBg = theme.vars.headingColor;
+    } else if (templateAccent) {
+      macBarBg = templateAccent;
     } else if (cTheme_) {
       // 从代码主题 CSS 中提取背景色（格式: pre { background: #xxx !important; }）
       const bgMatch = cTheme_.css.match(/(?:pre|\bhljs\b)\s*\{[^}]*background(?:-color)?:\s*([^;!}]+)/i);
@@ -219,12 +248,12 @@ ${scope} strong,${scope} b{color:${accentColor}!important;display:inline!importa
     // pre 背景色由代码主题 CSS（步骤 7）控制，与编辑器预览保持一致
     parts.push(`${scope} pre{padding:0!important;overflow:hidden!important;border-radius:10px!important;box-shadow:0 6px 16px rgba(0,0,0,.18)!important;margin:1.2em 0!important}
 ${scope} pre .mac-dots{display:flex!important;padding:10px 14px 0!important;background:${macBarBg}!important}
-${scope} pre code{display:block!important;padding:0.5em 1em 1em!important;overflow-x:auto!important;white-space:nowrap!important;background:transparent!important;font-size:13px!important;font-family:"SF Mono",Consolas,"Courier New",monospace!important}`);
+${scope} pre code{display:block!important;padding:1em 1em 1em!important;overflow-x:auto!important;white-space:nowrap!important;background:transparent!important;font-size:13px!important;font-family:"SF Mono",Consolas,"Courier New",monospace!important}`);
   } else {
     // pre 背景色由代码主题 CSS 控制，与编辑器预览保持一致
     parts.push(`${scope} pre{border-radius:6px!important;padding:14px!important;margin:1em 0!important;overflow-x:auto!important;border:1px solid #e0e0e0!important}
 ${scope} pre .mac-dots{display:none!important}
-${scope} pre code{background:transparent!important;padding:0!important;font-size:13px!important;font-family:"SF Mono",Consolas,"Courier New",monospace!important}`);
+${scope} pre code{background:transparent!important;padding:0!important;font-size:13px!important;font-family:"SF Mono",Consolas,"Courier New",monospace!important;white-space:nowrap!important;overflow-x:auto!important;display:block!important}`);
   }
 
   return parts.join("\n\n");
