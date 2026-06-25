@@ -139,13 +139,9 @@ function markdownToHtml(content: string): string {
         }
         const code = codeBuf.join("\n");
         const hCode = (lang && hljs.getLanguage(lang))
-    ? hljs.highlight(code, { language: lang }).value
-    : escapeHtml(code);
-  // macOS-style dots for code blocks
-  const macDots = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="12" viewBox="0 0 36 12" style="display:block;margin-bottom:6px"><circle cx="6" cy="6" r="4" fill="#ff5f56"/><circle cx="18" cy="6" r="4" fill="#ffbd2e"/><circle cx="30" cy="6" r="4" fill="#27c93f"/></svg>`;
-  // WeChat compatibility: replace spaces with &nbsp; inside text nodes to preserve formatting
-  const fmtCode = hCode.replace(/(>[^<]+)|(^[^<]+)/g, (s: string) => s.replace(/[ \t]/g, "&nbsp;"));
-  out.push(`<pre class="hljs"><span style="padding:10px 14px 0;display:block">${macDots}</span><code class="language-${lang || "plaintext"}">${fmtCode}</code></pre>
+    ? formatCodeHtml(hljs.highlight(code, { language: lang }).value)
+    : formatCodeHtml(escapeHtml(code));
+  out.push(`<pre class="hljs"><span style="padding:10px 14px 0;display:block">${macDots}</span><code class="language-${lang || "plaintext"}">${hCode}</code></pre>
 `);
         codeBuf = [];
         inCode = false;
@@ -228,7 +224,7 @@ function markdownToHtml(content: string): string {
       lang = "";
     }
     const code = codeBuf.join("\n");
-    const esc = escapeHtml(code).replace(/(>[^<]+)|(^[^<]+)/g, (s: string) => s.replace(/[ \t]/g, "&nbsp;"));
+    const esc = formatCodeHtml(escapeHtml(code));
     out.push(`<pre class="hljs"><code>${esc}</code></pre>\n`);
   }
 
@@ -238,6 +234,34 @@ function markdownToHtml(content: string): string {
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+
+/**
+ * Format highlighted code HTML for WeChat compatibility.
+ * Moves inter-span whitespace into spans, converts newlines to <br/>, spaces to &nbsp;.
+ */
+function formatCodeHtml(html: string): string {
+  let s = html;
+  // Move whitespace between </span> and <span> INTO the following span
+  s = s.replace(
+    /(<span[^>]*>[^<]*<\/span>)(\s+)(<span[^>]*>[^<]*<\/span>)/g,
+    (_, span1: string, spaces: string, span2: string) =>
+      span1 + span2.replace(/^(<span[^>]*>)/, "$1" + spaces)
+  );
+  // Move leading whitespace before a <span> INTO that span
+  s = s.replace(
+    /(\s+)(<span[^>]*>)/g,
+    (_, spaces: string, span: string) => span.replace(/^(<span[^>]*>)/, "$1" + spaces)
+  );
+  // Tabs to 4 spaces
+  s = s.replace(/\t/g, "    ");
+  // Newlines to <br/>
+  s = s.replace(/\r?\n/g, "<br/>");
+  // All remaining whitespace in text nodes to &nbsp;
+  s = s.replace(/(>[^<]+)|(^[^<]+)/g, (str: string) => str.replace(/\s/g, "&nbsp;"));
+  return s;
+}
+
+const macDots = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="12" viewBox="0 0 36 12" style="display:block;margin-bottom:6px"><circle cx="6" cy="6" r="4" fill="#ff5f56"/><circle cx="18" cy="6" r="4" fill="#ffbd2e"/><circle cx="30" cy="6" r="4" fill="#27c93f"/></svg>';
 
 function inlineHtml(s: string): string {
   let result = escapeHtml(s);
