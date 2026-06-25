@@ -19,3 +19,16 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+// Hide splash screen after React has committed
+const splash = document.getElementById("splash");
+if (splash) {
+  // Use requestAnimationFrame to ensure the first paint has happened
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      splash.classList.add("splash--hidden");
+      // Remove from DOM after transition completes
+      setTimeout(() => splash.remove(), 600);
+    });
+  });
+}
