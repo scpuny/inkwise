@@ -1,4 +1,4 @@
-import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon } from "lucide-react";
+import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon, Search } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, applyAccentColor, applyImageCaptionFormat, applyCustomCSS, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../lib/editorStyles";
 import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, type ArticleTheme } from "../lib/articleThemes";
@@ -57,16 +57,13 @@ export function StylePanel({
   const articleThemes = getAllThemes();
   const currentArticleTheme = getThemeById(articleThemeId);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [themeSearch, setThemeSearch] = useState("");
   const [macosCodeBlock, setMacosCodeBlock] = useState(localStorage.getItem('macos-code-block') === 'true');
   const [firstLineIndent, setFirstLineIndent] = useState(localStorage.getItem('first-line-indent') === 'true');
   const [justifyAlign, setJustifyAlign] = useState(localStorage.getItem('justify-align') === 'true');
-  const [headingLevel, setHeadingLevel] = useState(localStorage.getItem('heading-deco-level') || '');
-  const [headingDecos, setHeadingDecos] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch { return []; }
+  const [headingConfig, setHeadingConfig] = useState<Record<string, string[]>>(() => {
+    try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}"); } catch { return {}; }
   });
-  const toggleHeadingDeco = useCallback((v: string) => {
-    setHeadingDecos(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
-  }, []);
   const [bgPattern, setBgPattern] = useState(localStorage.getItem('bg-pattern') || '');
   const [accentColor, setAccentColor] = useState(localStorage.getItem("editor-accent-color") || "");
   const [captionFormat, setCaptionFormat] = useState(localStorage.getItem("editor-caption-format") || "");
@@ -107,30 +104,20 @@ export function StylePanel({
   }, [firstLineIndent, justifyAlign]);
 
   useEffect(() => {
-    localStorage.setItem('heading-deco-level', headingLevel);
-    localStorage.setItem('heading-deco-styles', JSON.stringify(headingDecos));
-    applyHeadingDecorations(headingLevel, headingDecos);
-  }, [headingLevel, headingDecos]);
+    localStorage.setItem("heading-deco-config", JSON.stringify(headingConfig));
+    applyHeadingDecorations(headingConfig || {});
+  }, [headingConfig]);
 
   useEffect(() => {
-    localStorage.setItem('bg-pattern', bgPattern);
     applyBgPattern(bgPattern);
   }, [bgPattern]);
 
   useEffect(() => {
     localStorage.setItem("editor-accent-color", accentColor);
     applyAccentColor(accentColor);
-    // 主题色变化时重新应用标题装饰，使背景色跟随主题色
-    const savedLevel = localStorage.getItem('heading-deco-level') || '';
-    let savedDecos: string[] = [];
-    try { savedDecos = JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch {}
-    applyHeadingDecorations(savedLevel, savedDecos);
-  }, [accentColor]);
-
-  useEffect(() => {
     localStorage.setItem("editor-caption-format", captionFormat);
     applyImageCaptionFormat(captionFormat);
-  }, [captionFormat]);
+  }, [accentColor, captionFormat]);
 
   useEffect(() => {
     localStorage.setItem("editor-custom-css", customCSS);
@@ -156,6 +143,38 @@ export function StylePanel({
 
       <div className="style-panel__body">
 
+        {/* ── 分享主题 ── */}
+        <Section icon={<FileText size={13} />} label="主题设置">
+          <div className="style-panel__theme-search">
+            <Search size={12} />
+            <input type="text" placeholder="搜索主题..." value={themeSearch} onChange={e => setThemeSearch(e.target.value)} />
+          </div>
+          <div className="style-panel__theme-grid">
+            {articleThemes.filter(t => { if (!themeSearch) return true; const q = themeSearch.toLowerCase(); return t.label.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.tags.some(tag => tag.includes(q)) || t.platform.includes(q); }).map((t) => {
+              const v = t.vars;
+              return (
+                <button
+                  key={t.id}
+                  className={`style-panel__theme-card${t.id === articleThemeId ? " style-panel__theme-card--active" : ""}`}
+                  onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } window.dispatchEvent(new CustomEvent("article-theme-changed")); }}
+                >
+                  <div className="style-panel__theme-card-name">{t.label}</div>
+                  <div className="style-panel__theme-card-desc">{t.desc}</div>
+                  <div className="style-panel__theme-card-strip">
+                    <span style={{ background: v.bgColor, border: "1px solid " + v.blockquoteBorder }} />
+                    <span style={{ background: v.textColor }} />
+                    <span style={{ background: v.headingColor }} />
+                    <span style={{ background: v.linkColor }} />
+                    <span style={{ background: v.codeBg }} />
+                    <span style={{ background: v.blockquoteBorder }} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        <div className="style-panel__divider" />
 
         {/* ── 正文字体 ── */}
         <Section icon={<TextSelect size={13} />} label="正文字体" horizontal>
@@ -186,8 +205,9 @@ export function StylePanel({
             {[14,15,16,17,18].map(n => (
               <button key={n} className={`style-panel__chip${editorFontSize === n ? " style-panel__chip--active" : ""}`} onClick={() => onSetEditorFontSize?.(n)}>{n}</button>
             ))}
-            <input className="style-panel__chip-input" type="number" min={10} max={36} value={editorFontSize} onChange={e => onSetEditorFontSize?.(parseInt(e.target.value) || 15)} />
-            <span className="style-panel__chip-unit">px</span>
+            <span className="style-panel__chip-unit">{editorFontSize}px</span>
+          </div>
+          <div className="style-panel__slider-row" style={{marginTop:4}}>
           </div>
         </Section>
         {/* ── 行距 ── */}
@@ -196,7 +216,10 @@ export function StylePanel({
             {[1.5,1.6,1.75,2.0].map(n => (
               <button key={n} className={`style-panel__chip${Math.abs(lineHeight - n) < 0.01 ? " style-panel__chip--active" : ""}`} onClick={() => onSetLineHeight(n)}>{n.toFixed(2)}</button>
             ))}
-            <input className="style-panel__chip-input" type="number" min={1} max={3} step={0.05} value={lineHeight} onChange={e => onSetLineHeight(parseFloat(e.target.value) || 1.75)} />
+            <span className="style-panel__slider-value">{lineHeight.toFixed(2)}</span>
+          </div>
+          <div className="style-panel__slider-row" style={{marginTop:4}}>
+            <input type="range" min={1.0} max={3.0} step={0.05} value={lineHeight} onChange={e => onSetLineHeight(parseFloat(e.target.value))} />
           </div>
         </Section>
 
@@ -207,7 +230,10 @@ export function StylePanel({
               {[1.0,1.25,1.5,2.0].map(n => (
                 <button key={n} className={`style-panel__chip${Math.abs(editorParagraphGap - n) < 0.05 ? " style-panel__chip--active" : ""}`} onClick={() => onSetEditorParagraphGap(n)}>{n.toFixed(1)}</button>
               ))}
-              <input className="style-panel__chip-input" type="number" min={0.5} max={3} step={0.1} value={editorParagraphGap} onChange={e => onSetEditorParagraphGap(parseFloat(e.target.value) || 1.25)} />
+              <span className="style-panel__slider-value">{editorParagraphGap.toFixed(1)}</span>
+            </div>
+            <div className="style-panel__slider-row" style={{marginTop:4}}>
+              <input type="range" min={0.5} max={3.0} step={0.1} value={editorParagraphGap} onChange={e => onSetEditorParagraphGap(parseFloat(e.target.value))} />
             </div>
           </Section>
         )}
@@ -290,26 +316,27 @@ export function StylePanel({
         </Section>
 
         {/* ── 标题装饰 ── */}
-        <Section icon={<Type size={13} />} label="标题装饰" horizontal>
-          <div style={{display: 'flex', flexDirection: 'column', gap: 6, width: '100%'}}>
-            <div className="style-panel__template-select" ref={headingLevelRef}>
-              <button className="style-panel__template-trigger" onClick={() => setHeadingLevelOpen(o => !o)}>
-                <span style={{color: headingLevel ? 'inherit' : 'var(--text-faint)', fontSize: 11}}>{headingLevel ? headingLevel.toUpperCase() : '标题级别'}</span>
-                <ChevronDown size={11} className={`style-panel__chev${headingLevelOpen ? " style-panel__chev--open" : ""}`} />
-              </button>
-              {headingLevelOpen && (
-                <div className="style-panel__template-dropdown">
-                  {[['','关'],['h1','H1'],['h2','H2'],['h3','H3'],['h4','H4']].map(([v,l]) => (
-                    <button key={v} className={`style-panel__template-option${headingLevel === v ? " style-panel__template-option--active" : ""}`} onClick={() => { setHeadingLevel(v); setHeadingLevelOpen(false); }}>{l}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="style-panel__chip-row" style={{flexWrap: 'wrap'}}>
-              {[['underline','下划线'],['overline','上划线'],['left-bar','左竖线'],['right-bar','右竖线'],['bg-block','背景块'],['left-icon','左图标'],['badge','小标签']].map(([v,l]) => (
-                <button key={v} className={`style-panel__chip${headingDecos.includes(v) ? " style-panel__chip--active" : ""}`} onClick={() => toggleHeadingDeco(v)} style={{fontSize: 10}}>{l}</button>
+        <Section icon={<Type size={13} />} label="标题装饰" horizontal className="style-panel__section--heading-deco">
+          <div style={{display: "flex", flexDirection: "column", gap: 6, width: "100%"}}>
+            <div className="style-panel__chip-row">
+              {[["h1","H1"],["h2","H2"],["h3","H3"],["h4","H4"]].map(([v,l]) => (
+                <button key={v} className={`style-panel__chip${v in headingConfig ? " style-panel__chip--active" : ""}`} onClick={() => { setHeadingConfig((prev: Record<string, string[]>) => { const n = {...prev}; if (v in n) delete n[v]; else n[v] = []; return n; }); }} style={{fontSize: 10}}>{l}</button>
               ))}
             </div>
+            {Object.entries(headingConfig || {}).length > 0 && (
+              <div className="style-panel__deco-per-level">
+                {Object.entries(headingConfig).map(([level, decos]) => (
+                  <div key={level} className="style-panel__deco-row">
+                    <span className="style-panel__deco-level-label">{level.toUpperCase()}</span>
+                    <div className="style-panel__chip-row" style={{flexWrap: "wrap"}}>
+                      {[["underline","下划线"],["overline","上划线"],["left-bar","左竖线"],["right-bar","右竖线"],["bg-block","背景块"],["left-icon","左图标"],["badge","小标签"]].map(([k, lb]) => (
+                        <button key={k} className={`style-panel__chip${decos.includes(k) ? " style-panel__chip--active" : ""}`} onClick={() => { setHeadingConfig((prev: Record<string, string[]>) => { const cur = prev[level] || []; const next = cur.includes(k) ? cur.filter((x: string) => x !== k) : [...cur, k]; return {...prev, [level]: next}; }); }} style={{fontSize: 9}}>{lb}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 
@@ -335,71 +362,9 @@ export function StylePanel({
           />
         </Section>
 
-        {/* ── 分享主题 ── */}
-        <Section icon={<FileText size={13} />} label="主题设置">
-          <div className="style-panel__template-select" ref={themeRef}>
-            <button className="style-panel__template-trigger" onClick={() => setThemeOpen(o => !o)}>
-              <span>{currentArticleTheme?.label || "极简白"}</span>
-              <ChevronDown size={12} className={`style-panel__chev${themeOpen ? " style-panel__chev--open" : ""}`} />
-            </button>
-            {themeOpen && (
-              <div className="style-panel__template-dropdown">
-                {articleThemes.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`style-panel__template-option${t.id === articleThemeId ? " style-panel__template-option--active" : ""}`}
-                    onClick={() => { setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); setThemeOpen(false); window.dispatchEvent(new CustomEvent('article-theme-changed')); }}
-                  >
-                    <div className="style-panel__template-option-name">{t.label}</div>
-                    <div className="style-panel__template-option-desc" style={{fontSize: 10}}>{t.desc}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {currentArticleTheme && <ThemePreview theme={currentArticleTheme} />}
-        </Section>
 
       </div>
     </aside>
-  );
-}
-
-
-
-function ThemePreview({ theme }: { theme: ArticleTheme }) {
-  const v = theme.vars;
-  return (
-    <div style={{
-      fontFamily: v.fontFamily,
-      fontSize: 12,
-      color: v.textColor,
-      background: v.bgColor,
-      border: '1px solid var(--border-soft)',
-      borderRadius: 6,
-      padding: '10px 12px',
-      marginTop: 8,
-      lineHeight: 1.6,
-    }}>
-      <div className="theme-preview__swatches">
-        <span className="theme-preview__swatch" style={{background: v.bgColor, border: '1px solid var(--border-soft)'}} title="背景" />
-        <span className="theme-preview__swatch" style={{background: v.textColor}} title="文字" />
-        <span className="theme-preview__swatch" style={{background: v.headingColor}} title="标题" />
-        <span className="theme-preview__swatch" style={{background: v.linkColor}} title="链接" />
-        <span className="theme-preview__swatch" style={{background: v.codeBg}} title="代码背景" />
-        <span className="theme-preview__swatch" style={{background: v.blockquoteBorder}} title="引用边框" />
-        <span className="theme-preview__swatch" style={{background: v.blockquoteBg, border: '1px solid var(--border-soft)'}} title="引用背景" />
-      </div>
-      <div style={{fontWeight: 700, fontSize: 13, color: v.headingColor, margin: '6px 0 3px'}}>标题示例</div>
-      <div style={{marginBottom: 4}}>这是一段正文示例文字，展示当前主题的字体和颜色效果。</div>
-      <div style={{borderLeft: '3px solid ' + v.blockquoteBorder, background: v.blockquoteBg, padding: '5px 9px', margin: '4px 0', borderRadius: '0 4px 4px 0', fontSize: 11}}>
-        引用文本的示例样式 · 带边框和背景色
-      </div>
-      <div><code style={{background: v.codeBg, color: v.codeText, padding: '2px 6px', borderRadius: 3, fontSize: 11}}>const theme = {"\"示例代码\""}</code></div>
-      <div style={{marginTop: 5, fontSize: 10, color: v.textColor, opacity: 0.5}}>
-        {v.fontSize}px · 行距 {v.lineHeight} · 最大宽度 {v.maxWidth}px
-      </div>
-    </div>
   );
 }
 

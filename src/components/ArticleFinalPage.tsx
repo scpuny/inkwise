@@ -92,28 +92,28 @@ function buildPublishHtml(markdown: string, articleTitle: string): string {
   }
 
   // Heading decorations (from localStorage)
-  const headingLevel = localStorage.getItem('heading-deco-level') || '';
-  let headingDecos: string[] = [];
-  try { headingDecos = JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch {}
-  if (headingLevel && headingDecos.length > 0) {
-    const sel = `.article-body ${headingLevel}`;
-    const parts: string[] = [];
-    const extra: string[] = [];
-    if (headingDecos.includes('underline')) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
-    if (headingDecos.includes('overline')) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
-    if (headingDecos.includes('left-bar')) parts.push(`border-left: 4px solid currentColor !important; padding-left: 14px;`);
-    if (headingDecos.includes('right-bar')) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
-    if (headingDecos.includes('bg-block')) parts.push(`background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
-    if (headingDecos.includes('left-icon')) {
-      parts.push(`position: relative; padding-left: 1.6em;`);
-      extra.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
-    }
-    if (headingDecos.includes('badge')) parts.push(`background: var(--accent, #0969da) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
-    if (parts.length > 0) {
-      cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
+  const headingConfig: Record<string, string[]> = (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}") || {}; } catch { return {}; } })();
+  const headingEntries = Object.entries(headingConfig).filter(([, v]) => v.length > 0);
+  if (headingEntries.length > 0) {
+    for (const [hl, decos] of headingEntries) {
+      const sel = `.article-body ${hl}`;
+      const parts: string[] = [];
+      const extra: string[] = [];
+      if (decos.includes("underline")) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
+      if (decos.includes("overline")) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
+      if (decos.includes("left-bar")) parts.push(`border-left: 4px solid var(--accent, #0969da) !important; padding-left: 14px;`);
+      if (decos.includes("right-bar")) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
+      if (decos.includes("bg-block")) parts.push(`background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
+      if (decos.includes("left-icon")) {
+        parts.push(`position: relative; padding-left: 1.6em;`);
+        extra.push(`${sel}::before { content: "▎"; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
+      }
+      if (decos.includes("badge")) parts.push(`background: var(--accent, #0969da) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
+      if (parts.length > 0) {
+        cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
+      }
     }
   }
-
   // BG pattern (from localStorage)
   const bgPattern = localStorage.getItem('bg-pattern') || '';
   if (bgPattern) {
@@ -123,7 +123,7 @@ function buildPublishHtml(markdown: string, articleTitle: string): string {
     }
     const bgRule = bgColor ? `background-color: ${bgColor} !important;` : '';
     const bgPatterns: Record<string, string> = {
-      'grid': `.article-body { ${bgRule} background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
+      'grid': `.article-body { ${bgRule} background-image: linear-gradient(90deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px), linear-gradient(0deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
       'dots': `.article-body { ${bgRule} background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
       'stripes': `.article-body { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
     };
@@ -230,7 +230,7 @@ export function ArticleFinalPage({
       const theme = getThemeById(themeId);
       const bgColor = theme ? theme.vars.bgColor : '#ffffff';
       const bgPatterns: Record<string, string> = {
-        'grid': `.article-preview { background-color: ${bgColor} !important; background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
+        'grid': `.article-preview { background-color: ${bgColor} !important; background-image: linear-gradient(90deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px), linear-gradient(0deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
         'dots': `.article-preview { background-color: ${bgColor} !important; background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
         'stripes': `.article-preview { background-color: ${bgColor} !important; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
       };

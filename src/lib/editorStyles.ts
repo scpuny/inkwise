@@ -1341,31 +1341,39 @@ export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean):
   tag.textContent = rules.join("\n");
 }
 
-export function applyHeadingDecorations(headingLevel: string, decos: string[]): void {
+export function applyHeadingDecorations(config: Record<string, string[]>): void {
   let tag = document.getElementById("editor-heading-deco") as HTMLStyleElement;
   if (!tag) {
     tag = document.createElement("style");
     tag.id = "editor-heading-deco";
     document.head.appendChild(tag);
   }
-  if (!headingLevel || decos.length === 0) {
+  const entries = Object.entries(config).filter(([, v]) => v.length > 0);
+  if (entries.length === 0) {
     tag.textContent = "";
     return;
   }
-  const sel = `.editor-container .tiptap ${headingLevel}`;
-  const parts: string[] = [];
-  const extraCss: string[] = [];
-  if (decos.includes('underline')) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
-  if (decos.includes('overline')) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
-  if (decos.includes('left-bar')) parts.push(`border-left: 4px solid currentColor !important; padding-left: 14px;`);
-  if (decos.includes('right-bar')) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
-  if (decos.includes('bg-block')) parts.push(`background: color-mix(in srgb, var(--accent) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
-  if (decos.includes('left-icon')) {
-    parts.push(`position: relative; padding-left: 1.6em;`);
-    extraCss.push(`${sel}::before { content: '▎'; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
+  const allParts: string[] = [];
+  for (const [level, decos] of entries) {
+    const sel = `.editor-container .tiptap ${level}`;
+    const parts: string[] = [];
+    const extraCss: string[] = [];
+    if (decos.includes("underline")) parts.push(`border-bottom: 2px solid currentColor !important; padding-bottom: 6px;`);
+    if (decos.includes("overline")) parts.push(`border-top: 2px solid currentColor !important; padding-top: 6px;`);
+    if (decos.includes("left-bar")) parts.push(`border-left: 4px solid var(--accent) !important; padding-left: 14px;`);
+    if (decos.includes("right-bar")) parts.push(`border-right: 4px solid currentColor !important; padding-right: 14px;`);
+    if (decos.includes("bg-block")) parts.push(`background: color-mix(in srgb, var(--accent) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;`);
+    if (decos.includes("left-icon")) {
+      parts.push(`position: relative; padding-left: 1.6em;`);
+      extraCss.push(`${sel}::before { content: "▎"; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
+    }
+    if (decos.includes("badge")) parts.push(`background: var(--accent) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
+    if (parts.length > 0) {
+      allParts.push(`${sel} { ${parts.join(" ")} }`);
+      allParts.push(...extraCss);
+    }
   }
-  if (decos.includes('badge')) parts.push(`background: var(--accent) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;`);
-  tag.textContent = parts.length > 0 ? `${sel} { ${parts.join(' ')} }\n${extraCss.join('\n')}` : "";
+  tag.textContent = allParts.length > 0 ? allParts.join("\n") : "";
 }
 
 export function applyBgPattern(pattern: string): void {
@@ -1388,9 +1396,9 @@ export function applyBgPattern(pattern: string): void {
   }
   const bgRule = bgColor ? `background-color: ${bgColor} !important;` : '';
   const patterns: Record<string, string> = {
-    'grid': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
-    'dots': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
-    'stripes': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 11px) !important; }`,
+    'grid': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: linear-gradient(90deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px), linear-gradient(0deg, color-mix(in srgb, currentColor 2%, transparent) 1px, transparent 1px) !important; background-size: 20px 20px !important; }`,
+    'dots': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: radial-gradient(circle, color-mix(in srgb, currentColor 4%, transparent) 1px, transparent 1px) !important; background-size: 16px 16px !important; }`,
+    'stripes': `.editor-container .tiptap.ProseMirror { ${bgRule} background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, color-mix(in srgb, currentColor 1.5%, transparent) 10px, color-mix(in srgb, currentColor 1.5%, transparent) 11px) !important; }`,
   };
   tag.textContent = patterns[pattern] || "";
 }
@@ -1530,8 +1538,7 @@ export interface ArticleStyleConfig {
   macosCodeBlock: boolean;
   firstLineIndent: boolean;
   justifyAlign: boolean;
-  headingLevel: string;
-  headingDecos: string[];
+  headingConfig: Record<string, string[]>;
   bgPattern: string;
   accentColor: string;
   captionFormat: string;
@@ -1551,8 +1558,7 @@ export function saveArticleStyleConfig(articleId: string): void {
     macosCodeBlock: localStorage.getItem('macos-code-block') === 'true',
     firstLineIndent: localStorage.getItem('first-line-indent') === 'true',
     justifyAlign: localStorage.getItem('justify-align') === 'true',
-    headingLevel: localStorage.getItem('heading-deco-level') || '',
-    headingDecos: (() => { try { return JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch { return []; } })(),
+    headingConfig: (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}") || {}; } catch { return {}; } })(),
     bgPattern: localStorage.getItem('bg-pattern') || '',
     accentColor: localStorage.getItem('editor-accent-color') || '',
     captionFormat: localStorage.getItem('editor-caption-format') || '',
@@ -1584,10 +1590,7 @@ export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
   localStorage.setItem('code-theme-id', config.codeThemeId);
   localStorage.setItem('macos-code-block', String(config.macosCodeBlock));
   localStorage.setItem('first-line-indent', String(config.firstLineIndent));
-  localStorage.setItem('justify-align', String(config.justifyAlign));
-  localStorage.setItem('heading-deco-level', config.headingLevel);
-  localStorage.setItem('heading-deco-styles', JSON.stringify(config.headingDecos));
-  localStorage.setItem('bg-pattern', config.bgPattern);
+  localStorage.setItem("heading-deco-config", JSON.stringify(config.headingConfig));
   localStorage.setItem('editor-accent-color', config.accentColor);
   localStorage.setItem('editor-caption-format', config.captionFormat);
   localStorage.setItem('editor-custom-css', config.customCSS);
@@ -1598,7 +1601,7 @@ export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
   applyCustomCSS(config.customCSS);
   applyMacosCodeBlockStyle(config.macosCodeBlock);
   applyTextStyle(config.firstLineIndent, config.justifyAlign);
-  applyHeadingDecorations(config.headingLevel, config.headingDecos);
+  applyHeadingDecorations(config.headingConfig || {});
   applyBgPattern(config.bgPattern);
 }
 

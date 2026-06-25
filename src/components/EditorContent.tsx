@@ -408,8 +408,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       localStorage.getItem('justify-align') === 'true'
     );
     applyHeadingDecorations(
-      localStorage.getItem('heading-deco-level') || '',
-      (() => { try { return JSON.parse(localStorage.getItem('heading-deco-styles') || '[]'); } catch { return []; } })()
+      (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}"); } catch { return {}; } })(),
     );
     applyBgPattern(localStorage.getItem('bg-pattern') || '');
   }, []);
