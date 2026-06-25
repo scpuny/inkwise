@@ -14035,16 +14035,7 @@ body {
    26. STARTUP SPLASH — 灵感输入欢迎页
    ═══════════════════════════════════════════════════════════════════ */
 
-
-@keyframes splash-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(10px, -12px) scale(1.02); }
-  66% { transform: translate(-8px, 8px) scale(0.98); }
-}
-
 .startup-splash {
-  position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -14060,52 +14051,7 @@ body {
 
 /* ── Brand ── */
 
-
-/* ── Decorative background ── */
-.startup-splash::before {
-  content: "";
-  position: absolute;
-  top: -120px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.startup-splash::after {
-  content: "";
-  position: absolute;
-  top: 20%;
-  left: 8%;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
-  pointer-events: none;
-  z-index: 0;
-  animation: splash-drift 12s ease-in-out infinite;
-}
-
-/* Second dot via box-shadow on ::after */
-.startup-splash::after {
-  box-shadow:
-    120px 180px 0 -8px color-mix(in srgb, var(--accent) 5%, transparent),
-    -80px 240px 0 -4px color-mix(in srgb, var(--accent) 3%, transparent),
-    260px 60px 0 -12px color-mix(in srgb, var(--accent) 4%, transparent);
-}
-
-.startup-splash__logo {
-  position: relative;
-  z-index: 1;
-  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--accent) 20%, transparent));
-  transition: filter var(--dur-base) ease;
-}
 .startup-splash__brand {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -14115,10 +14061,6 @@ body {
 }
 
 .startup-splash__brand h1 {
-  background: linear-gradient(135deg, var(--fg) 40%, var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   font-size: var(--text-2xl);
   font-weight: 700;
   color: var(--fg);
@@ -14135,8 +14077,6 @@ body {
 /* ── Suggestion chips — above input ── */
 
 .startup-splash__suggestions {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -14395,8 +14335,7 @@ body {
 
 /* ─── StartupSplash Response View (system-aligned card style) ─── */
 .startup-splash__response {
-  position: relative;
-  z-index: 1;  width: 100%;
+  width: 100%;
   max-width: 90%;
   min-width: 560px;
   margin: 0 auto;
