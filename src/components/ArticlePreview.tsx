@@ -84,7 +84,7 @@ hljs.registerLanguage("txt", plaintext);
 export function markdownToHtml(content: string): string {
   const lines = content.split("\n");
   const out: string[] = [];
-  let inCode = false;
+  let inCode = false, inBlockquote = false;
   let codeBuf: string[] = [];
   let inParagraph = false;
   let inUList = false;
@@ -93,6 +93,7 @@ export function markdownToHtml(content: string): string {
   function closePara() {
     if (inParagraph) { out.push("</p>\n"); inParagraph = false; }
   }
+  function closeBlockquote() { if (inBlockquote) { out.push("</blockquote>\n"); inBlockquote = false; } }
   function closeLists() {
     if (inUList) { out.push("</ul>\n"); inUList = false; }
     if (inOList) { out.push("</ol>\n"); inOList = false; }
@@ -103,7 +104,14 @@ export function markdownToHtml(content: string): string {
     if (raw.trimStart().startsWith("```")) {
       closePara(); closeLists();
       if (inCode) {
-        const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
+        let lang = "";
+        if (codeBuf.length > 0 && !codeBuf[0].includes("```")) {
+          const candidate = codeBuf[0].trim();
+          if (hljs.getLanguage(candidate)) {
+            lang = candidate;
+            codeBuf.shift();
+          }
+        }
         const code = codeBuf.join("\n");
         const hCode = (lang && hljs.getLanguage(lang))
     ? hljs.highlight(code, { language: lang }).value
@@ -123,7 +131,7 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
     const trimmed = raw.trim();
 
     // Empty line
-    if (!trimmed) { closePara(); closeLists(); continue; }
+    if (!trimmed) { closePara(); closeBlockquote(); closeLists(); continue; }
 
     // Headings
     if (trimmed.startsWith("# ")) { closePara(); closeLists(); out.push(`<h1>${inlineHtml(trimmed.slice(2))}</h1>\n`); continue; }
@@ -134,7 +142,15 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
     if (trimmed.startsWith("###### ")) { closePara(); closeLists(); out.push(`<h6>${inlineHtml(trimmed.slice(7))}</h6>\n`); continue; }
 
     // Blockquote
-    if (trimmed.startsWith("> ")) { closePara(); closeLists(); out.push(`<blockquote><p>${inlineHtml(trimmed.slice(2))}</p></blockquote>\n`); continue; }
+    const bqMatch = trimmed.match(/^>\s*(.*)$/);
+    if (bqMatch) {
+      if (!inBlockquote) { closePara(); closeLists(); out.push("<blockquote>\n"); inBlockquote = true; }
+      const bqContent = bqMatch[1];
+      if (bqContent) {
+        closePara(); out.push(`<p>${inlineHtml(bqContent)}</p>\n`);
+      }
+      continue;
+    }
 
     // Horizontal rule
     if (trimmed === "---" || trimmed === "***" || trimmed === "___") { closePara(); closeLists(); out.push("<hr />\n"); continue; }
@@ -143,6 +159,7 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       const item = (trimmed.startsWith("- ") ? trimmed.slice(2) : trimmed.slice(2));
       closePara();
+      if (!inBlockquote) { closeBlockquote(); }
       if (!inUList) { closeLists(); out.push("<ul>\n"); inUList = true; }
       out.push(`  <li>${inlineHtml(item)}</li>\n`);
       continue;
@@ -152,13 +169,14 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
     const olMatch = trimmed.match(/^\d+\.\s+(.+)/);
     if (olMatch) {
       closePara();
+      if (!inBlockquote) { closeBlockquote(); }
       if (!inOList) { closeLists(); out.push("<ol>\n"); inOList = true; }
       out.push(`  <li>${inlineHtml(olMatch[1])}</li>\n`);
       continue;
     }
 
     // Paragraph
-    closeLists();
+    if (!inBlockquote) { closeBlockquote(); } closeLists();
     if (!inParagraph) { out.push("<p>"); inParagraph = true; }
     else { out.push("<br />\n"); }
     out.push(inlineHtml(raw));
@@ -166,10 +184,18 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
 
   // Close remaining open tags
   if (inParagraph) out.push("</p>\n");
+  if (inBlockquote) out.push("</blockquote>\n");
   if (inUList) out.push("</ul>\n");
   if (inOList) out.push("</ol>\n");
   if (inCode && codeBuf.length > 0) {
-    const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
+    let lang = "";
+        if (codeBuf.length > 0 && !codeBuf[0].includes("```")) {
+          const candidate = codeBuf[0].trim();
+          if (hljs.getLanguage(candidate)) {
+            lang = candidate;
+            codeBuf.shift();
+          }
+        }
     const code = codeBuf.join("\n");
     const hCode = (lang && hljs.getLanguage(lang))
     ? hljs.highlight(code, { language: lang }).value

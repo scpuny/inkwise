@@ -86,7 +86,7 @@ hljs.registerLanguage("yaml", yaml);
 function markdownToHtml(content: string): string {
   const lines = content.split("\n");
   const out: string[] = [];
-  let inCode = false;
+  let inCode = false, inBlockquote = false;
   let codeBuf: string[] = [];
   let inParagraph = false;
   let inUList = false;
@@ -95,6 +95,7 @@ function markdownToHtml(content: string): string {
   function closePara() {
     if (inParagraph) { out.push("</p>\n"); inParagraph = false; }
   }
+  function closeBlockquote() { if (inBlockquote) { out.push("</blockquote>\n"); inBlockquote = false; } }
   function closeLists() {
     if (inUList) { out.push("</ul>\n"); inUList = false; }
     if (inOList) { out.push("</ol>\n"); inOList = false; }
@@ -108,7 +109,12 @@ function markdownToHtml(content: string): string {
     if (/^```/.test(trimmed)) {
       closePara(); closeLists();
       if (inCode) {
-        const lang = codeBuf.shift() || "";
+        let lang = codeBuf.length > 0 ? codeBuf[0].trim() : "";
+        if (lang && hljs.getLanguage(lang)) {
+          codeBuf.shift();
+        } else {
+          lang = "";
+        }
         const code = codeBuf.join("\n");
         const hCode = (lang && hljs.getLanguage(lang))
     ? hljs.highlight(code, { language: lang }).value
@@ -153,9 +159,11 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
     // Blockquote
     const bqMatch = trimmed.match(/^>\s*(.*)$/);
     if (bqMatch) {
-      closePara(); closeLists();
-      const content = bqMatch[1];
-      out.push(`<blockquote><p>${inlineHtml(content)}</p></blockquote>\n`);
+      if (!inBlockquote) { closePara(); closeLists(); out.push("<blockquote>\n"); inBlockquote = true; }
+      const bqContent = bqMatch[1];
+      if (bqContent) {
+        closePara(); out.push(`<p>${inlineHtml(bqContent)}</p>\n`);
+      }
       continue;
     }
 
@@ -186,7 +194,12 @@ out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}
 
   closePara(); closeLists();
   if (inCode) {
-    const lang = codeBuf.shift() || "";
+    let lang = codeBuf.length > 0 ? codeBuf[0].trim() : "";
+    if (lang && hljs.getLanguage(lang)) {
+      codeBuf.shift();
+    } else {
+      lang = "";
+    }
     const code = codeBuf.join("\n");
     out.push(`<pre><code${lang ? ` class="language-${lang}"` : ""}>${escapeHtml(code)}</code></pre>\n`);
   }
