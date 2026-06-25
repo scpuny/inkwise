@@ -1,4 +1,5 @@
 import juice from "juice";
+import { getSelectedCodeThemeId, getCodeTheme } from "./editorStyles";
 
 /**
  * Convert markdown to HTML using the same renderer as ArticlePreview.
@@ -30,7 +31,7 @@ function markdownToHtml(content: string): string {
       if (inCode) {
         const lang = codeBuf.shift() || "";
         const code = codeBuf.join("\n");
-        out.push(`<pre><code${lang ? ` class="language-${lang}"` : ""}>${escapeHtml(code)}</code></pre>\n`);
+        out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${escapeHtml(code)}</code></pre>\n`);
         codeBuf = [];
         inCode = false;
       } else {
@@ -178,21 +179,27 @@ function collectPublishCss(): string {
     cssParts.push(textStyleRules.join("\n"));
   }
 
-  // Heading decorations
-  const headingLevel = localStorage.getItem("heading-deco-level") || "";
-  let headingDecos: string[] = [];
-  try { headingDecos = JSON.parse(localStorage.getItem("heading-deco-styles") || "[]"); } catch {}
-  if (headingLevel && headingDecos.length > 0) {
-    const sel = `.article-body ${headingLevel}`;
-    const parts: string[] = [];
-    const extra: string[] = [];
-    if (headingDecos.includes("underline")) parts.push("border-bottom: 2px solid currentColor !important; padding-bottom: 6px;");
-    if (headingDecos.includes("overline")) parts.push("border-top: 2px solid currentColor !important; padding-top: 6px;");
-    if (headingDecos.includes("left-bar")) parts.push("border-left: 4px solid currentColor !important; padding-left: 14px;");
-    if (headingDecos.includes("right-bar")) parts.push("border-right: 4px solid currentColor !important; padding-right: 14px;");
-    if (headingDecos.includes("bg-block")) parts.push("background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;");
-    if (parts.length > 0) {
-      cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
+  // Heading decorations (new per-level config)
+  const headingConfig: Record<string, string[]> = (() => { try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}") || {}; } catch { return {}; } })();
+  const headingEntries = Object.entries(headingConfig).filter(([, v]) => v.length > 0);
+  if (headingEntries.length > 0) {
+    for (const [hl, decos] of headingEntries) {
+      const sel = `.article-body ${hl}`;
+      const parts: string[] = [];
+      const extra: string[] = [];
+      if (decos.includes("underline")) parts.push("border-bottom: 2px solid currentColor !important; padding-bottom: 6px;");
+      if (decos.includes("overline")) parts.push("border-top: 2px solid currentColor !important; padding-top: 6px;");
+      if (decos.includes("left-bar")) parts.push("border-left: 4px solid color-mix(in srgb, var(--accent, #0969da) 70%, currentColor) !important; padding-left: 14px;");
+      if (decos.includes("right-bar")) parts.push("border-right: 4px solid currentColor !important; padding-right: 14px;");
+      if (decos.includes("bg-block")) parts.push("background: color-mix(in srgb, var(--accent, #0969da) 12%, transparent) !important; padding: 4px 10px; border-radius: 6px; display: inline-block;");
+      if (decos.includes("left-icon")) {
+        parts.push("position: relative; padding-left: 1.6em;");
+        extra.push(`${sel}::before { content: "\u258e"; position: absolute; left: 0; color: currentColor; font-size: 1.2em; font-weight: 700; }`);
+      }
+      if (decos.includes("badge")) parts.push("background: var(--accent, #0969da) !important; color: var(--accent-fg, #fff) !important; padding: 2px 12px; border-radius: 12px; display: inline-block; font-size: 0.85em;");
+      if (parts.length > 0) {
+        cssParts.push(`${sel} { ${parts.join(" ")} }\n${extra.join("\n")}`);
+      }
     }
   }
 
@@ -222,6 +229,22 @@ function collectPublishCss(): string {
 .article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
 .article-body strong,
 .article-body b { color: ${accentColor} !important; }`);
+  }
+
+  // Code theme CSS
+  const cThemeId = getSelectedCodeThemeId();
+  const cTheme = getCodeTheme(cThemeId);
+  if (cTheme) {
+    const codeThemeCss = cTheme.css
+      .replace(/body(?=\s*\{)/g, ".article-body")
+      .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
+        return sel.split(",").map((s: string) => {
+          const t = s.trim();
+          if (t.startsWith(".article-body") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":") || t.startsWith(".")) return t;
+          return ".article-body " + t;
+        }).join(", ") + " {";
+      });
+    cssParts.push(codeThemeCss);
   }
 
   // Code block base styles (macOS style dots)

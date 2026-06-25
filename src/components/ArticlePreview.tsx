@@ -23,8 +23,14 @@ export function markdownToHtml(content: string): string {
     if (raw.trimStart().startsWith("```")) {
       closePara(); closeLists();
       if (inCode) {
-        out.push(`<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>\n`);
+        const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
+        const code = codeBuf.join("\n");
+        out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${escapeHtml(code)}</code></pre>\n`);
         codeBuf = [];
+      } else {
+        // First ``` line - the rest after ``` is the language
+        const rest = raw.trimStart().slice(3).trim();
+        if (rest) codeBuf.push(rest);
       }
       inCode = !inCode;
       continue;
@@ -80,7 +86,9 @@ export function markdownToHtml(content: string): string {
   if (inUList) out.push("</ul>\n");
   if (inOList) out.push("</ol>\n");
   if (inCode && codeBuf.length > 0) {
-    out.push(`<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>\n`);
+    const lang = (codeBuf.length > 0 && !codeBuf[0].includes("```")) ? codeBuf.shift()?.trim() || "" : "";
+    const code = codeBuf.join("\n");
+    out.push(`<pre><code${lang ? ` class="hljs language-${lang}"` : ' class="hljs"'}>${escapeHtml(code)}</code></pre>\n`);
   }
 
   return out.join("");

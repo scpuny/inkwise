@@ -3,6 +3,7 @@ import { FinalTopBar } from "./FinalTopBar";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { ArticlePreview, markdownToHtml } from "./ArticlePreview";
 import { compileToInlinedHtml } from "../lib/compileHtml";
+import { getCodeTheme, getSelectedCodeThemeId } from "../lib/editorStyles";
 import { copyAsHtml } from "../lib/importExport";
 import { PublishDialog } from "./PublishDialog";
 import { loadArticleContent, loadArticleMeta } from "../lib/articles";
@@ -144,6 +145,22 @@ function buildPublishHtml(markdown: string, articleTitle: string): string {
 .article-body ::selection { background: color-mix(in srgb, ${accentColor} 30%, transparent) !important; }
 .article-body strong,
 .article-body b { color: ${accentColor} !important; }`);
+  }
+
+  // Code theme CSS
+  const cThemeId = getSelectedCodeThemeId();
+  const cTheme = getCodeTheme(cThemeId);
+  if (cTheme) {
+    const codeThemeCss = cTheme.css
+      .replace(/\bbody\b(?=\s*\{)/g, ".article-body")
+      .replace(/^\s*([^{}]+?)\s*\{/gm, (_m: string, sel: string) => {
+        return sel.split(",").map((s: string) => {
+          const t = s.trim();
+          if (t.startsWith(".article-body") || t.startsWith("&") || t.startsWith("@") || t.startsWith(":") || t.startsWith(".")) return t;
+          return ".article-body " + t;
+        }).join(", ") + " {";
+      });
+    cssParts.push(codeThemeCss);
   }
 
   const allCss = cssParts.join("\n\n");
