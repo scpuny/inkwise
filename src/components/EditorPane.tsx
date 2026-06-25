@@ -28,8 +28,6 @@ import {
 import { generatePlanStream, generateFullArticle, writeArticleSection, type PlanInput, type PlanStep, type PartialPlan, type ArticleGenInput } from "../lib/plan";
 
 export function EditorPane({
-  aiDockOpen,
-  onToggleAIDock,
   hasActiveArticle,
   activeArticleId,
   activeCollectionId,
@@ -57,8 +55,6 @@ export function EditorPane({
   onToggleStylePanel,
   onCloseStylePanel,
 }: {
-  aiDockOpen: boolean;
-  onToggleAIDock: () => void;
   hasActiveArticle: boolean;
   activeArticleId?: string | null;
   activeCollectionId?: string | null;
@@ -1022,8 +1018,6 @@ ${augmentedContent}`
     <section className="editor-pane">
       {(hasActiveArticle && activeArticleId) ? (
         <Toolbar
-          aiDockOpen={aiDockOpen}
-          onToggleAIDock={onToggleAIDock}
           onModeSwitch={onSetEditorFormat}
           editorMode={parentEditorMode}
           onStyleTemplate={handleSelectStyleTemplate}

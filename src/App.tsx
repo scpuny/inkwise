@@ -678,8 +678,6 @@ function AppContent() {
         ) : (
         <EditorPane
           key={(activeArticleId ?? "") + styleReady}
-          aiDockOpen={false}
-          onToggleAIDock={() => {}}
           hasActiveArticle={hasActiveArticle}
           activeArticleId={activeArticleId}
           activeCollectionId={activeCollectionId}

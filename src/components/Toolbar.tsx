@@ -219,8 +219,6 @@ function HeadingDropdown({ onClose }: { onClose: () => void }) {
 
 // ── Toolbar ──
 export function Toolbar({
-  onToggleAIDock,
-  aiDockOpen,
   onModeSwitch,
   editorMode,
   onStyleTemplate,
@@ -229,8 +227,6 @@ export function Toolbar({
   onToggleStylePanel,
   onCloseStylePanel,
 }: {
-  onToggleAIDock: () => void;
-  aiDockOpen: boolean;
   onModeSwitch?: (mode: "rich" | "markdown") => void;
   editorMode?: "rich" | "markdown";
   onStyleTemplate?: (id: string) => void;
@@ -264,14 +260,6 @@ export function Toolbar({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  // Close popovers when aiDockOpen changes (prevent overlay)
-  useEffect(() => {
-    if (aiDockOpen) {
-      setLinkOpen(false); setImageOpen(false); setHighlightOpen(false);
-      setHeadingOpen(false); setMoreOpen(false); setSearchOpen(false);
-    }
-  }, [aiDockOpen]);
 
   const togglePopover = (name: string) => {
     // Close all others first
@@ -348,9 +336,8 @@ export function Toolbar({
         <ToolBtn icon={<Quote size={14} />} title="引用" onClick={() => toggleCmd("quote")} active={isActive("blockquote")} />
         <ToolBtn icon={<List size={14} />} title="无序列表" onClick={() => toggleCmd("bullet")} active={isActive("bulletList")} />
         <ToolBtn icon={<ListOrdered size={14} />} title="有序列表" onClick={() => toggleCmd("ordered")} active={isActive("orderedList")} />
-        {!aiDockOpen && <span className="toolbar__divider" />}
+        <span className="toolbar__divider" />
 
-        {!aiDockOpen && (
         <>
           <div style={{ position: "relative" }}>
             <button
@@ -364,9 +351,7 @@ export function Toolbar({
           </div>
           <ToolBtn icon={<LinkIcon size={14} />} title="链接" onClick={() => togglePopover("link")} active={linkOpen || isActive("link")} />
           <ToolBtn icon={<Code2 size={14} />} title="代码" onClick={() => toggleCmd("code")} active={isActive("code")} />
-          <ToolBtn icon={<SeparatorHorizontal size={14} />} title="分割线" onClick={() => toggleCmd("hr")} />
         </>
-        )}
       </div>
 
       {/* "More" menu — always visible, content changes when AI dock is open */}
@@ -381,54 +366,17 @@ export function Toolbar({
           </button>
           {moreOpen && (
             <div className="toolbar-popover toolbar-more-menu">
-              {aiDockOpen ? (
-                <>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("quote"); setMoreOpen(false); }}>
-                    <Quote size={14} /><span>引用</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("bullet"); setMoreOpen(false); }}>
-                    <List size={14} /><span>无序列表</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("ordered"); setMoreOpen(false); }}>
-                    <ListOrdered size={14} /><span>有序列表</span>
-                  </button>
-                  <div className="toolbar-more-menu__divider" />
-                  <button className="toolbar-more-menu__item" onClick={() => { togglePopover("image"); setMoreOpen(false); }}>
-                    <Image size={14} /><span>插入图片</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("code"); setMoreOpen(false); }}>
-                    <Code2 size={14} /><span>代码</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("hr"); setMoreOpen(false); }}>
-                    <SeparatorHorizontal size={14} /><span>分割线</span>
-                  </button>
-                  <div className="toolbar-more-menu__divider" />
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("codeblock"); setMoreOpen(false); }}>
-                    <Code2 size={14} /><span>代码块</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("task"); setMoreOpen(false); }}>
-                    <ListTodo size={14} /><span>任务列表</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("codeblock"); setMoreOpen(false); }}>
-                    <Code2 size={14} /><span>代码块</span>
-                  </button>
-                  <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("task"); setMoreOpen(false); }}>
-                    <ListTodo size={14} /><span>任务列表</span>
-                  </button>
-                </>
-              )}
+              <>
+                <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("codeblock"); setMoreOpen(false); }}>
+                  <Code2 size={14} /><span>代码块</span>
+                </button>
+                <button className="toolbar-more-menu__item" onClick={() => { toggleCmd("task"); setMoreOpen(false); }}>
+                  <ListTodo size={14} /><span>任务列表</span>
+                </button>
+              </>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Right: Mode + Style + AI + Search */}
-      <div className="toolbar__group toolbar__group--right">
-
-        {/* Style panel toggle */}
+          </div>                {/* Style panel toggle */}
         {onToggleStylePanel && (
           <button
             className="toolbar-btn"
