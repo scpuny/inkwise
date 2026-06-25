@@ -139,9 +139,13 @@ function markdownToHtml(content: string): string {
         }
         const code = codeBuf.join("\n");
         const hCode = (lang && hljs.getLanguage(lang))
-    ? hljs.highlight(code, { language: lang }).value.replace(/<[^>]+>/g, "")
+    ? hljs.highlight(code, { language: lang }).value
     : escapeHtml(code);
-out.push(`<pre><code>${hCode}</code></pre>
+  // macOS-style dots for code blocks
+  const macDots = `<svg xmlns="http://www.w3.org/2000/svg" width="45" height="13" viewBox="0 0 450 130" style="display:block;margin-bottom:6px"><ellipse cx="50" cy="65" rx="50" ry="52" fill="rgb(237,108,96)"/><ellipse cx="225" cy="65" rx="50" ry="52" fill="rgb(247,193,81)"/><ellipse cx="400" cy="65" rx="50" ry="52" fill="rgb(100,200,86)"/></svg>`;
+  // WeChat compatibility: replace spaces with &nbsp; inside text nodes to preserve formatting
+  const fmtCode = hCode.replace(/(>[^<]+)|(^[^<]+)/g, (s: string) => s.replace(/\s/g, "&nbsp;"));
+  out.push(`<pre class="hljs"><span style="padding:10px 14px 0;display:block">${macDots}</span><code class="language-${lang || "plaintext"}">${fmtCode}</code></pre>
 `);
         codeBuf = [];
         inCode = false;
@@ -224,8 +228,8 @@ out.push(`<pre><code>${hCode}</code></pre>
       lang = "";
     }
     const code = codeBuf.join("\n");
-    out.push(`<pre><code>${escapeHtml(code)}</code></pre>
-`);
+    const esc = escapeHtml(code).replace(/(>[^<]+)|(^[^<]+)/g, (s: string) => s.replace(/\s/g, "&nbsp;"));
+    out.push(`<pre class="hljs"><code>${esc}</code></pre>\n`);
   }
 
   return out.join("");
