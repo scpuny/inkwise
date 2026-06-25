@@ -321,6 +321,8 @@ function AppContent() {
   const handlePhaseChange = useCallback((phase: string) => {
     setArticlePhase(phase);
     if (phase === "complete") {
+      closePanel();
+      setStylePanelOpen(false);
       setShowFinalPage(true);
     } else {
       setShowFinalPage(false);
