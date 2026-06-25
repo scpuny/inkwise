@@ -2335,34 +2335,11 @@ function PlatformsSection() {
   useEffect(() => {
     let cancelled = false;
     setIpLoading(true);
-    // Try multiple IP APIs for reliability
-    const ipApis = [
-      "https://httpbin.org/ip",
-      "https://checkip.amazonaws.com",
-      "https://icanhazip.com",
-    ];
     (async () => {
-      let found = false;
-      for (const url of ipApis) {
-        if (found) break;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          const text = await res.text();
-          let ip: string | null = null;
-          if (text.trim().startsWith("{")) {
-            const json = JSON.parse(text);
-            ip = json.origin || null;
-          } else {
-            ip = text.trim();
-          }
-          if (ip && /^[\d.]+$/.test(ip)) {
-            if (!cancelled) setPublicIp(ip);
-            found = true;
-          }
-        } catch {}
-      }
-      if (!found && !cancelled) setPublicIp(null);
+      try {
+        const ip = await tryInvoke<string>("check_public_ip", {});
+        if (ip && !cancelled) setPublicIp(ip);
+      } catch {}
       if (!cancelled) setIpLoading(false);
     })();
     return () => { cancelled = true; };

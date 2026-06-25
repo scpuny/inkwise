@@ -49,7 +49,8 @@ export async function invokeOrFallback<T>(
   if (_invoke) {
     try {
       return (await _invoke(cmd, args)) as T;
-    } catch {
+    } catch (err) {
+      console.error(`[invokeOrFallback] Tauri invoke "${cmd}" failed:`, err);
       return fallback();
     }
   }

@@ -21013,17 +21013,19 @@ body {
 
 .publish-dialog__field .input {
   width: 100%;
-  padding: 8px 12px;
+  height: 32px;
+  padding: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
+  color: var(--fg);
+  font-size: 13px;
 }
 
 .publish-dialog__field .input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
 .publish-dialog__textarea {
@@ -21379,18 +21381,18 @@ body {
    Publish Dialog
    ═══════════════════════════════════════════════ */
 .publish-dialog--wide {
-  max-width: 680px !important;
-  width: 680px !important;
+  max-width: 760px !important;
+  width: 760px !important;
   border-radius: 12px !important;
   
   box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 .publish-dialog__body {
-  padding: 20px 28px !important;
+  padding: 20px 28px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 /* ── Two-column rows ── */
@@ -21415,6 +21417,41 @@ body {
   text-transform: uppercase;
 }
 
+/* ── Horizontal field (label on left) ── */
+.publish-dialog__field--h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-direction: row;
+}
+
+.publish-dialog__field--h > label {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: left;
+  text-transform: uppercase;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.publish-dialog__field--h .input,
+.publish-dialog__field--h .custom-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.publish-dialog__field--h .custom-select__trigger {
+  height: 32px;
+}
+
+.publish-dialog__field--h-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 /* ── Platform + Title ── */
 .publish-dialog__article-title {
   font-size: 14px;
@@ -21432,6 +21469,12 @@ body {
   cursor: pointer;
 }
 
+.publish-dialog__empty-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 6px 0;
+}
+
 /* ── Cover upload box ── */
 .publish-dialog__cover-upload {
   cursor: pointer;
@@ -21441,15 +21484,48 @@ body {
   transform: scale(1.01);
 }
 
-.publish-dialog__cover-preview {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1.91 / 1;
+/* ── Cover two-column row ── */
+.publish-dialog__cover-row {
+  display: grid;
+  grid-template-columns: 280px 267px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Body image grid (right column) ── */
+.publish-dialog__cover-body-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6px;
+  row-gap: 10px;
+  max-height: 147px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.publish-dialog__cover-body-images::-webkit-scrollbar {
+  display: none;
+}
+
+.publish-dialog__cover-body-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 12px;
+  text-align: center;
+  border: 1px dashed var(--border);
   border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-soft, #e5e7eb);
-  background: var(--bg-elev, #f9fafb);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  background: var(--bg);
+}
+
+.publish-dialog__cover-preview {
+  position: relative !important;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
 }
 
 .publish-dialog__cover-preview img {
@@ -21488,42 +21564,55 @@ body {
 }
 
 .publish-dialog__cover-placeholder {
-  width: 100%;
-  aspect-ratio: 1.91 / 1;
-  border: 2px dashed var(--border-soft, #d0d5dd);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--text-faint, #aaa);
-  font-size: 13px;
-  background: var(--bg-elev, #fafafa);
-  cursor: pointer;
+  width: 100% !important;
+  aspect-ratio: 1.91 / 1 !important;
+  border: 2px dashed var(--border) !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  background: var(--bg) !important;
+  cursor: pointer !important;
   transition: all 0.2s ease;
 }
 
 .publish-dialog__cover-placeholder:hover {
-  border-color: var(--accent, #0969da);
-  color: var(--accent, #0969da);
-  background: var(--accent-bg, rgba(9, 105, 218, 0.04));
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: var(--accent-bg) !important;
 }
 
-.publish-dialog__cover-placeholder::before {
-  content: "🖼";
-  font-size: 28px;
+.publish-dialog__cover-placeholder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-elev);
+  color: var(--text-faint);
+  margin-bottom: 2px;
+  transition: all 0.2s ease;
+}
+
+.publish-dialog__cover-placeholder:hover .publish-dialog__cover-placeholder-icon {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.publish-dialog__cover-placeholder-text {
+  font-size: 12px;
   line-height: 1;
-  opacity: 0.5;
-}
-
-.publish-dialog__cover-placeholder:hover::before {
-  opacity: 0.8;
 }
 
 .publish-dialog__cover-hint {
-  font-size: 11px;
-  color: var(--text-fainter, #bbb);
+  font-size: 10px !important;
+  color: var(--text-faint) !important;
+  line-height: 1.2;
 }
 
 /* ── Body image thumbnails ── */
@@ -21538,12 +21627,12 @@ body {
 }
 
 .publish-dialog__body-images {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  max-height: 152px;
-  overflow-y: auto;
-  padding: 2px;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)) !important;
+  gap: 8px !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+  padding: 2px 0 !important;
 }
 
 .publish-dialog__body-images::-webkit-scrollbar {
@@ -21576,8 +21665,8 @@ body {
 }
 
 .publish-dialog__body-img:hover {
-  border-color: var(--accent-bg, rgba(9, 105, 218, 0.4));
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-color: var(--accent-bg);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .publish-dialog__body-img:hover img {
@@ -21585,8 +21674,8 @@ body {
 }
 
 .publish-dialog__body-img--active {
-  border-color: var(--accent, #0969da) !important;
-  box-shadow: 0 0 0 2px var(--accent-bg, rgba(9, 105, 218, 0.2)) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-bg) !important;
 }
 
 .publish-dialog__body-img--active::after {
@@ -21597,7 +21686,7 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--accent, #0969da);
+  background: var(--accent);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -21614,9 +21703,26 @@ body {
   padding-top: 4px;
 }
 
+/* ── Body image picker ── */
+.publish-dialog__body-picker {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.publish-dialog__body-picker-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+
 /* ── Checkboxes ── */
 .publish-dialog__checks {
   display: flex;
+  flex-direction: row;
   gap: 24px;
   align-items: center;
   padding: 6px 0;
@@ -21628,14 +21734,14 @@ body {
   gap: 6px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--fg, #333);
+  color: var(--fg);
   user-select: none;
 }
 
 .publish-dialog__checks .checkbox-label input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--accent, #0969da);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -21662,6 +21768,13 @@ body {
   padding: 6px 0;
 }
 
+.publish-dialog__field-error {
+  font-size: 11px;
+  color: #ef4444;
+  padding: 2px 0 0;
+  line-height: 1.3;
+}
+
 .publish-dialog__hint {
   font-size: 12px;
   color: var(--text-faint, #888);
@@ -21670,11 +21783,23 @@ body {
 /* ── Actions ── */
 .publish-dialog__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
-  padding: 12px 28px 20px;
-  border-top: 1px solid var(--border-soft, #eee);
-  background: var(--bg, #fff);
+  padding: 14px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.publish-dialog__actions-left {
+  display: flex;
+  gap: 8px;
+}
+
+.publish-dialog__actions-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* ── Result state ── */

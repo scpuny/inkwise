@@ -1,4 +1,4 @@
-import { isTauriEnv, invokeOrFallback } from "./tauri";
+import { isTauriEnv, invokeOrFallback, tryInvoke } from "./tauri";
 
 // ─── Types ───
 
@@ -25,12 +25,17 @@ export interface PublishRecord {
 }
 
 export interface PublishOptions {
+  title?: string;
   coverImage?: string;
   summary?: string;
   declareOriginal: boolean;
   allowReprint: boolean;
   chargeable: boolean;
   author?: string;
+  contentSourceUrl?: string;
+  picCrop2351?: string;
+  picCrop11?: string;
+  productKey?: string;
 }
 
 export interface PublishResult {
@@ -170,13 +175,13 @@ export async function publishArticle(
 ): Promise<PublishResult> {
   if (isTauriEnv()) {
     try {
-      return await invokeOrFallback<PublishResult>(
+      return await tryInvoke<PublishResult>(
         "publish_to_platform",
-        { articleId, platform, markdown, styledHtml, options, action },
-        () => ({ success: false, errorMessage: "Tauri 调用失败", isDraft: false })
+        { articleId, platform, markdown, styledHtml, options, action }
       );
     } catch (e: any) {
-      return { success: false, errorMessage: e?.message || "发布失败", isDraft: false };
+      console.error("[publishArticle] Tauri invoke failed:", e);
+      return { success: false, errorMessage: e?.message || "Tauri 调用失败", isDraft: false };
     }
   }
   // Browser fallback - show mock success
