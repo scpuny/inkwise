@@ -26,6 +26,7 @@ import {
   buildBlueprintContext,
 } from "../../lib/ai/articleBlueprint";
 import { generatePlanStream, generateFullArticle, writeArticleSection, type PlanInput, type PlanStep, type PartialPlan, type ArticleGenInput } from "../../lib/ai/plan";
+import { emit } from "../../lib/events/eventBus";
 
 export function EditorPane({
   hasActiveArticle,
@@ -712,7 +713,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       if (pendingArticleRef.current) {
         const detail = { ...pendingArticleRef.current };
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent("series-article-review", { detail }));
+          emit("series-article-review", detail);
         }, 0);
       }
     } catch (e: any) {

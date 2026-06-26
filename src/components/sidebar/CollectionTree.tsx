@@ -16,6 +16,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { SeriesOverview } from "../series/SeriesOverview";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { loadBlueprint } from "../../lib/ai/articleBlueprint";
+import { emit } from "../../lib/events/eventBus";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -162,7 +163,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // ── Series planning ──
 
   const handlePlanSeries = useCallback(async (colId: string) => {
-    window.dispatchEvent(new CustomEvent("plan-series", { detail: { collectionId: colId } }));
+    emit("plan-series", { collectionId: colId });
   }, []);
 
   // Listen for external collection changes (e.g. article created via plan)
@@ -451,14 +452,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                   collectionId={col.id}
                   onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
                   onPlanArticle={(article) => {
-                    window.dispatchEvent(new CustomEvent("plan-series-article", {
-                      detail: { collectionId: col.id, seriesId: plan.id, article }
-                    }));
+                    emit("plan-series-article", { collectionId: col.id, seriesId: plan.id, article });
                   }}
                   onEditPlan={() => {
-                    window.dispatchEvent(new CustomEvent("edit-series-plan", {
-                      detail: { collectionId: col.id, seriesId: plan.id }
-                    }));
+                    emit("edit-series-plan", { collectionId: col.id, seriesId: plan.id });
                   }}
                   onDeletePlan={async () => {
                     await deleteSeriesPlan(col.id, plan.id);
