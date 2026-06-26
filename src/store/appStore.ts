@@ -1,5 +1,5 @@
 // appStore.ts — 应用级 UI 状态集中管理（基于 Zustand）
-import type { SettingsTab } from "../components/settings/SettingsPanel";
+import type { SettingsTab } from "../components/settings";
 // 替代 App.tsx 中大量分散的 useState：面板开关、文章/集合关联、侧边栏等
 
 import { create } from "zustand";

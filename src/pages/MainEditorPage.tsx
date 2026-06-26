@@ -4,14 +4,14 @@ import { Sidebar } from "../components/sidebar/Sidebar";
 import { EditorPane } from "../components/editor/EditorPane";
 import { AgentPanel } from "../components/agent/AgentPanel";
 import { ThemePicker } from "../components/settings/ThemePicker";
-import { SettingsPanel } from "../components/settings/SettingsPanel";
+import { SettingsPanel } from "../components/settings";
 import { StylePanel } from "../components/settings/StylePanel";
 import { StatusBar, type SaveState } from "../components/common/StatusBar";
 import { ArticleManager } from "../components/collections/ArticleManager";
 import { DocPicker, type DocPickerResult } from "../components/collections/DocPicker";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { CommandPalette } from "../components/common/CommandPalette";
-import type { SettingsTab } from "../components/settings/SettingsPanel";
+import type { SettingsTab } from "../components/settings";
 import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
 import type { OutlineItem } from "../components/sidebar/OutlinePanel";
 import {
