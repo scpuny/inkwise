@@ -26,7 +26,7 @@ import {
   buildBlueprintContext,
 } from "../../lib/ai/articleBlueprint";
 import { generatePlanStream, generateFullArticle, writeArticleSection, type PlanInput, type PlanStep, type PartialPlan, type ArticleGenInput } from "../../lib/ai/plan";
-import { emit } from "../../lib/events/eventBus";
+import { emit, on } from "../../lib/events/eventBus";
 
 export function EditorPane({
   hasActiveArticle,
@@ -901,10 +901,9 @@ ${augmentedContent}`
 
   // Listen for auto-plan-article event (from series planner)
   useEffect(() => {
-    const handler = (e: Event) => {
-      const { title, description, tone: articleTone, targetAudience, skillId, targetWordCount } = (e as CustomEvent).detail;
-      if (!title) return;
-      // Auto-trigger the planning flow with the article title as inspiration
+    return on("auto-plan-article", (detail) => {
+      if (!detail?.title) return;
+      const { title, description, tone: articleTone, targetAudience, skillId, targetWordCount } = detail;
       const inspiration = description 
         ? `写一篇关于「${title}」的文章：${description}`
         : `写一篇关于「${title}」的文章`;
@@ -915,9 +914,7 @@ ${augmentedContent}`
         targetWordCount: targetWordCount || undefined,
         skillId: skillId || undefined,
       });
-    };
-    window.addEventListener("auto-plan-article", handler);
-    return () => window.removeEventListener("auto-plan-article", handler);
+    });
   }, [handleStartPlan]);
 
 
