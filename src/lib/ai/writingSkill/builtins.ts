@@ -1,5 +1,5 @@
 // builtins.ts — 内置写作技能预设（8 种）
-import type { WritingSkill, SkillPhase } from "./types";
+import type { WritingSkill } from "./types";
 
 function builtin(id: string, partial: Omit<WritingSkill, "id" | "builtin" | "createdAt" | "updatedAt">): WritingSkill {
   return { id, builtin: true, createdAt: 0, updatedAt: 0, ...partial };

@@ -1,4 +1,5 @@
 import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon, Search } from "lucide-react";
+import { emit } from "../../lib/events/eventBus";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, applyAccentColor, applyImageCaptionFormat, applyCustomCSS, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../../lib/editor/editorStyles";
 import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, PLATFORMS, type ArticleTheme } from "../../lib/theme/articleThemes";
@@ -102,26 +103,26 @@ export function StylePanel({
   useEffect(() => {
     localStorage.setItem('macos-code-block', String(macosCodeBlock));
     applyMacosCodeBlockStyle(macosCodeBlock);
-    window.dispatchEvent(new CustomEvent('article-theme-changed'));
+    emit("article-theme-changed");
   }, [macosCodeBlock]);
 
   useEffect(() => {
     localStorage.setItem('first-line-indent', String(firstLineIndent));
     localStorage.setItem('justify-align', String(justifyAlign));
     applyTextStyle(firstLineIndent, justifyAlign);
-    window.dispatchEvent(new CustomEvent('article-theme-changed'));
+    emit("article-theme-changed");
   }, [firstLineIndent, justifyAlign]);
 
   useEffect(() => {
     localStorage.setItem("heading-deco-config", JSON.stringify(headingConfig));
     applyHeadingDecorations(headingConfig || {});
-    window.dispatchEvent(new CustomEvent('article-theme-changed'));
+    emit("article-theme-changed");
   }, [headingConfig]);
 
   useEffect(() => {
     localStorage.setItem('bg-pattern', bgPattern);
     applyBgPattern(bgPattern);
-    window.dispatchEvent(new CustomEvent('article-theme-changed'));
+    emit("article-theme-changed");
   }, [bgPattern]);
 
   useEffect(() => {
@@ -129,7 +130,7 @@ export function StylePanel({
     applyAccentColor(accentColor);
     localStorage.setItem("editor-caption-format", captionFormat);
     applyImageCaptionFormat(captionFormat);
-    window.dispatchEvent(new CustomEvent('article-theme-changed'));
+    emit("article-theme-changed");
   }, [accentColor, captionFormat]);
 
   useEffect(() => {
@@ -191,7 +192,7 @@ export function StylePanel({
                         <button
                           key={t.id}
                           className={"style-panel__theme-card" + (t.id === articleThemeId ? " style-panel__theme-card--active" : "")}
-                          onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } window.dispatchEvent(new CustomEvent("article-theme-changed")); }}
+                          onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } emit("article-theme-changed"); }}
                         >
                           <div className="style-panel__theme-card-name">{t.label}</div>
                           <div className="style-panel__theme-card-desc">{t.desc}</div>

@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { FinalTopBar } from "./FinalTopBar";
-import { FinalSidePanel } from "./FinalSidePanel";
-import { ArticlePreview } from "./ArticlePreview";
-import { markdownToHtml } from "../../lib/markdown/renderer";
-import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
-import { getCodeTheme, getSelectedCodeThemeId, getSelectedTemplateId, getTemplate } from "../../lib/editor/editorStyles";
-import { collectPublishCss } from "../../lib/styles/collector";
-import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
-import { PublishDialog } from "../collections/PublishDialog";
-import { loadArticleContent, loadArticleMeta } from "../../lib/storage/articles";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/ai/articleBlueprint";
-import { getPublishHistory, publishArticle, addPublishRecord, type PublishRecord, type PublishOptions, type PublishResult } from "../../lib/storage/platforms";
+import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
+import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
+import { on } from "../../lib/events/eventBus";
+import { loadArticleContent, loadArticleMeta } from "../../lib/storage/articles";
+import { addPublishRecord, getPublishHistory, publishArticle, type PublishOptions, type PublishRecord, type PublishResult } from "../../lib/storage/platforms";
+import { collectPublishCss } from "../../lib/styles/collector";
+import { PublishDialog } from "../collections/PublishDialog";
+import { ArticlePreview } from "./ArticlePreview";
+import { FinalSidePanel } from "./FinalSidePanel";
+import { FinalTopBar } from "./FinalTopBar";
 
 const DEFAULT_CONTENT = "# 无标题\n\n开始写作…\n";
 
@@ -42,8 +41,7 @@ export function ArticleFinalPage({
   const refreshPreview = useCallback(() => setPreviewRev(v => v + 1), []);
   useEffect(() => {
     const handler = () => setPreviewRev(v => v + 1);
-    window.addEventListener("article-theme-changed", handler);
-    return () => window.removeEventListener("article-theme-changed", handler);
+    return on("article-theme-changed", handler);
   }, []);
   useEffect(() => {
     const tags: HTMLStyleElement[] = [];

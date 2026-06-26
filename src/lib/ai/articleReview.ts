@@ -1,9 +1,8 @@
 // articleReview.ts — AI 文章质量评估
 // 一次性将文章内容发送给 AI 进行多维度评估
 
-import { sendChat } from "./ai";
 import { getProvidersSync } from "../storage/providerModels";
-import { isTauriEnv, tryInvoke, TauriCommands } from "../bridge/tauri";
+import { sendChat } from "./ai";
 
 /* ─── 类型 ─── */
 

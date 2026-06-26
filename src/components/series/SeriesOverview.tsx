@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { BookOpen, FileText, Pencil, Trash2, Clock, Sparkles, ChevronRight, Loader2, MoreHorizontal } from "lucide-react";
-import type { SeriesPlan, SeriesArticle } from "../../lib/storage/collections";
-import { saveSeriesPlan, loadSeriesPlan } from "../../lib/storage/collections";
-import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
+import { BookOpen, ChevronRight, FileText, MoreHorizontal, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { emit } from "../../lib/events/eventBus";
 import { loadArticleContent } from "../../lib/storage/articles";
+import type { SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
+import { saveSeriesPlan } from "../../lib/storage/collections";
+import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 
 interface SeriesOverviewProps {
   plan: SeriesPlan;
@@ -59,7 +60,7 @@ export function SeriesOverview({
       articles: plan.articles.map(a => a.id === articleId ? { ...a, title: trimmed } : a)
     };
     await saveSeriesPlan(collectionId, updated);
-    window.dispatchEvent(new Event("collections-changed"));
+    emit("collections-changed");
   }, [plan, collectionId]);
 
   const handleRemoveArticle = useCallback(async (articleId: string) => {
@@ -68,7 +69,7 @@ export function SeriesOverview({
       articles: plan.articles.filter(a => a.id !== articleId)
     };
     await saveSeriesPlan(collectionId, updated);
-    window.dispatchEvent(new Event("collections-changed"));
+    emit("collections-changed");
   }, [plan, collectionId]);
 
   const handleSaveTitle = useCallback(async () => {
@@ -80,7 +81,7 @@ export function SeriesOverview({
     try {
       const updated = { ...plan, title: trimmed };
       await saveSeriesPlan(collectionId, updated);
-      window.dispatchEvent(new Event("collections-changed"));
+      emit("collections-changed");
     } catch {}
     setEditingTitle(false);
   }, [titleDraft, plan, collectionId]);

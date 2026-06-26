@@ -403,7 +403,8 @@ export function setSelectedArticleThemeId(id: string): void {
 export function loadCustomThemes(): ArticleTheme[] {
   try {
     const raw = localStorage.getItem(CUSTOM_THEMES_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed: ArticleTheme[] = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
   } catch {
     return [];
   }

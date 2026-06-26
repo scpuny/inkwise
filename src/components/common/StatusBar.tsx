@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { on } from "../../lib/events/eventBus";
 import {
   Brain, Gauge, CircleDollarSign, FileText, Clock, Type, CheckCircle2,
 } from "lucide-react";
@@ -48,8 +49,9 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     setHasDocs(true);
     const text = editor.getText();
     setCharCount(text.length);
-    const cnChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-    const westernWords = text.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+    // 统一字数统计逻辑 (与 text.ts 保持一致)
+    const cnChars = (text.match(/[一-鿿㐀-䶿豈-﫿]/g) || []).length;
+    const westernWords = (text.match(/[a-zA-Z]+/g) || []).length;
     const words = cnChars + westernWords;
     setWordCount(words);
     setTargetWordCount((window as any).__blueprintTarget || 0);
@@ -78,8 +80,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
       } catch {}
     };
     updateModel();
-    window.addEventListener("providers-changed", updateModel);
-    return () => window.removeEventListener("providers-changed", updateModel);
+    return on("providers-changed", updateModel);
   }, []);
 
   // Listen for editor content changes
@@ -110,12 +111,12 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     
     // Also listen for editor-ready event
     const onReady = () => { updateStats(); };
-    window.addEventListener("editor-ready", onReady);
+    const disposeReady = on("editor-ready", onReady);
     
     return () => {
       if (observer) observer.disconnect();
       if (checkTimer) clearInterval(checkTimer);
-      window.removeEventListener("editor-ready", onReady);
+      disposeReady();
     };
   }, [updateStats]);
 

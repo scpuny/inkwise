@@ -1,32 +1,31 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { FolderInput, FileText } from "lucide-react";
-import { Toolbar } from "./Toolbar";
-import { EditorContent, type EditorMode } from "./EditorContent";
-import { InlineToolbar } from "./InlineToolbar";
-import { ArticleHeader } from "./ArticleHeader";
-import { BlueprintEditor } from "./BlueprintEditor";
-import { StartupSplash } from "../common/StartupSplash";
-import { ProjectFileTree } from "../common/ProjectFileTree";
+import { FileText, FolderInput } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
-import { getProvidersSync } from "../../lib/storage/providerModels";
-import { loadCollections } from "../../lib/storage/collections";
-import type { FileNode } from "../../lib/storage/collections";
-import { saveArticleContent, loadArticleContent } from "../../lib/storage/articles";
-import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
-import { parseOutlineFromMarkdown, type OutlineItem, type BlueprintOutlineItem } from "../sidebar/OutlinePanel";
-import { getTemplate, getSelectedTemplateId, setSelectedTemplateId, addHeadingNumbers } from "../../lib/editor/editorStyles";
 import {
   ArticleBlueprint,
-  type ArticlePhase,
-  type OutlineSection,
+  buildBlueprintContext,
+  createDefaultBlueprint,
   loadBlueprint,
   saveBlueprint,
-  createDefaultBlueprint,
-  buildBlueprintContext,
+  type ArticlePhase,
+  type OutlineSection,
 } from "../../lib/ai/articleBlueprint";
-import { generatePlanStream, generateFullArticle, writeArticleSection, type PlanInput, type PlanStep, type PartialPlan, type ArticleGenInput } from "../../lib/ai/plan";
+import { generateFullArticle, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
+import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
+import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
+import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
+import type { FileNode } from "../../lib/storage/collections";
+import { loadCollections } from "../../lib/storage/collections";
+import { ProjectFileTree } from "../common/ProjectFileTree";
+import { StartupSplash } from "../common/StartupSplash";
+import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
+import { ArticleHeader } from "./ArticleHeader";
+import { BlueprintEditor } from "./BlueprintEditor";
+import { EditorContent, type EditorMode } from "./EditorContent";
+import { InlineToolbar } from "./InlineToolbar";
+import { Toolbar } from "./Toolbar";
 
 export function EditorPane({
   hasActiveArticle,

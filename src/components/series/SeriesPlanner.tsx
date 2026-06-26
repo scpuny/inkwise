@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { Sparkles, BookOpen, ArrowRight, Check, Loader2, X, Plus, Trash2, GripVertical, AlertCircle, FileText } from "lucide-react";
-import type { SeriesPlan, SeriesArticle, ProjectContext } from "../../lib/storage/collections";
-import { generateSeriesId } from "../../lib/storage/collections";
-import { buildContextText, formatContextText } from "../../lib/utils/projectContext";
-import { getAllBuiltinSkills } from "../../lib/ai/writingSkill";
+import { AlertCircle, BookOpen, Check, FileText, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
+import { getAllBuiltinSkills } from "../../lib/ai/writingSkill";
+import type { ProjectContext, SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
+import { generateSeriesId } from "../../lib/storage/collections";
 import { getProvidersSync } from "../../lib/storage/providerModels";
+import { formatContextText } from "../../lib/utils/projectContext";
 
 /* ─── 类型 ─── */
 

@@ -1,7 +1,7 @@
 // articleBlueprint.ts — 文章蓝图：结构化元数据 + 大纲
 // 存储：Tauri 后端 → {id}.blueprint.json | 浏览器 → localStorage
 
-import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../bridge/tauri";
+import { isTauriEnv, TauriCommands, tryInvoke } from "../bridge/tauri";
 
 /* ─── 类型定义 ─── */
 

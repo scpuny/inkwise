@@ -60,39 +60,6 @@ function ToolBtn({
 }
 
 // ── Link Popover ──
-function LinkPopover({ onClose }: { onClose: () => void }) {
-  const [url, setUrl] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const handleApply = () => {
-    const ed = getEditor();
-    if (!ed || !url.trim()) { onClose(); return; }
-    ed.commands.setLink({ href: url.trim() });
-    onClose();
-  };
-
-  return (
-    <div className="toolbar-popover link-popover">
-      <div className="link-popover__body">
-        <input
-          ref={inputRef}
-          className="link-popover__input"
-          type="url"
-          placeholder="https://example.com"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleApply(); if (e.key === "Escape") onClose(); }}
-        />
-        <button className="btn btn--small" onClick={handleApply}>添加</button>
-        {isActive("link") && (
-          <button className="btn btn--small btn--danger" onClick={() => { getEditor()?.commands.unlink(); onClose(); }}>移除</button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── Image Popover ──
 function ImagePopover({ onClose }: { onClose: () => void }) {
@@ -245,9 +212,7 @@ export function Toolbar({
   const { togglePanel, panelOpen } = useAgent();
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const [popoverPos, setPopoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
-  const moreBtnRef = useRef<HTMLButtonElement>(null);
 
-  const popoverRef = useRef<HTMLDivElement>(null);
 
   // Close popovers on outside click
   useEffect(() => {

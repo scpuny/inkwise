@@ -1,12 +1,14 @@
 // ThemesSection.tsx — 文章主题管理：预设/自定义/导入/编辑
-import { useState, useCallback } from "react";
-import { Plus, FileText, Check, X } from "lucide-react";
-import {
-  getAllThemes, getThemeById, isPresetTheme,
-  saveCustomThemes, loadCustomThemes,
-  type ArticleTheme, type ArticleThemeVars,
-} from "../../lib/theme/articleThemes";
+import { Check, FileText, Plus, X } from "lucide-react";
+import { useCallback, useState } from "react";
 import { isTauriEnv, tryInvoke } from "../../lib/bridge/tauri";
+import {
+  getAllThemes,
+  isPresetTheme,
+  loadCustomThemes,
+  saveCustomThemes,
+  type ArticleTheme, type ArticleThemeVars
+} from "../../lib/theme/articleThemes";
 import { SettingsPage } from "./SettingsPageLayout";
 
 export function ThemesSection() {

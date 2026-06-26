@@ -1,4 +1,4 @@
-import { isTauriEnv, tryInvoke, TauriCommands } from "../bridge/tauri";
+import { isTauriEnv, tryInvoke } from "../bridge/tauri";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";

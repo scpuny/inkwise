@@ -1,16 +1,20 @@
 // AppearanceSection.tsx — 外观设置：主题风格/模式/字号/字体
-import { useState, useCallback } from "react";
-import { Sun, Monitor, Check } from "lucide-react";
-import type { ThemeStyle, Theme } from "../../lib/theme/theme";
-import { THEME_STYLES } from "../../lib/theme/theme";
-import type { TextSize } from "../../lib/theme/textSize";
-import { TEXT_SIZES } from "../../lib/theme/textSize";
+import { Check, Monitor, Sun } from "lucide-react";
+import { useCallback, useState } from "react";
 import type { FontFamily } from "../../lib/theme/fontFamily";
 import { FONT_FAMILIES, applyFontFamily, getCustomFontName, setCustomFontName } from "../../lib/theme/fontFamily";
-import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
+import type { TextSize } from "../../lib/theme/textSize";
+import { TEXT_SIZES } from "../../lib/theme/textSize";
+import type { Theme, ThemeStyle } from "../../lib/theme/theme";
+import { THEME_STYLES } from "../../lib/theme/theme";
+import { SettingsPage, SettingsSection } from "./SettingsPageLayout";
 import {
-  STYLE_LABELS, STYLE_COLORS,
-  MoonIcon, textSizeLabel, fontFamilyLabel, themeStyleTag, themeStyleDesc,
+  MoonIcon,
+  STYLE_LABELS,
+  fontFamilyLabel,
+  textSizeLabel,
+  themeStyleDesc,
+  themeStyleTag
 } from "./settingsHelpers";
 
 export function AppearanceSection({

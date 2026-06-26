@@ -63,6 +63,7 @@ export type EventBusKey =
   | "content-saved"
   | "editor-ready"
   | "providers-changed"
+  | "reset-plan"
   | "ai-config-changed";
 
 export interface EventBusMap {
@@ -78,5 +79,6 @@ export interface EventBusMap {
   "content-saved": ContentSavedDetail;
   "editor-ready": void;
   "providers-changed": void;
+  "reset-plan": void;
   "ai-config-changed": void;
 }

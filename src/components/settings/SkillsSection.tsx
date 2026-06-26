@@ -1,9 +1,9 @@
 // SkillsSection.tsx — AI 技能管理：启用/禁用/新建
-import { useState, useEffect, useRef } from "react";
-import { Plus, X, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Skill } from "../../lib/storage/skill";
-import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
-import { SKILL_ICONS, SKILL_LABELS, PRIMARY_SKILLS } from "./settingsHelpers";
+import { SettingsField, SettingsPage } from "./SettingsPageLayout";
+import { PRIMARY_SKILLS, SKILL_LABELS } from "./settingsHelpers";
 
 export function SkillsSection() {
   const [skills, setSkills] = useState<Skill[]>([]);

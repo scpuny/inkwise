@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react";
-import { AgentProvider } from "../components/agent/AgentProvider";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { EditorPane } from "../components/editor/EditorPane";
 import { AgentPanel } from "../components/agent/AgentPanel";
@@ -15,8 +14,6 @@ import type { SettingsTab } from "../components/settings";
 import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
 import type { OutlineItem } from "../components/sidebar/OutlinePanel";
 import {
-  applyTheme,
-  persistTheme,
   type Theme,
   type ThemeStyle,
 } from "../lib/theme/theme";
@@ -35,7 +32,6 @@ import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
-import { getProviders } from "../lib/storage/providerModels";
 import { saveArticleStyleConfig, loadArticleStyleConfig, applyArticleStyleConfig } from "../lib/editor/editorStyles";
 import { useThemeHandlers, useArticleLifecycle, useSeriesEventListeners } from "../hooks/appHooks";
 import { emit } from "../lib/events/eventBus";
@@ -191,22 +187,13 @@ export default function MainEditorPage() {
 
   const layoutRef = useRef<HTMLDivElement>(null);
 
-  const openAppearance = useCallback(() => {
-    setSettingsTab("appearance");
-    setSettingsOpen(true);
-  }, []);
-
     const handleOpenArticle = useCallback((articleId: string, collectionId: string) => {
     setActiveArticleId(articleId);
     setActiveCollectionIdApp(collectionId);
     setHasActiveArticle(true);
   }, []);
 
-  const handleCloseManagement = useCallback(() => {
-    setManageOpen(false);
-  }, []);
-
-  const handlePlanComplete = useCallback(async (plan: {
+const handlePlanComplete = useCallback(async (plan: {
     title: string;
     description: string;
     outline: OutlineSection[];
@@ -451,7 +438,7 @@ export default function MainEditorPage() {
 
 
   // ── Series event listeners (migrated to hooks) ──
-  useSeriesEventListeners();
+  useSeriesEventListeners(pendingSeriesArticleRef);
   // Layout class
   const { panelOpen, closePanel } = useAgent();
   const layoutClass = [
@@ -499,7 +486,6 @@ export default function MainEditorPage() {
             setShowFinalPage(bp?.phase === "complete");
           }}
           activeArticleId={activeArticleId}
-          activeCollectionId={activeCollectionId}
           onNewArticle={async () => {
             closePanel();
             setStylePanelOpen(false);
@@ -509,6 +495,7 @@ export default function MainEditorPage() {
             setActiveCollectionIdApp(null);
             setHasActiveArticle(false);
           }}
+
           onNewArticleInCollection={async (collectionId: string) => {
             closePanel();
             setStylePanelOpen(false);
@@ -517,60 +504,10 @@ export default function MainEditorPage() {
             setActiveArticleId(null);
             setActiveCollectionIdApp(collectionId);
             setHasActiveArticle(false);
+            // Force plan state reset even if same collection
+            emit('reset-plan');
           }}
           onManageArticles={() => setManageOpen(true)}
-          onLinkFolder={async (collectionId: string) => {
-            let folderPath: string | null = null;
-            
-            // Tauri mode: use native pick_folder command
-            try {
-              const { isTauriEnv, tryInvoke, TauriCommands } = await import("../lib/bridge/tauri");
-              if (isTauriEnv()) {
-                folderPath = await tryInvoke<string | null>(TauriCommands.PickFolder, {});
-              }
-            } catch {}
-            
-            // Browser fallback
-            if (!folderPath) {
-              folderPath = await new Promise<string | null>((resolve) => {
-                const input = document.createElement("input");
-                input.type = "file";
-                (input as any).webkitdirectory = true;
-                (input as any).directory = true;
-                input.style.display = "none";
-                document.body.appendChild(input);
-                input.addEventListener("change", () => {
-                  const file = input.files?.[0];
-                  if (file) {
-                    resolve(file.webkitRelativePath.split("/")[0]);
-                  } else {
-                    resolve(null);
-                  }
-                  document.body.removeChild(input);
-                });
-                input.addEventListener("cancel", () => {
-                  document.body.removeChild(input);
-                  resolve(null);
-                });
-                input.click();
-              });
-            }
-            
-            if (folderPath) {
-              await linkCollectionFolder(collectionId, folderPath);
-              // Async: build folder index in background
-              try {
-                const { isTauriEnv, tryInvoke, TauriCommands } = await import("../lib/bridge/tauri");
-                if (isTauriEnv()) {
-                  // Fire and forget - index builds in background
-                  tryInvoke(TauriCommands.BuildFolderIndex, { path: folderPath }).catch(() => {});
-                }
-              } catch {}
-            }
-          }}
-          onUnlinkFolder={async (collectionId: string) => {
-            await unlinkCollectionFolder(collectionId);
-          }}
           outlineItems={outlineItems}
           activeOutlineId={activeOutlineId ?? undefined}
           onOutlineSelect={handleOutlineSelect}

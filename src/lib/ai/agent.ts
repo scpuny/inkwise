@@ -2,12 +2,6 @@
 // 管理所有 AI 交互的 Context、Session 记录、意图路由
 
 import { createContext, useContext } from "react";
-import type { ChatMessage } from "./ai";
-import type { Skill, AgentResult } from "../storage/skill";
-import { runSkill, listSkills } from "../storage/skill";
-import { sendChat } from "./ai";
-import { getProvidersSync } from "../storage/providerModels";
-import { isTauriEnv, tryInvoke, TauriCommands } from "../bridge/tauri";
 
 /* ─── AgentSession（每次 AI 操作的不可变记录） ─── */
 

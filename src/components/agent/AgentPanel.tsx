@@ -1,19 +1,30 @@
 // AgentPanel.tsx — Agent 操作面板，替代原来的 AIDock
 // Agent 对话面板 — 所有 AI 技能输出统一在此展示
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
-  MessageSquare, X, Check, Trash2, History,
-  Sparkles, Loader2, RefreshCw, FileDown, Edit3, Languages,
-  Maximize2, Search, PenTool, ListChecks, FileText, RotateCw,
-  BookOpen, Hash, Quote, Scale,
+  BookOpen,
+  Check,
+  Edit3,
+  FileText,
+  Hash,
+  Languages,
+  ListChecks,
+  Loader2,
+  Maximize2,
+  MessageSquare,
+  PenTool,
+  Quote,
+  RotateCw,
+  Scale,
+  Search,
+  Sparkles,
+  X
 } from "lucide-react";
-import { useAgent, getSkillDisplayLabel } from "../../lib/ai/agent";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AgentSession } from "../../lib/ai/agent";
+import { getSkillDisplayLabel, useAgent } from "../../lib/ai/agent";
 import { HistoryPanel } from "./HistoryPanel";
 import { ReviewPanel } from "./ReviewPanel";
-import { generateArticleReview, saveArticleReview, loadArticleReview, applyOptimization, type ArticleReview } from "../../lib/ai/articleReview";
-import { loadArticleContent, loadArticleMeta, saveArticleContent } from "../../lib/storage/articles";
-import type { AgentSession } from "../../lib/ai/agent";
 
 /* ─── Tab 定义 ─── */
 type TabId = "chat" | "history" | "review";

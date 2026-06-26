@@ -2,9 +2,8 @@
 // 提供前端构建 AI prompt 时使用的项目上下文字符串生成
 
 import {
-  getProjectContext,
   getProjectContextText,
-  type ProjectContext,
+  type ProjectContext
 } from "../storage/collections";
 
 /**

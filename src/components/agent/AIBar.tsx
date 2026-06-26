@@ -1,12 +1,19 @@
-import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  SendHorizonal, Play, Sparkles,
-  MoreHorizontal, Brain, Gauge, ChevronsUpDown, Type,
+  Brain,
+  ChevronsUpDown,
+  Gauge,
+  MoreHorizontal,
+  Play,
+  SendHorizonal,
+  Sparkles,
+  Type,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { emit, on } from "../../lib/events/eventBus";
+import { getProvidersSync } from "../../lib/storage/providerModels";
+import { listSkills, type Skill } from "../../lib/storage/skill";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
 import { IntentMenu, type IntentOption } from "./IntentMenu";
-import { listSkills, type Skill } from "../../lib/storage/skill";
-import { getProvidersSync } from "../../lib/storage/providerModels";
 
 const COMPOSER_MIN_HEIGHT = 104;
 const COMPOSER_MAX_HEIGHT = 360;
@@ -42,14 +49,13 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
       const items = buildModelItems();
       setModelItems(items);
     };
-    window.addEventListener("providers-changed", handler);
-    return () => window.removeEventListener("providers-changed", handler);
+    return on("providers-changed", handler);
   }, []);
 
   const handleSelectModel = useCallback((id: string) => {
     setSelectedModel(id);
     try { localStorage.setItem("aiwriter-default-model", id); } catch {}
-    window.dispatchEvent(new CustomEvent("providers-changed"));
+    emit("providers-changed");
   }, []);
   const [selectedEffort, setSelectedEffort] = useState(() => {
     try { return localStorage.getItem("aiwriter-effort") || EFFORTS[0].id; } catch { return EFFORTS[0].id; }
@@ -145,7 +151,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const effortItems: MenuItem[] = EFFORTS.map((e) => ({
     ...e,
     checked: selectedEffort === e.id,
-    onClick: () => { setSelectedEffort(e.id); try { localStorage.setItem("aiwriter-effort", e.id); window.dispatchEvent(new CustomEvent("providers-changed")); } catch {} },
+    onClick: () => { setSelectedEffort(e.id); try { localStorage.setItem("aiwriter-effort", e.id); emit("providers-changed"); } catch {} },
   }));
 
   // Token presets menu items

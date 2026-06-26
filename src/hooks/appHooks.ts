@@ -178,11 +178,10 @@ export function useEditSeriesPlanListener() {
 /**
  * plan-series-article: 从 SeriesOverview 触发，导航到规划模式
  */
-export function usePlanSeriesArticleListener() {
+export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.MutableRefObject<{ collectionId: string; seriesId: string; articleId: string } | null>) {
   const setActiveArticleId = useAppStore((s) => s.setActiveArticleId);
   const setActiveCollectionId = useAppStore((s) => s.setActiveCollectionId);
   const setHasActiveArticle = useAppStore((s) => s.setHasActiveArticle);
-  const pendingSeriesArticleRef = useRef<{ collectionId: string; seriesId: string; articleId: string } | null>(null);
 
   useEffect(() => {
     const handler = async (detail?: EventBusMap["plan-series-article"]) => {
@@ -258,9 +257,9 @@ export function useSeriesArticleReviewListener() {
 /**
  * 组合所有系列事件监听器
  */
-export function useSeriesEventListeners() {
+export function useSeriesEventListeners(pendingSeriesArticleRef: React.MutableRefObject<{ collectionId: string; seriesId: string; articleId: string } | null>) {
   usePlanSeriesListener();
   useEditSeriesPlanListener();
-  usePlanSeriesArticleListener();
+  usePlanSeriesArticleListener(pendingSeriesArticleRef);
   useSeriesArticleReviewListener();
 }

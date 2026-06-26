@@ -1,24 +1,24 @@
-import { useEffect, useLayoutEffect, useCallback, useRef, useState } from "react";
-import { useEditor, EditorContent as TipTapEditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Placeholder from "@tiptap/extension-placeholder";
-import { Markdown } from "@tiptap/markdown";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { common, createLowlight } from "lowlight";
+import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import Placeholder from "@tiptap/extension-placeholder";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
-import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
-import Image from "@tiptap/extension-image";
-import { X, Loader2 } from "lucide-react";
+import Underline from "@tiptap/extension-underline";
+import { Markdown } from "@tiptap/markdown";
+import { EditorContent as TipTapEditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { common, createLowlight } from "lowlight";
+import { X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAgent } from "../../lib/ai/agent";
 import { type EditorStyleTemplate } from "../../lib/editor/editorStyles";
+import { emit, on } from "../../lib/events/eventBus";
+import type { OutlineNavigateDetail } from "../../lib/events/events";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { InlineGhostText } from "./InlineGhostText";
-import { useAgent } from "../../lib/ai/agent";
-import { on } from "../../lib/events/eventBus";
-import type { OutlineNavigateDetail } from "../../lib/events/events";
 
 export type EditorMode = "rich" | "markdown";
 
@@ -377,8 +377,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
   }, [styleTemplate, codeThemeId, styleRevision]);
 
   useEffect(() => {
-    window.addEventListener("article-theme-changed", refreshEditorStyles);
-    return () => window.removeEventListener("article-theme-changed", refreshEditorStyles);
+    return on("article-theme-changed", refreshEditorStyles);
   }, [refreshEditorStyles]);
 
   // Dynamic overrides for font-size, max-width, line-height on top of unified CSS
@@ -433,7 +432,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
   // Expose editor globally
   useEffect(() => {
     window.editorInstance = { editor };
-    window.dispatchEvent(new Event("editor-ready"));
+    emit("editor-ready");
     // Expose insert method for ghost text
     (window as any).__insertGhostContent = (content: string) => {
       editor?.commands.insertContent(content);

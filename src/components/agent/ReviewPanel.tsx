@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { emit } from "../../lib/events/eventBus";
 import { Loader2 } from "lucide-react";
 import { generateArticleReview, saveArticleReview, loadArticleReview, applyOptimization, type ArticleReview } from "../../lib/ai/articleReview";
 import { loadArticleContent, loadArticleMeta, saveArticleContent } from "../../lib/storage/articles";
@@ -51,7 +52,7 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
       const optimized = await applyOptimization(articleId, content, review, { title: articleTitle });
       if (optimized && optimized.length > 10) {
         await saveArticleContent(articleId, optimized);
-        window.dispatchEvent(new CustomEvent("content-saved", { detail: { articleId, content: optimized } }));
+        emit("content-saved", { articleId, content: optimized });
         alert("优化完成！已保存到文章。切换到编辑 tab 可查看。");
       }
     } catch (e: any) {

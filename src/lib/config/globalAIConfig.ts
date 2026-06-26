@@ -2,6 +2,7 @@
 // 所有 AI 入口共享同一套配置（模型、effort、token 限制等）
 
 import { getProvidersSync, type Provider } from "../storage/providerModels";
+import { emit } from "../events/eventBus";
 
 const DEFAULT_MODEL_KEY = "aiwriter-default-model";
 const DEFAULT_EFFORT_KEY = "aiwriter-default-effort";
@@ -38,19 +39,19 @@ export function loadGlobalAIConfig(): GlobalAIConfig {
 /** 保存默认模型到 localStorage */
 export function saveDefaultModel(model: string): void {
   try { localStorage.setItem(DEFAULT_MODEL_KEY, model); } catch {}
-  window.dispatchEvent(new CustomEvent("ai-config-changed"));
+  emit("ai-config-changed");
 }
 
 /** 保存 effort 到 localStorage */
 export function saveEffort(effort: EffortLevel): void {
   try { localStorage.setItem(DEFAULT_EFFORT_KEY, effort); } catch {}
-  window.dispatchEvent(new CustomEvent("ai-config-changed"));
+  emit("ai-config-changed");
 }
 
 /** 保存 token 限制到 localStorage */
 export function saveMaxTokens(tokens: TokenLimit): void {
   try { localStorage.setItem(DEFAULT_TOKEN_KEY, String(tokens)); } catch {}
-  window.dispatchEvent(new CustomEvent("ai-config-changed"));
+  emit("ai-config-changed");
 }
 
 /** 获取当前启用的模型列表 */

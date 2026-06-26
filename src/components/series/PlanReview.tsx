@@ -1,12 +1,21 @@
 // PlanReview.tsx — 分步展示 AI 规划结果
 // 每个步骤生成后立即显示，用户可以实时看到进度
 
-import { useState, useCallback } from "react";
 import {
-  Sparkles, Check, RefreshCw, Edit3, X, Plus, Trash2, ChevronUp, ChevronDown, Loader2,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 import type { OutlineSection } from "../../lib/ai/articleBlueprint";
-import type { PlanStep, PartialPlan } from "../../lib/ai/plan";
+import type { PartialPlan, PlanStep } from "../../lib/ai/plan";
 
 interface PlanReviewProps {
   inspiration: string;

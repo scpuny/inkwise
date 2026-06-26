@@ -15,9 +15,6 @@ export function Sidebar({
   outlineItems,
   activeOutlineId,
   onOutlineSelect,
-  activeCollectionId,
-  onLinkFolder,
-  onUnlinkFolder,
   onManageArticles,
   seriesRefreshKey,
 }: {
@@ -29,9 +26,6 @@ export function Sidebar({
   outlineItems?: OutlineItem[];
   activeOutlineId?: string | null | undefined;
   onOutlineSelect?: (id: string) => void;
-  activeCollectionId?: string | null;
-  onLinkFolder?: (collectionId: string) => void;
-  onUnlinkFolder?: (collectionId: string) => void;
   onManageArticles?: () => void;
   seriesRefreshKey?: number | undefined;
 }) {

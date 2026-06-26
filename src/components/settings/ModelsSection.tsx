@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { emit } from "../../lib/events/eventBus";
 import { Check, ChevronDown, X } from "lucide-react";
 import type { Provider } from "../../lib/storage/providerModels";
 import { BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels } from "../../lib/storage/providerModels";
@@ -157,7 +158,7 @@ export function ModelsSection() {
         <>
           <SettingsSection title="模型选择">
             <SettingsField label="默认模型">
-              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("aiwriter-default-model", modelName || ref); window.dispatchEvent(new CustomEvent("providers-changed")); } catch {} }} />
+              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("aiwriter-default-model", modelName || ref); emit("providers-changed"); } catch {} }} />
             </SettingsField>
           </SettingsSection>
           <SettingsSection title="生成参数">

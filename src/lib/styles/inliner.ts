@@ -4,8 +4,6 @@
  * 将 HTML 内容 + CSS 样式表 → juice 内联 → 返回已内联的 body HTML。
  * 供各平台导出模块共享。
  */
-import juice from "juice";
-
 /** juice 选项 */
 const DEFAULT_JUICE_OPTIONS = {
   inlinePseudoElements: true,
@@ -13,6 +11,13 @@ const DEFAULT_JUICE_OPTIONS = {
   removeStyleTags: true,
   preserveMediaQueries: false,
 };
+
+/** Lazy import juice (browser-compatible build) */
+async function getJuice() {
+  // @ts-ignore - dynamic import works in Vite
+  const mod = await import("juice");
+  return mod.default || mod;
+}
 
 /**
  * 将 CSS 内联到 HTML 上。
@@ -25,6 +30,7 @@ export async function inlineCss(cssText: string, bodyHtml: string, juiceOptions?
   const options = juiceOptions ? { ...DEFAULT_JUICE_OPTIONS, ...juiceOptions } : DEFAULT_JUICE_OPTIONS;
   const htmlWithCss = `<style>${cssText}</style>${bodyHtml}`;
 
+  const juice = await getJuice();
   const inlined = await juice(htmlWithCss, options);
 
   // 清理 !important 残留（微信不认）
@@ -57,6 +63,7 @@ ${bodyHtml}
 </body>
 </html>`;
 
+  const juice = await getJuice();
   const inlined = await juice(htmlDoc, options);
 
   const bodyMatch = inlined.match(/<body[^>]*>([\s\S]*)<\/body>/i);

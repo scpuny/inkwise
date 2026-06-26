@@ -2,11 +2,11 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { FileText, FolderClosed, FolderOpen, Plus, Trash2, Pencil, RefreshCw, RotateCcw, X, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft, FolderInput, BookOpen, Loader2 } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
-import type { Collection, Article, TrashItem } from "../../lib/storage/collections";
+import type { Collection, TrashItem } from "../../lib/storage/collections";
 import {
   loadCollections, saveCollections, addCollection, renameCollection, removeCollection,
   addArticle, renameArticle, trashArticle,
-  loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, genId,
+  loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash,
   linkCollectionFolder, rescanProjectFolder, unlinkCollectionFolder,
   loadAllSeriesPlans, deleteSeriesPlan,
   type SeriesPlan,
@@ -16,7 +16,8 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { SeriesOverview } from "../series/SeriesOverview";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { loadBlueprint } from "../../lib/ai/articleBlueprint";
-import { emit } from "../../lib/events/eventBus";
+import { emit, on } from "../../lib/events/eventBus";
+import type { PlanSeriesSavedDetail } from "../../lib/events/events";
 import { getWordCount } from "../../lib/utils/text";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
@@ -54,15 +55,6 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0).length;
     return { words, chars, paragraphs };
   }, []);
-
-  // Load stats for a specific article
-  const loadStats = useCallback(async (articleId: string) => {
-    if (statsCache[articleId]) return;
-    const content = await loadArticleContent(articleId);
-    if (content) {
-      setStatsCache((prev) => ({ ...prev, [articleId]: calcStats(content) }));
-    }
-  }, [statsCache, calcStats]);
 
   const loadPhase = useCallback(async (articleId: string) => {
     if (phaseCache[articleId]) return;
@@ -103,37 +95,56 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   // ── Folder linking ──
 
-    const handleLinkFolder = useCallback(async (colId: string) => {
-      if (!isTauriEnv()) return;
+  const handleLinkFolder = useCallback(async (colId: string) => {
+    let folderPath: string | null = null;
+    // Tauri mode
+    if (isTauriEnv()) {
       try {
-        const path = await tryInvoke<string | null>(TauriCommands.PickFolder, {});
-        if (path) {
-          // 1. Immediately save linkedFolder to collection
-          const all = await loadCollections();
-          const col = all.find(x => x.id === colId);
-          if (!col) return;
-          col.linkedFolder = path;
-          await saveCollections(all);
-          await refresh();
-        
-          // 2. Show scanning state - force React to flush
-          setFolderScanning((prev) => ({ ...prev, [colId]: true }));
-          await new Promise(r => setTimeout(r, 50));
-        
-          // 3. Scan project and capture result
-          try {
-            const ctx = await linkCollectionFolder(colId, path);
-            if (ctx) {
-              // Scan succeeded — feedback is via badge icon change
-            }
-          } catch {}
-        
-          // 4. Clear scanning state
-          setFolderScanning((prev) => ({ ...prev, [colId]: false }));
-          await refresh();
-        }
+        folderPath = await tryInvoke<string | null>(TauriCommands.PickFolder, {});
       } catch {}
-    }, [refresh]);
+    }
+    // Browser fallback
+    if (!folderPath) {
+      folderPath = await new Promise<string | null>((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        (input as any).webkitdirectory = true;
+        (input as any).directory = true;
+        input.style.display = "none";
+        document.body.appendChild(input);
+        input.addEventListener("change", () => {
+          const file = input.files?.[0];
+          if (file) {
+            resolve(file.webkitRelativePath.split("/")[0]);
+          } else {
+            resolve(null);
+          }
+          document.body.removeChild(input);
+        });
+        input.addEventListener("cancel", () => {
+          document.body.removeChild(input);
+          resolve(null);
+        });
+        input.click();
+      });
+    }
+    if (folderPath) {
+      // Save linked folder
+      const all = await loadCollections();
+      const col = all.find(x => x.id === colId);
+      if (!col) return;
+      col.linkedFolder = folderPath;
+      await saveCollections(all);
+      await refresh();
+      setFolderScanning((prev) => ({ ...prev, [colId]: true }));
+      await new Promise(r => setTimeout(r, 50));
+      try {
+        await linkCollectionFolder(colId, folderPath);
+      } catch {}
+      setFolderScanning((prev) => ({ ...prev, [colId]: false }));
+      await refresh();
+    }
+  }, [refresh]);
 
   const handleUnlinkFolder = useCallback(async (colId: string) => {
     // Clear linkedFolder from collection
@@ -167,21 +178,19 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // Listen for external collection changes (e.g. article created via plan)
   useEffect(() => {
     const handler = () => { refresh(); };
-    window.addEventListener("collections-changed", handler);
-    return () => window.removeEventListener("collections-changed", handler);
+    return on("collections-changed", handler);
   }, [refresh]);
 
   // Listen for plan-series-saved to force expand and refresh
   useEffect(() => {
-    const handler = (e: Event) => {
-      const { collectionId } = (e as CustomEvent).detail;
+    const handler = (detail?: PlanSeriesSavedDetail) => {
+      const { collectionId } = detail || {};
       if (collectionId) {
         setExpanded(prev => new Set(prev).add(collectionId));
       }
       refresh();
     };
-    window.addEventListener("plan-series-saved", handler);
-    return () => window.removeEventListener("plan-series-saved", handler);
+    return on("plan-series-saved", handler);
   }, [refresh]);
 
   // Load word counts for articles in expanded collections
@@ -224,6 +233,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // ── Collection ops ──
 
   const handleNewCollection = useCallback(async () => {
+    await refresh();
     const c = await addCollection("新建合集");
     setExpanded((prev) => new Set(prev).add(c.id));
     await refresh();
@@ -266,7 +276,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // ── Article ops ──
   const handleNewArticle = useCallback(async (collectionId?: string) => {
     if (!collectionId) {
-      // Top-level fallback: direct creation
+      // Top-level new doc: create directly in default collection
       const targetId = await getOrCreateDefaultCollection();
       const a = await addArticle(targetId, "新文章");
       if (a) {
@@ -277,7 +287,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       }
       return;
     }
-    // Always go to single article planning flow (project context injected by EditorPane)
+    // Collection-specific + button: go to StartupSplash with collection context
     onNewArticleInCollection?.(collectionId);
   }, [getOrCreateDefaultCollection, onSelectArticle, refresh, onNewArticleInCollection]);
 
@@ -340,6 +350,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               anchorRef={addBtnRef}
               open={addMenuOpen}
               onClose={() => setAddMenuOpen(false)}
+              placement="bottom"
+              align="end"
               items={[
                 { id: "new-collection", label: "新建合集", icon: <FolderClosed size={13} />, onClick: () => { void handleNewCollection(); } },
                 { id: "plan-series", label: "规划系列文章", icon: <BookOpen size={13} />, subtitle: "规划当前集合的文章系列", onClick: () => { if (collections.length > 0) handlePlanSeries(collections[0].id); } },

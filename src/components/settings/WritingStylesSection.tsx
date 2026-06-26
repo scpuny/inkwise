@@ -1,11 +1,10 @@
 // WritingStylesSection.tsx — 写作风格管理：自定义/内置风格
-import { useState, useEffect } from "react";
-import { Plus, Check } from "lucide-react";
-import type { WritingSkill, SkillPhase, StyleDimension } from "../../lib/ai/writingSkill";
-import { getBuiltinSkills, getAllBuiltinSkills } from "../../lib/ai/writingSkill";
-import { SettingsPage, SettingsSection } from "./SettingsPageLayout";
-import { SKILL_ICONS } from "./settingsHelpers";
+import { Check, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { SkillPhase, StyleDimension, WritingSkill } from "../../lib/ai/writingSkill";
+import { getAllBuiltinSkills } from "../../lib/ai/writingSkill";
 import { QuickSkillsSection } from "./QuickSkillsSection";
+import { SettingsPage, SettingsSection } from "./SettingsPageLayout";
 
 const BUILTIN_STYLE_CARDS = getAllBuiltinSkills().filter((s: WritingSkill) => s.scope === "full");
 

@@ -2,6 +2,7 @@
 // 所有 AI 组件都应使用此 hook 而非各自维护状态
 
 import { useState, useCallback, useEffect } from "react";
+import { on } from "../lib/events/eventBus";
 import type { EffortLevel, TokenLimit } from "../lib/config/globalAIConfig";
 import {
   loadGlobalAIConfig,
@@ -43,11 +44,11 @@ export function useGlobalAIConfig(): UseGlobalAIConfigReturn {
       setConfig(_cachedConfig);
       setModelList(_cachedModelList);
     };
-    window.addEventListener("ai-config-changed", handler);
-    window.addEventListener("providers-changed", handler);
+    const dispose1 = on("ai-config-changed", handler);
+    const dispose2 = on("providers-changed", handler);
     return () => {
-      window.removeEventListener("ai-config-changed", handler);
-      window.removeEventListener("providers-changed", handler);
+      dispose1();
+      dispose2();
     };
   }, []);
 
