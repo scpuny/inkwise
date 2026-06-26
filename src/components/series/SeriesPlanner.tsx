@@ -61,6 +61,7 @@ export function SeriesPlanner({
 }: SeriesPlannerProps) {
   const [step, setStep] = useState<PlannerStep>("input");
   const [direction, setDirection] = useState("");
+  const [seriesName, setSeriesName] = useState("");
   const [articleCount, setArticleCount] = useState(DEFAULT_ARTICLE_COUNT);
 const [defaultWordCount, setDefaultWordCount] = useState(800);
   const [tone, setTone] = useState("");
@@ -84,6 +85,7 @@ const [customAudience, setCustomAudience] = useState("");
       // Edit existing plan: skip to review step
       setArticles(existingPlan.articles.map(a => ({ ...a, status: "planned" as const })));
       setDirection(existingPlan.title || "");
+      setSeriesName(existingPlan.title || "");
       setTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? "__custom__" : (existingPlan.tone || ""));
       setCustomTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? existingPlan.tone : "");
       setSkillId(existingPlan.skillId || "");
@@ -99,6 +101,7 @@ const [customAudience, setCustomAudience] = useState("");
       // New plan: start from input step
       setStep("input");
       setDirection("");
+      setSeriesName("");
       setArticleCount(DEFAULT_ARTICLE_COUNT);
       setTone("");
       setAudience("");
@@ -158,6 +161,7 @@ const [customAudience, setCustomAudience] = useState("");
 
   // Apply preset
   const handlePreset = useCallback((preset: typeof PRESETS[0]) => {
+    setSeriesName(preset.label);
     const lang = projectCtx?.primaryLanguage || "";
     const name = projectCtx?.name || "";
     setDirection(`写 ${articleCount} 篇关于 ${name}${lang ? ` (${lang})` : ""} 的文章，覆盖：${preset.description}。面向开发者读者，语言通俗易懂，每篇有代码示例。`);
@@ -165,7 +169,7 @@ const [customAudience, setCustomAudience] = useState("");
 
   /* 生成系列规划 */
   const handleGenerate = useCallback(async () => {
-    if (!direction.trim() || !ctxText) return;
+    if (!direction.trim()) return;
 
     setGenerating(true);
     setError(null);
@@ -282,7 +286,7 @@ const [customAudience, setCustomAudience] = useState("");
   const handleConfirm = useCallback(async () => {
     const toneVal = tone === "__custom__" ? customTone.trim() : tone;
     const audienceVal = audience === "__custom__" ? customAudience.trim() : audience;
-    const planTitle = direction.trim() || collectionTitle || "系列文章";
+    const planTitle = seriesName.trim() || direction.trim() || collectionTitle || "系列文章";
     const plan: SeriesPlan = {
       id: existingPlan?.id || generateSeriesId(),
       title: planTitle,
@@ -341,6 +345,12 @@ const [customAudience, setCustomAudience] = useState("");
                 ))}
               </div>
 
+              <input
+                className="series-planner__series-name"
+                placeholder="系列名称（选填，留空则自动生成）"
+                value={seriesName}
+                onChange={(e) => setSeriesName(e.target.value)}
+              />
               <textarea
                 ref={inputRef}
                 className="series-planner__input"

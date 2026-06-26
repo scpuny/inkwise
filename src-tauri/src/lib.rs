@@ -8,7 +8,7 @@ mod platform;
 use platform::Platform;
 use platform::wechat::WeChat;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
@@ -74,6 +74,18 @@ fn get_settings(state: tauri::State<AppState>) -> AppSettings {
 fn set_settings(state: tauri::State<AppState>, settings: AppSettings) -> Result<(), String> {
     state.store.lock().unwrap().save_settings(&settings)
 }
+// ─── AI Config ───
+
+#[tauri::command]
+fn get_ai_config(state: tauri::State<AppState>) -> Option<AiConfig> {
+    state.store.lock().unwrap().load_ai_config()
+}
+
+#[tauri::command]
+fn set_ai_config(state: tauri::State<AppState>, config: AiConfig) -> Result<(), String> {
+    state.store.lock().unwrap().save_ai_config(&config)
+}
+
 
 // ─── AI Chat ───
 
@@ -238,7 +250,9 @@ fn load_article(state: tauri::State<AppState>, id: String) -> Option<String> {
 fn delete_article(state: tauri::State<AppState>, id: String) -> Result<(), String> {
     let store = state.store.lock().unwrap();
     store.delete_article_content(&id)?;
-    store.delete_article_meta(&id)
+    store.delete_article_meta(&id)?;
+    store.delete_blueprint(&id).ok();
+    Ok(())
 }
 
 #[tauri::command]
@@ -1252,6 +1266,8 @@ pub fn run() {
             set_providers,
             get_settings,
             set_settings,
+            get_ai_config,
+            set_ai_config,
             chat,
             chat_stream,
             fetch_models,

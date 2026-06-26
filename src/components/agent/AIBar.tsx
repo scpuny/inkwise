@@ -38,7 +38,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const [modelItems, setModelItems] = useState<MenuItem[]>(() => buildModelItems());
   const [selectedModel, setSelectedModel] = useState(() => {
     const items = buildModelItems();
-    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("aiwriter-default-model") : null;
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-model") : null;
     if (saved && items.some((m) => m.id === saved)) return saved;
     return items.length > 0 ? items[0].id : "";
   });
@@ -54,11 +54,11 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
 
   const handleSelectModel = useCallback((id: string) => {
     setSelectedModel(id);
-    try { localStorage.setItem("aiwriter-default-model", id); } catch {}
+    try { localStorage.setItem("inkwise-default-model", id); } catch {}
     emit("providers-changed");
   }, []);
   const [selectedEffort, setSelectedEffort] = useState(() => {
-    try { return localStorage.getItem("aiwriter-effort") || EFFORTS[0].id; } catch { return EFFORTS[0].id; }
+    try { return localStorage.getItem("inkwise-effort") || EFFORTS[0].id; } catch { return EFFORTS[0].id; }
   });
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [effortMenuOpen, setEffortMenuOpen] = useState(false);
@@ -151,7 +151,7 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const effortItems: MenuItem[] = EFFORTS.map((e) => ({
     ...e,
     checked: selectedEffort === e.id,
-    onClick: () => { setSelectedEffort(e.id); try { localStorage.setItem("aiwriter-effort", e.id); emit("providers-changed"); } catch {} },
+    onClick: () => { setSelectedEffort(e.id); try { localStorage.setItem("inkwise-effort", e.id); emit("providers-changed"); } catch {} },
   }));
 
   // Token presets menu items

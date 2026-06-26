@@ -1,5 +1,5 @@
 // db.rs — SQLite 持久层，含 FTS5 全文检索
-// 单文件 ~/.aiwriter/data/aiwriter.db
+// 单文件 ~/.inkwise/data/inkwise.db
 
 use rusqlite::{Connection, params, Result as SqlResult};
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ impl Database {
     pub fn open(app_dir: &PathBuf) -> SqlResult<Self> {
         let data_dir = app_dir.join("data");
         std::fs::create_dir_all(&data_dir).ok();
-        let db_path = data_dir.join("aiwriter.db");
+        let db_path = data_dir.join("inkwise.db");
 
         let conn = Connection::open(&db_path)?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;")?;

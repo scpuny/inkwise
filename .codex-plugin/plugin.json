@@ -1,6 +1,6 @@
 {
   "$schema": "https://codex.openai.com/plugins/schema.json",
-  "id": "aiwriter-codegraph",
+  "id": "inkwise-codegraph",
   "name": "CodeGraph Integration",
   "description": "代码知识图谱插件，提供代码实体搜索、调用图分析、文件结构查看等功能。基于 CodeGraph MCP 守护进程构建。",
   "version": "0.1.0",

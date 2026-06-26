@@ -12,7 +12,7 @@ export default defineConfig({
     url: "http://127.0.0.1:5173/",
     reuseExistingServer: true,
     timeout: 30000,
-    cwd: "/Users/yangbo/Documents/Projects/AiWriter",
+    cwd: "/Users/yangbo/Documents/Projects/Inkwise",
   },
   use: {
     baseURL: "http://127.0.0.1:5173",

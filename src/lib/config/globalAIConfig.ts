@@ -1,12 +1,13 @@
 // globalAIConfig.ts — 全局 AI 配置管理
+// 存储：Tauri 后端权威 + localStorage 缓存
 // 所有 AI 入口共享同一套配置（模型、effort、token 限制等）
 
+import { StorageEngine } from "../storage/storageEngine";
+import { isTauriEnv, tryInvoke } from "../bridge/tauri";
 import { getProvidersSync, type Provider } from "../storage/providerModels";
 import { emit } from "../events/eventBus";
 
-const DEFAULT_MODEL_KEY = "aiwriter-default-model";
-const DEFAULT_EFFORT_KEY = "aiwriter-default-effort";
-const DEFAULT_TOKEN_KEY = "aiwriter-default-token";
+const CACHE_KEY = "ai-config";
 
 export type EffortLevel = "auto" | "low" | "medium" | "high";
 export type TokenLimit = 500 | 1000 | 2000 | 4000 | 8000 | 0;
@@ -17,44 +18,73 @@ export interface GlobalAIConfig {
   maxTokens: number;
 }
 
-/** 从 localStorage 读取当前配置 */
+const DEFAULT_CONFIG: GlobalAIConfig = {
+  defaultModel: null,
+  effort: "auto",
+  maxTokens: 2048,
+};
+
+// ─── Storage Engine ───
+// 后端持久化到 ai_config.json，localStorage 作为读缓存
+
+const engine = new StorageEngine<GlobalAIConfig>(CACHE_KEY, {
+  read: async () => {
+    if (!isTauriEnv()) return null;
+    try {
+      return await tryInvoke<GlobalAIConfig | null>("get_ai_config");
+    } catch {
+      return null;
+    }
+  },
+  write: async (data) => {
+    if (!isTauriEnv()) return;
+    try {
+      await tryInvoke("set_ai_config", { config: data });
+    } catch {
+      /* backend unavailable */
+    }
+  },
+  delete: async () => {},
+});
+
+// ─── Public API ───
+
+/** 权威读：后端 → 更新缓存 → 返回 */
+export async function loadGlobalAIConfigAsync(): Promise<GlobalAIConfig> {
+  const data = await engine.get();
+  return data ?? { ...DEFAULT_CONFIG };
+}
+
+/** 同步读缓存（用于 React useState 初始化） */
 export function loadGlobalAIConfig(): GlobalAIConfig {
-  const savedModel = typeof localStorage !== "undefined"
-    ? localStorage.getItem(DEFAULT_MODEL_KEY)
-    : null;
-  const savedEffort = typeof localStorage !== "undefined"
-    ? localStorage.getItem(DEFAULT_EFFORT_KEY)
-    : null;
-  const savedToken = typeof localStorage !== "undefined"
-    ? localStorage.getItem(DEFAULT_TOKEN_KEY)
-    : null;
-
-  return {
-    defaultModel: savedModel,
-    effort: (savedEffort as EffortLevel) || "auto",
-    maxTokens: savedToken ? Number(savedToken) : 2048,
-  };
+  return engine.getSync() ?? { ...DEFAULT_CONFIG };
 }
 
-/** 保存默认模型到 localStorage */
-export function saveDefaultModel(model: string): void {
-  try { localStorage.setItem(DEFAULT_MODEL_KEY, model); } catch {}
+/** 保存默认模型到后端 + 缓存 */
+export async function saveDefaultModel(model: string): Promise<void> {
+  const config = loadGlobalAIConfig();
+  config.defaultModel = model;
+  await engine.set(config);
   emit("ai-config-changed");
 }
 
-/** 保存 effort 到 localStorage */
-export function saveEffort(effort: EffortLevel): void {
-  try { localStorage.setItem(DEFAULT_EFFORT_KEY, effort); } catch {}
+/** 保存 effort 到后端 + 缓存 */
+export async function saveEffort(effort: EffortLevel): Promise<void> {
+  const config = loadGlobalAIConfig();
+  config.effort = effort;
+  await engine.set(config);
   emit("ai-config-changed");
 }
 
-/** 保存 token 限制到 localStorage */
-export function saveMaxTokens(tokens: TokenLimit): void {
-  try { localStorage.setItem(DEFAULT_TOKEN_KEY, String(tokens)); } catch {}
+/** 保存 token 限制到后端 + 缓存 */
+export async function saveMaxTokens(tokens: TokenLimit): Promise<void> {
+  const config = loadGlobalAIConfig();
+  config.maxTokens = tokens;
+  await engine.set(config);
   emit("ai-config-changed");
 }
 
-/** 获取当前启用的模型列表 */
+/** 获取当前启用的模型列表（同步，从缓存读取） */
 export function getEnabledModels(): string[] {
   const providers = getProvidersSync();
   return providers

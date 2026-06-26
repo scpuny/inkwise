@@ -67,7 +67,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
   // Sync model/effort from AIBar via localStorage
   useEffect(() => {
     const updateModel = () => {
-      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("aiwriter-default-model") : null;
+      const saved = typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-model") : null;
       if (saved) setModelName(saved);
       else {
         const providers = getProvidersSync();
@@ -75,7 +75,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
         setModelName(enabled && enabled.models.length > 0 ? enabled.models[0] : "—");
       }
       try {
-        const savedEffort = localStorage.getItem("aiwriter-effort");
+        const savedEffort = localStorage.getItem("inkwise-effort");
         if (savedEffort) setEffort(savedEffort);
       } catch {}
     };
@@ -113,9 +113,19 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     const onReady = () => { updateStats(); };
     const disposeReady = on("editor-ready", onReady);
     
+    // Periodic check: editor might have been closed — reset stats
+    const healthTimer = setInterval(() => {
+      if (!(window as any).editorInstance?.editor) {
+        setWordCount(0); setCharCount(0); setParagraphCount(0);
+        setReadTime("0分钟"); setHasDocs(false);
+        setTargetWordCount(0);
+      }
+    }, 1000);
+    
     return () => {
       if (observer) observer.disconnect();
       if (checkTimer) clearInterval(checkTimer);
+      clearInterval(healthTimer);
       disposeReady();
     };
   }, [updateStats]);

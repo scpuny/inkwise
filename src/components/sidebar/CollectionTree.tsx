@@ -77,6 +77,22 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       if (colPlans.length > 0) plansMap[col.id] = colPlans;
     }
     setSeriesPlansList(plansMap);
+    // Reload phases for all articles
+    const phaseMap: Record<string, string> = {};
+    const phasePromises: Promise<void>[] = [];
+    for (const col of cols) {
+      for (const article of col.articles) {
+        phasePromises.push(
+          loadBlueprint(article.id).then(bp => {
+            if (bp) phaseMap[article.id] = bp.phase;
+          }).catch(() => {})
+        );
+      }
+    }
+    if (phasePromises.length > 0) {
+      await Promise.all(phasePromises);
+      setPhaseCache(prev => ({ ...prev, ...phaseMap }));
+    }
     // Auto-expand collections that have series plans
     setExpanded(prev => {
       const next = new Set(prev);
@@ -233,11 +249,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // ── Collection ops ──
 
   const handleNewCollection = useCallback(async () => {
-    await refresh();
     const c = await addCollection("新建合集");
     setExpanded((prev) => new Set(prev).add(c.id));
     await refresh();
-    setEditingId(`col:${c.id}`); setEditingDraft("新建合集");
+    setEditingId(`col:${c.id}`); setEditingDraft(c.title);
   }, [refresh]);
 
   // Helper: ensure at least one collection exists; return its id
@@ -255,18 +270,6 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setEditingId(`col:${id}`); setEditingDraft(current);
   }, []);
 
-  const handleCommitRename = useCallback(async (id: string, isCollection: boolean) => {
-    const title = editingDraft.trim();
-    if (!title) { setEditingId(null); return; }
-    if (isCollection) await renameCollection(id, title);
-    else {
-      for (const c of collections) {
-        if (c.articles.some((a) => a.id === id)) { await renameArticle(c.id, id, title); break; }
-      }
-    }
-    setEditingId(null);
-    await refresh();
-  }, [editingDraft, collections, refresh]);
 
   const handleRemoveCollection = useCallback((id: string) => {
     const c = collections.find((x) => x.id === id);
@@ -392,8 +395,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               ])}>
                 {isEditing ? (
                   <input ref={editInputRef} className="collection-tree__input" value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)}
-                    onBlur={() => handleCommitRename(col.id, true)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleCommitRename(col.id, true); if (e.key === "Escape") setEditingId(null); }}
+                    onBlur={async () => { const t = editingDraft.trim(); if (t) await renameCollection(col.id, t); setEditingId(null); await refresh(); }}
+                    onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameCollection(col.id, t); setEditingId(null); await refresh(); } if (e.key === "Escape") setEditingId(null); }}
                     onClick={(e) => e.stopPropagation()} />
                 ) : (
                   <>
@@ -444,7 +447,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                             onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); await refresh(); } if (e.key === "Escape") setEditingId(null); }}
                             onClick={(e) => e.stopPropagation()} />
                         ) : (
-                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className={"collection-tree__leaf-icon" + (phaseCache[article.id] && phaseCache[article.id] !== "planning" ? " series-status-icon--" + phaseCache[article.id] : "")} /></span><span className="collection-tree__leaf-label">{article.title}</span>
+                          <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className={"collection-tree__leaf-icon" + (phaseCache[article.id] ? " series-status-icon--" + phaseCache[article.id] : "")} /></span><span className="collection-tree__leaf-label">{article.title}</span>
                             {statsCache[article.id] && <span className="collection-tree__leaf-stats">{statsCache[article.id].words}字</span>}</>
                         )}
                       </div>
@@ -458,6 +461,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                   key={plan.id}
                   plan={plan}
                   collectionId={col.id}
+                  activeArticleId={externalActiveId}
                   onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
                   onPlanArticle={(article) => {
                     emit("plan-series-article", { collectionId: col.id, seriesId: plan.id, article });
@@ -499,7 +503,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
           <div className="collection-tree__trash-list">
             {trash.length === 0 ? <div className="collection-tree__empty collection-tree__empty--trash">回收站为空</div> : trash.map((item) => (
               <div key={item.id} className="collection-tree__trash-item">
-                <FileText size={11} className={"collection-tree__leaf-icon" + (phaseCache[item.id] && phaseCache[item.id] !== "planning" ? " series-status-icon--" + phaseCache[item.id] : "")} />
+                <FileText size={11} className={"collection-tree__leaf-icon" + (phaseCache[item.id] ? " series-status-icon--" + phaseCache[item.id] : "")} />
                 <span className="collection-tree__trash-label">{item.title}</span>
                 <span className="collection-tree__trash-source">{item.collectionTitle}</span>
                 <button className="collection-tree__trash-action" title="恢复" onClick={() => handleRestore(item.id)}><RotateCcw size={10} /></button>

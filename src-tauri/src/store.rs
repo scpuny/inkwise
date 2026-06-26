@@ -110,6 +110,16 @@ pub struct AppSettings {
     pub text_size: String,
 }
 
+// ─── AI Config ───
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AiConfig {
+    pub default_model: Option<String>,
+    pub effort: String,
+    pub max_tokens: u32,
+}
+
 // ─── WritingSkill ───
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -242,6 +252,16 @@ impl DataStore {
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), String> {
         self.write_json("settings", settings)
     }
+    // ─── AI Config ───
+
+    pub fn save_ai_config(&self, config: &AiConfig) -> Result<(), String> {
+        self.write_json("ai_config", config)
+    }
+
+    pub fn load_ai_config(&self) -> Option<AiConfig> {
+        self.read_json("ai_config").ok()
+    }
+
 
     // ─── Platform Config ───
 

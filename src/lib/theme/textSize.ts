@@ -5,7 +5,7 @@ export const TEXT_SIZES = ["small", "default", "large", "xlarge"] as const;
 export type TextSize = (typeof TEXT_SIZES)[number];
 export const DEFAULT_TEXT_SIZE: TextSize = "default";
 
-const TEXT_SIZE_KEY = "aiwriter-text-size";
+const TEXT_SIZE_KEY = "inkwise-text-size";
 
 export function isTextSize(value: unknown): value is TextSize {
   return typeof value === "string" && (TEXT_SIZES as readonly string[]).includes(value);

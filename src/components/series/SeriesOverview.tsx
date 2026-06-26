@@ -9,6 +9,7 @@ import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 interface SeriesOverviewProps {
   plan: SeriesPlan;
   collectionId: string;
+  activeArticleId?: string | null;
   onOpenArticle?: (articleId: string) => void;
   onPlanArticle?: (article: SeriesArticle) => void;
   onEditPlan?: () => void;
@@ -18,6 +19,7 @@ interface SeriesOverviewProps {
 export function SeriesOverview({
   plan,
   collectionId,
+  activeArticleId,
   onOpenArticle,
   onPlanArticle,
   onEditPlan,
@@ -154,7 +156,7 @@ export function SeriesOverview({
           {plan.articles.map((article, i) => {
             const isEditing = editingArtId === article.id;
             return (
-            <div key={article.id} className="collection-tree__leaf" onClick={() => {
+            <div key={article.id} className={"collection-tree__leaf" + (activeArticleId && article.articleId && activeArticleId === article.articleId ? " collection-tree__leaf--active" : "")} onClick={() => {
                 if (article.status === "planned") return; // 未开始 — 仅 AI 图标可触发
                 if (article.status === "complete" || article.status === "reviewing") {
                   onOpenArticle?.(article.articleId!);
@@ -180,8 +182,10 @@ export function SeriesOverview({
                   onClick={(e) => e.stopPropagation()} />
               ) : (
                 <><span className="collection-tree__leaf-icon-wrap">
-                  {article.status === "complete" || article.status === "reviewing" ? (
+                  {article.status === "complete" ? (
                     <FileText size={13} className="collection-tree__leaf-icon series-status-icon--complete" />
+                  ) : article.status === "reviewing" ? (
+                    <FileText size={13} className="collection-tree__leaf-icon series-status-icon--reviewing" />
                   ) : article.status === "writing" ? (
                     <FileText size={13} className="collection-tree__leaf-icon series-status-icon--writing" />
                   ) : (
