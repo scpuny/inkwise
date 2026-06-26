@@ -1343,13 +1343,12 @@ export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean):
   }
   const rules: string[] = [];
   if (firstLineIndent) {
-    // Exclude list items — only indent "real" paragraphs
-    rules.push(`.editor-container .tiptap p:not(li p, blockquote p, table tr td p) { text-indent: 2em !important; }`);
+    // 使用 > p 子代选择器只缩进直接段落，不影响列表/引用/代码
+    rules.push(`.editor-container .tiptap > p { text-indent: 2em !important; }`);
   }
   if (justifyAlign) {
-    rules.push(`.editor-container .tiptap.ProseMirror { text-align: justify !important; }`);
-    // Exclude list items from justify
-    rules.push(`.editor-container .tiptap p:not(li p, blockquote p, table tr td p) { text-align: justify !important; }`);
+    // 只对直接段落两端对齐，不包括代码块
+    rules.push(`.editor-container .tiptap > p { text-align: justify !important; }`);
   }
   tag.textContent = rules.join("\n");
 }

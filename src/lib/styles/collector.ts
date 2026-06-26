@@ -196,17 +196,18 @@ export function collectPublishCss(scope = ".article-body"): string {
     parts.push(buildThemeCss(overrideVars, scope));
   }
 
-  // 3. 文本样式（编辑器模板 CSS 中可能自带 text-indent/text-align，
-  // 所以关闭时必须显式重置，否则「首行缩进/两端对齐」关闭后无效）
+  // 3. 文本样式（使用 > p 直接子代选择器，避免 :not() 兼容性问题，
+  // 且只作用于直接段落，不影响列表/引用/代码中的文本）
   if (localStorage.getItem("first-line-indent") === "true") {
-    parts.push(`${scope} p:not(li p, blockquote p) { text-indent: 2em !important; }`);
+    parts.push(`${scope} > p { text-indent: 2em !important; }`);
   } else {
-    parts.push(`${scope} p { text-indent: 0 !important; }`);
+    // 显式重置，覆盖模板 CSS 自带 text-indent
+    parts.push(`${scope} > p { text-indent: 0 !important; }`);
   }
   if (localStorage.getItem("justify-align") === "true") {
-    parts.push(`${scope} { text-align: justify !important; } ${scope} p:not(li p, blockquote p) { text-align: justify !important; }`);
+    parts.push(`${scope} > p { text-align: justify !important; }`);
   } else {
-    parts.push(`${scope} { text-align: initial !important; }`);
+    parts.push(`${scope} > p { text-align: initial !important; }`);
   }
 
   // 4. 标题装饰
