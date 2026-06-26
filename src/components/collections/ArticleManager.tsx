@@ -23,6 +23,15 @@ import { saveArticleContent } from "../../lib/storage/articles";
 type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
 
+/* ─── 字数统计（去 HTML 标签，中文算字英文算词） ─── */
+function getWordCount(c: string | null | undefined): number {
+  if (!c) return 0;
+  const text = c.replace(/<[^>]*>/g, '');
+  const cjk = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g) || []).length;
+  const words = (text.match(/[a-zA-Z]+/g) || []).length;
+  return cjk + words;
+}
+
 interface ArticleEntry {
   id: string;
   title: string;
@@ -112,7 +121,7 @@ export function ArticleManager({
             title: art.title,
             collectionId: col.id,
             collectionTitle: col.title,
-            wordCount: content ? content.length : 0,
+            wordCount: getWordCount(content),
             phase: "writing",
             status: "draft",
             updatedAt: art.updatedAt,
@@ -131,7 +140,7 @@ export function ArticleManager({
             let wordCount = 0;
             if (art.articleId) {
               const artContent = await loadArticleContent(art.articleId);
-              if (artContent) wordCount = artContent.length;
+              if (artContent) wordCount = getWordCount(artContent);
             }
             entries.push({
               id: articleId,
@@ -435,6 +444,7 @@ export function ArticleManager({
                       <th className="article-manager__th--sortable" onClick={() => toggleSort("updatedAt")}>
                         <Clock size={12} /> 更新 {sortField === "updatedAt" && (sortDir === "asc" ? "↑" : "↓")}
                       </th>
+                      <th style={{ width: 40 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -447,11 +457,6 @@ export function ArticleManager({
                         <td onClick={(e) => e.stopPropagation()}>
                           <input type="checkbox" checked={selectedIds.has(article.id)} onChange={() => toggleSelect(article.id)} />
                         </td>
-                        <td className="article-manager__cell-title">{article.title || "无标题"}</td>
-                        <td className="article-manager__cell-num">{article.wordCount.toLocaleString()}</td>
-                        <td><span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span></td>
-                        <td>{getStatusLabel(article.status)}</td>
-                        <td className="article-manager__cell-date">{formatDate(article.updatedAt)}</td>
                         <td className="article-manager__cell-pin">
                           <button
                             className={`article-manager__pin-btn ${article.pinned ? "is-pinned" : ""}`}
@@ -461,6 +466,11 @@ export function ArticleManager({
                             <Pin size={12} />
                           </button>
                         </td>
+                        <td className="article-manager__cell-title">{article.title || "无标题"}</td>
+                        <td className="article-manager__cell-num">{article.wordCount.toLocaleString()}</td>
+                        <td><span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span></td>
+                        <td>{getStatusLabel(article.status)}</td>
+                        <td className="article-manager__cell-date">{formatDate(article.updatedAt)}</td>
                         <td className="article-manager__cell-actions">
                           <button
                             className="article-manager__version-btn"
