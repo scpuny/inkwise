@@ -1,0 +1,1403 @@
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
+import {
+  Palette, FileText, Cpu, Keyboard, Info, X, Zap, Globe,
+  Edit3, Languages, Maximize2, Search, PenTool, ListChecks,
+  RotateCw, BookOpen, Hash, MessageSquare, Quote,
+  Monitor, Sun, Plus, Trash2, Check, Sparkles, ChevronDown, ChevronRight,
+} from "lucide-react";
+import type { ThemeStyle, Theme } from "../../lib/theme/theme";
+import { THEME_STYLES } from "../../lib/theme/theme";
+import type { TextSize } from "../../lib/theme/textSize";
+import { TEXT_SIZES } from "../../lib/theme/textSize";
+import type { FontFamily } from "../../lib/theme/fontFamily";
+import { FONT_FAMILIES, applyFontFamily, getCustomFontName, setCustomFontName } from "../../lib/theme/fontFamily";
+import { type Provider, BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels } from "../../lib/storage/providerModels";
+import { getAllThemes, getThemeById, isPresetTheme, saveCustomThemes, loadCustomThemes, type ArticleTheme, type ArticleThemeVars } from "../../lib/theme/articleThemes";
+import { InlineConfirmButton } from "../common/InlineConfirmButton";
+import type { Skill } from "../../lib/storage/skill";
+import { getAllBuiltinSkills, type WritingSkill, type SkillPhase, type StyleDimension } from "../../lib/ai/writingSkill";
+import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
+import { getPlatformConfigs, savePlatformConfig, deletePlatformConfig, verifyPlatformCredentials } from "../../lib/storage/platforms";
+import type { PlatformConfig } from "../../lib/storage/platforms";
+import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
+import { ModelsSection } from "./ModelsSection";
+import { PlatformsSection } from "./PlatformsSection";
+// Skill icons & labels (shared with InlineToolbar/AgentPanel)
+const SKILL_ICONS: Record<string, ReactNode> = {
+  "polish": <Sparkles size={13} />,
+  "rewrite": <Edit3 size={13} />,
+  "translate": <Languages size={13} />,
+  "expand": <Maximize2 size={13} />,
+  "analysis": <Search size={13} />,
+  "continue-writing": <PenTool size={13} />,
+  "proofread": <ListChecks size={13} />,
+  "summary": <FileText size={13} />,
+  "outline": <ListChecks size={13} />,
+  "paraphrase": <RotateCw size={13} />,
+  "academic": <BookOpen size={13} />,
+  "creative": <PenTool size={13} />,
+  "headline": <Hash size={13} />,
+  "keyword-extract": <Search size={13} />,
+  "readability": <MessageSquare size={13} />,
+  "citation": <Quote size={13} />,
+  "blog": <FileText size={13} />,
+  "novel": <BookOpen size={13} />,
+  "email": <MessageSquare size={13} />,
+};
+const SKILL_LABELS: Record<string, string> = {
+  "continue-writing":"续写","rewrite":"改写","polish":"润色","translate":"翻译",
+  "academic":"学术写作","creative":"创意写作","summary":"摘要","outline":"大纲",
+  "expand":"扩写","paraphrase":"同义改写","proofread":"校对",
+  "blog":"博客","novel":"小说","headline":"标题","email":"邮件",
+  "keyword-extract":"关键词","readability":"可读性","citation":"引用",
+};
+const PRIMARY_SKILLS = ["polish","rewrite","translate","expand","analysis"];
+
+
+/* ─── Tab definitions ─── */
+export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "styles" | "themes" | "platforms" | "about";
+
+const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
+  { id: "appearance", icon: <Palette size={14} />, label: "外观" },
+  { id: "editor",    icon: <FileText size={14} />, label: "编辑器" },
+  { id: "models",    icon: <Cpu size={14} />,      label: "模型" },
+  { id: "shortcuts", icon: <Keyboard size={14} />, label: "快捷键" },
+  { id: "themes",    icon: <FileText size={14} />,    label: "文章主题" },
+  { id: "platforms", icon: <Globe size={14} />,     label: "发布平台" },
+  { id: "styles",    icon: <Sparkles size={14} />,   label: "写作风格" },
+  { id: "about",     icon: <Info size={14} />,      label: "关于" },
+];
+
+/* ─── Style helpers ─── */
+const STYLE_LABELS: Record<ThemeStyle, string> = {
+  graphite: "石墨",
+  aurora: "极光",
+  slate: "石板",
+  carbon: "碳灰",
+  nocturne: "夜曲",
+  amber: "琥珀",
+};
+const STYLE_COLORS: Record<ThemeStyle, string> = {
+  graphite: "linear-gradient(120deg,#ff6a3d,#ff9a52)",
+  aurora: "linear-gradient(120deg,#8b7cff,#b07cff 42%,#38d6e6)",
+  slate: "linear-gradient(120deg,#4d8df6,#3b82f6)",
+  carbon: "linear-gradient(120deg,#2dd4bf,#22d3ee)",
+  nocturne: "linear-gradient(120deg,#818cf8,#a78bfa)",
+  amber: "linear-gradient(120deg,#d4632f,#de7a4b)",
+};
+
+/* ─── Props ─── */
+export type SettingsProps = {
+  open: boolean;
+  initialTab?: SettingsTab;
+  onClose: () => void;
+  /* appearance */
+  currentStyle: ThemeStyle;
+  currentTheme: Theme;
+  currentTextSize: TextSize;
+  currentFontFamily: FontFamily;
+  onSelectStyle: (s: ThemeStyle) => void;
+  onSelectTheme: (t: Theme) => void;
+  onSelectTextSize: (s: TextSize) => void;
+  onSelectFontFamily: (f: FontFamily) => void;
+  /* editor */
+  currentEditorFormat?: "rich" | "markdown";
+  currentEditorLineHeight?: number;
+  onSetEditorFormat?: (mode: "rich" | "markdown") => void;
+  onSetEditorLineHeight?: (h: number) => void;
+};
+
+/* ════════════════════════════════════════════════
+   MAIN — SettingsPanel
+   ════════════════════════════════════════════════ */
+export function SettingsPanel({
+  open, initialTab, onClose,
+  currentStyle, currentTheme, currentTextSize, currentFontFamily,
+  onSelectStyle, onSelectTheme, onSelectTextSize, onSelectFontFamily,
+  currentEditorFormat = "rich",
+  currentEditorLineHeight = 1.75,
+  onSetEditorFormat,
+  onSetEditorLineHeight,
+}: SettingsProps) {
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "appearance");
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+
+  if (!open) return null;
+
+  return (
+    <div className="settings-backdrop" onClick={onClose}>
+      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+        <header className="settings-modal__head">
+          <div className="settings-modal__title">设置</div>
+          <button className="settings-modal__close" onClick={onClose} aria-label="关闭"><X size={16} /></button>
+        </header>
+
+        <div className="settings-body">
+          <nav className="settings-nav" aria-label="设置分类">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={`settings-nav__item${tab === t.id ? " settings-nav__item--active" : ""}`}
+                onClick={() => setTab(t.id)}
+              >{t.icon}<span>{t.label}</span></button>
+            ))}
+          </nav>
+
+          <main className="settings-content">
+            {tab === "appearance" && (
+              <AppearanceSection
+                currentStyle={currentStyle} currentTheme={currentTheme}
+                currentTextSize={currentTextSize} currentFontFamily={currentFontFamily}
+                onSelectStyle={onSelectStyle} onSelectTheme={onSelectTheme}
+                onSelectTextSize={onSelectTextSize} onSelectFontFamily={onSelectFontFamily}
+              />
+            )}
+            {tab === "editor" && <EditorSection currentFormat={currentEditorFormat} currentLineHeight={currentEditorLineHeight} onSetFormat={onSetEditorFormat} onSetLineHeight={onSetEditorLineHeight} />}
+            {tab === "models" && <ModelsSection />}
+            {tab === "shortcuts" && <ShortcutsSection />}
+            {tab === "styles" && <WritingStylesSection />}
+            {tab === "themes" && <ThemesSection />}
+            {tab === "platforms" && <PlatformsSection />}
+            {tab === "about" && <AboutSection />}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════
+   APPEARANCE SECTION — mirrors Reasonix
+   ════════════════════════════════════════════════ */
+function AppearanceSection({
+  currentStyle, currentTheme, currentTextSize, currentFontFamily,
+  onSelectStyle, onSelectTheme, onSelectTextSize, onSelectFontFamily,
+}: {
+  currentStyle: ThemeStyle; currentTheme: Theme;
+  currentTextSize: TextSize; currentFontFamily: FontFamily;
+  onSelectStyle: (s: ThemeStyle) => void; onSelectTheme: (t: Theme) => void;
+  onSelectTextSize: (s: TextSize) => void; onSelectFontFamily: (f: FontFamily) => void;
+}) {
+  const [customFont, setCustomFont] = useState(getCustomFontName());
+  const isCustom = currentFontFamily === "custom";
+
+  const handleFontFamily = useCallback((f: FontFamily) => {
+    onSelectFontFamily(f);
+    if (f === "custom" && customFont.trim()) {
+      setCustomFontName(customFont.trim());
+      applyFontFamily("custom");
+    }
+  }, [onSelectFontFamily, customFont]);
+
+  const handleCustomFontBlur = useCallback(() => {
+    if (customFont.trim()) {
+      setCustomFontName(customFont.trim());
+      if (currentFontFamily === "custom") applyFontFamily("custom");
+    }
+  }, [customFont, currentFontFamily]);
+
+  return (
+    <SettingsPage title="外观" desc="自定义写作环境的视觉风格">
+      {/* Theme Style */}
+      <SettingsSection title="主题风格" desc="选择配色方向，同时支持深色/浅色模式">
+        <div className="theme-card-grid">
+          {THEME_STYLES.map((style) => {
+            const selected = currentStyle === style;
+            const tag = themeStyleTag(style);
+            return (
+              <button
+                key={style}
+                role="radio"
+                aria-checked={selected}
+                className={`theme-card${selected ? " theme-card--on" : ""}`}
+                onClick={() => onSelectStyle(style)}
+                data-theme-style={style}
+              >
+                <span className="theme-card__head">
+                  <span className="theme-card__name">{STYLE_LABELS[style]}</span>
+                  <span className="theme-card__tag">{tag}</span>
+                </span>
+                <span className="theme-card__swatches" data-theme-style-card={style}>
+                  <span className="theme-card__swatch theme-card__swatch--bg" />
+                  <span className="theme-card__swatch theme-card__swatch--surface" />
+                  <span className="theme-card__swatch theme-card__swatch--accent" />
+                </span>
+                <span className="theme-card__desc">{themeStyleDesc(style)}</span>
+                {selected && (
+                  <span className="theme-card__check">
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </SettingsSection>
+
+      {/* Theme Mode */}
+      <SettingsSection title="主题模式" desc="跟随系统或手动选择">
+        <div className="set-seg">
+          {[
+            { value: "auto" as Theme, icon: <Monitor size={14} />, label: "跟随系统" },
+            { value: "dark" as Theme, icon: <MoonIcon size={14} />, label: "深色" },
+            { value: "light" as Theme, icon: <Sun size={14} />, label: "浅色" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              className={`set-seg__btn${currentTheme === opt.value ? " set-seg__btn--on" : ""}`}
+              onClick={() => onSelectTheme(opt.value)}
+            >{opt.icon}{opt.label}</button>
+          ))}
+        </div>
+      </SettingsSection>
+
+      {/* Text Size */}
+      <SettingsSection title="字号" desc="控制界面文字大小">
+        <div className="set-seg">
+          {TEXT_SIZES.map((s) => (
+            <button
+              key={s}
+              className={`set-seg__btn${currentTextSize === s ? " set-seg__btn--on" : ""}`}
+              onClick={() => onSelectTextSize(s)}
+            >{textSizeLabel(s)}</button>
+          ))}
+        </div>
+      </SettingsSection>
+
+      {/* Font Family */}
+      <SettingsSection title="字体" desc="选择界面显示字体">
+        <div className="set-seg">
+          {FONT_FAMILIES.map((f) => (
+            <button
+              key={f}
+              className={`set-seg__btn${currentFontFamily === f ? " set-seg__btn--on" : ""}`}
+              onClick={() => handleFontFamily(f)}
+            >{fontFamilyLabel(f)}</button>
+          ))}
+        </div>
+        {isCustom && (
+          <div className="custom-font-input" style={{ marginTop: 10 }}>
+            <input
+              className="settings-text-input"
+              type="text"
+              placeholder="输入自定义字体名称…"
+              value={customFont}
+              onChange={(e) => setCustomFont(e.target.value)}
+              onBlur={handleCustomFontBlur}
+            />
+          </div>
+        )}
+      </SettingsSection>
+    </SettingsPage>
+  );
+}
+
+function MoonIcon({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+}
+
+function textSizeLabel(s: TextSize): string {
+  return { small: "小", default: "中", large: "大", xlarge: "特大" }[s] ?? s;
+}
+function fontFamilyLabel(f: FontFamily): string {
+  return { system: "系统", yahei: "微软雅黑", pingfang: "苹方", noto: "Noto", serif: "衬线", custom: "自定义" }[f] ?? f;
+}
+function themeStyleTag(style: ThemeStyle): string {
+  return { graphite: "默认", aurora: "冷调", slate: "商务", carbon: "科技", nocturne: "深邃", amber: "复古" }[style] ?? "";
+}
+function themeStyleDesc(style: ThemeStyle): string {
+  return { graphite: "暖橙色调，纸墨感，适合通用写作", aurora: "紫蓝色调，沉稳专业，适合学术/商务", slate: "冷静理性，适合技术文档", carbon: "青绿色调，安静护眼，适合长时写作", nocturne: "靛紫色调，优雅深邃，适合创意写作", amber: "暖橙复古，适合随笔/博客" }[style] ?? "";
+}
+
+/* ════════════════════════════════════════════════
+   EDITOR SECTION
+   ════════════════════════════════════════════════ */
+function EditorSection({ currentFormat = "rich", currentLineHeight = 1.75, onSetFormat, onSetLineHeight }: {
+  currentFormat: "rich" | "markdown";
+  currentLineHeight: number;
+  onSetFormat?: (f: "rich" | "markdown") => void;
+  onSetLineHeight?: (h: number) => void;
+}) {
+  const [format, setFormat] = useState(currentFormat);
+  const [lineHeight, setLineHeight] = useState(currentLineHeight);
+  const [autoSave] = useState(true);
+
+  useEffect(() => { setFormat(currentFormat); }, [currentFormat]);
+  useEffect(() => { setLineHeight(currentLineHeight); }, [currentLineHeight]);
+
+  return (
+    <SettingsPage title="编辑器" desc="调整编辑体验和文档格式">
+      <SettingsSection title="写作偏好">
+        <SettingsField label="默认格式">
+          <div className="set-seg">
+            <button className={`set-seg__btn${format === "markdown" ? " set-seg__btn--on" : ""}`} onClick={() => { setFormat("markdown"); onSetFormat?.("markdown"); }}>Markdown</button>
+            <button className={`set-seg__btn${format === "rich" ? " set-seg__btn--on" : ""}`} onClick={() => { setFormat("rich"); onSetFormat?.("rich"); }}>富文本</button>
+          </div>
+        </SettingsField>
+        <SettingsField label="行间距" hint="正文行高">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="range" min="1.2" max="2.4" step="0.05" value={lineHeight} onChange={(e) => { const v = Number(e.target.value); setLineHeight(v); onSetLineHeight?.(v); }} className="range-input" />
+            <span className="range-value">{lineHeight.toFixed(2)}</span>
+          </div>
+        </SettingsField>
+        <SettingsField label="自动保存">
+          <label className="toggle">
+            <input type="checkbox" checked={autoSave} className="toggle__input" readOnly />
+            <span className="toggle__slider" />
+          </label>
+        </SettingsField>
+      </SettingsSection>
+      <SettingsSection title="段间距" desc="段落之间的垂直间距">
+        <SettingsField label="段间距">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="range" min="0.5" max="2.5" step="0.25" defaultValue={1.25} className="range-input" />
+            <span className="range-value">1.25em</span>
+          </div>
+        </SettingsField>
+      </SettingsSection>
+    </SettingsPage>
+  );
+}
+
+/* ════════════════════════════════════════════════
+   SHORTCUTS SECTION
+   ════════════════════════════════════════════════ */
+const SHORTCUT_GROUPS = [
+  {
+    title: "全局快捷键",
+    items: [
+      { label: "命令面板", keys: "Ctrl+K" },
+      { label: "切换侧栏", keys: "Ctrl+\\" },
+      { label: "切换 AI 面板", keys: "Ctrl+Shift+\\" },
+      { label: "焦点模式", keys: "Ctrl+Shift+F" },
+      { label: "打开设置", keys: "Ctrl+," },
+      { label: "关闭面板/弹窗", keys: "Esc" },
+    ],
+  },
+  {
+    title: "编辑器",
+    items: [
+      { label: "新建文档", keys: "Ctrl+N" },
+      { label: "保存", keys: "Ctrl+S" },
+      { label: "查找替换", keys: "Ctrl+F" },
+      { label: "撤销", keys: "Ctrl+Z" },
+      { label: "重做", keys: "Ctrl+Shift+Z" },
+      { label: "加粗", keys: "Ctrl+B" },
+      { label: "斜体", keys: "Ctrl+I" },
+    ],
+  },
+  {
+    title: "AI 交互",
+    items: [
+      { label: "打开 AI 对话", keys: "Ctrl+K" },
+      { label: "发送消息", keys: "Ctrl+Enter" },
+      { label: "接受 AI 建议", keys: "Tab" },
+      { label: "忽略 AI 建议", keys: "Esc" },
+    ],
+  },
+  {
+    title: "AI 技能",
+    items: [
+      { label: "润色", keys: "Alt+1" },
+      { label: "改写", keys: "Alt+2" },
+      { label: "翻译", keys: "Alt+3" },
+      { label: "扩写", keys: "Alt+4" },
+      { label: "分析", keys: "Alt+5" },
+    ],
+  },
+];
+
+const DEFAULT_SHORTCUTS = SHORTCUT_GROUPS.flatMap(g => g.items);
+
+function ShortcutsSection() {
+  return (
+    <SettingsPage title="快捷键" desc="所有操作均可通过键盘完成">
+      {SHORTCUT_GROUPS.map((group, gi) => (
+        <div key={gi} style={{marginBottom: 16}}>
+          <div style={{fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", padding: "8px 0 4px"}}>{group.title}</div>
+          <div className="shortcuts-table">
+            <div className="shortcuts-table__head"><span>操作</span><span>快捷键</span></div>
+            {group.items.map((sc, i) => (
+              <div key={i} className="shortcuts-table__row">
+                <span>{sc.label}</span>
+                <kbd className="shortcut-key">{sc.keys}</kbd>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </SettingsPage>
+  );
+}
+function SkillsSection() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+
+  // New skill form state
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formRunAs, setFormRunAs] = useState<"Inline" | "Subagent">("Inline");
+  const [formTools, setFormTools] = useState<string[]>(["read_document"]);
+  const [formBody, setFormBody] = useState("");
+  const [formModel, setFormModel] = useState("");
+  const [formEffort, setFormEffort] = useState("");
+  const [formGenerating, setFormGenerating] = useState(false);
+  const [formSaving, setFormSaving] = useState(false);
+  const formNameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listSkills } = await import("../../lib/storage/skill");
+        const list = await listSkills();
+        setSkills(list);
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const toggleSkill = async (name: string, enabled: boolean) => {
+    try {
+      const { setSkillEnabled } = await import("../../lib/storage/skill");
+      await setSkillEnabled(name, enabled);
+      setSkills(prev => prev.map(s => s.name === name ? { ...s, enabled } : s));
+    } catch {}
+  };
+
+  const deleteSkillFn = async (name: string) => {
+    try {
+      const { deleteSkill } = await import("../../lib/storage/skill");
+      await deleteSkill(name);
+      setSkills(prev => prev.filter(s => s.name !== name));
+    } catch {}
+  };
+
+  const toggleTool = (tool: string) => {
+    setFormTools(prev =>
+      prev.includes(tool) ? prev.filter(t => t !== tool) : [...prev, tool]
+    );
+  };
+
+  const handleGenerateBody = async () => {
+    if (!formName.trim() || !formDesc.trim()) return;
+    setFormGenerating(true);
+    try {
+      const { generateSkillBody } = await import("../../lib/storage/skill");
+      // Body is AI-generated, saved via installSkill
+      setFormGenerating(false);
+    } catch {
+      setFormGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim() || !formDesc.trim()) return;
+    setFormSaving(true);
+    try {
+      const { installSkill } = await import("../../lib/storage/skill");
+      await installSkill(formName.trim(), formDesc.trim(), formBody.trim() || "", formRunAs);
+      // Reload skills
+      const { listSkills } = await import("../../lib/storage/skill");
+      const list = await listSkills();
+      setSkills(list);
+      setShowEditor(false);
+      // Reset form
+      setFormName("");
+      setFormDesc("");
+      setFormRunAs("Inline");
+      setFormTools(["read_document"]);
+      setFormBody("");
+      setFormModel("");
+      setFormEffort("");
+    } catch {}
+    setFormSaving(false);
+  };
+
+  return (
+    <SettingsPage title="技能" desc="管理 AI 写作技能，启用或禁用特定功能">
+      {loading ? (
+        <div style={{padding: 24, textAlign: "center", color: "var(--text-tertiary)" }}>加载中…</div>
+      ) : (
+        <>
+        <div className="skills-list">
+          {skills.map((s) => (
+            <div key={s.name} className={"skills-list__item" + (expandedSkill === s.name ? " skills-list__item--expanded" : "")}>
+              <div className="skills-list__header" onClick={() => setExpandedSkill(expandedSkill === s.name ? null : s.name)}>
+                <span className="skills-list__chevron">
+                  {expandedSkill === s.name ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </span>
+                <span className="skills-list__name">{SKILL_LABELS[s.name] || s.name}</span>
+                <span className="skills-list__desc">{s.description}</span>
+                <span className="skills-list__loc-badges">
+                  {PRIMARY_SKILLS.includes(s.name) && <span className="skills-list__loc-badge" title="出现在选中文本快捷工具栏">工具栏</span>}
+                  {SKILL_LABELS[s.name] ? (
+                    <span className="skills-list__loc-badge" title="出现在 Chat 输入框快捷操作">快捷</span>
+                  ) : (
+                    !PRIMARY_SKILLS.includes(s.name) && <span className="skills-list__loc-badge" title="在更多面板中可用">更多</span>
+                  )}
+                </span>
+                <button
+                  className={"skills-list__toggle" + (s.enabled ? " skills-list__toggle--on" : "")}
+                  onClick={(e) => { e.stopPropagation(); toggleSkill(s.name, !s.enabled); }}
+                  title={s.enabled ? "禁用" : "启用"}
+                >
+                  <Check size={10} />
+                </button>
+              </div>
+              {expandedSkill === s.name && (
+                <div className="skills-list__body">
+                  <div className="skills-list__preview">
+                    <span className="skills-list__preview-icon">{SKILL_ICONS[s.name] || <Sparkles size={13} />}</span>
+                    <span className="skills-list__preview-label">{SKILL_LABELS[s.name] || s.name}</span>
+                  </div>
+                  <div className="skills-list__meta">
+                    <span className="skills-list__meta-key">执行方式</span>
+                    <span className={"skills-list__badge skills-list__badge--" + (s.run_as?.toLowerCase() || "inline")}>
+                      {s.run_as === "Subagent" ? "子代理" : "内联"}
+                    </span>
+                    <span className="skills-list__meta-hint">
+                      {s.run_as === "Subagent" ? "适合复杂任务，独立推理执行" : "轻量快速，直接在对话中完成"}
+                    </span>
+                  </div>
+                  {s.allowed_tools && s.allowed_tools.length > 0 && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">工具权限</span>
+                      <div className="skills-list__tags">
+                        {s.allowed_tools.map(t => (
+                          <span key={t} className="skills-list__tag">{{
+                            "read_document": "读取文档", "write_document": "写入文档", "search_document": "搜索文档"
+                          }[t] || t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(s.model || s.effort) && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">模型配置</span>
+                      <span className="skills-list__meta-val">
+                        {s.model ? `模型: ${s.model}` : ""}
+                        {s.model && s.effort ? " · " : ""}
+                        {s.effort ? `推理力度: ${s.effort}` : ""}
+                      </span>
+                    </div>
+                  )}
+                  <div className="skills-list__meta">
+                    <span className="skills-list__meta-key">出现位置</span>
+                    <div className="skills-list__locations">
+                      <span className={"skills-list__loc" + (PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
+                        快捷工具栏 {PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                      </span>
+                      <span className={"skills-list__loc" + (!PRIMARY_SKILLS.includes(s.name) ? " skills-list__loc--active" : "")}>
+                        更多面板 {!PRIMARY_SKILLS.includes(s.name) && s.enabled ? "✓" : ""}
+                      </span>
+                      <span className={"skills-list__loc" + (SKILL_LABELS[s.name] ? " skills-list__loc--active" : "")}>
+                        Chat 快捷操作 {SKILL_LABELS[s.name] && s.enabled ? "✓" : ""}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Body content for non-Builtin skills */}
+                  {s.scope !== "Builtin" && s.body && (
+                    <div className="skills-list__meta">
+                      <span className="skills-list__meta-key">指令模板</span>
+                      <pre className="skills-list__body-preview">{s.body.slice(0, 300)}{s.body.length > 300 ? "…" : ""}</pre>
+                    </div>
+                  )}
+                  {/* Delete button for non-Builtin skills */}
+                  {s.scope !== "Builtin" && (
+                    <div className="skills-list__meta" style={{marginTop: 8}}>
+                      <button className="btn btn--danger" onClick={() => deleteSkillFn(s.name)} style={{fontSize: 11, padding: "2px 10px"}}>
+                        <Trash2 size={10} /> 删除此技能
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Add Skill Button */}
+        <div style={{padding: "12px 0", textAlign: "center"}}>
+          <button className="btn btn--primary" onClick={() => setShowEditor(true)} style={{fontSize: 12, padding: "6px 16px"}}>
+            <Plus size={12} /> 新建技能
+          </button>
+        </div>
+
+        {/* New Skill Editor Modal */}
+        {showEditor && (
+          <div className="settings-overlay" onClick={() => setShowEditor(false)}>
+            <div className="settings-dialog" onClick={(e) => e.stopPropagation()} style={{maxWidth: 480}}>
+              <div className="settings-dialog__header">
+                <h3>新建技能</h3>
+                <button className="settings-dialog__close" onClick={() => setShowEditor(false)}>
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="settings-dialog__body" style={{display: "flex", flexDirection: "column", gap: 12}}>
+                <SettingsField label="技能 ID">
+                  <input className="settings-input" ref={formNameRef} value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="英文标识，如 my-polish" />
+                </SettingsField>
+                <SettingsField label="中文名称">
+                  <input className="settings-input" value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="如：我的润色" />
+                </SettingsField>
+                <SettingsField label="描述">
+                  <input className="settings-input" value={formDesc}
+                    onChange={e => setFormDesc(e.target.value)}
+                    placeholder="技能的作用说明" />
+                </SettingsField>
+                <SettingsField label="指令模板（body）">
+                  <textarea className="settings-textarea" value={formBody}
+                    onChange={e => setFormBody(e.target.value)}
+                    placeholder="技能的核心提示词，支持 Markdown 格式。留空则使用 AI 生成"
+                    style={{minHeight: 80, resize: "vertical"}} />
+                </SettingsField>
+                <SettingsField label="执行方式">
+                  <select className="settings-select" value={formRunAs}
+                    onChange={e => setFormRunAs(e.target.value as any)}>
+                    <option value="Inline">内联（轻量快速）</option>
+                    <option value="Subagent">子代理（复杂独立推理）</option>
+                  </select>
+                </SettingsField>
+                <SettingsField label="工具权限">
+                  <div className="skills-list__tags">
+                    {["read_document", "write_document", "search_document"].map(t => (
+                      <label key={t} className="skills-list__tag" style={{cursor: "pointer",
+                        background: formTools.includes(t) ? "var(--accent-soft)" : "var(--hover)",
+                        color: formTools.includes(t) ? "var(--accent)" : "var(--text-secondary)",
+                      }}>
+                        <input type="checkbox" checked={formTools.includes(t)}
+                          onChange={() => toggleTool(t)} style={{display: "none"}} />
+                        {{"read_document": "读取", "write_document": "写入", "search_document": "搜索"}[t]}
+                      </label>
+                    ))}
+                  </div>
+                </SettingsField>
+                <SettingsField label="模型（可选）">
+                  <input className="settings-input" value={formModel}
+                    onChange={e => setFormModel(e.target.value)}
+                    placeholder="如 gpt-4o，留空使用默认" />
+                </SettingsField>
+                <SettingsField label="推理力度（可选）">
+                  <select className="settings-select" value={formEffort}
+                    onChange={e => setFormEffort(e.target.value)}>
+                    <option value="">默认</option>
+                    <option value="low">低</option>
+                    <option value="medium">中</option>
+                    <option value="high">高</option>
+                  </select>
+                </SettingsField>
+              </div>
+              <div className="settings-dialog__footer">
+                <button className="btn" onClick={() => setShowEditor(false)} style={{fontSize: 12, padding: "6px 14px"}}>
+                  取消
+                </button>
+                <button className="btn btn--primary" onClick={handleSave} disabled={!formName.trim() || formSaving}
+                  style={{fontSize: 12, padding: "6px 14px"}}>
+                  {formSaving ? "保存中…" : "保存"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
+      )}
+    </SettingsPage>
+  );
+}
+
+function ThemesSection() {
+  const themes = getAllThemes();
+  const [customs, setCustoms] = useState<ArticleTheme[]>(loadCustomThemes());
+  const [showEditor, setShowEditor] = useState(false);
+  const [editTheme, setEditTheme] = useState<ArticleTheme | null>(null);
+
+  const refresh = useCallback(() => {
+    setCustoms(loadCustomThemes());
+  }, []);
+
+  const handleImportTheme = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        // Validate theme structure
+        if (!data.label || !data.vars || !data.vars.textColor) {
+          alert('无效的主题文件');
+          return;
+        }
+        const theme: ArticleTheme = {
+          id: 'custom-' + Date.now(),
+          label: data.label,
+          desc: data.desc || '导入的主题',
+          platform: 'general',
+          tags: ['自定义', '导入'],
+          vars: data.vars,
+        };
+        const existing = loadCustomThemes();
+        saveCustomThemes([...existing, theme]);
+        refresh();
+      } catch {
+        alert('导入失败：文件格式错误');
+      }
+    };
+    input.click();
+  }, [refresh]);
+
+  const defaultVars: ArticleThemeVars = {
+    fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
+    fontSize: '16',
+    lineHeight: 1.75,
+    paragraphGap: '1.25',
+    maxWidth: '780',
+    textColor: '#2c2c2c',
+    bgColor: '#ffffff',
+    headingColor: '#111111',
+    linkColor: '#1a73e8',
+    codeBg: '#f5f5f5',
+    codeText: '#333333',
+    blockquoteBorder: '#dfe1e5',
+    blockquoteBg: '#f8f9fa',
+  };
+
+  return (
+    <SettingsPage title="文章主题管理">
+      <div className="settings-section__header">
+        <h3 className="settings-section__title">文章主题</h3>
+        <div style={{display: 'flex', gap: 6}}>
+          <button className="btn btn--small" onClick={handleImportTheme}>
+            <FileText size={12} /> 导入
+          </button>
+          <button className="btn btn--small" onClick={() => {
+            setEditTheme(null);
+            setShowEditor(true);
+          }}>
+            <Plus size={12} /> 新建
+          </button>
+        </div>
+      </div>
+
+      <div className="theme-manager__grid">
+        {themes.map(t => {
+          const isCustom = !isPresetTheme(t.id);
+          const v = t.vars;
+          return (
+            <div key={t.id} className="theme-manager__card">
+              <div className="theme-manager__card-preview" style={{background: v.bgColor}}>
+                <div className="theme-manager__card-swatches">
+                  <span className="theme-manager__swatch" style={{background: v.textColor}} title="文字色" />
+                  <span className="theme-manager__swatch" style={{background: v.headingColor}} title="标题色" />
+                  <span className="theme-manager__swatch" style={{background: v.linkColor}} title="链接色" />
+                  <span className="theme-manager__swatch" style={{background: v.codeBg, border: '1px solid rgba(0,0,0,0.06)'}} title="代码背景" />
+                  <span className="theme-manager__swatch" style={{background: v.blockquoteBorder}} title="引用边框" />
+                </div>
+                <div className="theme-manager__card-text" style={{color: v.headingColor, fontFamily: v.fontFamily}}>
+                  <div style={{fontWeight: 700, fontSize: 14}}>{t.label}</div>
+                  <div style={{fontSize: 10, color: v.textColor, marginTop: 2}}>{v.fontSize}px / {v.lineHeight}</div>
+                </div>
+              </div>
+              <div className="theme-manager__card-info">
+                <span className="theme-manager__card-name">{t.label}</span>
+                {isCustom && <span className="theme-manager__card-badge">自定义</span>}
+              </div>
+              <div className="theme-manager__card-desc">{t.desc}</div>
+              <div className="theme-manager__card-actions">
+                {!isCustom && (
+                  <button className="btn btn--small" onClick={() => { setEditTheme(t); setShowEditor(true); }}>复制创建</button>
+                )}
+                {isCustom && (
+                  <>
+                    <button className="btn btn--small" onClick={() => { setEditTheme(t); setShowEditor(true); }}>编辑</button>
+                    <button className="btn btn--small" onClick={() => {
+                      const json = JSON.stringify({ label: t.label, desc: t.desc, vars: t.vars }, null, 2);
+                      const fileName = t.label + '.json';
+                      if (isTauriEnv()) {
+                        tryInvoke('dialog_save', { filters: [{ name: 'JSON', extensions: ['json'] }], defaultPath: fileName }).then((path: any) => {
+                          if (path) tryInvoke('fs_write_text_file', { path, contents: json });
+                        });
+                      } else {
+                        const blob = new Blob([json], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = fileName;
+                        document.body.appendChild(a); a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }
+                    }}>导出</button>
+                    <button className="btn btn--small btn--danger" onClick={() => {
+                      const updated = customs.filter(c => c.id !== t.id);
+                      saveCustomThemes(updated);
+                      refresh();
+                    }}>删除</button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showEditor && (
+        <div className="settings-overlay" onClick={() => setShowEditor(false)}>
+          <div className="theme-editor" onClick={e => e.stopPropagation()}>
+            <div className="theme-editor__header">
+              <h4>{editTheme ? '编辑自定义主题' : '新建自定义主题'}</h4>
+              <button className="btn btn--small" onClick={() => setShowEditor(false)}>✕</button>
+            </div>
+            <ThemeForm
+              initial={editTheme || { id: '', label: '', desc: '', platform: 'general', tags: [], vars: { ...defaultVars } }}
+              onSave={(theme) => {
+                const existing = customs.filter(c => c.id !== theme.id);
+                saveCustomThemes([...existing, theme]);
+                refresh();
+                setShowEditor(false);
+              }}
+              isNew={!editTheme}
+            />
+          </div>
+        </div>
+      )}
+    </SettingsPage>
+  );
+}
+
+function ThemeForm({ initial, onSave, isNew }: { initial: ArticleTheme; onSave: (t: ArticleTheme) => void; isNew: boolean }) {
+  const [label, setLabel] = useState(initial.label);
+  const [desc, setDesc] = useState(initial.desc);
+  const [vars, setVars] = useState<ArticleThemeVars>({ ...initial.vars });
+
+  const updateVar = (key: keyof ArticleThemeVars, val: any) => {
+    setVars(prev => ({ ...prev, [key]: val }));
+  };
+
+  const handleSave = () => {
+    if (!label.trim()) return;
+    // Generate new ID for new/copy; keep original ID for editing existing custom
+    const isEditingCustom = !isNew && initial.id.startsWith('custom-');
+    const id = isEditingCustom ? initial.id : 'custom-' + Date.now();
+    onSave({
+      id,
+      label: label.trim(),
+      desc: desc.trim(),
+      platform: 'general',
+      tags: ['自定义'],
+      vars,
+    });
+  };
+
+  return (
+    <div className="theme-editor__form">
+      <div className="theme-editor__field-row">
+        <div className="theme-editor__field">
+          <label className="set-label">主题名称</label>
+          <input className="mem-input" value={label} onChange={e => setLabel(e.target.value)} placeholder="我的自定义主题" />
+        </div>
+      </div>
+      <div className="theme-editor__field-row">
+        <div className="theme-editor__field">
+          <label className="set-label">描述</label>
+          <input className="mem-input" value={desc} onChange={e => setDesc(e.target.value)} placeholder="简短描述这个主题的风格" />
+        </div>
+      </div>
+      <div className="theme-editor__divider" />
+
+      <div className="theme-editor__field-group">
+        <label className="theme-editor__group-label">排版</label>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">正文字体</label>
+            <input className="mem-input" value={vars.fontFamily} onChange={e => updateVar('fontFamily', e.target.value)} placeholder="font-family" />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">字号 (px)</label>
+            <input className="mem-input" type="number" min={12} max={24} value={parseInt(vars.fontSize)} onChange={e => updateVar('fontSize', String(e.target.value))} />
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">行距</label>
+            <input className="mem-input" type="number" min={1} max={3} step={0.05} value={vars.lineHeight} onChange={e => updateVar('lineHeight', parseFloat(e.target.value))} />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">段间距 (em)</label>
+            <input className="mem-input" type="number" min={0.5} max={3} step={0.1} value={parseFloat(vars.paragraphGap)} onChange={e => updateVar('paragraphGap', String(e.target.value))} />
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">最大宽度 (px)</label>
+            <input className="mem-input" type="number" min={500} max={1200} value={parseInt(vars.maxWidth)} onChange={e => updateVar('maxWidth', String(e.target.value))} />
+          </div>
+        </div>
+      </div>
+
+      <div className="theme-editor__divider" />
+      <div className="theme-editor__field-group">
+        <label className="theme-editor__group-label">颜色</label>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">背景色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.bgColor} onChange={e => updateVar('bgColor', e.target.value)} />
+              <input className="mem-input" value={vars.bgColor} onChange={e => updateVar('bgColor', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">正文字色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.textColor} onChange={e => updateVar('textColor', e.target.value)} />
+              <input className="mem-input" value={vars.textColor} onChange={e => updateVar('textColor', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">标题色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.headingColor} onChange={e => updateVar('headingColor', e.target.value)} />
+              <input className="mem-input" value={vars.headingColor} onChange={e => updateVar('headingColor', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">链接色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.linkColor} onChange={e => updateVar('linkColor', e.target.value)} />
+              <input className="mem-input" value={vars.linkColor} onChange={e => updateVar('linkColor', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">代码背景</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.codeBg} onChange={e => updateVar('codeBg', e.target.value)} />
+              <input className="mem-input" value={vars.codeBg} onChange={e => updateVar('codeBg', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">代码文字色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.codeText} onChange={e => updateVar('codeText', e.target.value)} />
+              <input className="mem-input" value={vars.codeText} onChange={e => updateVar('codeText', e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <div className="theme-editor__field-row">
+          <div className="theme-editor__field">
+            <label className="set-label">引用边框色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.blockquoteBorder} onChange={e => updateVar('blockquoteBorder', e.target.value)} />
+              <input className="mem-input" value={vars.blockquoteBorder} onChange={e => updateVar('blockquoteBorder', e.target.value)} />
+            </div>
+          </div>
+          <div className="theme-editor__field">
+            <label className="set-label">引用背景色</label>
+            <div className="theme-editor__color-row">
+              <input type="color" value={vars.blockquoteBg} onChange={e => updateVar('blockquoteBg', e.target.value)} />
+              <input className="mem-input" value={vars.blockquoteBg} onChange={e => updateVar('blockquoteBg', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="theme-editor__actions">
+        <button className="btn" onClick={() => onSave(initial)}>取消</button>
+        <button className="btn btn--primary" onClick={handleSave} disabled={!label.trim()}>
+          <Check size={12} /> 保存主题
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const BUILTIN_STYLE_CARDS = getAllBuiltinSkills().filter((s: WritingSkill) => s.scope === "full");
+
+
+function WritingStylesSection() {
+  const [customs, setCustoms] = useState<WritingSkill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formIcon, setFormIcon] = useState("\u{1F4DD}");
+
+  const [formBodies, setFormBodies] = useState<Record<string, string>>({});
+  const [formTemps, setFormTemps] = useState<Record<string, number | undefined>>({});
+  const [formTokens, setFormTokens] = useState<Record<string, number | undefined>>({});
+  const [formContextSources, setFormContextSources] = useState<string[]>([]);
+
+  const PHASES: { key: SkillPhase; label: string }[] = [
+    { key: "title", label: "标题生成" },
+    { key: "description", label: "简介生成" },
+    { key: "outline", label: "大纲生成" },
+    { key: "tags", label: "标签生成" },
+    { key: "writing", label: "正文写作" },
+  ];
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const m = await import("../../lib/ai/writingSkill");
+        setCustoms(await m.loadCustomSkills());
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const refresh = async () => {
+    try {
+      const m = await import("../../lib/ai/writingSkill");
+      const p = await import("../../lib/ai/plan");
+      p.clearSkillCache();
+      setCustoms(await m.loadCustomSkills());
+    } catch {}
+  };
+
+  const resetForm = () => {
+    setFormName(""); setFormDesc(""); setFormIcon("\u{1F4DD}");
+    setFormBodies({}); setFormTemps({}); setFormTokens({});
+    setFormContextSources([]);
+    setEditingId(null); setEditMode(false);
+  };
+
+  const startCreate = () => { resetForm(); setEditMode(true); };
+
+  const startEdit = (s: WritingSkill) => {
+    setFormName(s.name); setFormDesc(s.description); setFormIcon(s.icon);
+    const bodies: Record<string, string> = {};
+    const temps: Record<string, number | undefined> = {};
+    const tokens: Record<string, number | undefined> = {};
+    const phases = ["title", "description", "outline", "tags", "writing"];
+    for (const k of phases) {
+      const c = s.configs[k as SkillPhase];
+      bodies[k] = c?.systemPrompt || "";
+      temps[k] = c?.temperature;
+      tokens[k] = c?.maxTokens;
+    }
+    setFormBodies(bodies); setFormTemps(temps); setFormTokens(tokens);
+    setFormContextSources(s.contextSources.map(cs => cs.type));
+    setEditingId(s.id); setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) return;
+    try {
+      const m = await import("../../lib/ai/writingSkill");
+      const configs: Partial<Record<SkillPhase, { systemPrompt: string; temperature?: number; maxTokens?: number }>> = {};
+      for (const k of ["title", "description", "outline", "tags", "writing"] as SkillPhase[]) {
+        if (formBodies[k]) {
+          configs[k] = { systemPrompt: formBodies[k], temperature: formTemps[k], maxTokens: formTokens[k] };
+        }
+      }
+      const skill: WritingSkill = {
+        id: editingId || `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: formName.trim(),
+        description: formDesc.trim(),
+        icon: formIcon || "\u{1F4DD}",
+        scope: "full",
+        configs,
+        contextSources: formContextSources.map(type => ({
+          type: type as "project" | "series" | "linked_folder" | "custom_text",
+          label: type === "project" ? "关联项目目录" : type === "series" ? "系列文章前文" : type === "linked_folder" ? "关联文件夹" : "自定义参考文本",
+          required: false,
+        })),
+        dimensions: [],
+        builtin: false,
+        createdAt: editingId ? (m.findSkill(editingId)?.createdAt || Date.now()) : Date.now(),
+        updatedAt: Date.now(),
+      };
+      await m.saveCustomSkill(skill);
+      resetForm();
+      await refresh();
+    } catch {}
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const m = await import("../../lib/ai/writingSkill");
+      await m.deleteCustomSkill(id);
+      await refresh();
+    } catch {}
+  };
+
+  if (loading) {
+    return (
+      <SettingsPage title="写作风格">
+        <p style={{ padding: 24, color: "var(--text-tertiary)" }}>加载中…</p>
+      </SettingsPage>
+    );
+  }
+
+  // ── Edit Mode ──
+  if (editMode) {
+    return (
+      <SettingsPage title={editingId ? "编辑风格" : "新建风格"} desc="配置写作风格各阶段的提示词和 AI 参数，留空则使用默认值">
+        <SettingsSection title="基本信息">
+          <div className="settings-field settings-field--style">
+            <label className="settings-field__label">名称</label>
+            <input className="settings-input" value={formName} onChange={e => setFormName(e.target.value)} placeholder="如：技术博客、文艺随笔" />
+          </div>
+          <div className="settings-field settings-field--style">
+            <label className="settings-field__label">描述</label>
+            <input className="settings-input" value={formDesc} onChange={e => setFormDesc(e.target.value)} placeholder="简要描述这个风格的特点和适用场景" />
+          </div>
+          <div className="settings-field settings-field--style">
+            <label className="settings-field__label">图标</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 22 }}>{formIcon}</span>
+              <input className="settings-input" style={{ width: 80 }} value={formIcon} onChange={e => setFormIcon(e.target.value)} placeholder="📝" />
+            </div>
+          </div>
+        </SettingsSection>
+
+
+
+        <SettingsSection title="上下文来源" desc="技能可自动收集以下信息注入到 AI 提示中">
+          <div className="settings-field settings-field--style">
+            <label className="settings-field__label">来源</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                { id: "project", label: "关联项目目录", desc: "自动读取项目结构作为写作参考" },
+                { id: "series", label: "系列文章前文", desc: "读取同系列已发布的文章保持连贯" },
+              ].map(ctx => (
+                <label key={ctx.id} className="checkbox-label" style={{ fontSize: 12 }}>
+                  <input type="checkbox" checked={formContextSources.includes(ctx.id)}
+                    onChange={e => setFormContextSources(prev =>
+                      e.target.checked ? [...prev, ctx.id] : prev.filter(x => x !== ctx.id)
+                    )} />
+                  <span>{ctx.label} <span style={{ color: "var(--text-tertiary)" }}>{ctx.desc}</span></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="阶段配置" desc="每个阶段可独立设置 system prompt 和 AI 参数">
+          {PHASES.map(({ key, label }) => (
+            <details key={key} className="settings-card__details" style={{ marginBottom: 8 }}>
+              <summary className="settings-card__summary">{label}</summary>
+              <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="settings-field settings-field--style">
+                  <label className="settings-field__label">System Prompt</label>
+                  <textarea className="settings-textarea" rows={4}
+                    value={formBodies[key] || ""}
+                    onChange={e => setFormBodies(p => ({ ...p, [key]: e.target.value }))}
+                    placeholder="留空则使用默认 prompt" />
+                </div>
+                <div className="settings-field settings-field--style">
+                  <label className="settings-field__label">参数</label>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: "var(--fg-dim)", marginBottom: 4 }}>Temperature</div>
+                      <input className="settings-input" type="number" min={0} max={2} step={0.05}
+                        value={formTemps[key] ?? ""}
+                        onChange={e => setFormTemps(p => ({ ...p, [key]: e.target.value ? parseFloat(e.target.value) : undefined }))}
+                        placeholder="0.7" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: "var(--fg-dim)", marginBottom: 4 }}>Max Tokens</div>
+                      <input className="settings-input" type="number" min={128} max={16384} step={128}
+                        value={formTokens[key] ?? ""}
+                        onChange={e => setFormTokens(p => ({ ...p, [key]: e.target.value ? parseInt(e.target.value) : undefined }))}
+                        placeholder="1024" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          ))}
+        </SettingsSection>
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button className="btn" onClick={resetForm}>取消</button>
+          <button className="btn btn--primary" onClick={handleSave} disabled={!formName.trim()}>
+            {editingId ? "保存修改" : "创建风格"}
+          </button>
+        </div>
+      </SettingsPage>
+    );
+  }
+
+  // ── List Mode ──
+  return (
+    <SettingsPage title="写作风格" desc="管理文章写作风格模板，控制 AI 的写作语气、措辞和参数">
+      {/* Custom styles */}
+      <div className="settings-section__header" style={{ marginBottom: customs.length > 0 ? 12 : 12 }}>
+        <h3 className="settings-section__title">自定义风格</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn--primary" onClick={startCreate} style={{ fontSize: 12, height: 28 }}>
+            + 新建风格
+          </button>
+        </div>
+      </div>
+
+      {customs.length === 0 ? (
+        <div className="settings-card settings-card--empty" style={{ textAlign: "center", padding: "32px 16px", marginBottom: 24 }}>
+          <Sparkles size={20} style={{ opacity: 0.3, marginBottom: 8 }} />
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>还没有自定义风格。点击上方按钮创建第一个写作风格。</p>
+        </div>
+      ) : (
+        customs.map((s) => (
+          <div key={s.id} className="settings-card" style={{ marginBottom: 8 }}>
+            <div className="settings-card__body" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 20 }}>{s.icon || "📝"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</div>
+                <div style={{ fontSize: 11, color: "var(--text-tertiary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {s.description || "无描述"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button className="btn" style={{ fontSize: 11, height: 24, padding: "0 8px" }} onClick={() => startEdit(s)}>编辑</button>
+                <button className="btn btn--danger" style={{ fontSize: 11, height: 24, padding: "0 8px" }} onClick={() => handleDelete(s.id)}>删除</button>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+
+      {/* Built-in styles */}
+      <section className="settings-section">
+        <div className="settings-section__head">
+          <div>
+            <div className="settings-section__title">内置风格</div>
+            <div className="settings-section__desc">预设的写作风格，不可编辑</div>
+          </div>
+        </div>
+        <div className="settings-section__body settings-section__body--no-bg">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+            {builtinCards()}
+          </div>
+        </div>
+      </section>
+
+      {/* Quick skills */}
+      <QuickSkillsSection />
+    </SettingsPage>
+  );
+}
+
+/** 快捷技能管理（选区即时操作） */
+function QuickSkillsSection() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listSkills } = await import("../../lib/storage/skill");
+        const list = await listSkills();
+        setSkills(list);
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  const toggleSkill = async (name: string, enabled: boolean) => {
+    try {
+      const { setSkillEnabled } = await import("../../lib/storage/skill");
+      await setSkillEnabled(name, enabled);
+      setSkills(prev => prev.map(s => s.name === name ? { ...s, enabled } : s));
+    } catch {}
+  };
+
+  if (loading) {
+    return (
+      <section className="settings-section">
+        <div className="settings-section__head">
+          <div className="settings-section__title">快捷技能</div>
+          <div className="settings-section__desc">加载中…</div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      <div className="settings-section__head">
+        <div>
+          <div className="settings-section__title">快捷技能</div>
+          <div className="settings-section__desc">选中文本后可用的即时 AI 操作，可在工具栏和 AI 面板中使用</div>
+        </div>
+      </div>
+      <div className="settings-section__body settings-section__body--no-bg">
+        {skills.map((s) => (
+          <div key={s.name} className="quick-skill-item">
+            <div className="quick-skill-item__info">
+              <span className="quick-skill-item__icon">{SKILL_ICONS[s.name] || <Sparkles size={13} />}</span>
+              <div>
+                <div className="quick-skill-item__name">{SKILL_LABELS[s.name] || s.name}</div>
+                <div className="quick-skill-item__desc">{s.description}</div>
+              </div>
+            </div>
+            <button
+              className={"quick-skill-item__toggle" + (s.enabled ? " quick-skill-item__toggle--on" : "")}
+              onClick={() => toggleSkill(s.name, !s.enabled)}
+              title={s.enabled ? "禁用" : "启用"}
+            >
+              <Check size={10} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** 内置风格卡片网格 */
+function builtinCards() {
+  try {
+    if (!BUILTIN_STYLE_CARDS || BUILTIN_STYLE_CARDS.length === 0) return null;
+    return BUILTIN_STYLE_CARDS.map((s: WritingSkill) => (
+        <div key={s.id} className="settings-card" style={{ padding: 0, cursor: "default" }}>
+        <div className="settings-card__body" style={{ padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 18 }}>{s.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</span>
+          </div>
+          <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: "0 0 8px", lineHeight: 1.4 }}>{s.description}</p>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {s.dimensions.map((d: StyleDimension) => (
+              <span key={d.name} className="settings-badge">{d.name}: {d.value}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    ));
+  } catch { return null; }
+}
+function AboutSection() {
+  return (
+    <SettingsPage title="关于">
+      <div className="about-card">
+        <div className="about-card__logo">
+          <img src="/inkwise-icon.svg" width="100" height="100" alt="InkWise" />
+        </div>
+        <h3>InkWise · 墨智</h3>
+        <p className="about-card__version">版本 0.0.1</p>
+        <p className="about-card__desc">基于 React + TypeScript + Vite 构建，UI 设计参考 Reasonix 风格。</p>
+        <div className="about-card__tech">
+          <span>React 19</span>
+          <span>TypeScript 6</span>
+          <span>Vite 6</span>
+          <span>Lucide Icons</span>
+        </div>
+      </div>
+    </SettingsPage>
+  );
+}

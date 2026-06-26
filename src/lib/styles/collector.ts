@@ -13,8 +13,8 @@
  *
  * 所有样式作用域为 .article-body，供 juice 内联使用。
  */
-import { getSelectedArticleThemeId, getThemeById } from "../articleThemes";
-import { getSelectedCodeThemeId, getCodeTheme, getTemplate, getSelectedTemplateId } from "../editorStyles";
+import { getSelectedArticleThemeId, getThemeById } from "../theme/articleThemes";
+import { getSelectedCodeThemeId, getCodeTheme, getTemplate, getSelectedTemplateId } from "../editor/editorStyles";
 
 /** 文章主题变量 */
 interface ThemeVars {
