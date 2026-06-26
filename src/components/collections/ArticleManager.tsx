@@ -15,6 +15,7 @@ import {
 import { CollectionFormModal } from "./CollectionFormModal";
 import { loadCollections, saveCollections, loadAllSeriesPlans, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
+import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
@@ -24,14 +25,6 @@ type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
 
 /* ─── 字数统计（去 HTML 标签，中文算字英文算词） ─── */
-function getWordCount(c: string | null | undefined): number {
-  if (!c) return 0;
-  const text = c.replace(/<[^>]*>/g, '');
-  const cjk = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g) || []).length;
-  const words = (text.match(/[a-zA-Z]+/g) || []).length;
-  return cjk + words;
-}
-
 interface ArticleEntry {
   id: string;
   title: string;

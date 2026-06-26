@@ -17,6 +17,7 @@ import { SeriesOverview } from "../series/SeriesOverview";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { loadBlueprint } from "../../lib/ai/articleBlueprint";
 import { emit } from "../../lib/events/eventBus";
+import { getWordCount } from "../../lib/utils/text";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -48,11 +49,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   // Calculate stats from markdown text
   const calcStats = useCallback((text: string) => {
+    const words = getWordCount(text);
     const chars = text.length;
-    const cnChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-    const westernWords = text.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
-    const words = cnChars + westernWords;
-    // Count paragraphs by splitting on double newline
     const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0).length;
     return { words, chars, paragraphs };
   }, []);
@@ -194,10 +192,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
           if (!statsCache[article.id]) {
             loadArticleContent(article.id).then((content) => {
               if (content) {
-                const cnChars = (content.match(/[\u4e00-\u9fff]/g) || []).length;
-                const westernWords = content.replace(/[\u4e00-\u9fff]/g, " ").trim().split(/\s+/).filter(Boolean).length;
-                const words = cnChars + westernWords;
-                setStatsCache((prev) => ({ ...prev, [article.id]: { words, chars: content.length, paragraphs: content.split(/\n\n+/).filter(p => p.trim()).length } }));
+                const words = getWordCount(content);
+                setStatsCache((prev) => ({ ...prev, [article.id]: { words, chars: content.length, paragraphs: 0 } }));
               }
             });
           }
