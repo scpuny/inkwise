@@ -114,6 +114,7 @@ function AppContent() {
         setEditorFontFamily(config.editorFontFamily);
         setCodeThemeId(config.codeThemeId);
       }
+      window.dispatchEvent(new CustomEvent("article-theme-changed"));
     }
     prevArticleRef.current = activeArticleId;
     // Trigger style panel re-mount

@@ -1,7 +1,8 @@
 import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon, Search } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, applyAccentColor, applyImageCaptionFormat, applyCustomCSS, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../lib/editorStyles";
-import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, type ArticleTheme } from "../lib/articleThemes";
+import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, PLATFORMS, type ArticleTheme } from "../lib/articleThemes";
+import { CustomSelect, type CustomSelectOption } from "./CustomSelect";
 
 interface StylePanelProps {
   open: boolean;
@@ -58,7 +59,13 @@ export function StylePanel({
   const currentArticleTheme = getThemeById(articleThemeId);
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeSearch, setThemeSearch] = useState("");
-  const [macosCodeBlock, setMacosCodeBlock] = useState(localStorage.getItem('macos-code-block') === 'true');
+  const [themePage, setThemePage] = useState(0);
+  const [themePlatform, setThemePlatform] = useState("all");
+  const platformOptions: CustomSelectOption[] = [
+    { value: "all", label: "全部主题" },
+    ...PLATFORMS.map(p => ({ value: p.id, label: p.label })),
+  ];
+    const [macosCodeBlock, setMacosCodeBlock] = useState(localStorage.getItem('macos-code-block') === 'true');
   const [firstLineIndent, setFirstLineIndent] = useState(localStorage.getItem('first-line-indent') === 'true');
   const [justifyAlign, setJustifyAlign] = useState(localStorage.getItem('justify-align') === 'true');
   const [headingConfig, setHeadingConfig] = useState<Record<string, string[]>>(() => {
@@ -150,33 +157,70 @@ export function StylePanel({
       <div className="style-panel__body">
 
         {/* ── 分享主题 ── */}
-        <Section icon={<FileText size={13} />} label="主题设置">
-          <div className="style-panel__theme-search">
-            <Search size={12} />
-            <input type="text" placeholder="搜索主题..." value={themeSearch} onChange={e => setThemeSearch(e.target.value)} />
+        <Section label="">
+          <div className="style-panel__theme-toolbar">
+            <CustomSelect
+              value={themePlatform}
+              onChange={(v) => { setThemePlatform(v); setThemePage(0); }}
+              options={platformOptions}
+              placeholder="分类"
+            />
+            <div className="style-panel__theme-search">
+              <Search size={12} />
+              <input type="text" placeholder="搜索..." value={themeSearch} onChange={e => setThemeSearch(e.target.value)} />
+            </div>
           </div>
-          <div className="style-panel__theme-grid">
-            {articleThemes.filter(t => { if (!themeSearch) return true; const q = themeSearch.toLowerCase(); return t.label.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.tags.some(tag => tag.includes(q)) || t.platform.includes(q); }).map((t) => {
-              const v = t.vars;
+          <div className="style-panel__theme-pages">
+            {(() => {
+              const filtered = articleThemes.filter(t => {
+                if (themePlatform !== 'all' && t.platform !== themePlatform) return false;
+                if (!themeSearch) return true;
+                const q = themeSearch.toLowerCase();
+                return t.label.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.tags.some(tag => tag.includes(q)) || t.platform.includes(q);
+              });
+              const perPage = 4;
+              const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+              const cur = themePage >= totalPages ? 0 : themePage;
+              const pageThemes = filtered.slice(cur * perPage, cur * perPage + perPage);
               return (
-                <button
-                  key={t.id}
-                  className={`style-panel__theme-card${t.id === articleThemeId ? " style-panel__theme-card--active" : ""}`}
-                  onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } window.dispatchEvent(new CustomEvent("article-theme-changed")); }}
-                >
-                  <div className="style-panel__theme-card-name">{t.label}</div>
-                  <div className="style-panel__theme-card-desc">{t.desc}</div>
-                  <div className="style-panel__theme-card-strip">
-                    <span style={{ background: v.bgColor, border: "1px solid " + v.blockquoteBorder }} />
-                    <span style={{ background: v.textColor }} />
-                    <span style={{ background: v.headingColor }} />
-                    <span style={{ background: v.linkColor }} />
-                    <span style={{ background: v.codeBg }} />
-                    <span style={{ background: v.blockquoteBorder }} />
+                <>
+                  <div className="style-panel__theme-grid">
+                    {pageThemes.map((t) => {
+                      const v = t.vars;
+                      return (
+                        <button
+                          key={t.id}
+                          className={"style-panel__theme-card" + (t.id === articleThemeId ? " style-panel__theme-card--active" : "")}
+                          onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } window.dispatchEvent(new CustomEvent("article-theme-changed")); }}
+                        >
+                          <div className="style-panel__theme-card-name">{t.label}</div>
+                          <div className="style-panel__theme-card-desc">{t.desc}</div>
+                          <div className="style-panel__theme-card-strip">
+                            <span style={{ background: v.bgColor, border: "1px solid " + (v.blockquoteBorder || '#ddd') }} title="背景" />
+                            <span style={{ background: v.textColor }} title="正文" />
+                            <span style={{ background: v.accentColor || v.linkColor }} title="强调色" />
+                            <span style={{ background: v.headingColor }} title="标题" />
+                            <span style={{ background: v.strongColor || v.headingColor }} title="加粗" />
+                            <span style={{ background: v.markBg || '#fff3cd' }} title="高亮" />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </button>
+                  {filtered.length > perPage && (
+                    <div className="style-panel__theme-pager">
+                      <button className="style-panel__theme-pager-btn" disabled={cur === 0} onClick={() => setThemePage(cur - 1)}>◀</button>
+                      <div className="style-panel__theme-pager-dots">
+                        {Array.from({ length: totalPages }, (_, i) => (
+                          <span key={i} className={"style-panel__theme-pager-dot" + (i === cur ? " style-panel__theme-pager-dot--active" : "")} onClick={() => setThemePage(i)} />
+                        ))}
+                      </div>
+                      <button className="style-panel__theme-pager-btn" disabled={cur >= totalPages - 1} onClick={() => setThemePage(cur + 1)}>▶</button>
+                    </div>
+                  )}
+                </>
               );
-            })}
+            })()}
           </div>
         </Section>
 

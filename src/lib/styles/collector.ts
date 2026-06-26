@@ -31,6 +31,16 @@ interface ThemeVars {
   blockquoteBorder?: string;
   blockquoteBg?: string;
   paragraphGap?: string;
+  accentColor?: string;
+  strongColor?: string;
+  markBg?: string;
+  hrColor?: string;
+  pageBg?: string;
+  pageBgSize?: string;
+  headingVariant?: string;
+  headingBg?: string;
+  headingText?: string;
+  headingLine?: string;
 }
 
 // ─── Helpers ───
@@ -65,16 +75,19 @@ function buildThemeCss(vars: ThemeVars, scope: string = ".article-body"): string
   const fs = vars.fontSize ?? 16;
   const lh = vars.lineHeight ?? 1.75;
   const tc = vars.textColor || "#333";
-  const bg = vars.bgColor || "#fff";
+  const bg = vars.pageBg || vars.bgColor || "#fff";
   const mw = vars.maxWidth ?? 720;
   const hc = vars.headingColor || "inherit";
   const lc = vars.linkColor || "#0969da";
   const cb = vars.codeBg || "#f0f0f0";
   const ct = vars.codeText || "#333";
-
+  const ac = vars.accentColor || lc;
+  const sc = vars.strongColor || hc;
+  const mb = vars.markBg || "#fff3cd";
+  const hr = vars.hrColor || "#d0d7de";
   const pg = vars.paragraphGap || "0.5em";
 
-  return `${scope} {
+  let css = `${scope} {
   font-family: ${ff} !important;
   font-size: ${fs}px !important;
   line-height: ${lh} !important;
@@ -83,6 +96,7 @@ function buildThemeCss(vars: ThemeVars, scope: string = ".article-body"): string
   margin: 0 auto !important;
   padding: 24px 20px !important;
   background: ${bg} !important;
+  background-size: ${vars.pageBgSize || 'auto'} !important;
 }
 ${scope} p, ${scope} li, ${scope} blockquote, ${scope} td, ${scope} th {
   font-family: ${ff} !important; font-size: ${fs}px !important; line-height: ${lh} !important; color: ${tc} !important;
@@ -90,9 +104,14 @@ ${scope} p, ${scope} li, ${scope} blockquote, ${scope} td, ${scope} th {
 ${scope} h1, ${scope} h2, ${scope} h3, ${scope} h4 {
   color: ${hc} !important; margin: 1.2em 0 0.5em !important; line-height: 1.3 !important;
 }
-${scope} strong { color: ${hc} !important; }
+${scope} strong { color: ${sc} !important; }
 ${scope} a { color: ${lc} !important; }
 ${scope} p { margin: 0 0 ${pg} !important; }
+${scope} mark {
+  background: ${mb} !important;
+  padding: 0 4px !important;
+  border-radius: 3px !important;
+}
 ${scope} code {
   background: ${cb} !important; color: ${ct} !important; padding: 2px 6px !important; border-radius: 4px !important;
   font-size: 0.9em !important; font-family: "SF Mono", Consolas, "Courier New", monospace !important;
@@ -107,12 +126,41 @@ ${scope} blockquote > * { margin-left: 0 !important; padding-left: 0 !important;
 ${scope} img { max-width: 100% !important; border-radius: 4px !important; margin: 1em auto !important; display: block !important; }
 ${scope} figcaption { text-align: center !important; color: ${tc} !important; opacity: 0.6 !important; font-size: 0.85em !important; margin-top: 4px !important; }
 ${scope} table { width: 100% !important; border-collapse: collapse !important; margin: 1em 0 !important; }
-${scope} th, ${scope} td { border: 1px solid #d0d7de !important; padding: 6px 10px !important; text-align: left !important; }
-${scope} th { background: #f0f2f5 !important; font-weight: 600 !important; }
-${scope} hr { border: none !important; border-top: 1px solid #eee !important; margin: 1.5em 0 !important; }
+${scope} th, ${scope} td { border: 1px solid ${hr} !important; padding: 6px 10px !important; text-align: left !important; }
+${scope} th { background: ${cb} !important; font-weight: 600 !important; }
+${scope} hr { border: none !important; border-top: 1px solid ${hr} !important; margin: 1.5em 0 !important; }
 ${scope} ul, ${scope} ol { margin: 0.5em 0 !important; padding-left: 1.2em !important; }
 ${scope} li { margin: 0.3em 0 !important; word-break: keep-all !important; }
 `;
+
+  // Ribbon heading variant
+  if (vars.headingVariant === 'ribbon') {
+    const hBg = vars.headingBg || ac;
+    const hText = vars.headingText || '#ffffff';
+    const hLine = vars.headingLine || ac;
+    css += `
+${scope} h1, ${scope} h2, ${scope} h3, ${scope} h4, ${scope} h5 {
+  display: inline-block !important;
+  background: ${hBg} !important;
+  color: ${hText} !important;
+  padding: 6px 24px 6px 16px !important;
+  position: relative !important;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%) !important;
+  margin-bottom: 0.6em !important;
+}
+${scope} h1::after, ${scope} h2::after, ${scope} h3::after, ${scope} h4::after, ${scope} h5::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -4px !important;
+  left: 0 !important;
+  right: 12px !important;
+  height: 3px !important;
+  background: ${hLine} !important;
+  border-radius: 2px !important;
+}`;
+  }
+
+  return css;
 }
 
 // ─── Main ───
@@ -148,11 +196,18 @@ export function collectPublishCss(scope = ".article-body"): string {
     parts.push(buildThemeCss(overrideVars, scope));
   }
 
-  // 3. 文本样式
-  if (localStorage.getItem("first-line-indent") === "true")
+  // 3. 文本样式（编辑器模板 CSS 中可能自带 text-indent/text-align，
+  // 所以关闭时必须显式重置，否则「首行缩进/两端对齐」关闭后无效）
+  if (localStorage.getItem("first-line-indent") === "true") {
     parts.push(`${scope} p:not(li p, blockquote p) { text-indent: 2em !important; }`);
-  if (localStorage.getItem("justify-align") === "true")
+  } else {
+    parts.push(`${scope} p { text-indent: 0 !important; }`);
+  }
+  if (localStorage.getItem("justify-align") === "true") {
     parts.push(`${scope} { text-align: justify !important; } ${scope} p:not(li p, blockquote p) { text-align: justify !important; }`);
+  } else {
+    parts.push(`${scope} { text-align: initial !important; }`);
+  }
 
   // 4. 标题装饰
   try {
@@ -190,9 +245,10 @@ export function collectPublishCss(scope = ".article-body"): string {
 
   // 6. 强调色 + CSS 变量（始终设置 --accent，用于标题装饰等）
   const accentColor = localStorage.getItem("editor-accent-color") || "";
+  const themeAccent = theme?.vars?.accentColor || "";
   const headingColor = theme?.vars?.headingColor || "";
   const templateAccent = template ? extractTemplateAccent(template.css) : "";
-  const effectiveAccent = accentColor || headingColor || templateAccent || "#0969da";
+  const effectiveAccent = accentColor || themeAccent || headingColor || templateAccent || "#0969da";
   // 始终注入 --accent 变量（标题装饰、strong、代码块等依赖它）
   const accentVarCss = `${scope}{--article-accent:${effectiveAccent};--accent:${effectiveAccent}}`;
   // 始终注入 accent 元素样式，用 var(--accent) 跟随模版/主题主色
@@ -201,7 +257,7 @@ ${scope} a{color:var(--accent,#0969da)!important;text-decoration-color:var(--acc
 ${scope} code:not(pre code){color:var(--accent,#0969da)!important;background:color-mix(in srgb,var(--accent,#0969da) 8%,transparent)!important}
 ${scope} th{background:var(--accent,#0969da)!important;color:var(--accent-fg,#fff)!important}
 ${scope} ::selection{background:color-mix(in srgb,var(--accent,#0969da) 30%,transparent)!important}
-${scope} strong,${scope} b{color:var(--accent,#0969da)!important;display:inline!important}`;
+`;
   if (accentColor) {
     // 有明确强调色：用具体值（兼容不支持 CSS 变量的环境）+ CSS 变量
     parts.push(`${accentVarCss}
@@ -215,9 +271,15 @@ ${scope} strong,${scope} b{color:${accentColor}!important;display:inline!importa
     // 有选非默认文章主题：仅注入 --accent 变量，元素颜色由 buildThemeCss 控制
     parts.push(`${accentVarCss}`);
   } else {
-    // 无强调色 + 默认主题：a/strong/code/th/blockquote 用 var(--accent) 跟随模版
+    // 无强调色 + 默认主题：注入 --accent 变量，strong 跟随主题 strongColor 或 fallback
+    // 直接从 theme?.vars 获取 strongColor（该分支仅 clean 主题触发）
+    const cs = theme?.vars?.strongColor || "";
+    const strongCss = cs
+      ? `${scope} strong,${scope} b{color:${cs}!important;display:inline!important}`
+      : `${scope} strong,${scope} b{color:var(--accent,#0969da)!important;display:inline!important}`;
     parts.push(`${accentVarCss}
-${accentElCss}`);
+${accentElCss}
+${strongCss}`);
   }
 
   // 7. 代码主题

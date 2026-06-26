@@ -15,6 +15,7 @@ function escapeHtml(s: string): string {
 function inlineHtml(s: string): string {
   let r = escapeHtml(s);
   r = r.replace(/`([^`]+)`/g, "<code>$1</code>");
+  r = r.replace(/==([^=]+)==/g, "<mark>$1</mark>");
   r = r.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   r = r.replace(/\*([^*]+)\*/g, "<em>$1</em>");
   r = r.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m: string, alt: string, src: string) =>

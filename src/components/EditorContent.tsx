@@ -388,11 +388,18 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       document.head.appendChild(overrideTagRef.current);
     }
     const tag = overrideTagRef.current;
-    const parts = [];
-    if (editorFontSize) parts.push(`font-size: ${editorFontSize}px !important`);
-    if (editorMaxWidth) parts.push(`max-width: ${editorMaxWidth}px !important`);
-    parts.push(`line-height: ${lineHeight} !important`);
-    let cssText = `.editor-container .tiptap { ${parts.join("; ")}; }\n`;
+    const ov: string[] = [];
+    if (editorFontSize) ov.push(`font-size: ${editorFontSize}px !important`);
+    if (editorMaxWidth) ov.push(`max-width: ${editorMaxWidth}px !important`);
+    ov.push(`line-height: ${lineHeight} !important`);
+    if (editorParagraphGap) ov.push(`margin-bottom: ${editorParagraphGap}em !important`);
+    // Child selectors must match buildThemeCss in collector.ts,
+    // otherwise parent font-size/line-height gets overridden by child !important
+    const sel = '.editor-container .tiptap';
+    const childSel = '.editor-container .tiptap p, .editor-container .tiptap li, .editor-container .tiptap blockquote';
+    const inherited = ov.filter(s => s.startsWith('font-size') || s.startsWith('line-height'));
+    let cssText = `${sel} { ${ov.join("; ")}; }\n`;
+    if (inherited.length) cssText += `${childSel} { ${inherited.join("; ")}; }\n`;
     if (showHeadingNumber) {
       cssText += `.editor-container .tiptap { counter-reset: h1-counter; }
       .editor-container .tiptap h1 { counter-reset: h2-counter; }

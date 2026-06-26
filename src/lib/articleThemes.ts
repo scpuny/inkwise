@@ -17,6 +17,18 @@ export interface ArticleThemeVars {
   codeText: string;         // 代码块文字颜色
   blockquoteBorder: string; // 引用块边框色
   blockquoteBg: string;     // 引用块背景
+  // 增强视觉
+  accentColor?: string;     // 强调色（引用块/装饰元素）
+  strongColor?: string;     // 加粗文字色，缺省用 headingColor
+  markBg?: string;          // ==高亮== 背景色
+  hrColor?: string;         // 分割线颜色，缺省用 #e0e0e0
+  pageBg?: string;          // 整页背景（可渐变/图案），缺省用 bgColor
+  pageBgSize?: string;      // 背景尺寸
+  // 标题变体
+  headingVariant?: 'ribbon';  // 标题视觉结构
+  headingBg?: string;         // 标题块背景
+  headingText?: string;       // 标题块文字色，缺省用 #ffffff
+  headingLine?: string;       // 标题底线色，缺省用 accentColor
 }
 
 /* ─── 主题定义 ─── */
@@ -72,7 +84,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '最高可读性，无彩色干扰',
     platform: 'general',
     tags: ['简约', '通用'],
-    vars: { ...BASE_VARS },
+    vars: { ...BASE_VARS ,
+    accentColor: '#1a73e8',
+    strongColor: '#111111',
+    markBg: '#e8f0fe',
+    hrColor: '#d0d7de',},
   },
   {
     id: 'paper',
@@ -80,7 +96,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '暖色底色，仿纸张质感',
     platform: 'general',
     tags: ['暖色', '阅读'],
-    vars: { ...BASE_VARS, bgColor: '#faf8f5', textColor: '#3a3a3a', blockquoteBg: '#f5f0eb' },
+    vars: { ...BASE_VARS, bgColor: '#faf8f5', textColor: '#3a3a3a', blockquoteBg: '#f5f0eb' ,
+    accentColor: '#b08968',
+    strongColor: '#5a4a3a',
+    markBg: '#f0e3cc',
+    hrColor: '#d7c19a',},
   },
   {
     id: 'night',
@@ -88,7 +108,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '深色背景，适合夜间阅读',
     platform: 'general',
     tags: ['暗色', '护眼'],
-    vars: { ...BASE_VARS, bgColor: '#1a1a2e', textColor: '#e0e0e0', headingColor: '#ffffff', codeBg: '#16213e', codeText: '#e0e0e0', blockquoteBg: '#16213e', blockquoteBorder: '#4a4a6a' },
+    vars: { ...BASE_VARS, bgColor: '#1a1a2e', textColor: '#e0e0e0', headingColor: '#ffffff', codeBg: '#16213e', codeText: '#e0e0e0', blockquoteBg: '#16213e', blockquoteBorder: '#4a4a6a' ,
+    accentColor: '#7c8cff',
+    strongColor: '#ffffff',
+    markBg: '#1f2a55',
+    hrColor: '#2f3763',},
   },
   {
     id: 'elegant',
@@ -96,7 +120,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '衬线字体，传统排版',
     platform: 'general',
     tags: ['衬线', '正式'],
-    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif', fontSize: '17', lineHeight: 1.9 },
+    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif', fontSize: '17', lineHeight: 1.9 ,
+    accentColor: '#b08968',
+    strongColor: '#8a5a36',
+    markBg: '#f6e6cf',
+    hrColor: '#d7c19a',},
   },
   {
     id: 'modern',
@@ -104,7 +132,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '无衬线字体，干净利落',
     platform: 'general',
     tags: ['无衬线', '商务'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif', maxWidth: '800' },
+    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif', maxWidth: '800' ,
+    accentColor: '#2d8cf0',
+    strongColor: '#1a1a1a',
+    markBg: '#dcedff',
+    hrColor: '#d0d7de',},
   },
 
   // ═══ 微信 ═══
@@ -114,7 +146,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '窄版大字号，经典微信风格',
     platform: 'wechat',
     tags: ['默认', '窄版'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif', fontSize: '17', lineHeight: 1.8, paragraphGap: '1.4', maxWidth: '660', linkColor: '#576b95', codeBg: '#f0f0f0' },
+    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif', fontSize: '17', lineHeight: 1.8, paragraphGap: '1.4', maxWidth: '660', linkColor: '#576b95', codeBg: '#f0f0f0' ,
+    accentColor: '#576b95',
+    strongColor: '#1a1a1a',
+    markBg: '#e8f0fe',
+    hrColor: '#d0d7de',},
   },
   {
     id: 'wechat-novel',
@@ -122,7 +158,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '宽行距，适合长文阅读',
     platform: 'wechat',
     tags: ['长文', '舒适'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '17', lineHeight: 2.0, paragraphGap: '1.6', maxWidth: '660', textColor: '#3a3a3a', blockquoteBg: '#f5f5f5' },
+    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '17', lineHeight: 2.0, paragraphGap: '1.6', maxWidth: '660', textColor: '#3a3a3a', blockquoteBg: '#f5f5f5' ,
+    accentColor: '#576b95',
+    strongColor: '#3a3a3a',
+    markBg: '#e8f0fe',
+    hrColor: '#d0d7de',},
   },
   {
     id: 'wechat-card',
@@ -130,7 +170,11 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     desc: '圆角卡片，图文并茂',
     platform: 'wechat',
     tags: ['卡片', '图文'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '640', bgColor: '#f5f5f5', blockquoteBg: '#ffffff', codeBg: '#ffffff' },
+    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '640', bgColor: '#f5f5f5', blockquoteBg: '#ffffff', codeBg: '#ffffff' ,
+    accentColor: '#576b95',
+    strongColor: '#2c2c2c',
+    markBg: '#e8f0fe',
+    hrColor: '#d0d7de',},
   },
 
   // ═══ 知乎 ═══
@@ -278,6 +322,64 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
     vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", sans-serif', fontSize: '16', lineHeight: 1.75, paragraphGap: '1.2', maxWidth: '660', textColor: '#2c2c2c', linkColor: '#4a90d9', codeBg: '#f5f5f5', codeText: '#555555', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f9fafb' },
   },
 
+
+  // ═══ 新增（受外部 WechatTheme 启发）═══
+  {
+    id: 'warm-clay',
+    label: '暖陶米白',
+    desc: '暖色调，陶土红强调，仿 Claude 风格',
+    platform: 'general',
+    tags: ['暖色', '温和'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif', textColor: '#3d3929', headingColor: '#181815', linkColor: '#d97757', bgColor: '#faf9f5', codeBg: '#f5f4ef', blockquoteBorder: '#d97757', blockquoteBg: '#faf9f5', accentColor: '#d97757', strongColor: '#c2613f', markBg: '#f9e8e0', hrColor: '#e8e6dc' },
+  },
+  {
+    id: 'indigo-pink',
+    label: '靛粉渐变',
+    desc: '靛蓝标题粉红强调，渐变背景带网格',
+    platform: 'general',
+    tags: ['渐变', '现代', '醒目'],
+    vars: { ...BASE_VARS, fontFamily: 'Inter,"PingFang SC","Microsoft YaHei",sans-serif', textColor: '#334155', headingColor: '#312e81', linkColor: '#6366f1', headingVariant: 'ribbon', headingBg: 'linear-gradient(135deg,#6366f1,#ec4899)', headingText: '#ffffff', headingLine: '#6366f1', bgColor: '#ffffff', codeBg: '#eef2ff', codeText: '#4338ca', strongColor: '#ec4899', markBg: '#fce7f3', hrColor: '#e0e7ff', blockquoteBorder: '#ec4899', blockquoteBg: '#f8f7ff', pageBg: 'linear-gradient(rgba(99,102,241,0.045) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.045) 1px,transparent 1px),radial-gradient(circle at 92% 8%,rgba(236,72,153,0.16) 0 120px,transparent 122px),radial-gradient(circle at 6% 88%,rgba(99,102,241,0.16) 0 140px,transparent 142px),#ffffff', pageBgSize: '40px 40px,40px 40px,auto,auto,auto' },
+  },
+  {
+    id: 'magazine',
+    label: '杂志红',
+    desc: '深红标题，浓烈编辑风',
+    platform: 'general',
+    tags: ['正式', '浓烈'],
+    vars: { ...BASE_VARS, fontFamily: '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif', textColor: '#2f2f33', headingColor: '#7a1f1f', linkColor: '#c23a3a', bgColor: '#fffcfc', codeBg: '#ffeef0', codeText: '#9c2f3a', strongColor: '#992d2d', markBg: '#ffe0de', hrColor: '#e8c2c2', blockquoteBorder: '#c23a3a', blockquoteBg: '#fff3f2' },
+  },
+  {
+    id: 'retro',
+    label: '复古纸',
+    desc: 'Georgia 衬线字体，暖黄纸质感',
+    platform: 'general',
+    tags: ['复古', '衬线', '纸质'],
+    vars: { ...BASE_VARS, fontFamily: 'Georgia,"Times New Roman","PingFang SC",serif', textColor: '#2f261b', headingColor: '#4a3215', linkColor: '#8b6a35', bgColor: '#fcf8f0', codeBg: '#f2e7d4', codeText: '#704a1a', strongColor: '#7a4e14', markBg: '#f0e3cc', hrColor: '#d7c19a', blockquoteBorder: '#8b6a35', blockquoteBg: '#f8f2e8', fontSize: '17', lineHeight: 1.9, paragraphGap: '1.4' },
+  },
+  {
+    id: 'ocean',
+    label: '海盐青',
+    desc: '青绿主调，清爽海洋感',
+    platform: 'general',
+    tags: ['清爽', '自然'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif', textColor: '#1f3a3d', headingColor: '#0b4f55', linkColor: '#0e9594', bgColor: '#f4fbfa', codeBg: '#e8f6f5', codeText: '#0b6b6a', strongColor: '#0a7e7d', markBg: '#d6f3f1', hrColor: '#cdeae8', blockquoteBorder: '#0e9594', blockquoteBg: '#effbfa' },
+  },
+  {
+    id: 'amber',
+    label: '琥珀橙',
+    desc: '温暖橙色调，沉稳琥珀感',
+    platform: 'general',
+    tags: ['暖色', '沉稳'],
+    vars: { ...BASE_VARS, textColor: '#2c2c2c', headingColor: '#c8722a', linkColor: '#c8722a', bgColor: '#fffcf7', codeBg: '#faebd7', codeText: '#a05a20', strongColor: '#c8722a', markBg: '#fdf0e0', hrColor: '#f0d5b0', blockquoteBorder: '#c8722a', blockquoteBg: '#fdf5ec' },
+  },
+  {
+    id: 'health',
+    label: '健康绿',
+    desc: '自然绿色调，网格背景护眼',
+    platform: 'general',
+    tags: ['自然', '护眼'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif', textColor: '#183d34', headingColor: '#123f34', linkColor: '#0f8f67', bgColor: '#f4faf7', codeBg: '#edf7f2', codeText: '#0f3129', strongColor: '#087857', markBg: '#e5f5ee', hrColor: '#dcebe3', blockquoteBorder: '#5a8f75', blockquoteBg: '#f7fcf9', pageBg: 'linear-gradient(rgba(18,63,52,0.045) 1px,transparent 1px),linear-gradient(90deg,rgba(18,63,52,0.045) 1px,transparent 1px),#f4faf7', pageBgSize: '48px 48px,48px 48px,auto' },
+  },
 ];
 
 /* ─── 自定义主题存储 ─── */
@@ -346,7 +448,11 @@ export function isPresetTheme(id: string): boolean {
 
 /* ─── 生成内联 CSS ─── */
 export function buildThemeCss(vars: ArticleThemeVars): string {
-  return `:root {
+  const ac = vars.accentColor || vars.linkColor || '#1a73e8';
+  const sc = vars.strongColor || vars.headingColor;
+  const hc = vars.hrColor || '#e0e0e0';
+
+  let css = `:root {
   --article-font-family: ${vars.fontFamily};
   --article-font-size: ${vars.fontSize}px;
   --article-line-height: ${vars.lineHeight};
@@ -360,6 +466,12 @@ export function buildThemeCss(vars: ArticleThemeVars): string {
   --article-code-text: ${vars.codeText};
   --article-blockquote-border: ${vars.blockquoteBorder};
   --article-blockquote-bg: ${vars.blockquoteBg};
+  --article-accent-color: ${ac};
+  --article-strong-color: ${sc};
+  --article-mark-bg: ${vars.markBg || '#fff3cd'};
+  --article-hr-color: ${hc};
+  --article-page-bg: ${vars.pageBg || vars.bgColor};
+  --article-page-bg-size: ${vars.pageBgSize || 'auto'};
 }
 
 .article-body {
@@ -367,7 +479,8 @@ export function buildThemeCss(vars: ArticleThemeVars): string {
   font-size: var(--article-font-size);
   line-height: var(--article-line-height);
   color: var(--article-text-color);
-  background: var(--article-bg-color);
+  background: var(--article-page-bg);
+  background-size: var(--article-page-bg-size);
   max-width: var(--article-max-width);
   margin: 0 auto;
   padding: 20px;
@@ -379,7 +492,7 @@ export function buildThemeCss(vars: ArticleThemeVars): string {
   margin: 1.2em 0 0.5em;
   line-height: 1.3;
 }
-.article-body strong { color: var(--article-heading-color); }
+.article-body strong { color: var(--article-strong-color); }
 
 .article-body p { margin: 0 0 var(--article-paragraph-gap); }
 .article-body a { color: var(--article-link-color); }
@@ -402,35 +515,77 @@ export function buildThemeCss(vars: ArticleThemeVars): string {
   border-radius: 0 4px 4px 0;
 }
 
+.article-body mark {
+  background: var(--article-mark-bg);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
 .article-body ul, .article-body ol { padding-left: 1.5em; margin: 0.5em 0; }
 .article-body li { margin: 0.3em 0; }
 .article-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 1em 0; }
-.article-body hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+.article-body hr { border: none; border-top: 1px solid var(--article-hr-color); margin: 2em 0; }
 
 .article-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-.article-body th, .article-body td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; }
+.article-body th, .article-body td { border: 1px solid var(--article-hr-color); padding: 8px 12px; text-align: left; }
 .article-body th { background: var(--article-code-bg); font-weight: 600; }
 `;
+
+  // Ribbon heading variant
+  if (vars.headingVariant === 'ribbon') {
+    const hBg = vars.headingBg || ac;
+    const hText = vars.headingText || '#ffffff';
+    const hLine = vars.headingLine || ac;
+    css += `
+.article-body h1, .article-body h2, .article-body h3,
+.article-body h4, .article-body h5 {
+  display: inline-block;
+  background: ${hBg};
+  color: ${hText};
+  padding: 6px 24px 6px 16px;
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+  margin-bottom: 0.6em;
+}
+.article-body h1::after, .article-body h2::after, .article-body h3::after,
+.article-body h4::after, .article-body h5::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 12px;
+  height: 3px;
+  background: ${hLine};
+  border-radius: 2px;
+}`;
+  }
+
+  return css;
 }
 
 /* ─── 生成完整可分享 HTML ─── */
 export function buildShareableHtml(content: string, title: string, vars: ArticleThemeVars): string {
+  const pageBg = vars.pageBg || vars.bgColor;
+  const bgSize = vars.pageBgSize ? `;background-size:${vars.pageBgSize}` : '';
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title}</title>
 <style>${buildThemeCss(vars)}</style></head>
-<body style="margin:0;background:${vars.bgColor}">
+<body style="margin:0;background:${pageBg}${bgSize}">
 <div class="article-body">${content}</div>
 </body></html>`;
 }
 
 /* ─── 生成编辑器适用的主题 CSS（覆盖 editorContainer 作用域） ─── */
 export function buildEditorThemeCss(vars: ArticleThemeVars): string {
+  const sc = vars.strongColor || vars.headingColor;
+  const hc = vars.hrColor || vars.blockquoteBorder;
+  const pageBg = vars.pageBg || vars.bgColor;
   return `.editor-container .tiptap {
   font-family: ${vars.fontFamily} !important;
   color: ${vars.textColor} !important;
-  background-color: ${vars.bgColor} !important;
+  background: ${pageBg} !important;
 }
 .editor-container .tiptap h1,
 .editor-container .tiptap h2,
@@ -443,7 +598,7 @@ export function buildEditorThemeCss(vars: ArticleThemeVars): string {
   margin: 1.2em 0 0.5em !important;
 }
 .editor-container .tiptap strong {
-  color: ${vars.headingColor} !important;
+  color: ${sc} !important;
 }
 .editor-container .tiptap a { color: ${vars.linkColor} !important; }
 .editor-container .tiptap code, .editor-container .tiptap pre {
@@ -455,12 +610,17 @@ export function buildEditorThemeCss(vars: ArticleThemeVars): string {
   background: ${vars.blockquoteBg} !important;
   color: ${vars.textColor} !important;
 }
+.editor-container .tiptap mark {
+  background: ${vars.markBg || '#fff3cd'} !important;
+  padding: 0 4px !important;
+  border-radius: 3px !important;
+}
 .editor-container .tiptap ul, .editor-container .tiptap ol { padding-left: 1.5em !important; margin: 0.5em 0 !important; }
 .editor-container .tiptap li { margin: 0.3em 0 !important; }
 .editor-container .tiptap img { max-width: 100% !important; height: auto !important; border-radius: 6px !important; margin: 1em 0 !important; }
-.editor-container .tiptap hr { border: none !important; border-top: 1px solid ${vars.blockquoteBorder} !important; margin: 2em 0 !important; }
+.editor-container .tiptap hr { border: none !important; border-top: 1px solid ${hc} !important; margin: 2em 0 !important; }
 .editor-container .tiptap table { border-collapse: collapse !important; width: 100% !important; margin: 1em 0 !important; }
-.editor-container .tiptap th, .editor-container .tiptap td { border: 1px solid ${vars.blockquoteBorder} !important; padding: 8px 12px !important; text-align: left !important; }
+.editor-container .tiptap th, .editor-container .tiptap td { border: 1px solid ${hc} !important; padding: 8px 12px !important; text-align: left !important; }
 .editor-container .tiptap th { background: ${vars.codeBg} !important; font-weight: 600 !important; }
 `;
 }
