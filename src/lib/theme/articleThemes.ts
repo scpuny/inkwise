@@ -383,8 +383,8 @@ export const ARTICLE_THEMES: ArticleTheme[] = [
 ];
 
 /* ─── 自定义主题存储 ─── */
-const CUSTOM_THEMES_KEY = 'aiwriter-custom-article-themes';
-const SELECTED_THEME_KEY = 'aiwriter-selected-article-theme';
+const CUSTOM_THEMES_KEY = 'inkwise-custom-article-themes';
+const SELECTED_THEME_KEY = 'inkwise-selected-article-theme';
 
 export function getSelectedArticleThemeId(): string {
   try {

@@ -5,8 +5,8 @@ export const FONT_FAMILIES = ["system", "yahei", "pingfang", "noto", "serif", "c
 export type FontFamily = (typeof FONT_FAMILIES)[number];
 export const DEFAULT_FONT_FAMILY: FontFamily = "system";
 
-const FONT_FAMILY_KEY = "aiwriter-font-family";
-const CUSTOM_FONT_KEY = "aiwriter-font-family-custom";
+const FONT_FAMILY_KEY = "inkwise-font-family";
+const CUSTOM_FONT_KEY = "inkwise-font-family-custom";
 
 export function isFontFamily(value: unknown): value is FontFamily {
   return typeof value === "string" && (FONT_FAMILIES as readonly string[]).includes(value);

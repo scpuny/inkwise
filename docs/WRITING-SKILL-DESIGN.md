@@ -395,7 +395,7 @@ const systemPrompt = `${projectCtx}\n\n${skillPrompt}`;
 
 **Tauri 桌面模式**：
 ```
-~/.aiwriter/style-templates/
+~/.inkwise/style-templates/
 ├── builtin/                  ← 内置预设（只读）
 │   ├── general.json
 │   ├── academic.json
@@ -408,7 +408,7 @@ const systemPrompt = `${projectCtx}\n\n${skillPrompt}`;
 
 **浏览器模式**：
 - 内置预设：代码中硬编码（getBuiltinSkills 同类机制）
-- 用户自定义：localStorage 键 `aiwriter-custom-skills`
+- 用户自定义：localStorage 键 `inkwise-custom-skills`
 
 ### 6.2 SkillStore 扩展（Rust 侧）
 

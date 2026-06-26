@@ -6,7 +6,7 @@
 
 ## 项目概况
 
-InkWise 墨智（AiWriter）是一个桌面端中文写作应用，基于 React 19 + TypeScript + Tauri 2 构建，使用 TipTap 3 富文本编辑器内核，支持接入多种 AI 提供商辅助写作。内置 SQLite 全文检索、多平台发布（微信/头条）、项目上下文索引与专栏规划功能。
+InkWise 墨智（Inkwise）是一个桌面端中文写作应用，基于 React 19 + TypeScript + Tauri 2 构建，使用 TipTap 3 富文本编辑器内核，支持接入多种 AI 提供商辅助写作。内置 SQLite 全文检索、多平台发布（微信/头条）、项目上下文索引与专栏规划功能。
 
 ---
 
@@ -47,8 +47,8 @@ npm run tauri:build      # Tauri 生产构建
 ### 数据持久化
 
 - **Tauri 模式（旧路径）**: Rust `DataStore` 将数据写入 `app_data_dir/data/*.json`，文章内容存为 `articles/{id}.md`
-- **Tauri 模式（新路径）**: Rust `Database`（`db.rs`）使用 SQLite 持久化，位于 `~/.aiwriter/data/aiwriter.db`，含 FTS5 全文索引
-- **浏览器模式**: 所有数据通过 `localStorage` 存储，Key 前缀 `aiwriter-`
+- **Tauri 模式（新路径）**: Rust `Database`（`db.rs`）使用 SQLite 持久化，位于 `~/.inkwise/data/inkwise.db`，含 FTS5 全文索引
+- **浏览器模式**: 所有数据通过 `localStorage` 存储，Key 前缀 `inkwise-`
 - 新增数据模型时需同时实现 Rust 端（`store.rs` 或 `db.rs`）和前端（对应 `lib/` 文件）的读写逻辑
 - SQLite 迁移：`db.rs` 内置 schema 版本管理，新增表/字段需更新 `SCHEMA_VERSION` 并编写迁移 SQL
 
@@ -111,7 +111,7 @@ npm run tauri:build      # Tauri 生产构建
 ## 项目结构
 
 ```
-AiWriter/
+Inkwise/
 +-- index.html                # 入口 HTML
 +-- vite.config.ts            # Vite 配置
 +-- tsconfig.json             # TypeScript 配置

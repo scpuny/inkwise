@@ -108,7 +108,7 @@ impl FileHashCache {
         // 降级到 JSON 文件
         let cache_dir = data_dir
             .map(|d| d.join("index"))
-            .unwrap_or_else(|| project_dir.join(".aiwriter_index"));
+            .unwrap_or_else(|| project_dir.join(".inkwise_index"));
         std::fs::create_dir_all(&cache_dir).ok();
         let cache_path = cache_dir.join("file_hashes.json");
         let hashes = std::fs::read_to_string(&cache_path)

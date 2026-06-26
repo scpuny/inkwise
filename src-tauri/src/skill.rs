@@ -90,8 +90,8 @@ impl SkillStore {
     pub fn new(global_skills_dir: PathBuf, project_skills_dir: Option<PathBuf>) -> Self {
         let mut roots = Vec::new();
 
-        // Global scope: ~/.reasonix/skills/, ~/.aiwriter/skills/
-        for name in &[".reasonix", ".aiwriter"] {
+        // Global scope: ~/.reasonix/skills/, ~/.inkwise/skills/
+        for name in &[".reasonix", ".inkwise"] {
             let dir = global_skills_dir.parent().map(|p| p.join(name).join("skills"))
                 .unwrap_or_else(|| global_skills_dir.join(name).join("skills"));
             roots.push(dir);

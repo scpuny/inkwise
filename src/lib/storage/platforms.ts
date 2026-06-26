@@ -54,7 +54,7 @@ function genPlatformId(): string {
   return `plat_${(nextPlatformId++).toString(36)}`;
 }
 
-const PLATFORM_CONFIGS_KEY = "aiwriter-platform-configs";
+const PLATFORM_CONFIGS_KEY = "inkwise-platform-configs";
 
 function loadPlatformConfigsLocal(): PlatformConfig[] {
   try {
@@ -122,7 +122,7 @@ export async function verifyPlatformCredentials(platform: string, appId: string,
 
 // ─── Publish History ───
 
-const PUBLISH_HISTORY_KEY = "aiwriter-publish-history";
+const PUBLISH_HISTORY_KEY = "inkwise-publish-history";
 
 function loadPublishHistoryLocal(): PublishRecord[] {
   try {

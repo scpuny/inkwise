@@ -1579,7 +1579,7 @@ export function saveArticleStyleConfig(articleId: string): void {
     accentColor: localStorage.getItem('editor-accent-color') || '',
     captionFormat: localStorage.getItem('editor-caption-format') || '',
     customCSS: localStorage.getItem('editor-custom-css') || '',
-    articleThemeId: localStorage.getItem('aiwriter-selected-article-theme') || 'clean',
+    articleThemeId: localStorage.getItem('inkwise-selected-article-theme') || 'clean',
   };
   try {
     localStorage.setItem('article-style-config:' + articleId, JSON.stringify(config));
@@ -1612,7 +1612,7 @@ export function applyArticleStyleConfig(config: ArticleStyleConfig): void {
   localStorage.setItem('editor-caption-format', config.captionFormat);
   localStorage.setItem('editor-custom-css', config.customCSS);
 	  localStorage.setItem('bg-pattern', config.bgPattern);
-  localStorage.setItem('aiwriter-selected-article-theme', config.articleThemeId);
+  localStorage.setItem('inkwise-selected-article-theme', config.articleThemeId);
   // Apply visual effects immediately
   applyAccentColor(config.accentColor);
   applyImageCaptionFormat(config.captionFormat);
