@@ -1343,12 +1343,12 @@ export function applyTextStyle(firstLineIndent: boolean, justifyAlign: boolean):
   }
   const rules: string[] = [];
   if (firstLineIndent) {
-    // 使用 > p 子代选择器只缩进直接段落，不影响列表/引用/代码
+    // > p 直接段落首行缩进，blockquote 引用段落不缩进
     rules.push(`.editor-container .tiptap > p { text-indent: 2em !important; }`);
   }
   if (justifyAlign) {
-    // 只对直接段落两端对齐，不包括代码块
-    rules.push(`.editor-container .tiptap > p { text-align: justify !important; }`);
+    // 只对直接段落和引用段落两端对齐，不影响代码块
+    rules.push(`.editor-container .tiptap > p, .editor-container .tiptap blockquote p { text-align: justify !important; }`);
   }
   tag.textContent = rules.join("\n");
 }
