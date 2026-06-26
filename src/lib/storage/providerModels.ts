@@ -3,7 +3,7 @@
 // 浏览器模式（dev）下仅使用 localStorage
 
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../bridge/tauri";
-import { StorageEngine } from "../storageEngine";
+import { StorageEngine } from "./storageEngine";
 
 const CACHE_KEY = "providers";
 

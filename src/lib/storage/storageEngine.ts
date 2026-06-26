@@ -8,7 +8,7 @@
 // - delete()：后端正删 + 清理缓存
 // - 缓存自动随后端读写同步，无需手动管理
 
-import { isTauriEnv, tryInvoke } from "./tauri";
+import { isTauriEnv, tryInvoke } from "../bridge/tauri";
 
 // ─── Backend Adapter ───
 // 定义后端读写接口，每个数据模块实现自己的 adapter

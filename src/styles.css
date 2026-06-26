@@ -2512,9 +2512,11 @@ body {
 }
 
 .collection-tree__leaf--active {
-  background: var(--sidebar-active);
+  background: color-mix(in srgb, var(--accent), transparent 78%);
   color: var(--accent);
-  font-weight: 550
+  font-weight: 600;
+  outline: 1px solid color-mix(in srgb, var(--accent), transparent 70%);
+  outline-offset: -1px;
 }
 
 .collection-tree__leaf--active::before {
@@ -20255,14 +20257,20 @@ body {
 }
 /* Series article status icon colors */
 .series-status-icon--planned {
-  color: var(--fg-dim) !important;
+  color: var(--fg-dim);
   opacity: 0.5;
 }
+.series-status-icon--planning {
+  color: var(--amber, #f59e0b);
+}
 .series-status-icon--writing {
-  color: var(--accent) !important;
+  color: var(--accent);
+}
+.series-status-icon--reviewing {
+  color: var(--blue, #60a5fa);
 }
 .series-status-icon--complete {
-  color: var(--success, #2dd4bf) !important;
+  color: var(--success, #2dd4bf);
 }
 
 
@@ -21371,10 +21379,6 @@ body {
   color: var(--text-secondary);
 }
 
-
-.series-status-icon--reviewing {
-  color: var(--success, #2dd4bf) !important;
-}
 
 
 /* ═══════════════════════════════════════════════

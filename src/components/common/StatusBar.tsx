@@ -113,9 +113,19 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     const onReady = () => { updateStats(); };
     const disposeReady = on("editor-ready", onReady);
     
+    // Periodic check: editor might have been closed — reset stats
+    const healthTimer = setInterval(() => {
+      if (!(window as any).editorInstance?.editor) {
+        setWordCount(0); setCharCount(0); setParagraphCount(0);
+        setReadTime("0分钟"); setHasDocs(false);
+        setTargetWordCount(0);
+      }
+    }, 1000);
+    
     return () => {
       if (observer) observer.disconnect();
       if (checkTimer) clearInterval(checkTimer);
+      clearInterval(healthTimer);
       disposeReady();
     };
   }, [updateStats]);

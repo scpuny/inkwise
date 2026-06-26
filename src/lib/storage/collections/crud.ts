@@ -44,7 +44,7 @@ function fromTauriCollection(raw: Record<string, unknown>): Collection {
       phase: a.phase ? String(a.phase) : undefined,
       blueprint: a.blueprint ? String(a.blueprint) : undefined,
     })) : [],
-    linkedFolder: raw.linked_folder ? String(raw.linked_folder) : undefined,
+    linkedFolder: raw.linkedFolder ? String(raw.linkedFolder) : undefined,
   };
 }
 
@@ -52,12 +52,12 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
   return {
     id: c.id,
     title: c.title,
-    created_at: c.createdAt,
+    createdAt: c.createdAt,
     articles: c.articles.map((a) => ({
-      id: a.id, title: a.title, created_at: a.createdAt, updated_at: a.updatedAt,
+      id: a.id, title: a.title, createdAt: a.createdAt, updatedAt: a.updatedAt,
       description: a.description, tags: a.tags, phase: a.phase, blueprint: a.blueprint,
     })),
-    linked_folder: c.linkedFolder,
+    linkedFolder: c.linkedFolder,
   };
 }
 
@@ -72,16 +72,15 @@ export async function loadCollections(): Promise<Collection[]> {
 }
 
 export async function saveCollections(collections: Collection[]): Promise<void> {
+  browserSave(COLLECTIONS_KEY, collections);
   try {
     await tryInvoke(TauriCommands.SetCollections, { collections: collections.map(toTauriCollection) });
-    return;
   } catch {}
-  browserSave(COLLECTIONS_KEY, collections);
 }
 
 export async function addCollection(title: string): Promise<Collection> {
-  const c: Collection = { id: genId(), title, createdAt: Date.now(), articles: [] };
   const all = await loadCollections();
+  const c: Collection = { id: genId(), title, createdAt: Date.now(), articles: [] };
   all.push(c);
   await saveCollections(all);
   return c;
@@ -138,8 +137,8 @@ export async function loadTrash(): Promise<TrashItem[]> {
 }
 
 export async function saveTrash(items: TrashItem[]): Promise<void> {
-  try { await tryInvoke(TauriCommands.SetTrash, { items }); return; } catch {}
   browserSave(TRASH_KEY, items);
+  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch {}
 }
 
 export async function restoreArticle(trashId: string): Promise<void> {

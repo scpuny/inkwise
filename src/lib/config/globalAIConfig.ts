@@ -2,7 +2,7 @@
 // 存储：Tauri 后端权威 + localStorage 缓存
 // 所有 AI 入口共享同一套配置（模型、effort、token 限制等）
 
-import { StorageEngine } from "../storageEngine";
+import { StorageEngine } from "../storage/storageEngine";
 import { isTauriEnv, tryInvoke } from "../bridge/tauri";
 import { getProvidersSync, type Provider } from "../storage/providerModels";
 import { emit } from "../events/eventBus";

@@ -344,16 +344,42 @@ const handlePlanComplete = useCallback(async (plan: {
     }
   }, []);
 
+  const syncSeriesArticleStatus = useCallback(async (articleId: string, newStatus: string) => {
+    try {
+      const { loadAllSeriesPlans, saveSeriesPlan, loadCollections } = await import("../lib/storage/collections");
+      const cols = await loadCollections();
+      for (const col of cols) {
+        const plans = await loadAllSeriesPlans(col.id);
+        for (const plan of plans) {
+          const idx = plan.articles.findIndex(a => a.id === articleId || a.articleId === articleId);
+          if (idx !== -1 && plan.articles[idx].status !== newStatus) {
+            const updated = [...plan.articles];
+            updated[idx] = { ...updated[idx], status: newStatus as any };
+            await saveSeriesPlan(col.id, { ...plan, articles: updated });
+            emit("collections-changed");
+            return;
+          }
+        }
+      }
+    } catch {}
+  }, []);
+
   const handlePhaseChange = useCallback((phase: string) => {
     setArticlePhase(phase);
+    const aid = activeArticleId;
     if (phase === "complete") {
       closePanel();
       setStylePanelOpen(false);
       setShowFinalPage(true);
+      // Sync series plan status
+      if (aid) syncSeriesArticleStatus(aid, "complete");
+    } else if (phase === "writing" && aid) {
+      setShowFinalPage(false);
+      syncSeriesArticleStatus(aid, "writing");
     } else {
       setShowFinalPage(false);
     }
-  }, []);
+  }, [activeArticleId, syncSeriesArticleStatus]);
 
   const openSettings = useCallback(() => {
     setSettingsTab("appearance");
@@ -430,6 +456,8 @@ const handlePlanComplete = useCallback(async (plan: {
         setThemePickerOpen(false);
         setSettingsOpen(false);
         setCommandPaletteOpen(false);
+        setShowFinalPage(false);
+        setActiveArticleId(null);
       }
     };
     document.addEventListener("keydown", onKey);
