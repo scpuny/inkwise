@@ -76,7 +76,6 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
   };
 
   const enabledPlatform = configs.find((c) => c.platform === selectedPlatform);
-
   const handleAction = async (action: "draft" | "publish") => {
     if (!enabledPlatform) { setError("请先在设置中配置平台凭据"); return; }
     if (!coverPreview) { setCoverError("请上传或从正文选择封面图"); return; }
@@ -114,12 +113,21 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
             <p>{result.isDraft ? "草稿已创建成功！" : "已成功发布！"}</p>
             {result.isDraft && <p className="publish-dialog__hint">可前往公众号后台审核后发布。</p>}
             {result.errorMessage && <p className="publish-dialog__error">{result.errorMessage}</p>}
+            {result.platformUrl && (
+              <p className="publish-dialog__url">
+                <a href={result.platformUrl} target="_blank" rel="noopener noreferrer">查看已发布文章</a>
+              </p>
+            )}
             <button type="button" className="btn btn--small" onClick={onClose}>关闭</button>
           </div>
         ) : (
           <>
             <div className="publish-dialog__body">
-              {/* ── Row 1: Title (full width) ── */}
+              {markdown.length > 20000 && (
+                <div className="publish-dialog__word-warning">
+                  ⚠️ 文章字数超过 20,000 字，部分平台可能限制发布
+                </div>
+              )}
               <div className="publish-dialog__row">
                 <div className="publish-dialog__field publish-dialog__field--h">
                   <label>文章标题</label>
@@ -239,6 +247,8 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
               </div>
 
               {error && <div className="publish-dialog__error">{error}</div>}
+
+
             </div>
 
             <div className="publish-dialog__actions">
