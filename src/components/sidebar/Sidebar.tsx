@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { FileText, List, Settings, SquarePen, Library } from "lucide-react";
+import { FileText, List, Settings, SquarePen, Library, Brain } from "lucide-react";
 import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
+import { CodeGraphPanel } from "../codegraph/CodeGraphPanel";
 
-type SidebarTab = "files" | "outline";
+type SidebarTab = "files" | "outline" | "codegraph";
 
 export function Sidebar({
   onOpenSettings,
@@ -88,6 +89,8 @@ export function Sidebar({
             onNewArticleInCollection={onNewArticleInCollection}
             seriesRefreshKey={seriesRefreshKey}
           />
+        ) : activeTab === "codegraph" ? (
+          <CodeGraphPanel />
         ) : (
           <OutlinePanel
             items={outlineItems ?? []}
@@ -100,6 +103,7 @@ export function Sidebar({
       {/* Nav */}
       <nav className="sidebar__nav">
         <SidebarNavItem icon={<FileText size={15} />} label="文件" active={activeTab === "files"} onClick={() => setActiveTab("files")} />
+        <SidebarNavItem icon={<Brain size={15} />} label="图谱" active={activeTab === "codegraph"} onClick={() => setActiveTab("codegraph")} />
         <SidebarNavItem icon={<List size={15} />} label="大纲" active={activeTab === "outline"} onClick={() => setActiveTab("outline")} />
         <SidebarNavItem icon={<Library size={15} />} label="管理" onClick={() => onManageArticles?.()} />
         <SidebarNavItem icon={<Settings size={15} />} label="设置" onClick={onOpenSettings} />
