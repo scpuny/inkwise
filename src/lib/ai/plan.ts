@@ -18,6 +18,8 @@ export interface PartialPlan {
   targetAudience: string;
   targetWordCount: number;
   skillId?: string;
+  /** Project structure insights from planning-phase exploration (tool-based) */
+  projectInsights?: string;
 }
 
 export interface PlanInput {
@@ -33,7 +35,7 @@ export interface PlanInput {
   linkedFolder?: string;
 }
 
-export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "done";
+export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
 export type PlanStepResult = { step: PlanStep; data: any };
 
 export interface ArticleGenInput {
@@ -139,6 +141,17 @@ export async function generateFullArticleWithTools(
   if (input.tone) parts.push("风格：" + input.tone);
   if (input.targetAudience) parts.push("目标读者：" + input.targetAudience);
   if (input.targetWordCount) parts.push("目标字数：约 " + input.targetWordCount + " 字");
+
+  // Include project structure context so AI doesn't need to re-explore
+  if (input.projectContext) {
+    parts.push("");
+    parts.push("## 项目结构");
+    parts.push("以下是你已经知道的当前项目结构和关键文件。**不要重新探索目录**，直接读具体文件取代码示例。");
+    parts.push("```");
+    parts.push(input.projectContext.slice(0, 8000));
+    parts.push("```");
+  }
+
   parts.push("");
   parts.push("## 文章大纲");
   for (const sec of input.outline) {
@@ -290,6 +303,9 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
         return "";
     })
     : "";
+
+  // Yield project insights so handleStartPlan can capture them into partialPlan
+  yield { step: "explored", data: projectInsights || "" };
 
   const enriched = projectInsights
     ? { ...input, projectContext: projectInsights }

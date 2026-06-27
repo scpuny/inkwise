@@ -108,6 +108,7 @@ export function EditorPane({
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
   const folderProjectNameRef = useRef<string>("");
+  const seriesCtxRef = useRef<string>("");
   const [folderProjectName, setFolderProjectName] = useState("");
   const [projectFiles, setProjectFiles] = useState<string[]>([]);
 const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
@@ -505,6 +506,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
             setPartialPlan(p => { updated = { ...p, outline: result.data }; return updated; });
           } else if (result.step === "tags" && result.data) {
             setPartialPlan(p => { updated = { ...p, tags: result.data }; return updated; });
+          } else if (result.step === "explored" && result.data) {
+            setPartialPlan(p => ({ ...p, projectInsights: result.data }));
           }
           setPlanStep(result.step);
           // Persist draft after each step
@@ -668,6 +671,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         seriesContext: seriesCtx || undefined,
         linkedFolder: projectLinkedFolder || undefined,
       };
+      // Store series context for AI editor to use
+      seriesCtxRef.current = seriesCtx;
 
       // Start writing phase（保持 StartupSplash 可见并实时展示生成内容）
       setPlanState("writing");
@@ -846,13 +851,26 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       ? `${blueprintCtx}\n\n## 当前文档内容\n${docContent}`
       : docContent;
 
-    // Prepend folder context if available
-    const ctxWithFolder = folderContextRef.current
-      ? `## 关联项目目录上下文
-${folderContextRef.current}
+    // Prepend project context if available (prefer planning exploration result)
+    const projectCtx = partialPlan.projectInsights || folderContextRef.current || "";
+    let ctxWithFolder = projectCtx
+      ? `## 项目结构
+以下是你已经知道的当前项目目录结构和关键文件。不要重新探索目录结构，直接读具体文件取代码示例。
+\`\`\`
+${projectCtx.slice(0, 8000)}
+\`\`\`
 
 ${augmentedContent}`
       : augmentedContent;
+
+    // Append series context if available
+    const seriesCtx = seriesCtxRef.current;
+    if (seriesCtx) {
+      ctxWithFolder += `
+
+## 系列文章上下文
+${seriesCtx}`;
+    }
 
     execute(input, {
       selection,
@@ -904,6 +922,8 @@ ${augmentedContent}`
           setPartialPlan(p => ({ ...p, outline: result.data }));
         } else if (result.step === "tags" && result.data) {
           setPartialPlan(p => ({ ...p, tags: result.data }));
+        } else if (result.step === "explored" && result.data) {
+          setPartialPlan(p => ({ ...p, projectInsights: result.data }));
         }
         setPlanStep(result.step);
       }
