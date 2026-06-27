@@ -76,6 +76,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
   };
 
   const enabledPlatform = configs.find((c) => c.platform === selectedPlatform);
+  const wordCount = markdown.replace(/^#+\s*/gm, "").replace(/\s+/g, "").length;
   const handleAction = async (action: "draft" | "publish") => {
     if (!enabledPlatform) { setError("请先在设置中配置平台凭据"); return; }
     if (!coverPreview) { setCoverError("请上传或从正文选择封面图"); return; }
@@ -123,11 +124,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
         ) : (
           <>
             <div className="publish-dialog__body">
-              {markdown.length > 20000 && (
-                <div className="publish-dialog__word-warning">
-                  ⚠️ 文章字数超过 20,000 字，部分平台可能限制发布
-                </div>
-              )}
+              {/* ── Row 1: Title (full width) ── */}
               <div className="publish-dialog__row">
                 <div className="publish-dialog__field publish-dialog__field--h">
                   <label>文章标题</label>
@@ -247,6 +244,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
               </div>
 
               {error && <div className="publish-dialog__error">{error}</div>}
+              {wordCount > 20000 && <div className="publish-dialog__warning">文章字数超过 20000（实际 {wordCount} 字），可能影响发布</div>}
 
 
             </div>

@@ -55,6 +55,7 @@ fn wechat_error_description(code: i64, default_msg: &str) -> String {
         40009 => "图片尺寸超出限制",
         40013 => "AppID 无效",
         40014 => "access_token 无效",
+        40164 => "IP 地址不在白名单中，请检查微信公众平台 IP 白名单配置",
         40035 => "参数错误",
         40060 => "文章标题长度超出限制",
         40061 => "文章封面图片 ID 无效",
