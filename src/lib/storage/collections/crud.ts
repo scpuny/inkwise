@@ -232,12 +232,17 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
   const c = all.find((x) => x.id === collectionId);
   if (!c) return;
   c.linkedFolder = undefined;
-  await saveCollections(all);
-  // Clear cached AI exploration results
+  // Clean up all AI-related cache for this collection
+  try { localStorage.removeItem("folder_index:" + collectionId); } catch {}
   try {
     const { clearProjectInsights } = await import("./projectContext");
     clearProjectInsights(collectionId);
   } catch {}
+  // Clean up plan drafts for every article in the collection
+  for (const art of c.articles) {
+    try { localStorage.removeItem("plan-draft-" + art.id); } catch {}
+  }
+  await saveCollections(all);
 }
 
 export async function getCollectionFolderContext(collectionId: string): Promise<string> {
