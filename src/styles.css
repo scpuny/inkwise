@@ -4789,6 +4789,8 @@ body {
 }
 
 .composer-intent-menu {
+  max-height: min(400px, 60vh);
+  overflow-y: auto;
   width: min(258px, calc(100vw - 16px))
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getPlatformConfigs } from "../../lib/storage/platforms";
 import { CustomSelect } from "../common/CustomSelect";
+import { getWordCount } from "../../lib/utils/text";
 import type { PlatformConfig, PublishOptions, PublishResult } from "../../lib/storage/platforms";
 
 interface PublishDialogProps {
@@ -76,7 +77,7 @@ export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, 
   };
 
   const enabledPlatform = configs.find((c) => c.platform === selectedPlatform);
-  const wordCount = markdown.replace(/^#+\s*/gm, "").replace(/\s+/g, "").length;
+  const wordCount = getWordCount(markdown);
   const handleAction = async (action: "draft" | "publish") => {
     if (!enabledPlatform) { setError("请先在设置中配置平台凭据"); return; }
     if (!coverPreview) { setCoverError("请上传或从正文选择封面图"); return; }
