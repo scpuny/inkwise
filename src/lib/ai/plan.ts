@@ -598,35 +598,21 @@ function ensureHeadingNumbers(markdown: string): string {
 function normalizeMarkdownBreaks(text: string): string {
   const lines = text.split('\n');
   const out: string[] = [];
-
-  const isBlockLine = (l: string) =>
-    /^(#{1,6}\s|>|---|\*\*\*|```)/.test(l);
-  const isListLine = (l: string) =>
-    /^\s*(\d+\.\s|[-*+]\s)/.test(l);
+  let inCode = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     out.push(line);
+    if (line.trimStart().startsWith('```')) { inCode = !inCode; continue; }
+    if (inCode) continue;
 
+    // Only ensure blank line before block elements (headings, blockquotes, hr)
     const next = lines[i + 1];
     if (next === undefined) break;
-
-    if (line !== '' && next !== '' && isBlockLine(next)) {
+    if (line !== '' && next !== '' && !line.startsWith('```') && /^(#{1,6}\s|>|---|\*\*\*)/.test(next)) {
       out.push('');
-      continue;
-    }
-
-    if (
-      line !== '' && next !== '' &&
-      !isBlockLine(line) && !isBlockLine(next) &&
-      !isListLine(line) && !isListLine(next)
-    ) {
-      if (i === 0 || lines[i - 1] !== '') {
-        out.push('');
-      }
     }
   }
-
   return out.join('\n');
 }
 
