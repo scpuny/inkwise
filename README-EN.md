@@ -96,7 +96,7 @@ inkwise/
 │       ├── publisher.rs     # Multi-platform publishing (WeChat/Toutiao)
 │       └── project_indexer.rs # Project indexing (std fs + tree-sitter)
 ├── public/inkwise-icon.svg  # App icon
-├── DESIGN.md                # Design document (Chinese)
+├── docs/                    # Categorized documentation (see docs/README.md)
 ├── AGENT.md                 # Development guide (for AI agents)
 └── LICENSE                  # MIT License
 ```

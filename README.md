@@ -96,7 +96,7 @@ inkwise/
 │       ├── publisher.rs     # 多平台发布（微信/头条）
 │       └── project_indexer.rs # 项目索引（std fs + tree-sitter）
 ├── public/inkwise-icon.svg  # 应用图标
-├── DESIGN.md                # 设计文档
+├── docs/                    # 分类文档目录（见 docs/README.md）
 ├── AGENT.md                 # 开发指南（AI Agent 用）
 └── LICENSE                  # MIT 协议
 ```
