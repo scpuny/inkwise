@@ -95,6 +95,7 @@ export function ArticleManager({
     setLoading(true);
     try {
       const cols = await loadCollections();
+      console.log('[loadData] cols=%o', cols.map(c => ({id: c.id, title: c.title})));
       setCollections(cols);
 
       // Load series plans
