@@ -2008,8 +2008,6 @@ body {
 }
 
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -5510,8 +5508,6 @@ body {
   font-family: var(--mono);
 }
 
-
-
 .settings-input {
   height: 32px;
   padding: 0 10px;
@@ -5547,8 +5543,6 @@ body {
   font-size: var(--text-sm);
   min-width: 200px
 }
-
-
 
 
 .theme-style-grid {
@@ -8147,8 +8141,6 @@ body {
   font-weight: 600
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -8369,8 +8361,6 @@ body {
 }
 
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -8586,8 +8576,6 @@ body {
   background: var(--editor-bg);
   border-top: 1px solid var(--border-soft);
 }
-
-
 
 
 /* ═══════════════════════════════════════════════
@@ -9992,8 +9980,6 @@ body {
   text-align: center;
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -10176,8 +10162,6 @@ body {
     transform: translateY(0);
   }
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -11466,8 +11450,6 @@ body {
 }
 
 
-
-
 .agent-chat__tool-select-preview {
   display: flex;
   flex-direction: column;
@@ -11581,8 +11563,6 @@ body {
   cursor: not-allowed;
 }
 
-
-
 .agent-chat__tool-select-preview {
   display: flex;
   flex-direction: column;
@@ -11620,8 +11600,6 @@ body {
   resize: none;
   padding: 2px 0;
 }
-
-
 
 .agent-chat__tool-select-preview {
   display: flex;
@@ -11691,8 +11669,6 @@ body {
 }
 
 
-
-
 /* Agent chat quick action dropdown */
 .agent-chat__quick-actions {
   display: flex;
@@ -11723,8 +11699,6 @@ body {
   border-color: var(--accent);
   color: var(--fg);
 }
-
-
 
 .agent-chat__quick-select:focus {
   border-color: var(--accent);
@@ -12186,8 +12160,6 @@ body {
   font-size: var(--text-xs);
   font-weight: 500;
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -13150,8 +13122,6 @@ body {
   background: var(--accent-soft);
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -13683,8 +13653,6 @@ body {
   padding: 14px 20px;
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -13899,8 +13867,6 @@ body {
   font-size: var(--text-sm);
   color: var(--err);
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -14333,8 +14299,6 @@ body {
   margin: 0;
 }
 
-
-
 /* ─── StartupSplash Response View (system-aligned card style) ─── */
 .startup-splash__response {
   width: 100%;
@@ -14638,8 +14602,6 @@ body {
   flex-shrink: 0;
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -14925,8 +14887,6 @@ body {
   background: #d13b3b;
   border-color: #d13b3b;
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -17464,8 +17424,6 @@ body {
   padding: 8px 0;
 }
 
-
-
 .style-panel__row {
   display: flex;
   gap: 10px;
@@ -17487,8 +17445,6 @@ body {
   flex: 1;
   min-width: 0;
 }
-
-
 
 
 .style-panel__section-label {
@@ -18069,8 +18025,6 @@ body {
   background: color-mix(in srgb, var(--err) 10%, transparent);
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -18217,8 +18171,6 @@ body {
   border-radius: 4px;
   flex-shrink: 0;
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -18615,8 +18567,6 @@ body {
 }
 
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -18796,8 +18746,6 @@ body {
   transform: translateX(14px);
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
    ═══════════════════════════════════════════════ */
@@ -18937,8 +18885,6 @@ body {
   gap: 6px;
   align-items: flex-start;
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog — Two-column + Cover image
@@ -20161,8 +20107,6 @@ body {
   min-width: 0;
 }
 
-
-
 .series-overview__count {
   font-size: 10px;
   background: var(--bg-tertiary);
@@ -20178,8 +20122,6 @@ body {
 }
 
 
-
-
 .series-overview__article-body {
   flex: 1;
   min-width: 0;
@@ -20187,8 +20129,6 @@ body {
   flex-direction: column;
   gap: 0px;
 }
-
-
 
 .series-overview__article-actions {
   display: flex;
@@ -20328,8 +20268,6 @@ body {
   margin: 3px 4px;
   background: var(--border-soft);
 }
-
-
 
 /* ─── StartupSplash: Project Context ─── */
 
@@ -20906,6 +20844,7 @@ body {
 }
 
 .final-publish-status__item {
+  padding: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -21093,8 +21032,6 @@ body {
   font-size: 13px;
   color: var(--text-secondary);
 }
-
-
 
 /* ─── Provider Empty State ─── */
 .provider-empty__hints {
@@ -21378,8 +21315,6 @@ body {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
-
-
 
 /* ═══════════════════════════════════════════════
    Publish Dialog
@@ -21830,8 +21765,6 @@ body {
   color: #ef4444;
 }
 
-
-
 /* ═══════════════════════════════════════════════
    Style Panel — Article Theme Cards + Live Preview
    ═══════════════════════════════════════════════ */
@@ -22119,4 +22052,88 @@ body {
 }
 .final-topbar__copy-option:first-child {
   border-bottom: 1px solid #eee;
+}
+
+/* ─── Publish Status Panel — Expanded details ─── */
+.final-publish-status__item {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+}
+
+.final-publish-status__item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.final-publish-status__item-row:hover {
+  background: var(--accent-bg);
+  margin: 0 -6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.final-publish-status__expand-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.final-publish-status__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  margin: 0 -6px;
+  background: var(--accent-bg);
+  border-radius: 4px;
+}
+
+.final-publish-status__detail-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.final-publish-status__detail-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.final-publish-status__detail-value {
+  color: var(--text);
+  word-break: break-all;
+}
+
+.final-publish-status__detail-value--error {
+  color: #ef4444;
+}
+
+/* ─── Publish Dialog — Result URL ─── */
+.publish-dialog__url {
+  font-size: 13px;
+}
+
+.publish-dialog__url a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.publish-dialog__url a:hover {
+  text-decoration: underline;
+}
+
+/* ─── Publish Dialog — Word count warning ─── */
+.publish-dialog__warning {
+  font-size: 13px;
+  color: #d97706;
+  padding: 8px 12px;
+  background: rgba(217, 119, 6, 0.1);
+  border-radius: 6px;
 }

@@ -38,6 +38,87 @@ struct PublishResponse {
     errmsg: Option<String>,
 }
 
+
+/// 微信错误码中文描述
+fn wechat_error_description(code: i64, default_msg: &str) -> String {
+    match code {
+        0 => "成功",
+        -1 => "系统繁忙，请稍后重试",
+        40001 => "AppSecret 错误或 access_token 无效",
+        40002 => "凭据类型无效",
+        40003 => "OpenID 无效",
+        40004 => "媒体文件类型无效",
+        40005 => "文件类型无效",
+        40006 => "文件大小超出限制",
+        40007 => "媒体文件 ID 无效",
+        40008 => "消息类型无效",
+        40009 => "图片尺寸超出限制",
+        40013 => "AppID 无效",
+        40014 => "access_token 无效",
+        40164 => "IP 地址不在白名单中，请检查微信公众平台 IP 白名单配置",
+        40035 => "参数错误",
+        40060 => "文章标题长度超出限制",
+        40061 => "文章封面图片 ID 无效",
+        40062 => "文章正文长度超出限制",
+        40063 => "文章摘要长度超出限制",
+        40064 => "文章作者长度超出限制",
+        40065 => "文章内容不符合预期",
+        40066 => "文章正文包含不安全内容",
+        40067 => "文章评论功能参数错误",
+        40068 => "文章付费阅读参数错误",
+        41001 => "缺少 access_token 参数",
+        41002 => "缺少 appid 参数",
+        41004 => "缺少 secret 参数",
+        41005 => "缺少多媒体文件数据",
+        41006 => "缺少 media_id 参数",
+        42001 => "access_token 超时",
+        43001 => "需要 GET 请求",
+        43002 => "需要 POST 请求",
+        43003 => "需要 HTTPS 请求",
+        44001 => "多媒体文件为空",
+        44002 => "POST 的数据包为空",
+        44003 => "图文消息内容为空",
+        45001 => "多媒体文件大小超出限制",
+        45002 => "消息内容超出限制",
+        45003 => "标题字段超出限制",
+        45004 => "描述字段超出限制",
+        45009 => "接口调用超过频率限制",
+        45011 => "API 调用已被封禁",
+        45023 => "文章内容超出限制",
+        45024 => "文章图片数量超出限制",
+        45025 => "文章内外部链接数量超出限制",
+        46001 => "不存在媒体数据",
+        47001 => "解析 JSON/XML 内容错误",
+        48001 => "api 功能未授权",
+        48002 => "用户未关注该公众号",
+        48004 => "api 接口被封禁",
+        50001 => "用户未关注该公众号",
+        88000 => "无效的草稿 media_id",
+        88001 => "草稿已被删除",
+        88002 => "草稿已被发布",
+        88003 => "草稿已被修改",
+        88004 => "草稿发布失败",
+        88005 => "草稿已存在发布任务",
+        88006 => "草稿不存在",
+        88007 => "草稿 media_id 与平台不匹配",
+        88008 => "草稿内容不符合预期",
+        88009 => "草稿内容包含不安全内容",
+        88010 => "草稿的 author 字段无效",
+        88011 => "草稿的 digest 字段无效",
+        88012 => "草稿的 content 字段无效",
+        88013 => "草稿的 content 字段超出长度限制",
+        88014 => "草稿的 title 字段无效",
+        88015 => "草稿的 title 字段超出长度限制",
+        88016 => "草稿的 thumb_media_id 无效",
+        88017 => "草稿的 need_open_comment 无效",
+        88018 => "草稿的 only_fans_can_comment 无效",
+        88019 => "草稿的 pic_crop 参数错误",
+        88020 => "草稿的 product_info 参数错误",
+        88021 => "草稿的 product_key 错误",
+        _ => return default_msg.to_string(),
+    }.to_string()
+}
+
 const API_BASE: &str = "https://api.weixin.qq.com/cgi-bin";
 
 // ─── WeChat 平台 ───
@@ -73,7 +154,7 @@ impl Platform for WeChat {
             .await.map_err(|e| format!("请求微信 token 失败: {}", e))?
             .json().await.map_err(|e| format!("解析 token 响应失败: {}", e))?;
         if let Some(code) = resp.errcode { if code != 0 {
-            return Err(format!("获取 token 失败 ({}) {}", code, resp.errmsg.unwrap_or_default()));
+            return Err(format!("获取 token 失败 ({}) {}", code, wechat_error_description(code, &resp.errmsg.unwrap_or_default())));
         }}
         let token = resp.access_token.ok_or("token 为空")?;
         let expires_in = resp.expires_in.unwrap_or(7200);
@@ -102,7 +183,7 @@ impl Platform for WeChat {
             .map_err(|e| format!("上传图片失败: {}", e))?
             .json().await.map_err(|e| format!("解析上传响应失败: {}", e))?;
         if let Some(code) = resp.errcode { if code != 0 {
-            return Err(format!("上传图片失败 ({}) {}", code, resp.errmsg.unwrap_or_default()));
+            return Err(format!("上传图片失败 ({}) {}", code, wechat_error_description(code, &resp.errmsg.unwrap_or_default())));
         }}
         resp.url.ok_or("上传图片返回 URL 为空".into())
     }
@@ -127,7 +208,7 @@ impl Platform for WeChat {
             .map_err(|e| format!("上传素材失败: {}", e))?
             .json().await.map_err(|e| format!("解析素材响应失败: {}", e))?;
         if let Some(code) = resp.errcode { if code != 0 {
-            return Err(format!("上传素材失败 ({}) {}", code, resp.errmsg.unwrap_or_default()));
+            return Err(format!("上传素材失败 ({}) {}", code, wechat_error_description(code, &resp.errmsg.unwrap_or_default())));
         }}
         resp.media_id.ok_or("上传素材返回 media_id 为空".into())
     }
@@ -157,7 +238,7 @@ impl Platform for WeChat {
             .map_err(|e| format!("创建草稿失败: {}", e))?
             .json().await.map_err(|e| format!("解析草稿响应失败: {}", e))?;
         if let Some(code) = resp.errcode { if code != 0 {
-            return Err(format!("创建草稿失败 ({}) {}", code, resp.errmsg.unwrap_or_default()));
+            return Err(format!("创建草稿失败 ({}) {}", code, wechat_error_description(code, &resp.errmsg.unwrap_or_default())));
         }}
         resp.media_id.ok_or("创建草稿返回 media_id 为空".into())
     }
@@ -171,7 +252,7 @@ impl Platform for WeChat {
             .map_err(|e| format!("发布草稿失败: {}", e))?
             .json().await.map_err(|e| format!("解析发布响应失败: {}", e))?;
         if let Some(code) = resp.errcode { if code != 0 {
-            return Err(format!("发布失败 ({}) {}", code, resp.errmsg.unwrap_or_default()));
+            return Err(format!("发布失败 ({}) {}", code, wechat_error_description(code, &resp.errmsg.unwrap_or_default())));
         }}
         resp.publish_id.ok_or("发布返回 publish_id 为空".into())
     }
