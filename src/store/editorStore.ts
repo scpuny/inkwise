@@ -4,10 +4,9 @@
 import { create } from "zustand";
 import {
   loadArticleStyleConfig,
-  saveArticleStyleConfig,
-  applyArticleStyleConfig,
   type ArticleStyleConfig,
 } from "../lib/editor/editorStyles";
+import { ArticleContext } from "../lib/article/ArticleContext";
 
 /* ───────────── Editor Store ───────────── */
 
@@ -70,22 +69,21 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
         fontFamily: config.editorFontFamily ?? "",
         codeThemeId: config.codeThemeId ?? "atom-one-light",
       });
-      // Also apply to document localStorage for backward compat
-      applyArticleStyleConfig(config);
     }
   },
 
   persistToArticle: (articleId: string) => {
     const s = get();
-    // Sync current store state to localStorage (used by saveArticleStyleConfig)
-    localStorage.setItem("editor-line-height", String(s.lineHeight));
-    localStorage.setItem("editor-style-template", s.styleTemplate);
-    localStorage.setItem("editor-font-size", String(s.fontSize));
-    localStorage.setItem("editor-max-width", String(s.maxWidth));
-    localStorage.setItem("editor-paragraph-gap", String(s.paragraphGap));
-    localStorage.setItem("editor-font-family", s.fontFamily);
-    localStorage.setItem("code-theme-id", s.codeThemeId);
-    // Trigger the full save
-    saveArticleStyleConfig(articleId);
+    // 通过 ArticleContext 持久化
+    const ctx = new ArticleContext(articleId);
+    ctx.updateStyle({
+      editorStyleTemplateId: s.styleTemplate,
+      lineHeight: s.lineHeight,
+      editorFontSize: s.fontSize,
+      editorMaxWidth: s.maxWidth,
+      editorParagraphGap: s.paragraphGap,
+      editorFontFamily: s.fontFamily,
+      codeThemeId: s.codeThemeId,
+    });
   },
 }));

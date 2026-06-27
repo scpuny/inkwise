@@ -1,9 +1,10 @@
 import { Palette, Type, X, AlignLeft, FileText, ChevronDown, TextSelect, Code2, Pilcrow, ListOrdered, ImageIcon, Search } from "lucide-react";
 import { emit } from "../../lib/events/eventBus";
-import { useState, useRef, useEffect, useCallback } from "react";
-import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, applyMacosCodeBlockStyle, applyTextStyle, applyHeadingDecorations, applyBgPattern, applyAccentColor, applyImageCaptionFormat, applyCustomCSS, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../../lib/editor/editorStyles";
-import { getAllThemes, getThemeById, getSelectedArticleThemeId, setSelectedArticleThemeId, isPresetTheme, PLATFORMS, type ArticleTheme } from "../../lib/theme/articleThemes";
+import { useState, useRef, useEffect, useCallback, useContext } from "react";
+import { getAllTemplates, setSelectedTemplateId, getAllCodeThemes, setSelectedCodeTheme, getAllAccentColors, type EditorStyleTemplate, type CodeTheme } from "../../lib/editor/editorStyles";
+import { getAllThemes, getThemeById, isPresetTheme, PLATFORMS, type ArticleTheme } from "../../lib/theme/articleThemes";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
+import { ArticleCtx } from "../../lib/article/ArticleContext";
 
 interface StylePanelProps {
   open: boolean;
@@ -49,13 +50,14 @@ export function StylePanel({
   codeThemeId = "atom-one-light", onSetCodeTheme,
   onApplyHeadingNumbers,
 }: StylePanelProps) {
+  const ctx = useContext(ArticleCtx);
   const templates = getAllTemplates().filter(t => !t.disabled);
   const codeThemes = getAllCodeThemes();
   const currentTemplate = templates.find(t => t.id === editorStyleTemplateId);
   const currentCodeTheme = codeThemes.find(t => t.id === codeThemeId);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [codeThemeOpen, setCodeThemeOpen] = useState(false);
-  const [articleThemeId, setArticleThemeId] = useState(getSelectedArticleThemeId());
+  const [articleThemeId, setArticleThemeId] = useState(ctx?.styleConfig.articleThemeId ?? "clean");
   const articleThemes = getAllThemes();
   const currentArticleTheme = getThemeById(articleThemeId);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -66,16 +68,14 @@ export function StylePanel({
     { value: "all", label: "全部主题" },
     ...PLATFORMS.map(p => ({ value: p.id, label: p.label })),
   ];
-    const [macosCodeBlock, setMacosCodeBlock] = useState(localStorage.getItem('macos-code-block') === 'true');
-  const [firstLineIndent, setFirstLineIndent] = useState(localStorage.getItem('first-line-indent') === 'true');
-  const [justifyAlign, setJustifyAlign] = useState(localStorage.getItem('justify-align') === 'true');
-  const [headingConfig, setHeadingConfig] = useState<Record<string, string[]>>(() => {
-    try { return JSON.parse(localStorage.getItem("heading-deco-config") || "{}"); } catch { return {}; }
-  });
-  const [bgPattern, setBgPattern] = useState(localStorage.getItem('bg-pattern') || '');
-  const [accentColor, setAccentColor] = useState(localStorage.getItem("editor-accent-color") || "");
-  const [captionFormat, setCaptionFormat] = useState(localStorage.getItem("editor-caption-format") || "");
-  const [customCSS, setCustomCSS] = useState(localStorage.getItem("editor-custom-css") || "");
+    const [macosCodeBlock, setMacosCodeBlock] = useState(ctx?.styleConfig.macosCodeBlock ?? false);
+  const [firstLineIndent, setFirstLineIndent] = useState(ctx?.styleConfig.firstLineIndent ?? false);
+  const [justifyAlign, setJustifyAlign] = useState(ctx?.styleConfig.justifyAlign ?? false);
+  const [headingConfig, setHeadingConfig] = useState<Record<string, string[]>>(ctx?.styleConfig.headingConfig ?? {});
+  const [bgPattern, setBgPattern] = useState(ctx?.styleConfig.bgPattern ?? '');
+  const [accentColor, setAccentColor] = useState(ctx?.styleConfig.accentColor ?? "");
+  const [captionFormat, setCaptionFormat] = useState(ctx?.styleConfig.captionFormat ?? "");
+  const [customCSS, setCustomCSS] = useState(ctx?.styleConfig.customCSS ?? "");
   const [headingLevelOpen, setHeadingLevelOpen] = useState(false);
     const [fontFamilyOpen, setFontFamilyOpen] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
@@ -101,42 +101,28 @@ export function StylePanel({
 
   // Code appearance settings
   useEffect(() => {
-    localStorage.setItem('macos-code-block', String(macosCodeBlock));
-    applyMacosCodeBlockStyle(macosCodeBlock);
-    emit("article-theme-changed");
-  }, [macosCodeBlock]);
+    ctx?.updateStyle({ macosCodeBlock });
+  }, [macosCodeBlock, ctx]);
 
   useEffect(() => {
-    localStorage.setItem('first-line-indent', String(firstLineIndent));
-    localStorage.setItem('justify-align', String(justifyAlign));
-    applyTextStyle(firstLineIndent, justifyAlign);
-    emit("article-theme-changed");
-  }, [firstLineIndent, justifyAlign]);
+    ctx?.updateStyle({ firstLineIndent, justifyAlign });
+  }, [firstLineIndent, justifyAlign, ctx]);
 
   useEffect(() => {
-    localStorage.setItem("heading-deco-config", JSON.stringify(headingConfig));
-    applyHeadingDecorations(headingConfig || {});
-    emit("article-theme-changed");
-  }, [headingConfig]);
+    ctx?.updateStyle({ headingConfig });
+  }, [headingConfig, ctx]);
 
   useEffect(() => {
-    localStorage.setItem('bg-pattern', bgPattern);
-    applyBgPattern(bgPattern);
-    emit("article-theme-changed");
-  }, [bgPattern]);
+    ctx?.updateStyle({ bgPattern });
+  }, [bgPattern, ctx]);
 
   useEffect(() => {
-    localStorage.setItem("editor-accent-color", accentColor);
-    applyAccentColor(accentColor);
-    localStorage.setItem("editor-caption-format", captionFormat);
-    applyImageCaptionFormat(captionFormat);
-    emit("article-theme-changed");
-  }, [accentColor, captionFormat]);
+    ctx?.updateStyle({ accentColor, captionFormat });
+  }, [accentColor, captionFormat, ctx]);
 
   useEffect(() => {
-    localStorage.setItem("editor-custom-css", customCSS);
-    applyCustomCSS(customCSS);
-  }, [customCSS]);
+    ctx?.updateStyle({ customCSS });
+  }, [customCSS, ctx]);
 
   const currentFontLabel = FONT_PRESETS.find(f => f.value === editorFontFamily)?.label || "系统默认";
 
@@ -192,7 +178,7 @@ export function StylePanel({
                         <button
                           key={t.id}
                           className={"style-panel__theme-card" + (t.id === articleThemeId ? " style-panel__theme-card--active" : "")}
-                          onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); setSelectedArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } emit("article-theme-changed"); }}
+                          onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } ctx?.updateStyle({ articleThemeId: t.id }); }}
                         >
                           <div className="style-panel__theme-card-name">{t.label}</div>
                           <div className="style-panel__theme-card-desc">{t.desc}</div>

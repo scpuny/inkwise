@@ -73,6 +73,7 @@ interface StartupSplashProps {
   projectName?: string;
   projectReady?: boolean;
   projectFiles?: string[];
+  streamingContent?: string;
 }
 
 function skillLabel(id: string): string {
@@ -83,7 +84,7 @@ function skillLabel(id: string): string {
 export function StartupSplash({
   onQuickStart, onAIPlan,
   planState, planStep, partialPlan, planError, lastPlanInput,
-  writingOutline, writingSectionId,
+  writingOutline, writingSectionId, streamingContent = "",
   onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
   projectName, projectReady, projectFiles,
 }: StartupSplashProps) {
@@ -304,6 +305,20 @@ const [customTone, setCustomTone] = useState("");
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Live streaming content preview */}
+              {streamingContent && (
+                <div className="startup-splash__section">
+                  <div className="startup-splash__section-label">
+                    <FileText size={12} />
+                    实时生成内容
+                  </div>
+                  <div className="startup-splash__stream-content">
+                    {streamingContent}
+                    <span className="startup-splash__stream-cursor">|</span>
                   </div>
                 </div>
               )}

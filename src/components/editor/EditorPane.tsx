@@ -1,5 +1,5 @@
 import { FileText, FolderInput } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
 import {
@@ -11,9 +11,10 @@ import {
   type ArticlePhase,
   type OutlineSection,
 } from "../../lib/ai/articleBlueprint";
-import { generateFullArticle, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
+import { generateFullArticle, generateFullArticleStream, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
+import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
 import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
 import type { FileNode } from "../../lib/storage/collections";
@@ -91,6 +92,7 @@ export function EditorPane({
   onCloseStylePanel?: () => void;
   onToggleFocus?: () => void;
   onToggleSidebar?: () => void;}) {
+  const articleCtx = useContext(ArticleCtx);
   const { state: streamState, startStream, cancelStream, clearResponse } = useChatStream();
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -149,6 +151,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     }
   }, [blueprint?.targetWordCount]);
   const [writingSection, setWritingSection] = useState<string | null>(null); // section ID currently being written
+  const [streamingContent, setStreamingContent] = useState(""); // live streaming preview
   const writingAbortRef = useRef(false);
   const pendingArticleRef = useRef<{ articleId: string; collectionId: string } | null>(null);
 
@@ -669,10 +672,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         combinedProjectContext += "\n\n## 项目源文件代码\n以下是与文章主题相关的项目源文件内容，请引用其中的真实代码来支撑文章内容：\n" + projectSourceCode;
       }
 
-      // Start writing phase（显示 UI 进度）
-      setPlanState("writing");
-
-      // 一次性生成完整文章
+      // Start writing phase — immediately enter editor with live streaming
       const genInput: ArticleGenInput = {
         title: partialPlan.title || "",
         description: partialPlan.description || "",
@@ -686,13 +686,56 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         seriesContext: seriesCtx || undefined,
       };
 
-      const articleContent = await generateFullArticle(genInput);
+      // Start writing phase（保持 StartupSplash 可见并实时展示生成内容）
+      setPlanState("writing");
 
-      // 保存成品文章
-      if (articleContent && articleContent.length > 10) {
-        await saveArticleContent(result.articleId, articleContent);
-        writtenContentRef.current = articleContent;
-        contentRef.current = articleContent;
+      pendingArticleRef.current = result;
+
+      // 所有大纲节统一标记为 writing（整体进度）
+      setBlueprint(prev => {
+        if (!prev) return prev;
+        const writingOutline = prev.outline.map(s => ({ ...s, status: "writing" as const }));
+        const writingBp = { ...prev, outline: writingOutline };
+        saveBlueprint(result.articleId, writingBp);
+        return writingBp;
+      });
+
+      // 流式生成全文（逐 token 实时展示在 StartupSplash 上）
+      let accumulatedContent = "";
+      try {
+        const articleContent = await generateFullArticleStream(genInput, (token) => {
+          accumulatedContent += token;
+          writtenContentRef.current = accumulatedContent;
+          contentRef.current = accumulatedContent;
+          setEditorContent(accumulatedContent);
+          setStreamingContent(accumulatedContent);
+
+
+        });
+
+        // 保存成品文章到磁盘
+        if (articleContent && articleContent.length > 10) {
+          await saveArticleContent(result.articleId, articleContent);
+          writtenContentRef.current = articleContent;
+          contentRef.current = articleContent;
+          setEditorContent(articleContent);
+        }
+        // 所有节标记为完成
+        setBlueprint(prev => {
+          if (!prev) return prev;
+          const completeOutline = prev.outline.map(s => ({ ...s, status: "complete" as const }));
+          const completeBp = { ...prev, outline: completeOutline };
+          saveBlueprint(result.articleId, completeBp);
+          return completeBp;
+        });
+      } catch (e: any) {
+        console.error("Stream writing failed:", e);
+        // 保存已累积的部分内容
+        if (accumulatedContent.length > 10) {
+          await saveArticleContent(result.articleId, accumulatedContent);
+          contentRef.current = accumulatedContent;
+          writtenContentRef.current = accumulatedContent;
+        }
       }
 
       // Auto-promote phase to reviewing after full article generation
@@ -760,6 +803,10 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     onPhaseChange?.("complete");
     saveBlueprint(activeArticleId, updated);
     import("../../lib/storage/articles").then(m => m.saveArticleContent(activeArticleId!, contentRef.current || ""));
+    // 通过 ArticleContext 持久化并应用样式
+    articleCtx?.applyStyles();
+    articleCtx?.save();
+    emit("article-theme-changed");
   }, [activeArticleId, blueprint, onPhaseChange]);
 
   const handleSaveBlueprint = useCallback((bp: ArticleBlueprint) => {
@@ -1128,6 +1175,7 @@ ${augmentedContent}`
             onEditOutline={handleEditOutline}
             onRetry={handlePlanRetry}
             onEnterEditor={handleEnterEditor}
+            streamingContent={streamingContent}
             projectName={folderProjectName || undefined}
             projectReady={!!folderProjectName}
             projectFiles={projectFiles}
@@ -1139,6 +1187,7 @@ ${augmentedContent}`
           onAIPlan={handleStartPlan}
           planState={planState}
           planStep={planStep}
+          streamingContent={streamingContent}
           partialPlan={partialPlan}
           planError={planError}
           lastPlanInput={lastPlanInput}

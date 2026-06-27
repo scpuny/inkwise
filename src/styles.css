@@ -14532,6 +14532,38 @@ body {
   background: var(--accent-bg, rgba(77, 141, 246, 0.06));
 }
 
+/* ── Streaming content preview ── */
+.startup-splash__stream-content {
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  position: relative;
+}
+
+.startup-splash__stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--accent);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: stream-blink 0.8s step-end infinite;
+}
+
+@keyframes stream-blink {
+  50% { opacity: 0; }
+}
+
 .startup-splash__writing-item--done {
   border-color: var(--border-soft);
   opacity: 0.8;

@@ -1,7 +1,7 @@
 // plan.ts — 分步 AI 文章规划
 // 不依赖 JSON 输出，每一步返回纯文本，逐层推进
 
-import { sendChat, type ChatMessage } from "./ai";
+import { sendChat, sendChatStream, type ChatMessage } from "./ai";
 import { findSkill, getEffectivePhaseConfig, loadCustomSkills, type SkillPhase, type WritingSkill } from "../ai/writingSkill";
 import { getProvidersSync } from "../storage/providerModels";
 import type { OutlineSection } from "../ai/articleBlueprint";
@@ -296,15 +296,83 @@ export async function generateFullArticle(input: ArticleGenInput): Promise<strin
     projectBlock,
     seriesBlock,
     '',
-    '请根据以上大纲写一篇完整的文章。大纲仅用于确定文章方向，并非写作顺序。你可以根据行文需要打乱顺序、倒叙、插叙或自由组织结构。开头、过渡、章节安排完全由你根据内容和风格自然决定。直接输出 Markdown 内容。',
+    '请根据以上大纲写一篇完整的文章。大纲仅用于确定文章方向，并非写作顺序。你可以根据行文需要打乱顺序、倒叙、插叙或自由组织结构。开头、过渡、章节安排完全由你根据内容和风格自然决定。直接输出 Markdown 内容。\n\n## 格式要求\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`……\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`……\n- 如果`##`标题已经在 text 中以`数字点`开头（如`1. `），则无需重复编号。',
   ].filter(Boolean).join('\n');
 
   const result = await askAI(sysPrompt, userPrompt, 8192);
   
-  // 后处理：系列文章自动追加导航区块
-  const finalContent = appendSeriesNavigation(result.trim(), input);
+  // 后处理：标题编号 + 系列导航
+  let finalContent = ensureHeadingNumbers(result.trim());
+  finalContent = appendSeriesNavigation(finalContent, input);
   return finalContent;
 }
+
+
+/**
+ * 流式版本：根据规划结果（标题、简介、大纲）生成完整文章内容。
+ * onToken 在每收到一个 token 时被调用，用于实时更新编辑器内容。
+ */
+export async function generateFullArticleStream(
+  input: ArticleGenInput,
+  onToken?: (token: string) => void,
+): Promise<string> {
+  const outlineText = input.outline.map((s, i) => {
+    const desc = s.description ? ` - ${s.description}` : '';
+    return `${i + 1}. ${s.title}${desc}`;
+  }).join('\n');
+
+  const sysPrompt = buildSystemPrompt("writing", input.skillId, input.tone);
+
+  // 注入项目上下文（关联代码目录时使用）
+  let projectBlock = '';
+  if (input.projectContext) {
+    const name = input.projectName || '关联项目';
+    projectBlock = `\n## 关联项目上下文\n以下是与文章主题关联的本地项目「${name}」的代码结构和示例，请引用实际代码来支撑文章内容：\n\`\`\`\n${input.projectContext.slice(0, 4000)}\n\`\`\``;
+  }
+
+  // 注入系列文章上下文
+  let seriesBlock = '';
+  if (input.seriesContext) {
+    seriesBlock = `\n## 系列文章上下文\n${input.seriesContext}\n\n### 写作要求\n- 自然引用前文已讨论的概念，用「如上一篇文章所述」或 Markdown 链接 [上一篇: 标题](#article-{id}) 等方式衔接\n- 如果 context 中有提供「上一篇」的链接标记，用 Markdown 链接格式插入\n- 结尾处如果下文有预告，请附上自然的下一篇引子并用 Markdown 链接格式标记\n- 整体风格、术语体系与系列保持一致\n- 如果关联了项目目录，在涉及代码实现时可引用项目中的真实代码结构`;
+  }
+
+  const userPrompt = [
+    `标题: ${input.title}`,
+    `简介: ${input.description}`,
+    input.tone ? `风格: ${input.tone}` : '',
+    input.targetAudience ? `目标读者: ${input.targetAudience}` : '',
+    input.targetWordCount ? `目标字数: ~${input.targetWordCount} 字` : '',
+    '',
+    '## 大纲',
+    outlineText,
+    projectBlock,
+    seriesBlock,
+    '',
+    '请根据以上大纲写一篇完整的文章。大纲仅用于确定文章方向，并非写作顺序。你可以根据行文需要打乱顺序、倒叙、插叙或自由组织结构。开头、过渡、章节安排完全由你根据内容和风格自然决定。直接输出 Markdown 内容。\n\n## 格式要求\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`……\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`……\n- 如果`##`标题已经在 text 中以`数字点`开头（如`1. `），则无需重复编号。',
+  ].filter(Boolean).join('\n');
+
+  const provider = getProvider();
+  if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: sysPrompt },
+    { role: "user", content: userPrompt },
+  ];
+
+  const result = await sendChatStream({
+    providerId: provider.id,
+    model: provider.models[0],
+    messages,
+    temperature: 0.7,
+    maxTokens: 8192,
+  }, onToken);
+
+  // 后处理：标题编号 + 系列导航
+  let finalContent = ensureHeadingNumbers(result.trim());
+  finalContent = appendSeriesNavigation(finalContent, input);
+  return finalContent;
+}
+
 
 /**
  * 规范化 Markdown 换行：确保块级元素（标题、引用、代码块等）
@@ -394,6 +462,114 @@ export async function writeArticleSection(input: SectionWriteInput): Promise<str
 
   const result = await askAI(sysPrompt, userPrompt, 4096);
   return normalizeMarkdownBreaks(result.trim());
+}
+
+/**
+ * 流式版本：根据大纲中的一节信息，逐 token 生成该节内容。
+ * 提供上下文（前节内容）保持文风连贯。onToken 在每收到一个 token 时被调用。
+ */
+export async function writeArticleSectionStream(
+  input: SectionWriteInput,
+  onToken?: (token: string) => void,
+): Promise<string> {
+  const sysPrompt = buildSystemPrompt("writing", input.skillId, input.tone);
+
+  const perSectionWords = input.targetWordCount && input.totalSections
+    ? Math.ceil(input.targetWordCount / input.totalSections)
+    : 400;
+
+  const userPrompt = [
+    `文章标题: ${input.articleTitle}`,
+    input.articleDescription ? `文章简介: ${input.articleDescription}` : '',
+    input.tone ? `风格: ${input.tone}` : '',
+    `本节省略字数: ~${perSectionWords} 字`,
+    '',
+    `当前章节: ${input.title}`,
+    input.description ? `章节说明: ${input.description}` : '',
+    '',
+    input.previousSectionTitle && input.previousSectionContent
+      ? `前节标题: ${input.previousSectionTitle}\n\n前节内容:\n${input.previousSectionContent.slice(0, 800)}`
+      : '这是文章的第一节。',
+    '',
+    `当前章节序号: ${input.sectionNumber}
+请撰写「${input.title}」的内容，约 ${perSectionWords} 字。直接输出内容。`,
+  ].filter(Boolean).join('\n');
+
+  const provider = getProvider();
+  if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
+  const messages: ChatMessage[] = [
+    { role: "system", content: sysPrompt },
+    { role: "user", content: userPrompt },
+  ];
+
+  const result = await sendChatStream({
+    providerId: provider.id,
+    model: provider.models[0],
+    messages,
+    temperature: 0.7,
+    maxTokens: 4096,
+  }, onToken);
+
+  return normalizeMarkdownBreaks(result.trim());
+}
+
+
+
+/**
+ * 后处理：确保所有 H2/H3 标题带有序号。
+ * 如果 AI 已自动编号则跳过，遗漏的补齐。
+ * H2 编号: ## 1. Title, ## 2. Title ...
+ * H3 编号: ### 1.1 Sub, ### 1.2 Sub ...（基于父级 H2 序号）
+ */
+function ensureHeadingNumbers(markdown: string): string {
+  const lines = markdown.split('\n');
+  const out: string[] = [];
+  let h2Counter = 0;
+  let h3Counter = 0;
+  let inCodeBlock = false;
+
+  for (const line of lines) {
+    // 跳过代码块
+    if (line.trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      out.push(line);
+      continue;
+    }
+    if (inCodeBlock) { out.push(line); continue; }
+
+    // H2: ## Title
+    const h2Match = line.match(/^(#{2})\s+(.+)$/);
+    if (h2Match) {
+      h2Counter++;
+      h3Counter = 0;
+      const text = h2Match[2].trim();
+      // 检查是否已编号
+      if (!/^\d+\.\s/.test(text)) {
+        out.push(`## ${h2Counter}. ${text}`);
+      } else {
+        out.push(line);
+      }
+      continue;
+    }
+
+    // H3: ### Title
+    const h3Match = line.match(/^(#{3})\s+(.+)$/);
+    if (h3Match) {
+      h3Counter++;
+      const text = h3Match[2].trim();
+      if (!/^\d+\.\d+\.\s/.test(text)) {
+        out.push(`### ${h2Counter}.${h3Counter} ${text}`);
+      } else {
+        out.push(line);
+      }
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join('\n');
 }
 
 /**

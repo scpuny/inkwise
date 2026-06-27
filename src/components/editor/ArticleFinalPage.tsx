@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/ai/articleBlueprint";
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
@@ -7,6 +7,7 @@ import { loadArticleContent, loadArticleMeta } from "../../lib/storage/articles"
 import { addPublishRecord, getPublishHistory, publishArticle, type PublishOptions, type PublishRecord, type PublishResult } from "../../lib/storage/platforms";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { PublishDialog } from "../collections/PublishDialog";
+import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { ArticlePreview } from "./ArticlePreview";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { FinalTopBar } from "./FinalTopBar";
@@ -33,6 +34,7 @@ export function ArticleFinalPage({
   const [createdAt, setCreatedAt] = useState(0);
   const [updatedAt, setUpdatedAt] = useState(0);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const ctx = useContext(ArticleCtx);
   const styleRefs = useRef<HTMLStyleElement[]>([]);
 
   // Use the same unified CSS pipeline as export (collectPublishCss)
@@ -44,6 +46,9 @@ export function ArticleFinalPage({
     return on("article-theme-changed", handler);
   }, []);
   useEffect(() => {
+    // Ensure article's own styles are applied
+    ctx?.applyStyles();
+
     const tags: HTMLStyleElement[] = [];
 
     // 1. Collect all CSS from unified pipeline (template + theme + code + decorations + accent + etc.)
@@ -69,7 +74,13 @@ export function ArticleFinalPage({
       for (const t of styleRefs.current) t.remove();
       styleRefs.current = [];
     };
-  }, [previewRev]);
+  }, [previewRev, ctx]);
+
+  // 挂载后强制刷新 CSS（确保 handleCompleteArticle 保存的样式被拾取）
+  useEffect(() => {
+    const timer = setTimeout(() => setPreviewRev(v => v + 1), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Load article data
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { isTauriEnv, tryInvoke } from "../bridge/tauri";
+import { isTauriEnv, tryInvoke, TauriCommands } from "../bridge/tauri";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -12,6 +12,8 @@ export type ChatOptions = {
   temperature?: number;
   maxTokens?: number;
 };
+
+export type ChatStreamOptions = ChatOptions;
 
 export async function sendChat(options: ChatOptions): Promise<string> {
   if (!isTauriEnv()) {
@@ -30,4 +32,42 @@ export async function sendChat(options: ChatOptions): Promise<string> {
     console.error("Chat API error:", e);
     throw e;
   }
+}
+
+/**
+ * Streaming AI chat request. Calls onToken for each token as it arrives.
+ * In browser mode, falls back to non-streaming sendChat (returns full content at once).
+ * Resolves with the full accumulated content when complete.
+ */
+export async function sendChatStream(
+  options: ChatStreamOptions,
+  onToken?: (token: string) => void,
+): Promise<string> {
+  if (!isTauriEnv()) {
+    const result = await sendChat(options);
+    onToken?.(result);
+    return result;
+  }
+
+  return new Promise<string>(async (resolve, reject) => {
+    const { listen } = await import("@tauri-apps/api/event");
+
+    await listen<{ token: string }>("chat:token", (event) => {
+      onToken?.(event.payload.token);
+    });
+    await listen<{ content: string }>("chat:done", (event) => {
+      resolve(event.payload.content);
+    });
+    await listen<{ error: string }>("chat:error", (event) => {
+      reject(new Error(event.payload.error));
+    });
+
+    await tryInvoke(TauriCommands.ChatStream, {
+      providerId: options.providerId,
+      model: options.model,
+      messages: options.messages,
+      temperature: options.temperature ?? 0.7,
+      maxTokens: options.maxTokens ?? 2048,
+    });
+  });
 }

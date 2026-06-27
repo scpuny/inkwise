@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Sidebar } from "../components/sidebar/Sidebar";
 import { EditorPane } from "../components/editor/EditorPane";
 import { AgentPanel } from "../components/agent/AgentPanel";
@@ -32,10 +32,10 @@ import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
-import { saveArticleStyleConfig, loadArticleStyleConfig, applyArticleStyleConfig } from "../lib/editor/editorStyles";
+import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
 import { useThemeHandlers, useArticleLifecycle, useSeriesEventListeners } from "../hooks/appHooks";
 import { emit } from "../lib/events/eventBus";
-
+import { ArticleContext, ArticleCtx } from "../lib/article/ArticleContext";
 // Zustand stores
 import { useThemeStore } from "../store/themeStore";
 import { useEditorStore } from "../store/editorStore";
@@ -146,13 +146,10 @@ export default function MainEditorPage() {
   // Per-article style persistence
   useEffect(() => {
     const prevId = prevArticleRef.current;
-    if (prevId && prevId !== activeArticleId && activeArticleId) {
-      saveArticleStyleConfig(prevId);
-    }
     if (activeArticleId) {
+      // 从 ArticleContext 读取样式配置（context 构造时已加载并应用）
       const config = loadArticleStyleConfig(activeArticleId);
       if (config) {
-        applyArticleStyleConfig(config);
         setEditorStyleTemplate(config.editorStyleTemplateId);
         setEditorLineHeight(config.lineHeight);
         setEditorFontSize(config.editorFontSize);
@@ -161,28 +158,6 @@ export default function MainEditorPage() {
         setEditorFontFamily(config.editorFontFamily);
         setCodeThemeId(config.codeThemeId);
       } else {
-        // 无保存配置时恢复到系统默认
-        const defaults: Record<string, string> = {
-          'editor-style-template': 'default',
-          'editor-line-height': '1.75',
-          'editor-font-size': '15',
-          'editor-max-width': '820',
-          'editor-paragraph-gap': '1.25',
-          'editor-font-family': '',
-          'code-theme-id': 'atom-one-light',
-          'first-line-indent': '',
-          'justify-align': '',
-          'editor-accent-color': '',
-          'editor-caption-format': '',
-          'editor-custom-css': '',
-          'macos-code-block': '',
-          'bg-pattern': '',
-          'inkwise-selected-article-theme': 'clean',
-        };
-        for (const [key, val] of Object.entries(defaults)) {
-          localStorage.setItem(key, val);
-        }
-        localStorage.removeItem('heading-deco-config');
         setEditorStyleTemplate('default');
         setEditorLineHeight(1.75);
         setEditorFontSize(15);
@@ -191,7 +166,6 @@ export default function MainEditorPage() {
         setEditorFontFamily('');
         setCodeThemeId('atom-one-light');
       }
-      emit("article-theme-changed");
     }
     prevArticleRef.current = activeArticleId;
     // Trigger style panel re-mount
@@ -201,6 +175,7 @@ export default function MainEditorPage() {
   // Ensures export/compile functions read current values
   useEffect(() => {
     if (!activeArticleId) return;
+    // 同步 editorStore 值到 localStorage（兼容旧代码读取）
     localStorage.setItem('editor-style-template', editorStyleTemplate);
     localStorage.setItem('editor-line-height', String(editorLineHeight));
     localStorage.setItem('editor-font-size', String(editorFontSize));
@@ -208,8 +183,17 @@ export default function MainEditorPage() {
     localStorage.setItem('editor-paragraph-gap', String(editorParagraphGap));
     localStorage.setItem('editor-font-family', editorFontFamily);
     localStorage.setItem('code-theme-id', codeThemeId);
-    // Save per-article config so it persists
-    saveArticleStyleConfig(activeArticleId);
+    // 通过 context 持久化到文章专属键
+    const ctx = new ArticleContext(activeArticleId);
+    ctx.updateStyle({
+      editorStyleTemplateId: editorStyleTemplate,
+      lineHeight: editorLineHeight,
+      editorFontSize: editorFontSize,
+      editorMaxWidth: editorMaxWidth,
+      editorParagraphGap: editorParagraphGap,
+      editorFontFamily: editorFontFamily,
+      codeThemeId: codeThemeId,
+    });
   }, [
     activeArticleId, editorStyleTemplate, editorLineHeight, editorFontSize,
     editorMaxWidth, editorParagraphGap, editorFontFamily, codeThemeId,
@@ -510,6 +494,11 @@ const handlePlanComplete = useCallback(async (plan: {
     .filter(Boolean)
     .join(" ");
 
+  // ── Article context (per-article state, lifecycle = sidebar selection) ──
+  const articleCtx = useMemo(
+    () => (activeArticleId ? new ArticleContext(activeArticleId) : null),
+    [activeArticleId],
+  );
   return (
     <ErrorBoundary name="app">
     <div className={"app" + (focusMode ? " app--focus" : "")}>
@@ -581,6 +570,7 @@ const handlePlanComplete = useCallback(async (plan: {
           aria-label="调整侧栏宽度"
         />
 
+        <ArticleCtx.Provider value={articleCtx}>
         {/* Editor / Final Page */}
         {showFinalPage && activeArticleId ? (
           <ArticleFinalPage
@@ -640,6 +630,7 @@ const handlePlanComplete = useCallback(async (plan: {
         <AgentPanel />
         {/* Style Panel */}
         <StylePanel
+          key={activeArticleId}
           open={stylePanelOpen}
           onClose={() => setStylePanelOpen(false)}
           editorStyleTemplateId={editorStyleTemplate}
@@ -656,6 +647,7 @@ const handlePlanComplete = useCallback(async (plan: {
           onSetCodeTheme={setCodeThemeId}
           onApplyHeadingNumbers={handleApplyHeadingNumbers}
         />
+      </ArticleCtx.Provider>
       </div>
 
       {/* Focus mode exit button */}

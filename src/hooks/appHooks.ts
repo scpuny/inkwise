@@ -20,7 +20,6 @@ import type { DocPickerResult } from "../components/collections/DocPicker";
 import { applyTheme, persistTheme } from "../lib/theme/theme";
 import { applyTextSize } from "../lib/theme/textSize";
 import { applyFontFamily } from "../lib/theme/fontFamily";
-import { saveArticleStyleConfig, loadArticleStyleConfig, applyArticleStyleConfig } from "../lib/editor/editorStyles";
 import { emit, on } from "../lib/events/eventBus";
 import type { EventBusMap } from "../lib/events/events";
 
