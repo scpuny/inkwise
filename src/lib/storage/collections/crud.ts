@@ -55,10 +55,10 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
     createdAt: c.createdAt,
     articles: c.articles.map((a) => ({
       id: a.id,
-      collection_id: c.id,
+      collectionId: c.id,
       title: a.title,
-      created_at: a.createdAt,
-      updated_at: a.updatedAt,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
     })),
     linkedFolder: c.linkedFolder,
   };
