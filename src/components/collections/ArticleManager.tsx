@@ -95,7 +95,7 @@ export function ArticleManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const cols = browserLoad<Collection[]>('aiwriter-collections', []);
+      const cols = browserLoad<Collection[]>('inkwise-collections', []);
       console.log('[loadData] cols=%o', cols.map(c => ({id: c.id, title: c.title})));
       setCollections(cols);
 
@@ -162,7 +162,7 @@ export function ArticleManager({
   useEffect(() => {
     const unsub = on("collections-changed", () => {
       if (open) {
-        const cols = browserLoad<Collection[]>('aiwriter-collections', []);
+        const cols = browserLoad<Collection[]>('inkwise-collections', []);
         setCollections(cols);
         // 同步 article 条目中的 collectionTitle
         setArticles(prev => prev.map(a => {

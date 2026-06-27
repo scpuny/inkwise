@@ -139,7 +139,7 @@ export function ModelsSection() {
   // Read saved model from localStorage for display
   const [selectedModelRef, setSelectedModelRef] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem("aiwriter-default-model");
+      const saved = localStorage.getItem("inkwise-default-model");
       if (saved) {
         const match = allRefs.find(r => r.endsWith("/" + saved) || r === saved);
         if (match) return match;
@@ -158,7 +158,7 @@ export function ModelsSection() {
         <>
           <SettingsSection title="模型选择">
             <SettingsField label="默认模型">
-              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("aiwriter-default-model", modelName || ref); emit("providers-changed"); } catch {} }} />
+              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-default-model", modelName || ref); emit("providers-changed"); } catch {} }} />
             </SettingsField>
           </SettingsSection>
           <SettingsSection title="生成参数">

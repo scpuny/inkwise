@@ -1248,8 +1248,8 @@ pub fn run() {
         .setup(|app| {
             let app_dir = app.path().app_data_dir().expect("failed to get app data dir");
             std::fs::create_dir_all(&app_dir).ok();
-            // Migrate data from old com.aiwriter.desktop if fresh install
-            let old_app_dir = app_dir.parent().map(|p| p.join("com.aiwriter.desktop"));
+            // Migrate data from old com.inkwise.desktop if fresh install
+            let old_app_dir = app_dir.parent().map(|p| p.join("com.inkwise.desktop"));
             if let Some(ref old_dir) = old_app_dir {
                 if !app_dir.join("data/collections.json").exists()
                     && old_dir.join("data/collections.json").exists()

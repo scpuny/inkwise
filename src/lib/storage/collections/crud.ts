@@ -7,9 +7,9 @@ import { genId, browserLoad, browserSave } from "./internal";
 const loadFromStorage = <T>(key: string, fallback: T): T => browserLoad(key, fallback);
 const saveToStorage = <T>(key: string, data: T): void => { browserSave(key, data); };
 
-const COLLECTIONS_KEY = "aiwriter-collections";
-const TRASH_KEY = "aiwriter-trash";
-const SEEDED_KEY = "aiwriter-seeded-v1";
+const COLLECTIONS_KEY = "inkwise-collections";
+const TRASH_KEY = "inkwise-trash";
+const SEEDED_KEY = "inkwise-seeded-v1";
 
 /* ─── 种子数据 ─── */
 
@@ -103,9 +103,9 @@ export async function addCollection(title: string): Promise<Collection> {
 
 export async function renameCollection(id: string, title: string): Promise<void> {
   // 改名：精确更新，不走 SetCollections
-  const all = loadFromStorage<Collection[]>('aiwriter-collections', []);
+  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
   const c = all.find((x) => x.id === id);
-  if (c) { c.title = title; saveToStorage('aiwriter-collections', all); }
+  if (c) { c.title = title; saveToStorage('inkwise-collections', all); }
   if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title }); } catch {} }
 }
 
@@ -114,14 +114,14 @@ export async function updateCollection(
   data: { title?: string; description?: string; coverImage?: string; linkedFolder?: string }
 ): Promise<void> {
   // 精确更新合集信息，不触及其他集合和文章
-  const all = loadFromStorage<Collection[]>('aiwriter-collections', []);
+  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
   const c = all.find((x) => x.id === id);
   if (!c) return;
   if (data.title !== undefined) c.title = data.title;
   if (data.description !== undefined) c.description = data.description || undefined;
   if (data.coverImage !== undefined) c.coverImage = data.coverImage || undefined;
   if (data.linkedFolder !== undefined) c.linkedFolder = data.linkedFolder || undefined;
-  saveToStorage('aiwriter-collections', all);
+  saveToStorage('inkwise-collections', all);
   // SQLite: 只更新 SQLite 有的字段（title、linked_folder）
   if (isTauriEnv()) {
     if (data.title !== undefined) {

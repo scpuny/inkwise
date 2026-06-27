@@ -68,7 +68,7 @@ export function createEmptySkill(): WritingSkill {
 
 /* ─── 存储 ─── */
 
-const CUSTOM_SKILLS_KEY = "aiwriter-custom-skills";
+const CUSTOM_SKILLS_KEY = "inkwise-custom-skills";
 
 /** 加载自定义技能 */
 export async function loadCustomSkills(): Promise<WritingSkill[]> {
