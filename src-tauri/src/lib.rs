@@ -10,7 +10,7 @@ use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
-use project_indexer::{ProjectContext, scan_project, build_context_text};
+use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -19,6 +19,7 @@ use tauri_plugin_dialog::DialogExt;
 struct AppState {
     store: Mutex<DataStore>,
     db: Mutex<Option<db::Database>>,
+    watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
 }
 
 #[allow(dead_code)]
@@ -1207,6 +1208,40 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
     Ok(())
 }
 
+
+// ─── 文件监听命令 ───
+
+#[tauri::command]
+fn start_watching_project(
+    path: String,
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let dir = std::path::Path::new(&path);
+    if !dir.is_dir() {
+        return Err("路径不是有效的文件夹".into());
+    }
+    // 如果已有 watcher 在运行，先停止
+    {
+        let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
+        *handle = None;
+    }
+    let app_clone = app_handle.clone();
+    let handle = spawn_folder_watcher(dir, None, move |changed_files| {
+        let _ = app_clone.emit("project-files-changed", &changed_files);
+    });
+    let mut state_handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
+    *state_handle = Some(handle);
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_watching_project(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
+    *handle = None;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1238,6 +1273,7 @@ pub fn run() {
             app.manage(AppState {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
                 db: Mutex::new(database),
+                watcher_handle: Mutex::new(None),
             });
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -1323,7 +1359,9 @@ pub fn run() {
             check_public_ip,
             get_publish_history,
             save_publish_records,
-            publish_to_platform])
+            publish_to_platform,
+            start_watching_project,
+            stop_watching_project])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

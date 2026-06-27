@@ -545,7 +545,7 @@ CollectionTree
 
 ---
 ## 9.待实现功能
-* ~~tree-sitter 集成（Level 2）~~ — 当前使用正则提取符号，功能可用；后续可替换为 tree-sitter
+* ~~tree-sitter 集成（Level 2）~~ — ✅ 已完成：AST 解析替换正则，支持 TS/TSX/JS/JSX/Rust 符号 + 导入关系提取
 * ~~CodeGraph SQLite 读取（Level 3）~~ — ✅ 已完成（v1.3.0）
 * 系列文章内链：生成时自动在前文后文间加引用链接
-* 增量扫描：文件 hash 变化时只扫变动的文件
+* ~~增量扫描~~ — ✅ 已完成（v1.4.0）：SHA-256 文件 hash 缓存 + 文件系统事件监听实时增量扫描

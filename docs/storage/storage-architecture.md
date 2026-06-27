@@ -142,4 +142,4 @@ class StorageEngine {
 
 ---
 
-> 关联文档: [架构总览](../architecture/overview.md) | [Tauri 桥接](../architecture/tauri-bridge.md)
+> 关联文档: [架构总览](../architecture/overview.md) | [Tauri 桥接](../architecture/tauri-bridge.md) | [项目系列写作](../backend/DESIGN-PROJECT-WRITING.md)

@@ -31,6 +31,8 @@ export enum TauriCommands {
   DeleteSeriesPlan = "delete_series_plan",
   ReadProjectFiles = "read_project_files",
   PickFolder = "pick_folder",
+  StartWatchingProject = "start_watching_project",
+  StopWatchingProject = "stop_watching_project",
 
   // ── Providers / Models ──
   GetProviders = "get_providers",

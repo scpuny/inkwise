@@ -19,6 +19,8 @@
 - 系列文章创建时自动追加序号到标题
 - 切换文章时无保存配置则恢复系统默认
 - 列表项移除 word-break:keep-all 防止溢出
+- **tree-sitter 符号提取**：AST 解析替代正则，支持 TS/TSX/JS/JSX/Rust 源码符号与导入关系提取，docstring 正确关联
+- **增量扫描**：SHA-256 文件 hash 缓存，仅扫描变更文件；新增文件系统事件监听（notify-debouncer-mini），文件变更自动更新缓存并通过 Tauri 事件通知前端
 
 ### 修复
 - composer-intent-menu 缺少 max-height 导致下拉溢出

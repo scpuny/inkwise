@@ -745,6 +745,217 @@ fn extract_doc_comment_treesitter(node: tree_sitter::Node, source: &str) -> Opti
     }
 }
 
+
+/// 用 tree-sitter 解析源码导入语句（替代正则方案）
+fn extract_imports_treesitter(source: &str, ext: &str) -> Vec<(String, String)> {
+    let mut imports = Vec::new();
+    let (lang, _lang_name) = match get_tree_sitter_language(ext) {
+        Some(v) => v,
+        None => return imports,
+    };
+
+    let mut parser = tree_sitter::Parser::new();
+    parser
+        .set_language(&lang)
+        .expect("tree-sitter language 初始化失败");
+
+    let tree = match parser.parse(source, None) {
+        Some(t) => t,
+        None => return imports,
+    };
+
+    let root = tree.root_node();
+    traverse_imports(root, source, ext, &mut imports);
+    imports
+}
+
+/// 遍历 AST 节点提取 import 信息
+fn traverse_imports(
+    node: tree_sitter::Node,
+    source: &str,
+    ext: &str,
+    imports: &mut Vec<(String, String)>,
+) {
+    if ext == "rs" {
+        // Rust: use 声明
+        if node.kind() == "use_declaration" {
+            if let Some(use_val) = find_use_target(node, source) {
+                imports.push((use_val, "module".to_string()));
+            }
+        }
+    } else {
+        // TS/JS: import 语句
+        if node.kind() == "import_statement" {
+            if let Some(target) = find_import_source(node, source) {
+                imports.push((target, "module".to_string()));
+            }
+        }
+        // require() 调用
+        if node.kind() == "call_expression" {
+            if let Some(target) = find_require_target(node, source) {
+                imports.push((target, "module".to_string()));
+            }
+        }
+        // dynamic import()
+        if node.kind() == "import_expression" || node.kind() == "import" {
+            if let Some(target) = find_dynamic_import_target(node, source) {
+                imports.push((target, "module".to_string()));
+            }
+        }
+    }
+
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            if child.child_count() > 0 {
+                traverse_imports(child, source, ext, imports);
+            }
+        }
+    }
+}
+
+/// 从 import 语句提取模块路径
+fn find_import_source(node: tree_sitter::Node, source: &str) -> Option<String> {
+    // import 语句中找 string 类型的子节点（模块路径）
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            let kind = child.kind();
+            if kind == "string" || kind == "string_fragment" {
+                if let Ok(text) = child.utf8_text(source.as_bytes()) {
+                    let cleaned = text.trim().trim_matches('\'').trim_matches('"');
+                    if !cleaned.is_empty() && !cleaned.starts_with('.') && !cleaned.starts_with('/') {
+                        // 外部模块：取包名（第一个 / 之前的部分）
+                        let pkg = cleaned.split('/').next().unwrap_or(cleaned);
+                        return Some(pkg.to_string());
+                    }
+                }
+            }
+        }
+    }
+    // 尝试从 named_imports 或 namespace_import 的父节点找 source
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            for j in 0..child.child_count() {
+                if let Some(grandchild) = child.child(j) {
+                    let kind = grandchild.kind();
+                    if kind == "string" || kind == "string_fragment" {
+                        if let Ok(text) = grandchild.utf8_text(source.as_bytes()) {
+                            let cleaned = text.trim().trim_matches('\'').trim_matches('"');
+                            if !cleaned.is_empty() && !cleaned.starts_with('.') {
+                                let pkg = cleaned.split('/').next().unwrap_or(cleaned);
+                                return Some(pkg.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 从 require() 调用提取模块路径
+fn find_require_target(node: tree_sitter::Node, source: &str) -> Option<String> {
+    let text = node.utf8_text(source.as_bytes()).ok()?;
+    if !text.contains("require(") {
+        return None;
+    }
+    // 从 call_expression 中找 string 参数
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            if child.kind() == "string" || child.kind() == "string_fragment" || child.kind() == "arguments" {
+                for j in 0..child.child_count() {
+                    if let Some(grandchild) = child.child(j) {
+                        let gk = grandchild.kind();
+                        if gk == "string" || gk == "string_fragment" {
+                            if let Ok(t) = grandchild.utf8_text(source.as_bytes()) {
+                                let cleaned = t.trim().trim_matches('\'').trim_matches('"');
+                                if !cleaned.is_empty() && !cleaned.starts_with('.') {
+                                    let pkg = cleaned.split('/').next().unwrap_or(cleaned);
+                                    return Some(pkg.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 从 dynamic import() 提取模块路径
+fn find_dynamic_import_target(node: tree_sitter::Node, source: &str) -> Option<String> {
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            let kind = child.kind();
+            if kind == "string" || kind == "string_fragment" || kind == "arguments" {
+                for j in 0..child.child_count() {
+                    if let Some(grandchild) = child.child(j) {
+                        let gk = grandchild.kind();
+                        if gk == "string" || gk == "string_fragment" {
+                            if let Ok(t) = grandchild.utf8_text(source.as_bytes()) {
+                                let cleaned = t.trim().trim_matches('\'').trim_matches('"');
+                                if !cleaned.is_empty() && !cleaned.starts_with('.') {
+                                    let pkg = cleaned.split('/').next().unwrap_or(cleaned);
+                                    return Some(pkg.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// 从 Rust use 声明提取模块路径
+fn find_use_target(node: tree_sitter::Node, source: &str) -> Option<String> {
+    // use crate::module; -> crate
+    // use module::SubModule; -> module
+    // use module::{Sub1, Sub2}; -> module
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i) {
+            let kind = child.kind();
+            // scoped_identifier: crate::module or module::sub
+            if kind == "scoped_identifier" {
+                if let Ok(text) = child.utf8_text(source.as_bytes()) {
+                    let parts: Vec<&str> = text.split("::").collect();
+                    if !parts.is_empty() {
+                        let root = parts[0];
+                        if root != "crate" && root != "self" && root != "super" {
+                            return Some(root.to_string());
+                        } else if parts.len() > 1 {
+                            return Some(parts[1].to_string());
+                        }
+                    }
+                }
+            }
+            // use_as_clause: use foo as bar
+            if kind == "use_as_clause" {
+                for j in 0..child.child_count() {
+                    if let Some(inner) = child.child(j) {
+                        if inner.kind() == "scoped_identifier" {
+                            if let Ok(text) = inner.utf8_text(source.as_bytes()) {
+                                let parts: Vec<&str> = text.split("::").collect();
+                                if !parts.is_empty() {
+                                    let root = parts[0];
+                                    if root != "crate" && root != "self" && root != "super" {
+                                        return Some(root.to_string());
+                                    } else if parts.len() > 1 {
+                                        return Some(parts[1].to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 正则降级方案（Level 1，tree-sitter 不支持时使用）
 // ═══════════════════════════════════════════════════════════════
@@ -1158,46 +1369,39 @@ fn scan_imports(
                     Err(_) => continue,
                 };
 
-                for raw_line in content.lines() {
-                    let line = raw_line.trim();
-                    if ext != "rs" {
-                        if let Some(target) = line
-                            .strip_prefix("import ")
-                            .or_else(|| line.strip_prefix("const "))
-                            .and_then(|s| {
-                                if s.contains(" from ") {
-                                    s.split(" from ").nth(1)
-                                } else if s.contains("require(") {
-                                    s.split("require(").nth(1)
-                                } else {
-                                    None
-                                }
-                            })
-                            .and_then(|s| {
-                                let s = s.trim().trim_matches('\'').trim_matches('"');
-                                Some(s.split(|c| c == '\'' || c == '"').next()?.to_string())
-                            })
-                        {
-                            imports.push(ImportEdge {
-                                source: rel.clone(),
-                                target,
-                                kind: "import".into(),
-                            });
+                // 使用 tree-sitter 提取导入关系（替代正则）
+                let file_imports = if ts_supported_ext(ext) {
+                    extract_imports_treesitter(&content, ext)
+                } else {
+                    Vec::new()
+                };
+
+                // 如果 tree-sitter 没解析到任何导入，对 .rs 文件额外尝试简单的行扫描（兜底）
+                let file_imports = if file_imports.is_empty() && ext == "rs" {
+                    let mut fallback = Vec::new();
+                    for raw_line in content.lines() {
+                        let line = raw_line.trim();
+                        if line.starts_with("use ") {
+                            let target = line
+                                .strip_prefix("use ")
+                                .and_then(|s| s.split("::").next())
+                                .map(|s| s.to_string());
+                            if let Some(target) = target {
+                                fallback.push((target, "module".to_string()));
+                            }
                         }
                     }
-                    if ext == "rs" && line.starts_with("use ") {
-                        let target = line
-                            .strip_prefix("use ")
-                            .and_then(|s| s.split("::").next())
-                            .map(|s| s.to_string());
-                        if let Some(target) = target {
-                            imports.push(ImportEdge {
-                                source: rel.clone(),
-                                target,
-                                kind: "import".into(),
-                            });
-                        }
-                    }
+                    fallback
+                } else {
+                    file_imports
+                };
+
+                for (target, _kind) in &file_imports {
+                    imports.push(ImportEdge {
+                        source: rel.clone(),
+                        target: target.clone(),
+                        kind: "import".into(),
+                    });
                 }
             }
         }
@@ -1370,46 +1574,33 @@ fn scan_imports_fresh(dir: &Path) -> Vec<ImportEdge> {
                     Ok(c) => c,
                     Err(_) => continue,
                 };
-                for raw_line in content.lines() {
-                    let line = raw_line.trim();
-                    if ext != "rs" {
-                        if let Some(target) = line
-                            .strip_prefix("import ")
-                            .or_else(|| line.strip_prefix("const "))
-                            .and_then(|s| {
-                                if s.contains(" from ") {
-                                    s.split(" from ").nth(1)
-                                } else if s.contains("require(") {
-                                    s.split("require(").nth(1)
-                                } else {
-                                    None
-                                }
-                            })
-                            .and_then(|s| {
-                                let s = s.trim().trim_matches('\'').trim_matches('"');
-                                Some(s.split(|c| c == '\'' || c == '"').next()?.to_string())
-                            })
-                        {
-                            imports.push(ImportEdge {
-                                source: rel.clone(),
-                                target,
-                                kind: "import".into(),
-                            });
+                // 使用 tree-sitter 提取导入关系（替代正则）
+                let file_imports = if ts_supported_ext(ext) {
+                    extract_imports_treesitter(&content, ext)
+                } else {
+                    Vec::new()
+                };
+                // 兜底：.rs 文件如果 tree-sitter 没命中，尝试行扫描
+                let file_imports = if file_imports.is_empty() && ext == "rs" {
+                    let mut fallback = Vec::new();
+                    for raw_line in content.lines() {
+                        let line = raw_line.trim();
+                        if line.starts_with("use ") {
+                            if let Some(target) = line.strip_prefix("use ").and_then(|s| s.split("::").next()) {
+                                fallback.push((target.to_string(), "module".to_string()));
+                            }
                         }
                     }
-                    if ext == "rs" && line.starts_with("use ") {
-                        let target = line
-                            .strip_prefix("use ")
-                            .and_then(|s| s.split("::").next())
-                            .map(|s| s.to_string());
-                        if let Some(target) = target {
-                            imports.push(ImportEdge {
-                                source: rel.clone(),
-                                target,
-                                kind: "import".into(),
-                            });
-                        }
-                    }
+                    fallback
+                } else {
+                    file_imports
+                };
+                for (target, _kind) in &file_imports {
+                    imports.push(ImportEdge {
+                        source: rel.clone(),
+                        target: target.clone(),
+                        kind: "import".into(),
+                    });
                 }
             }
         }
@@ -1484,4 +1675,102 @@ pub fn build_context_text(ctx: &ProjectContext) -> String {
     }
 
     parts.join("\n\n")
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// 文件系统监听（实时增量扫描）
+// ═══════════════════════════════════════════════════════════════
+
+use std::time::Duration;
+use notify_debouncer_mini::new_debouncer;
+
+/// 在后台线程启动文件监听，文件变更时通过回调通知。
+/// 返回的 JoinHandle 可用于停止监听（drop handle 即停止）。
+/// 
+/// 变更的文件会更新 hash 缓存，并通过 on_change 回调返回相对路径列表。
+pub fn spawn_folder_watcher<F>(
+    base_dir: &Path,
+    data_dir: Option<&Path>,
+    on_change: F,
+) -> std::thread::JoinHandle<()>
+where
+    F: Fn(Vec<String>) + Send + 'static,
+{
+    let base = base_dir.to_path_buf();
+
+    // 加载已有 hash 缓存
+    let cache_dir = data_dir
+        .map(|d| d.join("index"))
+        .unwrap_or_else(|| base_dir.join(".inkwise_index"));
+    std::fs::create_dir_all(&cache_dir).ok();
+    let cache_path = cache_dir.join("file_hashes.json");
+    let hashes: std::collections::HashMap<String, String> = std::fs::read_to_string(&cache_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default();
+    let hashes = std::sync::Arc::new(std::sync::Mutex::new(hashes));
+
+    // 使用 channel 接收 debouncer 事件
+    let (tx, rx) = std::sync::mpsc::channel::<notify_debouncer_mini::DebounceEventResult>();
+
+    let mut debouncer = match new_debouncer(Duration::from_secs(2), tx) {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("创建文件监听器失败: {}", e);
+            return std::thread::spawn(|| {});
+        }
+    };
+
+    if let Err(e) = debouncer.watcher().watch(&base, notify::RecursiveMode::Recursive) {
+        log::error!("开始监听目录失败: {}", e);
+        return std::thread::spawn(|| {});
+    }
+
+    std::thread::spawn(move || {
+        // 保持 debouncer 存活
+        let _debouncer = debouncer;
+        loop {
+            match rx.recv() {
+                Ok(Ok(events)) => {
+                    let mut changed = Vec::new();
+                    for event in &events {
+                        let path = &event.path;
+                        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                        if should_ignore(&name) {
+                            continue;
+                        }
+                        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                        if !matches!(ext, "ts" | "tsx" | "js" | "jsx" | "rs") {
+                            continue;
+                        }
+                        let rel = match path.strip_prefix(&base) {
+                            Ok(r) => r.to_string_lossy().to_string(),
+                            Err(_) => continue,
+                        };
+                        if let Ok(bytes) = std::fs::read(&path) {
+                            let new_hash = compute_file_hash(&bytes);
+                            if let Ok(mut h) = hashes.lock() {
+                                let old = h.get(&rel).cloned();
+                                if old.as_deref() != Some(&new_hash) {
+                                    h.insert(rel.clone(), new_hash);
+                                    changed.push(rel);
+                                }
+                            }
+                        }
+                    }
+                    if !changed.is_empty() {
+                        if let Ok(h) = hashes.lock() {
+                            if let Ok(json) = serde_json::to_string(&*h) {
+                                let _ = std::fs::write(&cache_path, json);
+                            }
+                        }
+                        on_change(changed);
+                    }
+                }
+                Ok(Err(e)) => log::warn!("文件监听 debouncer 错误: {:?}", e),
+                Err(_) => break,
+            }
+        }
+    })
 }
