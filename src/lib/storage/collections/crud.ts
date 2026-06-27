@@ -168,6 +168,24 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
   const trash = await loadTrash();
   trash.push({ id: articleId, collectionId, collectionTitle: col.title, title: article.title, deletedAt: Date.now() });
   await saveTrash(trash);
+
+  // Clean up associated data: content, meta, blueprint, versions, localStorage drafts
+  try {
+    const { deleteArticleContent } = await import("../../storage/articles");
+    await deleteArticleContent(articleId);
+  } catch {}
+  try {
+    const { deleteAllVersions } = await import("../../storage/articleVersions");
+    await deleteAllVersions(articleId);
+  } catch {}
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
+    }
+  } catch {}
+  try {
+    localStorage.removeItem('plan-draft-' + articleId);
+  } catch {}
 }
 
 /* ─── 回收站 ─── */
