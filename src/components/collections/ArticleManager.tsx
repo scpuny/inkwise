@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
   FolderOpen,
@@ -239,26 +239,37 @@ export function ArticleManager({
   // Collection CRUD
   const handleOpenColForm = (col?: Collection) => {
     setEditingCollection(col || null);
+    editingColIdRef.current = col?.id || null;
     setShowColForm(true);
   };
 
+  // 用 ref 持久化正在编辑的合集 ID，避免闭包陷阱
+  const editingColIdRef = useRef<string | null>(null);
   const handleSaveCollection = async (title: string, description: string, coverImage: string, linkedFolder?: string) => {
-    if (editingCollection) {
-      // Edit existing
-      editingCollection.title = title;
-      editingCollection.description = description || undefined;
-      editingCollection.coverImage = coverImage || undefined;
-      editingCollection.linkedFolder = linkedFolder || undefined;
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id: editingCollection.id, title }); } catch {} }
+    const editingId = editingColIdRef.current;
+    if (editingId) {
+      // 编辑已有合集：重新加载确保拿到最新数据
+      const all = await loadCollections();
+      const col = all.find((x) => x.id === editingId);
+      if (col) {
+        col.title = title;
+        col.description = description || undefined;
+        col.coverImage = coverImage || undefined;
+        col.linkedFolder = linkedFolder || undefined;
+      }
+      await saveCollections(all);
+      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id: editingId, title }); } catch {} }
     } else {
-      // New collection
+      // 新建合集
+      const all = await loadCollections();
       const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, linkedFolder: linkedFolder || undefined, articles: [], createdAt: Date.now() };
-      collections.push(col);
+      all.push(col);
+      await saveCollections(all);
       if (isTauriEnv()) { try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {} }
     }
-    await saveCollections(collections);
     setShowColForm(false);
     setEditingCollection(null);
+    editingColIdRef.current = null;
     await loadData();
   };
 
