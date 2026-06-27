@@ -90,10 +90,10 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
-  // 改名：精确更新 title，不触发全量 SetCollections
-  const all = browserLoad<Collection[]>(COLLECTIONS_KEY, []);
+  // 改名：三层存储同步更新（localStorage / Tauri JSON / SQLite）
+  const all = await loadCollections();
   const c = all.find((x) => x.id === id);
-  if (c) { c.title = title; browserSave(COLLECTIONS_KEY, all); }
+  if (c) { c.title = title; await saveCollections(all); }
   if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title }); } catch {} }
 }
 

@@ -13,7 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, browserLoad, browserSave, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -256,8 +256,8 @@ export function ArticleManager({
     console.log('[handleSaveCollection] title=%s editingColIdRef=%s', title, editingColIdRef.current);
     const editingId = editingColIdRef.current;
     if (editingId) {
-      // 编辑已有合集：精确更新，不触发全量 SetCollections
-      const all = browserLoad<Collection[]>('aiwriter-collections', []);
+      // 编辑已有合集：三层存储同步更新
+      const all = await loadCollections();
       const col = all.find((x) => x.id === editingId);
       if (col) {
         col.title = title;
@@ -265,7 +265,7 @@ export function ArticleManager({
         col.coverImage = coverImage || undefined;
         col.linkedFolder = linkedFolder || undefined;
       }
-      browserSave('aiwriter-collections', all);
+      await saveCollections(all);
       if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id: editingId, title }); } catch {} }
     } else {
       // 新建合集
