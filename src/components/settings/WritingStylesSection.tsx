@@ -282,9 +282,14 @@ function builtinCards() {
             <span style={{ fontSize: 13, fontWeight: 500 }}>{s.name}</span>
           </div>
           <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: "0 0 8px", lineHeight: 1.4 }}>{s.description}</p>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {s.dimensions.map((d: StyleDimension) => (
-              <span key={d.name} className="settings-badge">{d.name}: {d.value}</span>
+              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", minWidth: 36 }}>{d.name}</span>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: "var(--bg-tertiary)", overflow: "hidden" }}>
+                  <div style={{ width: `${(d.value / 10) * 100}%`, height: "100%", borderRadius: 3, backgroundColor: "var(--accent)" }} />
+                </div>
+              </div>
             ))}
           </div>
         </div>

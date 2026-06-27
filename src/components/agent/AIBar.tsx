@@ -14,6 +14,8 @@ import { getProvidersSync } from "../../lib/storage/providerModels";
 import { listSkills, type Skill } from "../../lib/storage/skill";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
 import { IntentMenu, type IntentOption } from "./IntentMenu";
+import { getAllBuiltinSkills, loadCustomSkills } from "../../lib/ai/writingSkill";
+import type { WritingSkill } from "../../lib/ai/writingSkill/types";
 
 const COMPOSER_MIN_HEIGHT = 104;
 const COMPOSER_MAX_HEIGHT = 360;
@@ -70,6 +72,13 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const [tokenMenuOpen, setTokenMenuOpen] = useState(false);
   const tokenBtnRef = useRef<HTMLButtonElement>(null);
 
+
+  const [writingSkills, setWritingSkills] = useState<WritingSkill[]>([]);
+  const [selectedWritingSkill, setSelectedWritingSkill] = useState(() => {
+    try { return localStorage.getItem("inkwise-writing-skill") || "general"; } catch { return "general"; }
+  });
+  const [skillMenuOpen, setSkillMenuOpen] = useState(false);
+  const writingSkillBtnRef = useRef<HTMLButtonElement>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const fallbackSkills: Skill[] = [
     { name: "general", description: "通用写作", body: "", scope: "Builtin", path: "", run_as: "Inline", allowed_tools: [], model: null, effort: null, enabled: true },
@@ -90,6 +99,23 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     listSkills().then(setSkills).catch(() => {});
   }, []);
 
+
+  // Load writing skills
+  useEffect(() => {
+    (async () => {
+      try {
+        const customs = await loadCustomSkills();
+        setWritingSkills(customs.length > 0 ? customs : getAllBuiltinSkills());
+      } catch {
+        setWritingSkills(getAllBuiltinSkills());
+      }
+    })();
+  }, []);
+
+  // Persist selected writing skill
+  useEffect(() => {
+    try { localStorage.setItem("inkwise-writing-skill", selectedWritingSkill); } catch {}
+  }, [selectedWritingSkill]);
   const [fetchingModels, setFetchingModels] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -220,6 +246,33 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <IntentMenu currentIntent={currentIntent} options={intentOptions} />
             </div>
 
+            {/* Writing skill selector */}
+            <div className="composer-meta__control composer-meta__control--writing-skill">
+              <button
+                ref={writingSkillBtnRef}
+                className="pill-btn"
+                onClick={() => setSkillMenuOpen(!skillMenuOpen)}
+                title="写作风格"
+              >
+                <span>{getWritingSkillIcon(selectedWritingSkill, writingSkills)}</span>
+                <span>{getWritingSkillLabel(selectedWritingSkill, writingSkills)}</span>
+              </button>
+              <PopoverMenu
+                items={writingSkills.map(s => ({
+                  id: s.id,
+                  label: `${s.icon} ${s.name}`,
+                  subtitle: s.description,
+                  onClick: () => {
+                    setSelectedWritingSkill(s.id);
+                    emit("writing-skill-changed", s.id);
+                  },
+                }))}
+                anchorRef={writingSkillBtnRef}
+                open={skillMenuOpen}
+                onClose={() => setSkillMenuOpen(false)}
+              />
+            </div>
+
             {/* Max tokens */}
             <div className="composer-meta__control composer-meta__control--tokens">
               <button
@@ -306,6 +359,17 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
       </div>
     </div>
   );
+}
+
+
+function getWritingSkillLabel(skillId: string, skills: WritingSkill[]): string {
+  const skill = skills.find(s => s.id === skillId);
+  return skill?.name ?? skillId;
+}
+
+function getWritingSkillIcon(skillId: string, skills: WritingSkill[]): string {
+  const skill = skills.find(s => s.id === skillId);
+  return skill?.icon ?? "\u{1F4DD}";
 }
 
 function skillDisplayLabel(name: string): string {
