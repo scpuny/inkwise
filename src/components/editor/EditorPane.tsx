@@ -1119,31 +1119,21 @@ ${augmentedContent}`
             <div className="editor-pane__project-name">{folderProjectName}</div>
             {projectFiles.length > 0 ? (
               <>
-              <p className="editor-pane__project-hint">点击文件自动作为写作灵感</p>
+              <p className="editor-pane__project-hint">浏览项目文件获取灵感，点击「AI 规划」开始写作</p>
               <div className="editor-pane__project-files">
                 {projectTree ? (
                   <ProjectFileTree
                     nodes={projectTree}
                     maxDepth={3}
-                    onSelect={(path) => {
-                      handleStartPlan({
-                        inspiration: path,
-                        tone: undefined,
-                        targetAudience: undefined,
-                        targetWordCount: undefined,
-                      });
+                    onSelect={(_path) => {
+                      // 项目灵感树仅作浏览，不触发生成
                     }}
                   />
                 ) : (
                   projectFiles.map((f, i) => (
                     <button key={i} className="editor-pane__file-chip"
                       onClick={() => {
-                        handleStartPlan({
-                          inspiration: f,
-                          tone: undefined,
-                          targetAudience: undefined,
-                          targetWordCount: undefined,
-                        });
+                        // 项目灵感文件仅作浏览，不触发生成
                       }}
                     >
                       <FileText size={10} />
