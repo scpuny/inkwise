@@ -395,8 +395,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               ])}>
                 {isEditing ? (
                   <input ref={editInputRef} className="collection-tree__input" value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)}
-                    onBlur={async () => { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); } setEditingId(null); }}
-                    onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); } setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
+                    onBlur={async () => { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); emit("collections-changed"); } setEditingId(null); }}
+                    onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); emit("collections-changed"); } setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
                     onClick={(e) => e.stopPropagation()} />
                 ) : (
                   <>

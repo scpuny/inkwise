@@ -20,6 +20,7 @@ import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { saveArticleContent } from "../../lib/storage/articles";
+import { on } from "../../lib/events/eventBus";
 
 type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
@@ -157,6 +158,11 @@ export function ArticleManager({
   }, []);
 
   useEffect(() => { if (open) loadData(); }, [open, loadData]);
+  // 外部合集变更时自动刷新（侧边树改名等）
+  useEffect(() => {
+    const unsub = on("collections-changed", () => { if (open) loadData(); });
+    return unsub;
+  }, [open, loadData]);
 
   // Filter & sort
   const filtered = articles
