@@ -130,7 +130,7 @@ ${scope} th, ${scope} td { border: 1px solid ${hr} !important; padding: 6px 10px
 ${scope} th { background: ${cb} !important; font-weight: 600 !important; }
 ${scope} hr { border: none !important; border-top: 1px solid ${hr} !important; margin: 1.5em 0 !important; }
 ${scope} ul, ${scope} ol { margin: 0.5em 0 !important; padding-left: 1.2em !important; }
-${scope} li { margin: 0.3em 0 !important; word-break: keep-all !important; }
+${scope} li { margin: 0.3em 0 !important; }
 `;
 
   // Ribbon heading variant
