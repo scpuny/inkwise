@@ -100,6 +100,14 @@ const [customTone, setCustomTone] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
 
   const responseEndRef = useRef<HTMLDivElement>(null);
+  const toolScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll tool events to bottom when new events arrive
+  useEffect(() => {
+    if (toolScrollRef.current) {
+      toolScrollRef.current.scrollTop = toolScrollRef.current.scrollHeight;
+    }
+  }, [toolEvents]);
 
   useEffect(() => { ensureSkills(); }, []);
 
@@ -313,36 +321,42 @@ const [customTone, setCustomTone] = useState("");
 
               {/* 工具调用进度（写作阶段） */}
               {planState === "writing" && toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
-                <div className="startup-splash__tool-events" style={{marginTop:8, display:"flex", flexDirection:"column", gap:3, fontSize:11, color:"#666", maxHeight:150, overflowY:"auto", background:"#fafafa", borderRadius:6, padding:"6px 4px"}}>
-                  <div style={{fontSize:10, fontWeight:600, color:"#999", padding:"0 4px 2px 4px", textTransform:"uppercase", letterSpacing:"0.5px"}}>
-                    <FolderInput size={10} style={{marginRight:3, verticalAlign:"middle"}} />
+                <div ref={toolScrollRef} className="startup-splash__tool-events startup-splash__tool-events--writing startup-splash__tool-events--compact">
+                  <div className="startup-splash__tool-events-header">
+                    <FolderInput size={10} />
                     项目文件读取
                   </div>
                   {toolEvents.filter(ev => ev.type !== "thinking_done").map((ev, i) => {
-                    const isThinking = ev.type === "thinking";
-                    const isToolStart = ev.type === "tool_start";
-                    const isToolEnd = ev.type === "tool_end";
-                    const isError = ev.type === "error";
+                    const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
                     return (
-                      <div key={i} className="startup-splash__tool-event" style={{
-                        display:"flex", alignItems:"flex-start", gap:6,
-                        padding:"2px 6px", borderRadius:4,
-                        borderLeft: "2px solid " + (
-                          isError ? "#e53935" :
-                          isThinking ? "#ff9800" :
-                          isToolStart ? "#2196f3" :
-                          "#4caf50"
-                        )
-                      }}>
-                        <span style={{flexShrink:0, fontSize:12, lineHeight:"18px"}}>
-                          {isThinking ? "🧠" : isToolStart ? "🔍" : isError ? "⚠️" : "✅"}
+                      <div key={i} className={cls}>
+                        <span className="startup-splash__tool-event-icon">
+                          {ev.type === "thinking" ? <Loader2 size={11} className="startup-splash__spinner" /> :
+                           ev.type === "tool_start" ? <FileText size={11} /> :
+                           ev.type === "error" ? <AlertCircle size={11} /> :
+                           <Check size={11} />}
                         </span>
-                        <div style={{flex:1, minWidth:0, fontSize:11, lineHeight:"18px", color:"#555", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
-                          {ev.summary || (isThinking ? "AI 分析中…" : isToolStart ? "读取中…" : isToolEnd ? "完成" : "")}
+                        <div className="startup-splash__tool-event-title">
+                          {ev.summary || (ev.type === "thinking" ? "AI 分析中…" :
+                            ev.type === "tool_start" ? "读取中…" :
+                            ev.type === "tool_end" ? "完成" : "")}
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* AI 写内容阶段指示卡 */}
+              {planState === "writing" && streamingContent && (
+                <div className="startup-splash__writing-card">
+                  <span className="startup-splash__writing-card-icon">
+                    <PenLine size={14} />
+                  </span>
+                  <div className="startup-splash__writing-card-content">
+                    <div className="startup-splash__writing-card-title">AI 正在写内容…</div>
+                    <div className="startup-splash__writing-card-subtitle">基于已读取的项目文件，生成文章正文</div>
+                  </div>
                 </div>
               )}
 
@@ -387,61 +401,46 @@ const [customTone, setCustomTone] = useState("");
                   </div>
                   {/* 工具调用进度 */}
                   {toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
-                    <div className="startup-splash__tool-events" style={{marginTop:12, display:"flex", flexDirection:"column", gap:4, fontSize:12, color:"#555", maxHeight:240, overflowY:"auto", background:"#fafafa", borderRadius:8, padding:"8px 4px"}}>
-                      <div style={{fontSize:11, fontWeight:600, color:"#888", padding:"0 4px 4px 4px", textTransform:"uppercase", letterSpacing:"0.5px"}}>
-                        <FolderInput size={11} style={{marginRight:4, verticalAlign:"middle"}} />
+                    <div ref={toolScrollRef} className="startup-splash__tool-events">
+                      <div className="startup-splash__tool-events-header">
+                        <FolderInput size={11} />
                         AI 工具调用记录
                       </div>
                       {toolEvents.map((ev, i) => {
-                        // Skip thinking_done events (they're just markers)
                         if (ev.type === "thinking_done") return null;
+                        const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
+                        const isEnd = ev.type === "tool_end";
                         const isError = ev.type === "error";
                         const isThinking = ev.type === "thinking";
-                        const isToolStart = ev.type === "tool_start";
-                        const isToolEnd = ev.type === "tool_end";
+                        const isStart = ev.type === "tool_start";
                         return (
-                          <div key={i} className="startup-splash__tool-event" style={{
-                            display:"flex", alignItems:"flex-start", gap:8,
-                            padding:"4px 8px", borderRadius:6,
-                            background: isError ? "#fff0f0" : isToolStart ? "#f0f6ff" : isThinking ? "#fff8e6" : "transparent",
-                            borderLeft: "3px solid " + (
-                              isError ? "#e53935" :
-                              isThinking ? "#ff9800" :
-                              isToolStart ? "#2196f3" :
-                              "#4caf50"
-                            )
-                          }}>
-                            {isThinking ? (
-                              <span style={{fontSize:16, lineHeight:"16px", flexShrink:0}}>&#x1F9E0;</span>
-                            ) : isToolStart ? (
-                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0}}>&#x1F50D;</span>
-                            ) : isError ? (
-                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0, color:"#e53935"}}>&#x26A0;</span>
-                            ) : (
-                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0, color:"#4caf50"}}>&#x2705;</span>
-                            )}
-                            <div style={{flex:1, minWidth:0}}>
-                              <div style={{fontWeight:500, color:"#333", fontSize:13, display:"flex", alignItems:"center", gap:4}}>
-                                <span style={{flex:1}}>
+                          <div key={i} className={cls}>
+                            <span className="startup-splash__tool-event-icon">
+                              {isThinking ? <Loader2 size={14} className="startup-splash__spinner" /> :
+                               isStart ? <FileText size={14} /> :
+                               isError ? <AlertCircle size={14} /> :
+                               <Check size={14} />}
+                            </span>
+                            <div className="startup-splash__tool-event-body">
+                              <div className="startup-splash__tool-event-title">
+                                <span>
                                   {isThinking ? (ev.summary || "AI 分析中…") :
-                                   isToolStart ? (ev.summary || "调用中…") :
-                                   isToolEnd ? (ev.summary || "完成") :
+                                   isStart ? (ev.summary || "调用中…") :
+                                   isEnd ? (ev.summary || "完成") :
                                    isError ? (ev.summary || "错误") :
                                    (ev.summary || "")}
                                 </span>
                                 {ev.round && (
-                                  <span style={{fontSize:10, color:"#aaa", background:"#eee", borderRadius:4, padding:"0 5px"}}>
-                                    第{ev.round}轮
-                                  </span>
+                                  <span className="startup-splash__tool-event-round">第{ev.round}轮</span>
                                 )}
                               </div>
-                              {ev.result && isToolEnd && (
-                                <div style={{fontSize:11, color:"#666", marginTop:2, lineHeight:1.4}}>
+                              {ev.result && isEnd && (
+                                <div className="startup-splash__tool-event-detail">
                                   {ev.result.slice(0, 200)}
                                 </div>
                               )}
                               {isError && ev.result && (
-                                <div style={{fontSize:11, color:"#c62828", marginTop:2}}>
+                                <div className="startup-splash__tool-event-detail startup-splash__tool-event-detail--error">
                                   {ev.result.slice(0, 200)}
                                 </div>
                               )}

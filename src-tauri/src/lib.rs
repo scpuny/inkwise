@@ -989,34 +989,32 @@ async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
 
 #[tauri::command]
 fn read_project_files(path: String, files: Vec<String>) -> Result<Vec<serde_json::Value>, String> {
-    let mut results = Vec::new();
-    for rel_path in &files {
-        let full_path = std::path::PathBuf::from(&path).join(rel_path);
-        match std::fs::read_to_string(&full_path) {
-            Ok(content) => {
-                let size = content.len();
-                // Truncate files larger than 50KB
-                let truncated = if size > 51200 {
-                    let truncated_content: String = content.chars().take(51200).collect();
-                    format!("{}...(文件过大，已截断前 50KB)", truncated_content)
-                } else {
-                    content
-                };
-                results.push(serde_json::json!({
-                    "path": rel_path,
-                    "content": truncated,
-                    "size": size,
-                    "truncated": size > 51200
-                }));
-            }
-            Err(e) => {
-                results.push(serde_json::json!({
-                    "path": rel_path,
-                    "error": format!("无法读取文件: {}", e)
-                }));
-            }
+    // Parallel file reading using scoped threads
+    let results: Vec<serde_json::Value> = std::thread::scope(|s| {
+        let mut handles = Vec::with_capacity(files.len());
+        for rel_path in files {
+            let p = path.clone();
+            handles.push(s.spawn(move || {
+                let full_path = std::path::PathBuf::from(&p).join(&rel_path);
+                match std::fs::read_to_string(&full_path) {
+                    Ok(content) => {
+                        let size = content.len();
+                        let truncated = if size > 51200 {
+                            let truncated_content: String = content.chars().take(51200).collect();
+                            format!("{}...(文件过大，已截断前 50KB)", truncated_content)
+                        } else {
+                            content
+                        };
+                        serde_json::json!({"path": rel_path, "content": truncated, "size": size, "truncated": size > 51200})
+                    }
+                    Err(e) => {
+                        serde_json::json!({"path": rel_path, "error": format!("无法读取文件: {}", e)})
+                    }
+                }
+            }));
         }
-    }
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    });
     Ok(results)
 }
 
