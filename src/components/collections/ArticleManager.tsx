@@ -13,7 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -256,17 +256,13 @@ export function ArticleManager({
     console.log('[handleSaveCollection] title=%s editingColIdRef=%s', title, editingColIdRef.current);
     const editingId = editingColIdRef.current;
     if (editingId) {
-      // 编辑已有合集：三层存储同步更新
-      const all = await loadCollections();
-      const col = all.find((x) => x.id === editingId);
-      if (col) {
-        col.title = title;
-        col.description = description || undefined;
-        col.coverImage = coverImage || undefined;
-        col.linkedFolder = linkedFolder || undefined;
-      }
-      await saveCollections(all);
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id: editingId, title }); } catch {} }
+      // 编辑已有合集：精确更新，不走 SetCollections
+      await updateCollection(editingId, {
+        title,
+        description: description || undefined,
+        coverImage: coverImage || undefined,
+        linkedFolder: linkedFolder || undefined,
+      });
     } else {
       // 新建合集
       const all = await loadCollections();

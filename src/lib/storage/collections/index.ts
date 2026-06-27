@@ -10,7 +10,7 @@ export { genId, browserLoad, browserSave } from "./internal";
 
 export {
   seedIfEmpty, loadCollections, saveCollections,
-  addCollection, renameCollection, removeCollection,
+  addCollection, renameCollection, removeCollection, updateCollection,
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle,
   permanentlyDeleteArticle, emptyTrash,

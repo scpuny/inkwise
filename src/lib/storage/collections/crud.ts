@@ -3,6 +3,10 @@ import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../br
 import type { Article, Collection, TrashItem } from "./types";
 import { genId, browserLoad, browserSave } from "./internal";
 
+// localStorage 精确读写（不走 Tauri GetCollections/SetCollections）
+const loadFromStorage = <T>(key: string, fallback: T): T => browserLoad(key, fallback);
+const saveToStorage = <T>(key: string, data: T): void => { browserSave(key, data); };
+
 const COLLECTIONS_KEY = "aiwriter-collections";
 const TRASH_KEY = "aiwriter-trash";
 const SEEDED_KEY = "aiwriter-seeded-v1";
@@ -98,11 +102,35 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
-  // 改名：三层存储同步更新（localStorage / Tauri JSON / SQLite）
-  const all = await loadCollections();
+  // 改名：精确更新，不走 SetCollections
+  const all = loadFromStorage<Collection[]>('aiwriter-collections', []);
   const c = all.find((x) => x.id === id);
-  if (c) { c.title = title; await saveCollections(all); }
+  if (c) { c.title = title; saveToStorage('aiwriter-collections', all); }
   if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title }); } catch {} }
+}
+
+export async function updateCollection(
+  id: string,
+  data: { title?: string; description?: string; coverImage?: string; linkedFolder?: string }
+): Promise<void> {
+  // 精确更新合集信息，不触及其他集合和文章
+  const all = loadFromStorage<Collection[]>('aiwriter-collections', []);
+  const c = all.find((x) => x.id === id);
+  if (!c) return;
+  if (data.title !== undefined) c.title = data.title;
+  if (data.description !== undefined) c.description = data.description || undefined;
+  if (data.coverImage !== undefined) c.coverImage = data.coverImage || undefined;
+  if (data.linkedFolder !== undefined) c.linkedFolder = data.linkedFolder || undefined;
+  saveToStorage('aiwriter-collections', all);
+  // SQLite: 只更新 SQLite 有的字段（title、linked_folder）
+  if (isTauriEnv()) {
+    if (data.title !== undefined) {
+      try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title: data.title }); } catch {}
+    }
+    if (data.linkedFolder !== undefined && data.linkedFolder) {
+      // linkedFolder 由 linkCollectionFolder/unlinkCollectionFolder 处理
+    }
+  }
 }
 
 export async function removeCollection(id: string): Promise<void> {
