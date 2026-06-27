@@ -6,7 +6,7 @@ export type {
   FileContent, SearchResult,
 } from "./types";
 
-export { genId } from "./internal";
+export { genId, browserLoad, browserSave } from "./internal";
 
 export {
   seedIfEmpty, loadCollections, saveCollections,
