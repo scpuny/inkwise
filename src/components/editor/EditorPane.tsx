@@ -11,7 +11,7 @@ import {
   type ArticlePhase,
   type OutlineSection,
 } from "../../lib/ai/articleBlueprint";
-import { generateFullArticle, generateFullArticleStream, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
+import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
@@ -111,6 +111,7 @@ export function EditorPane({
   const [folderProjectName, setFolderProjectName] = useState("");
   const [projectFiles, setProjectFiles] = useState<string[]>([]);
 const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
+  const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agentEngine").ToolEvent[]>([]);
   const abortPlanRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<any>(undefined);
   const outlineTimer = useRef<any>(undefined);
@@ -642,34 +643,15 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         } catch { /* 系列上下文非必须，失败不影响主流程 */ }
       }
 
-      // 如果关联了项目目录，根据文章关键词查找并读取相关源文件
-      let projectSourceCode = "";
-      if (folderContextRef.current && projectTree && activeCollectionId) {
+      // 如果关联了项目目录，获取 linkedFolder 路径传给 AI 自行读取
+      let projectLinkedFolder = "";
+      if (activeCollectionId) {
         try {
-          // 从文章标题 + 大纲提取关键词
-          const keywords = [
-            partialPlan.title || "",
-            ...(partialPlan.outline || []).map(s => s.title),
-            ...(partialPlan.outline || []).map(s => s.description || ""),
-          ].filter(Boolean).flatMap(k => k.split(/[\s,，、/]+/)).filter(k => k.length >= 2);
-
-          if (keywords.length > 0) {
-            const { findAndReadRelevantFiles } = await import("../../lib/storage/collections");
-            const col = (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId);
-            if (col?.linkedFolder) {
-              const result = await findAndReadRelevantFiles(keywords, projectTree, col.linkedFolder, 6);
-              if (result.sourceCode) {
-                projectSourceCode = result.sourceCode;
-              }
-            }
+          const col = (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId);
+          if (col?.linkedFolder) {
+            projectLinkedFolder = col.linkedFolder;
           }
-        } catch { /* 源码匹配非必须，失败不影响主流程 */ }
-      }
-
-      // 合并项目上下文：结构摘要 + 实际源码
-      let combinedProjectContext = folderContextRef.current || "";
-      if (projectSourceCode) {
-        combinedProjectContext += "\n\n## 项目源文件代码\n以下是与文章主题相关的项目源文件内容，请引用其中的真实代码来支撑文章内容：\n" + projectSourceCode;
+        } catch { /* 非必须 */ }
       }
 
       // Start writing phase — immediately enter editor with live streaming
@@ -681,9 +663,10 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         targetAudience: lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined,
         targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
         skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
-        projectContext: combinedProjectContext || undefined,
+        projectContext: folderContextRef.current || undefined,
         projectName: folderProjectNameRef.current || undefined,
         seriesContext: seriesCtx || undefined,
+        linkedFolder: projectLinkedFolder || undefined,
       };
 
       // Start writing phase（保持 StartupSplash 可见并实时展示生成内容）
@@ -703,7 +686,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       // 流式生成全文（逐 token 实时展示在 StartupSplash 上）
       let accumulatedContent = "";
       try {
-        const articleContent = await generateFullArticleStream(genInput, (token) => {
+        const articleContent = await generateFullArticleWithTools(genInput, (token) => {
           accumulatedContent += token;
           writtenContentRef.current = accumulatedContent;
           contentRef.current = accumulatedContent;
@@ -711,7 +694,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           setStreamingContent(accumulatedContent);
 
 
-        });
+        }, handleToolEvent);
 
         // 保存成品文章到磁盘
         if (articleContent && articleContent.length > 10) {
@@ -735,6 +718,9 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           await saveArticleContent(result.articleId, accumulatedContent);
           contentRef.current = accumulatedContent;
           writtenContentRef.current = accumulatedContent;
+        } else {
+          // 没有累积到任何内容，向上传播错误
+          throw e;
         }
       }
 
@@ -783,6 +769,10 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     pendingArticleRef.current = null;
     writtenContentRef.current = null;
   }, [onEnterEditor]);
+
+  const handleToolEvent = useCallback((event: import("../../lib/ai/agentEngine").ToolEvent) => {
+    setToolEvents(prev => [...prev, event]);
+  }, []);
 
   const handlePlanCancel = useCallback(() => {
     if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
@@ -883,13 +873,19 @@ ${augmentedContent}`
     abortPlanRef.current = abortController;
     
     setLastPlanInput(input);
+    // Load linked folder path for tool-based file reading
+    const _linkedFolder = activeCollectionId
+      ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId)?.linkedFolder || undefined
+      : undefined;
     const enrichedInput: PlanInput = {
       ...input,
       projectContext: folderContextRef.current || undefined,
       projectName: folderProjectNameRef.current || undefined,
+      linkedFolder: _linkedFolder,
     };
     setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined });
     setPlanError(null);
+    setToolEvents([]);
     setPlanState("planning");
     try {
       const gen = generatePlanStream(enrichedInput);
@@ -1169,6 +1165,7 @@ ${augmentedContent}`
             projectName={folderProjectName || undefined}
             projectReady={!!folderProjectName}
             projectFiles={projectFiles}
+            toolEvents={toolEvents}
           />
         </div>
       ) : (
@@ -1194,6 +1191,7 @@ ${augmentedContent}`
           projectName={folderProjectName || undefined}
           projectReady={!!folderProjectName}
           projectFiles={projectFiles}
+          toolEvents={toolEvents}
         />
       )}
 

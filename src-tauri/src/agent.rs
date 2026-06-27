@@ -35,8 +35,8 @@ pub async fn execute_agent(
     let user_prompt = build_user_prompt(context);
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system_prompt },
-        ChatMessage { role: "user".into(), content: user_prompt },
+        ChatMessage::system(system_prompt),
+        ChatMessage::user(user_prompt),
     ];
 
     let req = ChatRequest {
@@ -46,12 +46,14 @@ pub async fn execute_agent(
         temperature: Some(0.7),
         max_tokens: Some(4096),
         stream: on_token.is_some(),
+        tools: None,
+        tool_choice: None,
     };
 
     let response = if let Some(callback) = on_token {
         ai::chat_completion_stream(config, &req, callback).await?
     } else {
-        ai::chat_completion(config, &req).await?
+        ai::chat_completion(config, &req).await?.content.unwrap_or_default()
     };
 
     Ok(AgentResult {

@@ -9,7 +9,7 @@ use platform::Platform;
 use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
-use ai::{chat_completion, fetch_available_models, ChatRequest, ChatMessage, ProviderConfig, ProviderListConfig};
+use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
 use std::sync::Mutex;
@@ -118,9 +118,11 @@ async fn chat(state: tauri::State<'_, AppState>, provider_id: String, model: Str
         temperature,
         max_tokens,
         stream: false,
+        tools: None,
+        tool_choice: None,
     };
 
-    chat_completion(&config, &req).await
+    chat_completion_text(&config, &req).await
 }
 
 // ─── Streaming Chat ───
@@ -161,6 +163,8 @@ async fn chat_stream(
         temperature,
         max_tokens,
         stream: true,
+        tools: None,
+        tool_choice: None,
     };
 
     // Emit start event
@@ -527,8 +531,8 @@ Skill 是一个 Markdown 文件，包含：
     let user_prompt = format!("名称: {}\n描述: {}", name, description);
 
     let messages = vec![
-        ChatMessage { role: "system".into(), content: system_prompt.into() },
-        ChatMessage { role: "user".into(), content: user_prompt },
+        ChatMessage::system(system_prompt),
+        ChatMessage::user(user_prompt),
     ];
 
     let req = ChatRequest {
@@ -538,9 +542,11 @@ Skill 是一个 Markdown 文件，包含：
         temperature: Some(0.7),
         max_tokens: Some(2048),
         stream: false,
+        tools: None,
+        tool_choice: None,
     };
 
-    ai::chat_completion(&config, &req).await
+    ai::chat_completion_text(&config, &req).await
 }
 
 
@@ -1108,6 +1114,70 @@ async fn check_public_ip() -> Result<String, String> {
 }
 
 
+// ─── Chat with Tool Calling ───
+
+#[tauri::command]
+async fn chat_tool(
+    state: tauri::State<'_, AppState>,
+    provider_id: String,
+    model: String,
+    messages: Vec<ChatMessage>,
+    temperature: Option<f32>,
+    max_tokens: Option<u32>,
+    tools: Option<Vec<ToolDefinition>>,
+    tool_choice: Option<serde_json::Value>,
+) -> Result<ChatToolResponse, String> {
+    let config = {
+        let store = state.store.lock().unwrap();
+        let providers = store.load_providers();
+        let provider = providers.iter().find(|p| p.id == provider_id).ok_or_else(|| format!("未找到提供商: {}", provider_id))?.clone();
+        ProviderConfig {
+            id: provider.id.clone(),
+            kind: provider.kind.clone(),
+            base_url: provider.base_url.clone().unwrap_or_else(|| {
+                match provider.kind.as_str() {
+                    "anthropic" => "https://api.anthropic.com/v1".into(),
+                    "deepseek" => "https://api.deepseek.com/v1".into(),
+                    _ => "https://api.openai.com/v1".into(),
+                }
+            }),
+            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
+            model: model.clone(),
+        }
+    };
+
+    // If tools are provided, use non-streaming tool-capable completion
+    let has_tools = tools.as_ref().map_or(false, |t| !t.is_empty());
+    if has_tools {
+        let req = ChatRequest {
+            provider_id,
+            model,
+            messages,
+            temperature,
+            max_tokens,
+            stream: false,
+            tools,
+            tool_choice,
+        };
+        chat_completion(&config, &req).await
+    } else {
+        // No tools: use text-only completion
+        let req = ChatRequest {
+            provider_id,
+            model,
+            messages,
+            temperature,
+            max_tokens,
+            stream: false,
+            tools: None,
+            tool_choice: None,
+        };
+        let resp = chat_completion_text(&config, &req).await?;
+        Ok(ChatToolResponse { content: Some(resp), thinking: None, tool_calls: None })
+    }
+}
+
+
 // ─── Publish Records ───
 
 #[tauri::command]
@@ -1357,6 +1427,7 @@ pub fn run() {
             delete_platform_config,
             verify_platform_credentials,
             check_public_ip,
+            chat_tool,
             get_publish_history,
             save_publish_records,
             publish_to_platform,

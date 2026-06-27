@@ -4,6 +4,7 @@ import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
 import type { OutlineSection } from "../../lib/ai/articleBlueprint";
+import type { ToolEvent } from "../../lib/ai/agentEngine";
 
 const SUGGESTIONS = [
   "写一篇关于秋天午后的散文",
@@ -74,6 +75,7 @@ interface StartupSplashProps {
   projectReady?: boolean;
   projectFiles?: string[];
   streamingContent?: string;
+  toolEvents?: ToolEvent[];
 }
 
 function skillLabel(id: string): string {
@@ -86,7 +88,7 @@ export function StartupSplash({
   planState, planStep, partialPlan, planError, lastPlanInput,
   writingOutline, writingSectionId, streamingContent = "",
   onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
-  projectName, projectReady, projectFiles,
+  projectName, projectReady, projectFiles, toolEvents = [],
 }: StartupSplashProps) {
   const [inspiration, setInspiration] = useState("");
   const [skillId, setSkillId] = useState("");
@@ -309,6 +311,41 @@ const [customTone, setCustomTone] = useState("");
                 </div>
               )}
 
+              {/* 工具调用进度（写作阶段） */}
+              {planState === "writing" && toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+                <div className="startup-splash__tool-events" style={{marginTop:8, display:"flex", flexDirection:"column", gap:3, fontSize:11, color:"#666", maxHeight:150, overflowY:"auto", background:"#fafafa", borderRadius:6, padding:"6px 4px"}}>
+                  <div style={{fontSize:10, fontWeight:600, color:"#999", padding:"0 4px 2px 4px", textTransform:"uppercase", letterSpacing:"0.5px"}}>
+                    <FolderInput size={10} style={{marginRight:3, verticalAlign:"middle"}} />
+                    项目文件读取
+                  </div>
+                  {toolEvents.filter(ev => ev.type !== "thinking_done").map((ev, i) => {
+                    const isThinking = ev.type === "thinking";
+                    const isToolStart = ev.type === "tool_start";
+                    const isToolEnd = ev.type === "tool_end";
+                    const isError = ev.type === "error";
+                    return (
+                      <div key={i} className="startup-splash__tool-event" style={{
+                        display:"flex", alignItems:"flex-start", gap:6,
+                        padding:"2px 6px", borderRadius:4,
+                        borderLeft: "2px solid " + (
+                          isError ? "#e53935" :
+                          isThinking ? "#ff9800" :
+                          isToolStart ? "#2196f3" :
+                          "#4caf50"
+                        )
+                      }}>
+                        <span style={{flexShrink:0, fontSize:12, lineHeight:"18px"}}>
+                          {isThinking ? "🧠" : isToolStart ? "🔍" : isError ? "⚠️" : "✅"}
+                        </span>
+                        <div style={{flex:1, minWidth:0, fontSize:11, lineHeight:"18px", color:"#555", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
+                          {ev.summary || (isThinking ? "AI 分析中…" : isToolStart ? "读取中…" : isToolEnd ? "完成" : "")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Live streaming content preview */}
               {streamingContent && (
                 <div className="startup-splash__section">
@@ -348,6 +385,72 @@ const [customTone, setCustomTone] = useState("");
                       </div>
                     ))}
                   </div>
+                  {/* 工具调用进度 */}
+                  {toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+                    <div className="startup-splash__tool-events" style={{marginTop:12, display:"flex", flexDirection:"column", gap:4, fontSize:12, color:"#555", maxHeight:240, overflowY:"auto", background:"#fafafa", borderRadius:8, padding:"8px 4px"}}>
+                      <div style={{fontSize:11, fontWeight:600, color:"#888", padding:"0 4px 4px 4px", textTransform:"uppercase", letterSpacing:"0.5px"}}>
+                        <FolderInput size={11} style={{marginRight:4, verticalAlign:"middle"}} />
+                        AI 工具调用记录
+                      </div>
+                      {toolEvents.map((ev, i) => {
+                        // Skip thinking_done events (they're just markers)
+                        if (ev.type === "thinking_done") return null;
+                        const isError = ev.type === "error";
+                        const isThinking = ev.type === "thinking";
+                        const isToolStart = ev.type === "tool_start";
+                        const isToolEnd = ev.type === "tool_end";
+                        return (
+                          <div key={i} className="startup-splash__tool-event" style={{
+                            display:"flex", alignItems:"flex-start", gap:8,
+                            padding:"4px 8px", borderRadius:6,
+                            background: isError ? "#fff0f0" : isToolStart ? "#f0f6ff" : isThinking ? "#fff8e6" : "transparent",
+                            borderLeft: "3px solid " + (
+                              isError ? "#e53935" :
+                              isThinking ? "#ff9800" :
+                              isToolStart ? "#2196f3" :
+                              "#4caf50"
+                            )
+                          }}>
+                            {isThinking ? (
+                              <span style={{fontSize:16, lineHeight:"16px", flexShrink:0}}>&#x1F9E0;</span>
+                            ) : isToolStart ? (
+                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0}}>&#x1F50D;</span>
+                            ) : isError ? (
+                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0, color:"#e53935"}}>&#x26A0;</span>
+                            ) : (
+                              <span style={{fontSize:14, lineHeight:"16px", flexShrink:0, color:"#4caf50"}}>&#x2705;</span>
+                            )}
+                            <div style={{flex:1, minWidth:0}}>
+                              <div style={{fontWeight:500, color:"#333", fontSize:13, display:"flex", alignItems:"center", gap:4}}>
+                                <span style={{flex:1}}>
+                                  {isThinking ? (ev.summary || "AI 分析中…") :
+                                   isToolStart ? (ev.summary || "调用中…") :
+                                   isToolEnd ? (ev.summary || "完成") :
+                                   isError ? (ev.summary || "错误") :
+                                   (ev.summary || "")}
+                                </span>
+                                {ev.round && (
+                                  <span style={{fontSize:10, color:"#aaa", background:"#eee", borderRadius:4, padding:"0 5px"}}>
+                                    第{ev.round}轮
+                                  </span>
+                                )}
+                              </div>
+                              {ev.result && isToolEnd && (
+                                <div style={{fontSize:11, color:"#666", marginTop:2, lineHeight:1.4}}>
+                                  {ev.result.slice(0, 200)}
+                                </div>
+                              )}
+                              {isError && ev.result && (
+                                <div style={{fontSize:11, color:"#c62828", marginTop:2}}>
+                                  {ev.result.slice(0, 200)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {planError && (
                     <div className="startup-splash__error" style={{marginTop:12}}>
                       <AlertCircle size={12} />
