@@ -1,8 +1,8 @@
 # 成品页面与第三方发布 — 设计文档
 
-> 版本: v1.0
-> 日期: 2025-06-23
-> 状态: 待实现
+> 版本: v2.0
+> 日期: 2026-06-27
+> 状态: 已实现（v1.2.0-v1.4.0）
 
 ---
 
@@ -495,45 +495,54 @@ idle → 准备中（上传图片+Markdown转换）
 
 ## 八、实施步骤
 
-### Phase 1: 后端基础设施
+### Phase 1 ✅: 后端基础设施（v1.2.0）
 
-| 步骤 | 内容 | 文件 |
+| 步骤 | 内容 | 状态 |
 |------|------|------|
-| 1.1 | 定义 `PlatformConfig` / `PublishRecord` 类型 | `store.rs` |
-| 1.2 | DataStore 新增 load/save 方法 | `store.rs` |
-| 1.3 | 注册平台配置 CRUD 的 Tauri 命令 | `lib.rs` |
-| 1.4 | 前端 `platforms.ts` 调用封装 | `src/lib/platforms.ts` |
-| 1.5 | 设置面板新增「发布平台」标签页 | `SettingsPanel.tsx`, `PlatformSettings.tsx` |
+| 1.1 | 定义 `PlatformConfig` / `PublishRecord` 类型 | ✅ 已完成 |
+| 1.2 | DataStore 新增 load/save 方法 | ✅ 已完成 |
+| 1.3 | 注册平台配置 CRUD 的 Tauri 命令 | ✅ 已完成 |
+| 1.4 | 前端 `platforms.ts` 调用封装 | ✅ 已完成 |
+| 1.5 | 设置面板新增「发布平台」标签页 | ✅ 已完成 |
 
-### Phase 2: 微信公众号适配器
+### Phase 2 ✅: 微信公众号适配器（v1.2.0）
 
-| 步骤 | 内容 | 文件 |
+| 步骤 | 内容 | 状态 |
 |------|------|------|
-| 2.1 | access_token 管理（获取/缓存/刷新） | `publisher.rs` |
-| 2.2 | Markdown → 微信 HTML 转换器 | `publisher.rs` |
-| 2.3 | 图片提取/上传（本地+远程） | `publisher.rs` |
-| 2.4 | 草稿箱创建 (draft/add) | `publisher.rs` |
-| 2.5 | 草稿发布 (draft/publish) | `publisher.rs` |
-| 2.6 | 注册发布相关 Tauri 命令 | `lib.rs` |
+| 2.1 | access_token 管理（获取/缓存/刷新） | ✅ 已完成 |
+| 2.2 | Markdown → 微信 HTML 转换器 | ✅ 已完成（compileToWechatHtml） |
+| 2.3 | 图片提取/上传（本地+远程） | ✅ 已完成 |
+| 2.4 | 草稿箱创建 (draft/add) | ✅ 已完成 |
+| 2.5 | 草稿发布 (draft/publish) | ✅ 已完成 |
+| 2.6 | 注册发布相关 Tauri 命令 | ✅ 已完成 |
 
-### Phase 3: 成品页面
+### Phase 3 ✅: 成品页面（v1.2.0）
 
-| 步骤 | 内容 | 文件 |
+| 步骤 | 内容 | 状态 |
 |------|------|------|
-| 3.1 | ArticlePreview（Markdown 渲染阅读视图） | `ArticlePreview.tsx` |
-| 3.2 | FinalSidePanel（文章信息+蓝图+发布状态） | `FinalSidePanel.tsx` |
-| 3.3 | FinalTopBar（顶栏操作） | `FinalTopBar.tsx` |
-| 3.4 | ArticleFinalPage 组装 | `ArticleFinalPage.tsx` |
-| 3.5 | App.tsx 路由切换逻辑 | `App.tsx` |
+| 3.1 | ArticlePreview（Markdown 渲染阅读视图） | ✅ 已完成 |
+| 3.2 | FinalSidePanel（文章信息+蓝图+发布状态） | ✅ 已完成 |
+| 3.3 | FinalTopBar（顶栏操作） | ✅ 已完成 |
+| 3.4 | ArticleFinalPage 组装 | ✅ 已完成 |
+| 3.5 | App.tsx 路由切换逻辑 | ✅ 已完成 |
 
-### Phase 4: 发布交互
+### Phase 4 ✅: 发布交互（v1.2.0-v1.4.0）
 
-| 步骤 | 内容 | 文件 |
+| 步骤 | 内容 | 状态 |
 |------|------|------|
-| 4.1 | PublishDialog 发布对话框 | `PublishDialog.tsx` |
-| 4.2 | 发布状态面板（各平台状态展示） | `PublishStatusPanel.tsx` |
-| 4.3 | 封面图选择和上传交互 | `ArticleFinalPage.tsx`, `PublishDialog.tsx` |
-| 4.4 | 发布历史记录 | `platforms.ts`, `PublishStatusPanel.tsx` |
+| 4.1 | PublishDialog 发布对话框 | ✅ 已完成（双列布局） |
+| 4.2 | 发布状态面板（各平台状态展示） | ✅ 已完成 |
+| 4.3 | 封面图选择和上传交互 | ✅ 已完成 |
+| 4.4 | 发布历史记录 | ✅ 已完成（展开详情、草稿链接） |
+
+### v1.4.0 新增发布增强
+
+| 步骤 | 内容 |
+|------|------|
+| 4.5 | 发布历史点击展开详情（平台 ID、时间、错误信息） |
+| 4.6 | 发布结果区域显示草稿链接 |
+| 4.7 | 文章超过 20000 字时发布前预警 |
+| 4.8 | 微信错误码增加中文可读描述 |
 
 ### Phase 5 (待实现/TODO)
 

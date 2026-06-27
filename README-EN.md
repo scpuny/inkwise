@@ -24,11 +24,12 @@ InkWise is a desktop writing application designed for Chinese writers, offering 
 ## Features
 
 - **Dual-Mode Editor** — Seamless switching between rich text and Markdown source mode, powered by TipTap 3 (ProseMirror)
-- **AI Writing Assistance** — Continue writing, rewrite, polish, translate, summarize, and creative writing with streaming output and inline suggestions
+- **AI Writing Assistance** — Continue writing, rewrite, polish, translate, summarize, and creative writing with streaming output and inline suggestions; 8 built-in writing skills (General/Academic/Creative/Viral/Tech/Copywriting/News/Review) with quick-switch dropdown and dimension progress bars
 - **Multiple AI Providers** — Built-in support for OpenAI / Anthropic / DeepSeek, plus custom API-compatible providers
 - **Skill System** — Extensible Markdown-based skill files to customize AI writing behavior
-- **Series Planning** — Plan and manage article series with phased writing workflows (draft -> revise -> polish -> final)
-- **Multi-Platform Publishing** — One-click publishing to WeChat Official Accounts, Toutiao, and more
+- **Article Context (ArticleContext)** — Per-article independent style persistence; switching articles automatically restores corresponding styles
+- **Series Planning** — Plan and manage article series with phased writing workflows (draft -> revise -> polish -> final), auto-append sequence numbers to titles
+- **Multi-Platform Publishing** — One-click publishing to WeChat Official Accounts, Toutiao, and more; publish history expandable details, draft links, 20K-char warning, Chinese-readable WeChat error codes
 - **Full-Text Search** — SQLite FTS5 full-text search with real-time article indexing
 - **Project Context Indexing** — Scan local directories to inject project structure into AI context
 - **Theme System** — 6 visual styles x 3 theme modes (auto / dark / light)
@@ -92,8 +93,8 @@ inkwise/
 │       ├── ai.rs            # AI API calls
 │       ├── skill.rs         # Skill management
 │       ├── agent.rs         # Agent execution
-│       ├── publisher.rs     # Multi-platform publishing
-│       └── project_indexer.rs # Project indexing
+│       ├── publisher.rs     # Multi-platform publishing (WeChat/Toutiao)
+│       └── project_indexer.rs # Project indexing (std fs + tree-sitter)
 ├── public/inkwise-icon.svg  # App icon
 ├── DESIGN.md                # Design document (Chinese)
 ├── AGENT.md                 # Development guide (for AI agents)

@@ -1,12 +1,12 @@
 # InkWise 墨智 — 设计文档
 
-> 项目版本: 1.2.0 | 技术栈: React 19 + TypeScript + Tauri 2 + Rust
+> 项目版本: 1.4.0 | 技术栈: React 19 + TypeScript + Tauri 2 + Rust
 
 ---
 
 ## 1. 项目概览
 
-InkWise 墨智是一款面向中文写作者的桌面端应用，提供沉浸式编辑体验与 AI 辅助写作能力。支持富文本与 Markdown 双模编辑，可接入多种 AI 提供商（OpenAI / Anthropic / DeepSeek），通过 Skill 系统实现续写、改写、润色、翻译、摘要等写作增强功能。内置专栏规划、多平台发布（微信、头条）、项目上下文索引与 SQLite FTS5 全文检索。
+InkWise 墨智是一款面向中文写作者的桌面端应用，提供沉浸式编辑体验与 AI 辅助写作能力。支持富文本与 Markdown 双模编辑，可接入多种 AI 提供商（OpenAI / Anthropic / DeepSeek），通过 Skill 系统实现续写、改写、润色、翻译、摘要等写作增强功能。内置专栏规划、多平台发布（微信、头条）、项目上下文索引与 SQLite FTS5 全文检索。v1.4 新增 ArticleContext 实现文章级独立样式管理与上下文自动注入。
 
 ---
 
@@ -159,6 +159,7 @@ src/
 |   +-- CustomSelect.tsx         # 自定义下拉选择
 |   +-- ErrorBoundary.tsx        # 错误边界
 |   +-- VersionHistoryModal.tsx  # 版本历史弹窗
+|   +-- StylePanel.tsx           # 样式面板（ArticleContext 驱动）
 +-- lib/                     # 工具库
     +-- types.ts
     +-- tauri.ts             # Tauri IPC 桥接
@@ -299,11 +300,16 @@ ArticleMeta {
 }
 ```
 
-- **内容存储**: `articles/{id}.md`（独立 Markdown 文件，便于版本控制和全文索引）
-- **元数据**: `articles/{id}.meta.json`（独立文件，便于快速扫描）
+- **内容存储**: `articles/{id}.md`（独立 Markdown 文件）
+- **元数据**: `articles/{id}.meta.json`（独立文件）
+- **样式配置**: `articles/{id}.styles.json`（文章级样式持久化，由 ArticleContext 管理）
 - **SQLite**: 文章内容和元数据同步写入 `articles` 表，启用 FTS5 全文索引
 
-### 6.3 AI 提供商 (Provider)
+### 6.3 文章上下文 (ArticleContext)
+
+`ArticleContext` 是 v1.4.0 引入的文章级独立上下文管理机制。每篇文章持有一个 `ArticleContext` 实例，构造时自动从存储加载样式配置并 apply 到 document。组件通过 React Context (`ArticleCtx.Provider`) 获取当前文章上下文，`StylePanel` 所有读写通过 `ctx.updateStyle()` 完成，不再直接操作 localStorage。切换文章时旧 context 自动被 GC 回收，无内存泄漏。
+
+### 6.4 AI 提供商 (Provider)
 
 ```typescript
 Provider {
@@ -318,7 +324,7 @@ Provider {
 }
 ```
 
-### 6.4 Skill 定义
+### 6.5 Skill 定义
 
 ```typescript
 Skill {
@@ -335,7 +341,7 @@ Skill {
 }
 ```
 
-### 6.5 专栏 (SeriesPlan)
+### 6.6 专栏 (SeriesPlan)
 
 ```typescript
 SeriesPlan {
@@ -357,7 +363,7 @@ SeriesArticle {
 }
 ```
 
-### 6.6 蓝图 (ArticleBlueprint)
+### 6.7 蓝图 (ArticleBlueprint)
 
 ```typescript
 ArticleBlueprint {
@@ -377,7 +383,7 @@ PhaseConfig {
 }
 ```
 
-### 6.7 发布平台配置
+### 6.8 发布平台配置
 
 ```typescript
 PlatformConfig {
@@ -403,7 +409,7 @@ PublishRecord {
 }
 ```
 
-### 6.8 应用设置 (AppSettings)
+### 6.9 应用设置 (AppSettings)
 
 ```typescript
 AppSettings {
@@ -420,7 +426,7 @@ AppSettings {
 }
 ```
 
-### 6.9 写作技能 (WritingSkill)
+### 6.10 写作技能 (WritingSkill)
 
 ```typescript
 WritingSkill {
@@ -510,8 +516,8 @@ Layer 3: [data-theme="light"] / [data-theme="dark"] 用户强制覆盖
 | 模式 | 路径 | 触发方式 |
 |---|---|---|
 | AI Dock（侧栏） | AIDock.tsx → 静态规则分析 | 自动 |
-| AI Bar（底部指令条） | AIBar.tsx → lib/ai.ts → Rust ai.rs → HTTP | 用户输入 |
-| Skill Agent | EditorPane → lib/skill.ts → Rust skill.rs + agent.rs | 意图选择 / 快捷键 |
+| AI Bar（底部指令条） | AIBar.tsx → lib/ai.ts → Rust ai.rs → HTTP | 用户输入 + 风格切换 |
+| Skill Agent | EditorPane → lib/skill.ts → Rust skill.rs + agent.rs | 意图选择 / 快捷键 / 风格联动 |
 
 ### 8.3 Skill 执行流程
 
@@ -528,6 +534,10 @@ Layer 3: [data-theme="light"] / [data-theme="dark"] 用户强制覆盖
 ```
 
 ---
+
+### 8.4 ArticleContext 与 AI 集成
+
+从 v1.4.0 开始，AI 生成逻辑通过 `ArticleContext` 读取当前文章的样式配置（字体、字号、主题色等），将其注入到 AI prompt 中。AI 生成的文本在格式、风格上与文章已有内容保持一致。同时 `ArticleContext` 在 AI 生成完成后负责触发样式同步，确保 AI 插入的内容立即享有正确的样式上下文。
 
 ## 9. 构建与运行
 

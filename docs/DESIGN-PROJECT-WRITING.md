@@ -1,7 +1,7 @@
 # 项目系列写作 — 设计文档
 
 > 对应 DESIGN.md 第 10 节「未来规划」的核心功能扩展
-> 版本: v0.2.0-draft | 依赖: Tauri 2 + CodeGraph 可选
+> 版本: v1.0.0 | 依赖: Tauri 2 + tree-sitter（可选）+ CodeGraph（可选）
 
 ---
 
@@ -488,41 +488,42 @@ CollectionTree
 
 ## 7. 实施计划
 
-### Phase 1: 基础扫描 + 关联目录 UI（核心）
+### Phase 1 ✅: 基础扫描 + 关联目录 UI（核心）
 
 ```
-预计工作量：3-5 天
+状态：已完成（v1.3.0）
 交付物：
-  ├─ Rust: project_indexer.rs (Level 1 std fs 扫描)
-  ├─ Rust: 新增 Tauri 命令 (link_folder / get_project_context)
-  ├─ Frontend: CollectionFormModal 目录选择 UI
-  ├─ Frontend: CollectionTree 右键菜单补充
-  ├─ Frontend: collections.ts 关联目录函数
-  └─ 验证：选择目录后能显示项目结构
+  ├─ Rust: project_indexer.rs (Level 1 std fs 扫描) ✅
+  ├─ Rust: 新增 Tauri 命令 (link_folder / get_project_context) ✅
+  ├─ Frontend: CollectionFormModal 目录选择 UI ✅
+  ├─ Frontend: CollectionTree 右键菜单补充 ✅
+  ├─ Frontend: collections.ts 关联目录函数 ✅
+  └─ 验证：选择目录后能显示项目结构 ✅
 ```
 
-### Phase 2: 项目上下文注入 + 单篇增强
+### Phase 2 ✅: 项目上下文注入 + 单篇增强
 
 ```
-预计工作量：2-3 天
+状态：已部分完成（v1.3.0-v1.4.0）
 交付物：
-  ├─ Rust: Level 2 tree-sitter 符号提取
-  ├─ Rust: Level 3 CodeGraph SQLite 读取
-  ├─ Frontend: plan.ts AI prompt 注入项目上下文
-  ├─ Frontend: StartupSplash 项目标签
-  └─ 验证：写单篇文章时 AI 能引用具体代码符号
+  ├─ Rust: Level 2 tree-sitter 符号提取 — 使用正则替代，待 tree-sitter 集成
+  ├─ Rust: Level 3 CodeGraph SQLite 读取 ✅
+  ├─ Frontend: plan.ts AI prompt 注入项目上下文 ✅
+  ├─ Frontend: StartupSplash 项目标签 ✅
+  └─ 验证：写单篇文章时 AI 能引用具体代码符号 ✅
 ```
 
-### Phase 3: 系列规划
+### Phase 3 ⬜: 系列规划（部分完成）
 
 ```
-预计工作量：3-4 天
+状态：部分完成（v1.3.0）
 交付物：
-  ├─ Frontend: SeriesPlanner 组件（三步对话）
-  ├─ Frontend: SeriesOverview 组件（合集下展示）
-  ├─ Frontend: collections.ts SeriesPlan 类型
-  ├─ Rust: series_plan 存储命令
-  └─ 验证：完整系列规划→生成→查看链路
+  ├─ Frontend: SeriesPlanner 组件（三步对话） ✅
+  ├─ Frontend: SeriesOverview 组件（合集下展示） ✅
+  ├─ Frontend: collections.ts SeriesPlan 类型 ✅
+  ├─ Rust: series_plan 存储命令 ✅
+  ├─ 系列文章创建时自动追加序号到标题（v1.4.0） ✅
+  └─ 验证：完整系列规划→生成→查看链路 ✅
 ```
 
 ---
@@ -544,7 +545,7 @@ CollectionTree
 
 ---
 ## 9.待实现功能
-* tree-sitter 集成（Level 2）：在 project_indexer.rs 中加入 tree-sitter 解析，替代当前的正则符号提取
-* CodeGraph SQLite 读取（Level 3）：读取 .codegraph/codegraph.db 获取 docstring/signature/edges
+* ~~tree-sitter 集成（Level 2）~~ — 当前使用正则提取符号，功能可用；后续可替换为 tree-sitter
+* ~~CodeGraph SQLite 读取（Level 3）~~ — ✅ 已完成（v1.3.0）
 * 系列文章内链：生成时自动在前文后文间加引用链接
 * 增量扫描：文件 hash 变化时只扫变动的文件

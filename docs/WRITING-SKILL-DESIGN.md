@@ -1,7 +1,7 @@
 # WritingSkill（写作技能）— 设计文档
 
-> 版本: v0.3.0-draft
-> 状态: 设计阶段
+> 版本: v1.0.0
+> 状态: 已实现（v1.4.0）
 > 关联: DESIGN.md, DESIGN-PROJECT-WRITING.md, plan.ts, skill.ts
 
 ---
@@ -557,34 +557,35 @@ fn delete_writing_skill(state: ..., id: String) -> Result<(), String>;
 
 ---
 
-## 10. 实施路线
+## 10. 实施路线（已实现 ✅）
 
-### Phase 1：类型定义 + 内置预设（纯前端）
-- 定义 WritingSkill TypeScript 类型
-- 编写 8 个内置预设
-- 不修改现有代码，仅产出类型
+### Phase 1 ✅：类型定义 + 内置预设（纯前端）
+- WritingSkill TypeScript 类型定义已完成
+- 8 个内置预设（通用写作 / 学术严谨 / 创意文学 / 自媒体爆款 / 技术教程 / 商业文案 / 新闻报道 / 书评影评）已实现
+- 新增 3 种内置技能：营销文案、产品文档、书评影评（v1.4.0）
 
-### Phase 2：接入 plan.ts
+### Phase 2 ✅：接入 plan.ts
 - PlanInput 新增 skillId 字段
 - plan.ts 各函数读取技能配置替换固定 prompt
 - 向后兼容：无 skillId 时用默认"通用写作"
 
-### Phase 3：StartupSplash 改造
-- 技能选择器组件
-- 替换旧的 tone 下拉框
+### Phase 3 ✅：StartupSplash 改造
+- 技能选择器组件已实现
+- AI 工具栏增加写作风格快速切换下拉菜单
+- 技能卡片显示维度进度条可视化
 
-### Phase 4：存储 + 自定义编辑
-- StyleTemplateStore（Rust）
-- 自定义技能 CRUD 命令
-- 设置页面的技能管理 UI
+### Phase 4 ✅：存储 + 自定义编辑
+- 设置页面的技能管理 UI 已实现
+- 自定义技能 CRUD 支持
+- 文章级样式通过 ArticleContext 独立持久化
 
-### Phase 5：上下文感知
-- skill 声明 contextSources
-- 自动收集项目/系列/目录上下文并注入
+### Phase 5 ⬜：上下文感知（待增强）
+- contextSources 类型已定义
+- 项目/系列上下文的自动收集与注入有待完善
 
-### Phase 6：阶段技能支持
+### Phase 6 ⬜：阶段技能支持（待实现）
 - scope: phase 的完整支持
-- 选择阶段技能后在特定阶段生效
+- 阶段级技能独立作用的逻辑有待开发
 
 ---
 
@@ -596,4 +597,4 @@ fn delete_writing_skill(state: ..., id: String) -> Result<(), String>;
 4. **AI 辅助创建**：用户描述需求后，AI 自动生成技能配置？
 5. **动态维度标签**：风格维度是固定字段还是用户可新增的？
 
-这些问题不影响 Phase 1-3，可在后续阶段讨论。
+Phase 1-4 已实现，上述问题已在后续迭代中逐步解决。
