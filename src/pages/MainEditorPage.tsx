@@ -160,6 +160,36 @@ export default function MainEditorPage() {
         setEditorParagraphGap(config.editorParagraphGap);
         setEditorFontFamily(config.editorFontFamily);
         setCodeThemeId(config.codeThemeId);
+      } else {
+        // 无保存配置时恢复到系统默认
+        const defaults: Record<string, string> = {
+          'editor-style-template': 'default',
+          'editor-line-height': '1.75',
+          'editor-font-size': '15',
+          'editor-max-width': '820',
+          'editor-paragraph-gap': '1.25',
+          'editor-font-family': '',
+          'code-theme-id': 'atom-one-light',
+          'first-line-indent': '',
+          'justify-align': '',
+          'editor-accent-color': '',
+          'editor-caption-format': '',
+          'editor-custom-css': '',
+          'macos-code-block': '',
+          'bg-pattern': '',
+          'inkwise-selected-article-theme': 'clean',
+        };
+        for (const [key, val] of Object.entries(defaults)) {
+          localStorage.setItem(key, val);
+        }
+        localStorage.removeItem('heading-deco-config');
+        setEditorStyleTemplate('default');
+        setEditorLineHeight(1.75);
+        setEditorFontSize(15);
+        setEditorMaxWidth(820);
+        setEditorParagraphGap(1.25);
+        setEditorFontFamily('');
+        setCodeThemeId('atom-one-light');
       }
       emit("article-theme-changed");
     }
