@@ -198,10 +198,19 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
         const seriesAudience = seriesPlan?.targetAudience;
         const seriesSkillId = seriesPlan?.skillId;
 
+        // 计算文章在系列中的序号，追加到标题
+        const articleIndex = seriesPlan?.articles?.findIndex(a => a.id === article.id) ?? -1;
+        const numberedTitle = articleIndex >= 0
+          ? article.title.replace(/^\d+\.\s*/, '').trim()
+          : article.title;
+        const finalTitle = articleIndex >= 0
+          ? articleIndex + 1 + '. ' + numberedTitle
+          : article.title;
+
         setTimeout(() => {
           emit("auto-plan-article", {
             collectionId,
-            title: article.title,
+            title: finalTitle,
             description: article.description || "",
             tone: seriesTone,
             targetAudience: seriesAudience,
