@@ -246,6 +246,7 @@ export function ArticleManager({
   // 用 ref 持久化正在编辑的合集 ID，避免闭包陷阱
   const editingColIdRef = useRef<string | null>(null);
   const handleSaveCollection = async (title: string, description: string, coverImage: string, linkedFolder?: string) => {
+    console.log('[handleSaveCollection] title=%s editingColIdRef=%s', title, editingColIdRef.current);
     const editingId = editingColIdRef.current;
     if (editingId) {
       // 编辑已有合集：重新加载确保拿到最新数据
