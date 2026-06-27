@@ -57,7 +57,7 @@ export const DEFAULT_WRITING_PROMPT =
 - 段落间过渡自然：用内容逻辑衔接，而非固定过渡词
 
 ## 格式
-- 使用 Markdown
+- 严格遵循 Markdown 语法规范
 - 文章标题已为 #（一级），正文内标题从 ##（二级）开始，依次 ###（三级）、####（四级），不得跳级
 - 适当使用加粗、引用、列表增强可读性
 - 代码块必须标注语言（如 typescript、json、bash）

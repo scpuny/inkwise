@@ -81,7 +81,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 段落间用内容逻辑衔接，而非固定过渡词
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 代码块必须标注语言
 - 直接输出，不要额外说明`, temperature: 0.5, maxTokens: 4096 },
       },
@@ -132,7 +133,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 用具体故事或例子代替抽象说教
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 代码块必须标注语言
 - 直接输出，不要额外说明`, temperature: 0.8, maxTokens: 4096 },
       },
@@ -182,7 +184,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 句式长短交错，避免单调
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.9, maxTokens: 4096 },
       },
       contextSources: [],
@@ -236,7 +239,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 可以提问或邀请讨论
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.85, maxTokens: 4096 },
       },
       contextSources: [],
@@ -291,7 +295,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 适当融入个人经验增加可信度
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.6, maxTokens: 4096 },
       },
       contextSources: [{ type: "project", label: "关联项目目录", required: false }],
@@ -345,7 +350,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 降低行动门槛
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.75, maxTokens: 4096 },
       },
       contextSources: [],
@@ -409,7 +415,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 段落间用内容推进衔接
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.5, maxTokens: 4096 },
       },
       contextSources: [],
@@ -483,7 +490,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 降低行动门槛
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.75, maxTokens: 4096 },
       },
       contextSources: [],
@@ -539,7 +547,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 段落间用内容逻辑自然衔接
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 代码块必须标注语言
 - 表格用于参数说明
 - 直接输出，不要额外说明`, temperature: 0.3, maxTokens: 4096 },
@@ -598,7 +607,8 @@ export function getBuiltinSkills(): WritingSkill[] {
 - 段落间用内容逻辑自然衔接
 
 ## 格式
-- 使用 Markdown，正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
+- 严格遵循 Markdown 语法规范
+- 正文内标题从 ##（二级）开始，不得使用 #（一级），不得跳级
 - 直接输出，不要额外说明`, temperature: 0.75, maxTokens: 4096 },
       },
       contextSources: [],
