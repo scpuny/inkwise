@@ -270,6 +270,10 @@ export function ArticleManager({
     setShowColForm(false);
     setEditingCollection(null);
     editingColIdRef.current = null;
+    // 直接更新本地状态，确保 UI 立即反映改名结果
+    if (editingId) {
+      setCollections(prev => prev.map(c => c.id === editingId ? { ...c, title } : c));
+    }
     await loadData();
   };
 
