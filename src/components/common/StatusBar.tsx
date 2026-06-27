@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { on } from "../../lib/events/eventBus";
 import {
-  Brain, Gauge, CircleDollarSign, FileText, Clock, Type, CheckCircle2,
+  Brain, Gauge, CircleDollarSign, FileText, Clock, Type, CheckCircle2, Loader2, Check, AlertCircle,
 } from "lucide-react";
 import { getProvidersSync } from "../../lib/storage/providerModels";
 import { getPhaseLabel } from "../../lib/ai/articleBlueprint";
@@ -38,6 +38,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
   const [effort, setEffort] = useState("自动");
   const [hasDocs, setHasDocs] = useState(false);
   const [targetWordCount, setTargetWordCount] = useState(0);
+  const [exploringStatus, setExploringStatus] = useState<any>(null);
 
   const updateStats = useCallback(() => {
     const editor = (window as any).editorInstance?.editor;
@@ -81,6 +82,18 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
     };
     updateModel();
     return on("providers-changed", updateModel);
+  }, []);
+
+  // Listen for project exploration status (from linkCollectionFolder background analysis)
+  useEffect(() => {
+    const dispose = on("project-exploring" as any, (ev: any) => {
+      if (ev.status === "done" || ev.status === "error") {
+        // Clear after a delay
+        setTimeout(() => setExploringStatus(null), ev.status === "error" ? 8000 : 4000);
+      }
+      setExploringStatus(ev);
+    });
+    return dispose;
   }, []);
 
   // Listen for editor content changes
@@ -200,6 +213,40 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
           <b>{effort}</b>
         </span>
       </span>
+
+      {/* Project exploration status */}
+      {exploringStatus && exploringStatus.status === "start" && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat">
+            <Loader2 size={12} className="statusbar__spinner" />
+            <b>正在分析项目结构…</b>
+          </span>
+        </span>
+      )}
+      {exploringStatus && exploringStatus.status === "progress" && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat">
+            <Loader2 size={12} className="statusbar__spinner" />
+            <b>{exploringStatus.toolEvent?.summary ? "分析中: " + exploringStatus.toolEvent.summary.slice(0, 40) : "正在分析项目结构…"}</b>
+          </span>
+        </span>
+      )}
+      {exploringStatus && exploringStatus.status === "done" && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat">
+            <Check size={12} style={{color:"var(--ok)"}} />
+            <b>项目分析完成</b>
+          </span>
+        </span>
+      )}
+      {exploringStatus && exploringStatus.status === "error" && (
+        <span className="statusbar__group">
+          <span className="statusbar__item stat">
+            <AlertCircle size={12} style={{color:"var(--err)"}} />
+            <b>项目分析失败: {exploringStatus.message || "未知错误"}</b>
+          </span>
+        </span>
+      )}
 
       {/* Status dot */}
       <span className="statusbar__group">

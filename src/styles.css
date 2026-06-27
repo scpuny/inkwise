@@ -14292,6 +14292,11 @@ body {
   }
 }
 
+.statusbar__spinner {
+  animation: splash-spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
 /* ── Hint ── */
 
 .startup-splash__hint {
