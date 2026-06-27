@@ -61,6 +61,10 @@ export enum TauriCommands {
   // ── AI / Chat ──
   ChatStream = "chat_stream",
 
+  // ── CodeGraph ──
+  CodeGraphVersion = "codegraph_version",
+  CodeGraphExplore = "codegraph_explore",
+
   // ── Utilities ──
   CheckPublicIp = "check_public_ip",
   DialogOpen = "dialog_open",
