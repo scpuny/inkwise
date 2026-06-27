@@ -282,16 +282,29 @@ export async function generateFullArticleStream(
 export async function* generatePlanStream(input: PlanInput): AsyncGenerator<PlanStepResult> {
   yield { step: "idle", data: null };
 
+  // Silently explore project structure if linked folder — runs before user
+  // sees any output so the outline is based on real project understanding
+  const projectInsights = input.linkedFolder
+    ? await exploreProjectStructure(input.linkedFolder).catch(function(e: any) {
+        console.warn("[generatePlanStream] Project exploration failed:", e);
+        return "";
+    })
+    : "";
+
+  const enriched = projectInsights
+    ? { ...input, projectContext: projectInsights }
+    : input;
+
   // Generate title
-  const title = await generateTitle(input);
+  const title = await generateTitle(enriched);
   yield { step: "title", data: title };
 
   // Generate description
-  const description = await generateDescription(input, title);
+  const description = await generateDescription(enriched, title);
   yield { step: "description", data: description };
 
   // Generate outline
-  const outline = await generateOutline(input, title, description);
+  const outline = await generateOutline(enriched, title, description);
   yield { step: "outline", data: outline };
 
   // Generate tags
@@ -299,6 +312,19 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
   yield { step: "tags", data: tags };
 
   yield { step: "done", data: null };
+}
+
+async function exploreProjectStructure(folderPath: string): Promise<string> {
+  const instructions = "你是一个项目结构分析助手。你的任务是用工具探索给定项目的目录结构和关键文件，返回项目的技术栈、模块划分和核心架构的简要总结。";
+  const result = await runAgentLoop({
+    systemPrompt: instructions,
+    userMessage: "请探索这个项目的目录结构，列出根目录和主要子目录的文件，识别技术栈（语言、框架、构建工具）。给出简洁的总结（200字以内）。",
+    tools: PROJECT_TOOLS,
+    toolContext: { projectPath: folderPath },
+    maxToolRounds: 4,
+    requestTimeoutMs: 60000,
+  });
+  return result.content || "";
 }
 
 // ─── Individual plan steps ───
