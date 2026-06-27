@@ -90,6 +90,7 @@ export async function renameCollection(id: string, title: string): Promise<void>
   const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (c) { c.title = title; await saveCollections(all); }
+  if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title }); } catch {} }
 }
 
 export async function removeCollection(id: string): Promise<void> {

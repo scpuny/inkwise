@@ -559,7 +559,7 @@ export function ArticleManager({
           collection={editingCollection}
           open={showColForm}
           onSave={handleSaveCollection}
-          onClose={() => { setShowColForm(false); setEditingCollection(null); }}
+          onClose={() => { setShowColForm(false); setEditingCollection(null); editingColIdRef.current = null; }}
         />
       </div>
     </div>
