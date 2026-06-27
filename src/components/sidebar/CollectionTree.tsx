@@ -11,6 +11,7 @@ import {
   loadAllSeriesPlans, deleteSeriesPlan,
   type SeriesPlan,
 } from "../../lib/storage/collections";
+import { browserLoad } from "../../lib/storage/collections";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { SeriesOverview } from "../series/SeriesOverview";
@@ -191,11 +192,14 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     emit("plan-series", { collectionId: colId });
   }, []);
 
-  // Listen for external collection changes (e.g. article created via plan)
+  // 监听外部变更（改名只写 localStorage，从 localStorage 读，不从 Tauri 拿旧数据）
   useEffect(() => {
-    const handler = () => { refresh(); };
+    const handler = () => {
+      const cols = browserLoad<Collection[]>('aiwriter-collections', []);
+      setCollections(cols);
+    };
     return on("collections-changed", handler);
-  }, [refresh]);
+  }, []);
 
   // Listen for plan-series-saved to force expand and refresh
   useEffect(() => {

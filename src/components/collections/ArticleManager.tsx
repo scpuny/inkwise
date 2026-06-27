@@ -13,7 +13,7 @@ import {
   Image,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, browserLoad, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -95,7 +95,7 @@ export function ArticleManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const cols = await loadCollections();
+      const cols = browserLoad<Collection[]>('aiwriter-collections', []);
       console.log('[loadData] cols=%o', cols.map(c => ({id: c.id, title: c.title})));
       setCollections(cols);
 
@@ -160,9 +160,19 @@ export function ArticleManager({
   useEffect(() => { if (open) loadData(); }, [open, loadData]);
   // 外部合集变更时自动刷新（侧边树改名等）
   useEffect(() => {
-    const unsub = on("collections-changed", () => { if (open) loadData(); });
+    const unsub = on("collections-changed", () => {
+      if (open) {
+        const cols = browserLoad<Collection[]>('aiwriter-collections', []);
+        setCollections(cols);
+        // 同步 article 条目中的 collectionTitle
+        setArticles(prev => prev.map(a => {
+          const c = cols.find(x => x.id === a.collectionId);
+          return c ? { ...a, collectionTitle: c.title } : a;
+        }));
+      }
+    });
     return unsub;
-  }, [open, loadData]);
+  }, [open]);
 
   // Filter & sort
   const filtered = articles
