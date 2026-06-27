@@ -69,8 +69,14 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
 export async function loadCollections(): Promise<Collection[]> {
   try {
     const raw = await tryInvoke<Record<string, unknown>[]>(TauriCommands.GetCollections);
-    if (raw && raw.length > 0) return raw.map(fromTauriCollection);
-  } catch {}
+    if (raw && raw.length > 0) {
+      const result = raw.map(fromTauriCollection);
+      console.log('[loadCollections] from Tauri, count=%d', result.length);
+      return result;
+    }
+  } catch (e) {
+    console.warn('[loadCollections] GetCollections failed, fallback to localStorage:', e);
+  }
   return browserLoad<Collection[]>(COLLECTIONS_KEY, []);
 }
 
@@ -78,7 +84,9 @@ export async function saveCollections(collections: Collection[]): Promise<void> 
   browserSave(COLLECTIONS_KEY, collections);
   try {
     await tryInvoke(TauriCommands.SetCollections, { collections: collections.map(toTauriCollection) });
-  } catch {}
+  } catch (e) {
+    console.error('[saveCollections] SetCollections failed:', e);
+  }
 }
 
 export async function addCollection(title: string): Promise<Collection> {
