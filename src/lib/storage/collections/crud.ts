@@ -168,6 +168,24 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
   const trash = await loadTrash();
   trash.push({ id: articleId, collectionId, collectionTitle: col.title, title: article.title, deletedAt: Date.now() });
   await saveTrash(trash);
+
+  // Clean up associated data: content, meta, blueprint, versions, localStorage drafts
+  try {
+    const { deleteArticleContent } = await import("../../storage/articles");
+    await deleteArticleContent(articleId);
+  } catch {}
+  try {
+    const { deleteAllVersions } = await import("../../storage/articleVersions");
+    await deleteAllVersions(articleId);
+  } catch {}
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
+    }
+  } catch {}
+  try {
+    localStorage.removeItem('plan-draft-' + articleId);
+  } catch {}
 }
 
 /* ─── 回收站 ─── */
@@ -214,6 +232,16 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
   const c = all.find((x) => x.id === collectionId);
   if (!c) return;
   c.linkedFolder = undefined;
+  // Clean up all AI-related cache for this collection
+  try { localStorage.removeItem("folder_index:" + collectionId); } catch {}
+  try {
+    const { clearProjectInsights } = await import("./projectContext");
+    clearProjectInsights(collectionId);
+  } catch {}
+  // Clean up plan drafts for every article in the collection
+  for (const art of c.articles) {
+    try { localStorage.removeItem("plan-draft-" + art.id); } catch {}
+  }
   await saveCollections(all);
 }
 

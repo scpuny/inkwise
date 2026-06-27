@@ -4,6 +4,7 @@ import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
 import type { OutlineSection } from "../../lib/ai/articleBlueprint";
+import type { ToolEvent } from "../../lib/ai/agentEngine";
 
 const SUGGESTIONS = [
   "写一篇关于秋天午后的散文",
@@ -74,6 +75,7 @@ interface StartupSplashProps {
   projectReady?: boolean;
   projectFiles?: string[];
   streamingContent?: string;
+  toolEvents?: ToolEvent[];
 }
 
 function skillLabel(id: string): string {
@@ -86,7 +88,7 @@ export function StartupSplash({
   planState, planStep, partialPlan, planError, lastPlanInput,
   writingOutline, writingSectionId, streamingContent = "",
   onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
-  projectName, projectReady, projectFiles,
+  projectName, projectReady, projectFiles, toolEvents = [],
 }: StartupSplashProps) {
   const [inspiration, setInspiration] = useState("");
   const [skillId, setSkillId] = useState("");
@@ -98,6 +100,14 @@ const [customTone, setCustomTone] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
 
   const responseEndRef = useRef<HTMLDivElement>(null);
+  const toolScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll tool events to bottom when new events arrive
+  useEffect(() => {
+    if (toolScrollRef.current) {
+      toolScrollRef.current.scrollTop = toolScrollRef.current.scrollHeight;
+    }
+  }, [toolEvents]);
 
   useEffect(() => { ensureSkills(); }, []);
 
@@ -309,6 +319,47 @@ const [customTone, setCustomTone] = useState("");
                 </div>
               )}
 
+              {/* 工具调用进度（写作阶段） */}
+              {planState === "writing" && toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+                <div ref={toolScrollRef} className="startup-splash__tool-events startup-splash__tool-events--writing startup-splash__tool-events--compact">
+                  <div className="startup-splash__tool-events-header">
+                    <FolderInput size={10} />
+                    项目文件读取
+                  </div>
+                  {toolEvents.filter(ev => ev.type !== "thinking_done").map((ev, i) => {
+                    const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
+                    return (
+                      <div key={i} className={cls}>
+                        <span className="startup-splash__tool-event-icon">
+                          {ev.type === "thinking" ? <Loader2 size={11} className="startup-splash__spinner" /> :
+                           ev.type === "tool_start" ? <FileText size={11} /> :
+                           ev.type === "error" ? <AlertCircle size={11} /> :
+                           <Check size={11} />}
+                        </span>
+                        <div className="startup-splash__tool-event-title">
+                          {ev.summary || (ev.type === "thinking" ? "AI 分析中…" :
+                            ev.type === "tool_start" ? "读取中…" :
+                            ev.type === "tool_end" ? "完成" : "")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* AI 写内容阶段指示卡 */}
+              {planState === "writing" && streamingContent && (
+                <div className="startup-splash__writing-card">
+                  <span className="startup-splash__writing-card-icon">
+                    <PenLine size={14} />
+                  </span>
+                  <div className="startup-splash__writing-card-content">
+                    <div className="startup-splash__writing-card-title">AI 正在写内容…</div>
+                    <div className="startup-splash__writing-card-subtitle">基于已读取的项目文件，生成文章正文</div>
+                  </div>
+                </div>
+              )}
+
               {/* Live streaming content preview */}
               {streamingContent && (
                 <div className="startup-splash__section">
@@ -348,6 +399,57 @@ const [customTone, setCustomTone] = useState("");
                       </div>
                     ))}
                   </div>
+                  {/* 工具调用进度 */}
+                  {toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+                    <div ref={toolScrollRef} className="startup-splash__tool-events">
+                      <div className="startup-splash__tool-events-header">
+                        <FolderInput size={11} />
+                        AI 工具调用记录
+                      </div>
+                      {toolEvents.map((ev, i) => {
+                        if (ev.type === "thinking_done") return null;
+                        const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
+                        const isEnd = ev.type === "tool_end";
+                        const isError = ev.type === "error";
+                        const isThinking = ev.type === "thinking";
+                        const isStart = ev.type === "tool_start";
+                        return (
+                          <div key={i} className={cls}>
+                            <span className="startup-splash__tool-event-icon">
+                              {isThinking ? <Loader2 size={14} className="startup-splash__spinner" /> :
+                               isStart ? <FileText size={14} /> :
+                               isError ? <AlertCircle size={14} /> :
+                               <Check size={14} />}
+                            </span>
+                            <div className="startup-splash__tool-event-body">
+                              <div className="startup-splash__tool-event-title">
+                                <span>
+                                  {isThinking ? (ev.summary || "AI 分析中…") :
+                                   isStart ? (ev.summary || "调用中…") :
+                                   isEnd ? (ev.summary || "完成") :
+                                   isError ? (ev.summary || "错误") :
+                                   (ev.summary || "")}
+                                </span>
+                                {ev.round && (
+                                  <span className="startup-splash__tool-event-round">第{ev.round}轮</span>
+                                )}
+                              </div>
+                              {ev.result && isEnd && (
+                                <div className="startup-splash__tool-event-detail">
+                                  {ev.result.slice(0, 200)}
+                                </div>
+                              )}
+                              {isError && ev.result && (
+                                <div className="startup-splash__tool-event-detail startup-splash__tool-event-detail--error">
+                                  {ev.result.slice(0, 200)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {planError && (
                     <div className="startup-splash__error" style={{marginTop:12}}>
                       <AlertCircle size={12} />
