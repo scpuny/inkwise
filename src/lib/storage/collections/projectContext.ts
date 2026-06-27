@@ -2,7 +2,7 @@
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../bridge/tauri";
 import type { ProjectContext, FileNode, FileContent } from "./types";
 
-export async function linkCollectionFolder(collectionId: string, path: string): Promise<ProjectContext> {
+export async function linkCollectionFolder(collectionId: string, path: string): Promise<ProjectContext & { insights?: string }> {
   const ctx = await getProjectContext(path);
   const { loadCollections, saveCollections } = await import("./crud");
   const all = await loadCollections();
@@ -11,7 +11,34 @@ export async function linkCollectionFolder(collectionId: string, path: string): 
     col.linkedFolder = path;
     await saveCollections(all);
   }
+  // Kick off AI-powered exploration in background (don't block linking)
+  exploreProjectForCollection(collectionId, path);
   return ctx;
+}
+
+let _exploring = false;
+
+async function exploreProjectForCollection(collectionId: string, path: string): Promise<void> {
+  if (_exploring) return;
+  _exploring = true;
+  try {
+    const { runAgentLoop, PROJECT_TOOLS } = await import("../../ai/agentEngine");
+    const result = await runAgentLoop({
+      systemPrompt: "你是一个项目结构分析助手。返回项目技术栈、模块划分、核心架构的简要总结（200字以内）。",
+      userMessage: "请探索这个项目的目录结构，列出根目录和主要子目录的文件，识别技术栈。给出简洁总结。",
+      tools: PROJECT_TOOLS,
+      toolContext: { projectPath: path },
+      maxToolRounds: 4,
+      requestTimeoutMs: 60000,
+    });
+    if (result.content) {
+      storeProjectInsights(collectionId, result.content);
+    }
+  } catch (e) {
+    console.warn("[exploreProjectForCollection] Failed:", e);
+  } finally {
+    _exploring = false;
+  }
 }
 
 export async function getProjectContext(path: string): Promise<ProjectContext> {
@@ -119,4 +146,20 @@ export async function findAndReadRelevantFiles(
   }
 
   return { matchedFiles: filePaths, sourceCode };
+}
+
+// ─── Project insights cache (AI-powered exploration results, stored per-collection) ───
+
+const INSIGHTS_PREFIX = "inkwise-project-insights-";
+
+export function getStoredProjectInsights(collectionId: string): string | null {
+  try { return localStorage.getItem(INSIGHTS_PREFIX + collectionId); } catch { return null; }
+}
+
+export function storeProjectInsights(collectionId: string, insights: string): void {
+  try { localStorage.setItem(INSIGHTS_PREFIX + collectionId, insights); } catch {}
+}
+
+export function clearProjectInsights(collectionId: string): void {
+  try { localStorage.removeItem(INSIGHTS_PREFIX + collectionId); } catch {}
 }

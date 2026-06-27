@@ -31,6 +31,7 @@ export interface PlanInput {
   projectName?: string;
   articleDescription?: string;
   skillId?: string;
+  collectionId?: string;
   /** linked folder path for tool-based file reading */
   linkedFolder?: string;
 }
@@ -297,12 +298,18 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
 
   // Silently explore project structure if linked folder — runs before user
   // sees any output so the outline is based on real project understanding
-  const projectInsights = input.linkedFolder
-    ? await exploreProjectStructure(input.linkedFolder).catch(function(e: any) {
+  // First check if collection-level cached insights exist
+  let projectInsights = "";
+  if (input.linkedFolder) {
+    const { getStoredProjectInsights } = await import("../storage/collections/projectContext");
+    projectInsights = getStoredProjectInsights(input.collectionId || "") || "";
+    if (!projectInsights) {
+      projectInsights = await exploreProjectStructure(input.linkedFolder).catch(function(e: any) {
         console.warn("[generatePlanStream] Project exploration failed:", e);
         return "";
-    })
-    : "";
+      });
+    }
+  }
 
   // Yield project insights so handleStartPlan can capture them into partialPlan
   yield { step: "explored", data: projectInsights || "" };

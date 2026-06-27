@@ -233,6 +233,11 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
   if (!c) return;
   c.linkedFolder = undefined;
   await saveCollections(all);
+  // Clear cached AI exploration results
+  try {
+    const { clearProjectInsights } = await import("./projectContext");
+    clearProjectInsights(collectionId);
+  } catch {}
 }
 
 export async function getCollectionFolderContext(collectionId: string): Promise<string> {

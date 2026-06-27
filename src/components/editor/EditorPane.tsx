@@ -899,6 +899,7 @@ ${seriesCtx}`;
       ...input,
       projectContext: folderContextRef.current || undefined,
       projectName: folderProjectNameRef.current || undefined,
+      collectionId: activeCollectionId || undefined,
       linkedFolder: _linkedFolder,
     };
     setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined });
