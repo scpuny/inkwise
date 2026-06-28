@@ -10,6 +10,7 @@ import {
 import { getProjectContext } from "../../lib/storage/collections";
 import { loadCollections, type Collection } from "../../lib/storage/collections";
 import { on } from "../../lib/events/eventBus";
+import { marked } from "marked";
 
 export function ProjectExplorer() {
   const colId = useAppStore((s) => s.projectPanelColId);
@@ -99,7 +100,7 @@ export function ProjectExplorer() {
                 <span>正在分析项目结构…</span>
               </div>
             ) : insights ? (
-              <div className="project-explorer__insights">{insights}</div>
+              <div className="project-explorer__insights" dangerouslySetInnerHTML={{ __html: marked.parse(insights) }} />
             ) : (
               <div className="project-explorer__empty">等待扫描…</div>
             )}

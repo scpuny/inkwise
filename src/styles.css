@@ -22533,10 +22533,51 @@ body {
   line-height: 1.5;
   color: var(--fg-dim);
 }
+.project-explorer__insights p {
+  margin: 0 0 8px;
+}
+.project-explorer__insights p:last-child {
+  margin-bottom: 0;
+}
+.project-explorer__insights ul,
+.project-explorer__insights ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.project-explorer__insights li {
+  margin-bottom: 3px;
+  line-height: 1.6;
+}
+.project-explorer__insights h1,
+.project-explorer__insights h2,
+.project-explorer__insights h3,
+.project-explorer__insights h4 {
+  font-weight: 650;
+  color: var(--fg);
+  margin: 14px 0 6px;
+  line-height: 1.4;
+}
+.project-explorer__insights h1 { font-size: 15px; }
+.project-explorer__insights h2 { font-size: 14px; }
+.project-explorer__insights h3 { font-size: 13px; }
 .project-explorer__insights hr {
   border: none;
   border-top: 1px solid var(--border-soft);
   margin: 14px 0;
+}
+.project-explorer__insights blockquote {
+  border-left: 2px solid var(--accent);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.project-explorer__insights a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.project-explorer__insights a:hover {
+  text-decoration: underline;
 }
 .project-explorer__loading {
   display: flex;
