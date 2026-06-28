@@ -369,10 +369,15 @@ fn read_configs(dir: &Path) -> Vec<ConfigFile> {
         let path = dir.join(name);
         if path.exists() && path.is_file() {
             if let Ok(content) = std::fs::read_to_string(&path) {
-                let max_len = 4000;
-                let truncated = content.len() > max_len;
+                let max_bytes = 4000usize;
+                let truncated = content.len() > max_bytes;
                 let content = if truncated {
-                    format!("{}...\n[内容太长，已截断]", &content[..max_len])
+                    let byte_end = content.char_indices()
+                        .take_while(|(i, _)| *i < max_bytes)
+                        .last()
+                        .map(|(i, c)| i + c.len_utf8())
+                        .unwrap_or(max_bytes);
+                    format!("{}...\n[内容太长，已截断]", &content[..byte_end])
                 } else {
                     content
                 };
