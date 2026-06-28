@@ -29,13 +29,29 @@ export async function exploreProjectForCollection(collectionId: string, path: st
   try {
     emit("project-exploring" as any, { collectionId, status: "start" });
     const { runAgentLoop, PROJECT_TOOLS } = await import("../../ai/agentEngine");
+    // 把 Rust 扫描的目录树提前喂给 AI，省去它自己探索目录的时间
+    let treePreview = "";
+    try {
+      const cached = getStoredProjectFileTree(collectionId);
+      if (cached && cached.length > 0) {
+        function flatten(nodes: any[], depth: number = 0): string {
+          let result = "";
+          for (const n of nodes) {
+            result += "  ".repeat(depth) + (n.isDir ? "📁 " : "📄 ") + n.name + "\n";
+            if (n.isDir && n.children && depth < 3) result += flatten(n.children, depth + 1);
+          }
+          return result;
+        }
+        treePreview = "\n## 项目目录结构\n```\n" + flatten(cached) + "```\n";
+      }
+    } catch (e) {}
     const result = await runAgentLoop({
-      systemPrompt: "你是一个项目结构分析助手。返回项目技术栈、模块划分、核心架构的简要总结（200字以内）。",
-      userMessage: "请探索这个项目的目录结构，列出根目录和主要子目录的文件，识别技术栈。给出简洁总结。",
+      systemPrompt: "你是一个项目结构分析助手，负责分析关联项目的技术架构。请根据提供的目录结构和文件内容，给出全面的项目分析报告，包括：技术栈、模块划分、核心架构设计、关键文件说明、构建/运行方式。要求分点列出，清晰完整。",
+      userMessage: "以下是我的项目目录结构（由系统预扫描）：" + treePreview + "\n请分析这个项目的技术栈、架构设计、关键模块和核心文件作用。你可以使用工具读取关键文件来获取更多细节。",
       tools: PROJECT_TOOLS,
       toolContext: { projectPath: path },
-      maxToolRounds: 4,
-      requestTimeoutMs: 60000,
+      maxToolRounds: 8,
+      requestTimeoutMs: 120000,
       onToolEvent: function(ev: any) {
         // Forward tool events as exploration progress
         emit("project-exploring" as any, {
