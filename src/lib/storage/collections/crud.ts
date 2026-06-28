@@ -102,11 +102,9 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
-  // 改名：精确更新，不走 SetCollections
   const all = loadFromStorage<Collection[]>('inkwise-collections', []);
   const c = all.find((x) => x.id === id);
-  if (c) { c.title = title; saveToStorage('inkwise-collections', all); }
-  if (isTauriEnv()) { try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title }); } catch {} }
+  if (c) { c.title = title; await saveCollections(all); }
 }
 
 export async function updateCollection(
@@ -122,15 +120,7 @@ export async function updateCollection(
   if (data.coverImage !== undefined) c.coverImage = data.coverImage || undefined;
   if (data.linkedFolder !== undefined) c.linkedFolder = data.linkedFolder || undefined;
   saveToStorage('inkwise-collections', all);
-  // SQLite: 只更新 SQLite 有的字段（title、linked_folder）
-  if (isTauriEnv()) {
-    if (data.title !== undefined) {
-      try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title: data.title }); } catch {}
-    }
-    if (data.linkedFolder !== undefined && data.linkedFolder) {
-      // linkedFolder 由 linkCollectionFolder/unlinkCollectionFolder 处理
-    }
-  }
+  await saveCollections(all);
 }
 
 export async function removeCollection(id: string): Promise<void> {
