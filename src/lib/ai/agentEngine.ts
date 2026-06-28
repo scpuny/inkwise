@@ -195,14 +195,15 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
   let toolCallCount = 0;
   let toolRound = 0;
   let accumulatedThinking = "";
+  const startTime = Date.now();
 
-  // Initial thinking notification
+  // Initial thinking - show immediate progress
   onToolEvent?.({
     type: "thinking",
     toolName: "",
     toolCallId: "think_0",
     arguments: "",
-    summary: "AI 正在分析写作任务，决定需要读取哪些项目文件…",
+    summary: "正在连接 AI…",
   });
 
   while (true) {
@@ -230,6 +231,20 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
 
     let response;
     try {
+      // Show intermediate progress while waiting for AI
+      const progressInterval = setInterval(function() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        if (elapsed > 5 && elapsed % 10 < 2) {
+          onToolEvent?.({
+            type: "thinking",
+            toolName: "",
+            toolCallId: "think_" + toolRound + "_wait",
+            arguments: "",
+            round: toolRound,
+            summary: "等待 AI 响应（" + elapsed + "s）…",
+          });
+        }
+      }, 1000);
       response = await Promise.race([
         sendChatWithTools(chatOptions),
         new Promise<never>(function(_, reject) {
@@ -238,6 +253,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
           }, requestTimeoutMs);
         }),
       ]);
+      clearInterval(progressInterval);
     } catch (err: any) {
       onToolEvent?.({
         type: "thinking_done",
