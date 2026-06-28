@@ -20616,6 +20616,7 @@ body {
 .pft {
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
 .pft__dir {
@@ -20628,12 +20629,12 @@ body {
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 3px 4px;
+  padding: 4px 6px;
   border: none;
-  border-radius: 3px;
+  border-radius: 5px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 11.5px;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -20648,39 +20649,44 @@ body {
 }
 
 .pft__row--dir {
-  font-weight: 500;
+  font-weight: 550;
   color: var(--text);
 }
 
 .pft__row--file {
-  padding-left: 20px;
+  padding-left: 22px;
 }
 
 .pft__chevron {
   flex-shrink: 0;
   transition: transform 0.15s;
-  opacity: 0.4;
+  opacity: 0.35;
+  color: var(--text-muted);
 }
 
 .pft__chevron--open {
   transform: rotate(90deg);
+  opacity: 0.6;
 }
 
 .pft__icon {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  opacity: 0.6;
+  opacity: 0.55;
+  color: var(--text-muted);
 }
 
 .pft__file-icon {
   flex-shrink: 0;
-  opacity: 0.4;
+  opacity: 0.35;
+  color: var(--text-muted);
 }
 
 .pft__row:hover .pft__file-icon,
 .pft__row:hover .pft__icon {
   opacity: 1;
+  color: var(--accent);
 }
 
 .pft__label {
@@ -22361,6 +22367,7 @@ body {
 }
 
 /* ── Project Explorer (关联文件夹浏览) ── */
+/* ── Project Explorer (关联文件夹浏览) ── */
 .project-explorer {
   grid-row: 2;
   grid-column: 2;
@@ -22375,14 +22382,19 @@ body {
 .project-explorer__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 0 16px;
+  height: 44px;
   border-bottom: 1px solid var(--border-soft);
   font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
   background: var(--bg);
-  min-height: 42px;
+}
+.project-explorer__header-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0.8;
 }
 .project-explorer__title-wrap {
   flex: 1;
@@ -22414,10 +22426,13 @@ body {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
 .project-explorer__action:hover,
 .project-explorer__close:hover {
@@ -22430,11 +22445,12 @@ body {
   min-height: 0;
 }
 .project-explorer__tree {
-  width: 280px;
+  width: 260px;
   min-width: 200px;
+  max-width: 320px;
   overflow-y: auto;
   border-right: 1px solid var(--border-soft);
-  padding: 8px;
+  padding: 6px;
   background: var(--bg-soft);
 }
 .project-explorer__chat {
@@ -22448,42 +22464,42 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 8px 10px;
+  font-size: 10.5px;
+  font-weight: 650;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.6px;
   flex-shrink: 0;
 }
 .project-explorer__chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px 14px;
 }
 .project-explorer__error {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 40px 16px;
+  gap: 10px;
+  padding: 48px 20px;
   color: var(--text-danger, #e06c75);
   font-size: 13px;
   text-align: center;
 }
 .project-explorer__empty {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 13px;
   text-align: center;
-  padding: 40px 16px;
+  padding: 48px 20px;
+  line-height: 1.6;
 }
 .project-explorer__exploring {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 40px 16px;
+  gap: 14px;
+  padding: 48px 20px;
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -22492,7 +22508,7 @@ body {
   line-height: 1.75;
   color: var(--fg);
   white-space: pre-wrap;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 .project-explorer__insights strong {
   color: var(--accent);
@@ -22503,7 +22519,7 @@ body {
   font-size: 11.5px;
   background: var(--bg-elev);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: 4px;
   color: var(--accent-strong);
 }
 .project-explorer__insights pre {
@@ -22511,7 +22527,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
-  margin: 8px 0;
+  margin: 10px 0;
   overflow-x: auto;
   font-size: 11.5px;
   line-height: 1.5;
@@ -22520,13 +22536,13 @@ body {
 .project-explorer__insights hr {
   border: none;
   border-top: 1px solid var(--border-soft);
-  margin: 12px 0;
+  margin: 14px 0;
 }
 .project-explorer__loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 48px 20px;
   color: var(--text-muted);
   gap: 8px;
   font-size: 13px;

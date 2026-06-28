@@ -75,7 +75,7 @@ export function ProjectExplorer() {
   return (
     <div className="project-explorer">
       <div className="project-explorer__header">
-        <FolderInput size={14} />
+        <FolderInput size={14} className="project-explorer__header-icon" />
         <div className="project-explorer__title-wrap">
           <span className="project-explorer__title">{col?.title || "项目"}</span>
           {col?.linkedFolder && <span className="project-explorer__subtitle">{col.linkedFolder.split("/").pop()}</span>}
