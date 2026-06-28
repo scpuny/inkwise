@@ -39,6 +39,10 @@ export interface AppState {
   seriesPlannerExistingPlan: SeriesPlan | null;
   seriesRefreshKey: number;
 
+  // Project panel
+  projectPanelOpen: boolean;
+  projectPanelColId: string | null;
+
   // Article lifecycle
   saveState: "idle" | "saving" | "saved" | "error";
   articlePhase: string | undefined;
@@ -80,6 +84,8 @@ export interface AppActions {
   setSaveState: (state: "idle" | "saving" | "saved" | "error") => void;
   setArticlePhase: (phase: string | undefined) => void;
   setShowFinalPage: (show: boolean) => void;
+  setProjectPanelOpen: (open: boolean) => void;
+  setProjectPanelColId: (id: string | null) => void;
 }
 
 const DEFAULT_SETTINGS_TAB = "appearance";
@@ -115,6 +121,10 @@ export const useAppStore = create<AppState & AppActions>()((set) => ({
   seriesPlannerExistingPlan: null,
   seriesRefreshKey: 0,
 
+  // Project panel
+  projectPanelOpen: false,
+  projectPanelColId: null,
+
   // Article lifecycle
   saveState: "idle",
   articlePhase: undefined,
@@ -149,6 +159,10 @@ export const useAppStore = create<AppState & AppActions>()((set) => ({
   setSeriesPlannerFolder: (seriesPlannerFolder) => set({ seriesPlannerFolder }),
   setSeriesPlannerExistingPlan: (seriesPlannerExistingPlan) => set({ seriesPlannerExistingPlan }),
   incSeriesRefreshKey: () => set((s) => ({ seriesRefreshKey: s.seriesRefreshKey + 1 })),
+
+  // ── Project panel actions ──
+  setProjectPanelOpen: (projectPanelOpen: boolean) => set({ projectPanelOpen }),
+  setProjectPanelColId: (projectPanelColId: string | null) => set({ projectPanelColId }),
 
   // ── Article lifecycle actions ──
   setSaveState: (saveState) => set({ saveState }),

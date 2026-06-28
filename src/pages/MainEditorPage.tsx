@@ -6,6 +6,7 @@ import { ThemePicker } from "../components/settings/ThemePicker";
 import { SettingsPanel } from "../components/settings";
 import { StylePanel } from "../components/settings/StylePanel";
 import { StatusBar, type SaveState } from "../components/common/StatusBar";
+import { ProjectExplorer } from "../components/common/ProjectExplorer";
 import { ArticleManager } from "../components/collections/ArticleManager";
 import { DocPicker, type DocPickerResult } from "../components/collections/DocPicker";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
@@ -97,6 +98,7 @@ export default function MainEditorPage() {
   const activeOutlineId = useAppStore((s) => s.activeOutlineId);
   const saveState = useAppStore((s) => s.saveState);
   const articlePhase = useAppStore((s) => s.articlePhase);
+  const projectPanelOpen = useAppStore((s) => s.projectPanelOpen);
 
   const setThemePickerOpen = useAppStore((s) => s.setThemePickerOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
@@ -571,8 +573,10 @@ const handlePlanComplete = useCallback(async (plan: {
         />
 
         <ArticleCtx.Provider value={articleCtx}>
-        {/* Editor / Final Page */}
-        {showFinalPage && activeArticleId ? (
+        {/* Project Explorer (linked folder) */}
+        {projectPanelOpen && !hasActiveArticle ? (
+          <ProjectExplorer />
+        ) : showFinalPage && activeArticleId ? (
           <ArticleFinalPage
             articleId={activeArticleId}
             collectionId={activeCollectionId ?? ""}

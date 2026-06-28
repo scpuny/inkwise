@@ -9,3 +9,4 @@ export { ProjectFileTree } from './ProjectFileTree';
 export { StartupSplash } from './StartupSplash';
 export { CommandPalette, type CommandAction } from './CommandPalette';
 export { StatusBar, type SaveState } from './StatusBar';
+export { ProjectExplorer } from "./ProjectExplorer";

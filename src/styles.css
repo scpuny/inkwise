@@ -22359,3 +22359,116 @@ body {
   background: rgba(217, 119, 6, 0.1);
   border-radius: 6px;
 }
+
+/* ── Project Explorer (关联文件夹浏览) ── */
+.project-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+.project-explorer__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.project-explorer__title {
+  flex: 1;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-explorer__action,
+.project-explorer__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+.project-explorer__action:hover,
+.project-explorer__close:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+.project-explorer__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.project-explorer__tree {
+  width: 280px;
+  min-width: 200px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 8px;
+}
+.project-explorer__chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.project-explorer__section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.project-explorer__chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.project-explorer__empty {
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 16px;
+}
+.project-explorer__exploring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.project-explorer__insights {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg);
+  white-space: pre-wrap;
+}
+.project-explorer__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: var(--text-muted);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
