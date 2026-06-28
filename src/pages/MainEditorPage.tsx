@@ -541,6 +541,7 @@ const handlePlanComplete = useCallback(async (plan: {
             closePanel();
             setStylePanelOpen(false);
             setShowFinalPage(false);
+            setProjectPanelOpen(false);
             // Navigate to welcome/start page (StartupSplash)
             setActiveArticleId(null);
             setActiveCollectionIdApp(null);
@@ -551,6 +552,7 @@ const handlePlanComplete = useCallback(async (plan: {
             closePanel();
             setStylePanelOpen(false);
             setShowFinalPage(false);
+            setProjectPanelOpen(false);
             // Navigate to StartupSplash with collection context
             setActiveArticleId(null);
             setActiveCollectionIdApp(collectionId);
