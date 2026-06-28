@@ -21,9 +21,11 @@ export function ProjectExplorer() {
   const [exploring, setExploring] = useState(false);
   const [col, setCol] = useState<Collection | null>(null);
 
-  // Load collection
+  // Reset states when col changes, then load collection
   useEffect(() => {
     if (!colId) return;
+    setExploring(false);
+    setInsights(null);
     const cachedInsights = getStoredProjectInsights(colId);
     setInsights(cachedInsights);
     loadCollections().then((cols) => {

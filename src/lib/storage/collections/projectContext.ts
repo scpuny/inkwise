@@ -20,11 +20,11 @@ export async function linkCollectionFolder(collectionId: string, path: string): 
   return ctx;
 }
 
-let _exploring = false;
+const _exploringSet = new Set<string>();
 
 export async function exploreProjectForCollection(collectionId: string, path: string): Promise<void> {
-  if (_exploring) return;
-  _exploring = true;
+  if (_exploringSet.has(collectionId)) return;
+  _exploringSet.add(collectionId);
   const { emit } = await import("../../events/eventBus");
   try {
     emit("project-exploring" as any, { collectionId, status: "start" });
@@ -53,7 +53,7 @@ export async function exploreProjectForCollection(collectionId: string, path: st
     console.warn("[exploreProjectForCollection] Failed:", e);
     emit("project-exploring" as any, { collectionId, status: "error", message: e.message });
   } finally {
-    _exploring = false;
+    _exploringSet.delete(collectionId);
   }
 }
 
