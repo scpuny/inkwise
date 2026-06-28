@@ -74,7 +74,10 @@ export function ProjectExplorer() {
     <div className="project-explorer">
       <div className="project-explorer__header">
         <FolderInput size={14} />
-        <span className="project-explorer__title">{col?.linkedFolder?.split("/").pop() || "项目目录"}</span>
+        <div className="project-explorer__title-wrap">
+          <span className="project-explorer__title">{col?.title || "项目"}</span>
+          {col?.linkedFolder && <span className="project-explorer__subtitle">{col.linkedFolder.split("/").pop()}</span>}
+        </div>
         <button className="project-explorer__close" onClick={() => setProjectPanelOpen(false)} title="关闭"><X size={12} /></button>
       </div>
       <div className="project-explorer__body">
