@@ -1460,26 +1460,21 @@ pub fn scan_project(path: &str, force_rescan: bool) -> Result<ProjectContext, St
         (vec![], vec![], HashMap::new())
     };
 
-    // 6. 初始化 hash 缓存（增量扫描）
-    let mut hash_cache = FileHashCache::open(dir, None);
-
-    // 7. Code symbols（tree-sitter + CodeGraph + 正则）
-    let symbols = if force_rescan {
-        // 强制全量：清空缓存，从零扫描
-        scan_source_symbols_fresh(dir)
+    // 6. Heavy analysis — full tree-sitter on force, CodeGraph on available, skip otherwise
+    let (symbols, imports) = if force_rescan {
+        let s = scan_source_symbols_fresh(dir);
+        let i = scan_imports_fresh(dir);
+        (s, i)
+    } else if codegraph_available {
+        let mut hc = FileHashCache::open(dir, None);
+        let s = scan_source_symbols(dir, &mut hc, &cg_symbols, &cg_file_hashes);
+        let i = scan_imports(dir, &mut hc, &cg_imports, &cg_file_hashes);
+        hc.persist();
+        (s, i)
     } else {
-        scan_source_symbols(dir, &mut hash_cache, &cg_symbols, &cg_file_hashes)
+        // ponytail: non-force, no CodeGraph — skip tree-sitter parsing entirely
+        (vec![], vec![])
     };
-
-    // 8. Import edges
-    let imports = if force_rescan {
-        scan_imports_fresh(dir)
-    } else {
-        scan_imports(dir, &mut hash_cache, &cg_imports, &cg_file_hashes)
-    };
-
-    // 9. 持久化 hash 缓存
-    hash_cache.persist();
 
     Ok(ProjectContext {
         name: project_name,
