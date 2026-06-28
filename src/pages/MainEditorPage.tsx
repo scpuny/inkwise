@@ -123,6 +123,7 @@ export default function MainEditorPage() {
   const setSaveState = useAppStore((s) => s.setSaveState);
   const setArticlePhase = useAppStore((s) => s.setArticlePhase);
   const setShowFinalPage = useAppStore((s) => s.setShowFinalPage);
+  const setProjectPanelOpen = useAppStore((s) => s.setProjectPanelOpen);
   const setActiveArticleIdApp = useAppStore((s) => s.setActiveArticleId);
   const setActiveCollectionIdApp = useAppStore((s) => s.setActiveCollectionId);
 
@@ -474,6 +475,7 @@ const handlePlanComplete = useCallback(async (plan: {
         setCommandPaletteOpen(false);
         setShowFinalPage(false);
         setActiveArticleId(null);
+        setProjectPanelOpen(false);
       }
     };
     document.addEventListener("keydown", onKey);

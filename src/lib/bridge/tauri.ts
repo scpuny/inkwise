@@ -106,6 +106,9 @@ export async function tryInvoke<T>(
   cmd: string,
   args?: Record<string, unknown>,
 ): Promise<T> {
+  if (!_invoke && isTauri) {
+    await initPromise;
+  }
   if (_invoke) {
     return (await _invoke(cmd, args)) as T;
   }
@@ -118,6 +121,9 @@ export async function invokeOrFallback<T>(
   args: Record<string, unknown> | undefined,
   fallback: () => T,
 ): Promise<T> {
+  if (!_invoke && isTauri) {
+    await initPromise;
+  }
   if (_invoke) {
     try {
       return (await _invoke(cmd, args)) as T;
