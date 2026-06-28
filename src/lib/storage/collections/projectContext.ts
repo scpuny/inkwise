@@ -11,6 +11,10 @@ export async function linkCollectionFolder(collectionId: string, path: string): 
     col.linkedFolder = path;
     await saveCollections(all);
   }
+  // Cache file tree for ProjectExplorer (fast display)
+  if (ctx.structure && ctx.structure.length > 0) {
+    storeProjectFileTree(collectionId, ctx.structure);
+  }
   // Kick off AI-powered exploration in background (don't block linking)
   exploreProjectForCollection(collectionId, path);
   return ctx;
@@ -163,6 +167,7 @@ export async function findAndReadRelevantFiles(
 // ─── Project insights cache (AI-powered exploration results, stored per-collection) ───
 
 const INSIGHTS_PREFIX = "inkwise-project-insights-";
+const FILE_TREE_PREFIX = "inkwise-project-file-tree-";
 
 export function getStoredProjectInsights(collectionId: string): string | null {
   try { return localStorage.getItem(INSIGHTS_PREFIX + collectionId); } catch { return null; }
@@ -170,6 +175,21 @@ export function getStoredProjectInsights(collectionId: string): string | null {
 
 export function storeProjectInsights(collectionId: string, insights: string): void {
   try { localStorage.setItem(INSIGHTS_PREFIX + collectionId, insights); } catch {}
+}
+
+export function storeProjectFileTree(collectionId: string, structure: any[]): void {
+  try { localStorage.setItem(FILE_TREE_PREFIX + collectionId, JSON.stringify(structure)); } catch {}
+}
+
+export function getStoredProjectFileTree(collectionId: string): any[] | null {
+  try {
+    const raw = localStorage.getItem(FILE_TREE_PREFIX + collectionId);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export function clearProjectFileTree(collectionId: string): void {
+  try { localStorage.removeItem(FILE_TREE_PREFIX + collectionId); } catch {}
 }
 
 export function clearProjectInsights(collectionId: string): void {

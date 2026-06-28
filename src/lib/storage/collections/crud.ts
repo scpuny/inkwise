@@ -235,8 +235,9 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
   // Clean up all AI-related cache for this collection
   try { localStorage.removeItem("folder_index:" + collectionId); } catch {}
   try {
-    const { clearProjectInsights } = await import("./projectContext");
+    const { clearProjectInsights, clearProjectFileTree } = await import("./projectContext");
     clearProjectInsights(collectionId);
+    clearProjectFileTree(collectionId);
   } catch {}
   // Clean up plan drafts for every article in the collection
   for (const art of c.articles) {

@@ -3,14 +3,15 @@ import { useState, useEffect, useCallback } from "react";
 import { FolderInput, MessageSquare, Loader2, RotateCw, X } from "lucide-react";
 import { ProjectFileTree } from "./ProjectFileTree";
 import { useAppStore } from "../../store/appStore";
-import { getStoredProjectInsights } from "../../lib/storage/collections/projectContext";
-import { loadCollections, rescanProjectFolder, type Collection } from "../../lib/storage/collections";
+import { getStoredProjectInsights, getStoredProjectFileTree } from "../../lib/storage/collections/projectContext";
+import { loadCollections, type Collection } from "../../lib/storage/collections";
 import { on } from "../../lib/events/eventBus";
 
 export function ProjectExplorer() {
   const colId = useAppStore((s) => s.projectPanelColId);
   const setProjectPanelOpen = useAppStore((s) => s.setProjectPanelOpen);
   const [collection, setCollection] = useState<Collection | null>(null);
+  const [fileTree, setFileTree] = useState<any[] | null>(null);
   const [insights, setInsights] = useState<string | null>(null);
   const [exploring, setExploring] = useState(false);
 
@@ -20,6 +21,8 @@ export function ProjectExplorer() {
       const col = cols.find((c) => c.id === colId) || null;
       setCollection(col);
     });
+    // Read from cache — no Tauri call needed
+    setFileTree(getStoredProjectFileTree(colId));
     setInsights(getStoredProjectInsights(colId));
     const unsub = on("project-exploring" as any, (ev: any) => {
       if (ev.collectionId !== colId) return;
@@ -35,11 +38,12 @@ export function ProjectExplorer() {
   const handleRescan = useCallback(async () => {
     if (!collection?.linkedFolder || !colId) return;
     setExploring(true);
-    await rescanProjectFolder(collection.linkedFolder);
-    // Trigger re-exploration by calling linkCollectionFolder again
+    // Re-link folder to trigger fresh scan + cache
     const { linkCollectionFolder } = await import("../../lib/storage/collections");
-    await linkCollectionFolder(colId, collection.linkedFolder);
-    // Wait a bit then refresh
+    const ctx = await linkCollectionFolder(colId, collection.linkedFolder);
+    if (ctx.structure && ctx.structure.length > 0) {
+      setFileTree(ctx.structure);
+    }
     setTimeout(() => setInsights(getStoredProjectInsights(colId)), 500);
   }, [collection, colId]);
 
@@ -64,10 +68,12 @@ export function ProjectExplorer() {
       <div className="project-explorer__body">
         <div className="project-explorer__tree">
           <div className="project-explorer__section-title"><span>目录结构</span></div>
-          {collection?.linkedFolder ? (
-            <ProjectFileTreeWrapper path={collection.linkedFolder} />
+          {fileTree && fileTree.length > 0 ? (
+            <ProjectFileTree nodes={fileTree} maxDepth={5} onSelect={() => {}} />
           ) : (
-            <div className="project-explorer__empty">未关联文件夹</div>
+            <div className="project-explorer__empty">
+              {exploring ? "正在扫描…" : "暂无目录数据，点击 ⟳ 重新扫描"}
+            </div>
           )}
         </div>
         <div className="project-explorer__chat">
@@ -91,29 +97,6 @@ export function ProjectExplorer() {
       </div>
     </div>
   );
-}
-
-function ProjectFileTreeWrapper({ path }: { path: string }) {
-  const [nodes, setNodes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      const { getProjectContext } = await import("../../lib/storage/collections/projectContext");
-      const ctx = await getProjectContext(path);
-      if (!cancelled) {
-        setNodes(ctx.structure || []);
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [path]);
-
-  if (loading) return <div className="project-explorer__loading"><Loader2 size={14} className="spin" /></div>;
-  if (nodes.length === 0) return <div className="project-explorer__empty">无文件</div>;
-  return <ProjectFileTree nodes={nodes} maxDepth={5} onSelect={() => {}} />;
 }
 
 export default ProjectExplorer;
