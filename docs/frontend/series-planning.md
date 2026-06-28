@@ -53,3 +53,22 @@ interface SeriesArticle {
 - `SeriesPlan` 存储在 `collections` 的 SQLite/JSON 层
 - 系列文章通过 `collectionId` 关联到合集
 - 生成单篇文章时通过事件总线触发 `plan-series-article` 事件
+
+## 与文章规划管线集成（v1.7）
+
+系列规划与文章生成管线通过 `prefilledTitle` / `prefilledDescription` 机制深度集成：
+
+1. **系列规划阶段**：用户审阅并确认系列中每篇文章的标题和简介
+2. **生成单篇文章时**：将预填的 title/description 通过 `PlanInput.prefilledTitle` 和 `PlanInput.prefilledDescription` 传入
+3. **规划管线**：`generateTitle()` 和 `generateDescription()` 检测到预填值时跳过 AI 调用，直接返回已有值
+4. **效果**：系列文章的标题保持一致，不受 AI 生成随机性影响；用户保留对每篇文章标题的完全控制
+
+### 数据流
+
+```
+SeriesPlanner → 用户确认 n 篇文章标题/简介
+  → 点击"开始写作"（某篇文章）
+  → EditorPane 构造 PlanInput 含 prefilledTitle/Description
+  → plan.ts generateTitle() / generateDescription() 跳过 AI 步骤
+  → 后续 outline/writing 阶段正常执行
+```

@@ -66,4 +66,4 @@
 ---
 
 > 主设计文档: [architecture/overview.md](architecture/overview.md)
-> 最后更新: 2026-06-27
+> 最后更新: 2026-06-28

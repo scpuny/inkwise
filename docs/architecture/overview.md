@@ -1,6 +1,6 @@
 # InkWise 墨智 — 设计文档
 
-> 项目版本: 1.4.0 | 技术栈: React 19 + TypeScript + Tauri 2 + Rust
+> 项目版本: 1.7.1 | 技术栈: React 19 + TypeScript + Tauri 2 + Rust
 
 ---
 
@@ -600,4 +600,4 @@ tauri-plugin-window-state
 
 ---
 
-> 本设计文档反映了项目当前状态（v1.2.0），会随项目演进持续更新。
+> 本设计文档反映了项目当前状态（v1.7.1），会随项目演进持续更新。

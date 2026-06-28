@@ -62,13 +62,24 @@ async function chatCompletionStream(
 ```
 用户输入 + WritingSkill 选择
   │
-  ├─ planArticle() → 生成「灵感 → 标题 → 简介 → 大纲 → 标签」
-  ├─ generateOutline() → 生成章节级大纲
-  ├─ writeSection() → 逐章生成正文（带上下文注入）
-  └─ reviseSection() → 根据反馈修改章节
+  ├─ generateTitle() → 生成标题（如有 prefilledTitle 则跳过 AI）
+  ├─ generateDescription() → 生成简介（如有 prefilledDescription 则跳过 AI）
+  ├─ generateOutline() → 生成章节级大纲（支持多种 AI 输出格式解析）
+  ├─ generateTags() → 生成标签
+  └─ generateFullArticleWithTools() → 使用 AgentEngine 逐章生成正文（带文件读取工具调用）
 ```
 
 每个阶段独立读取 WritingSkill 的 systemPrompt 和 temperature 配置。
+
+### 新增特性（v1.7）
+
+- **预填标题/简介**：系列规划场景下，`PlanInput.prefilledTitle` 和 `PlanInput.prefilledDescription` 可跳过 AI 生成步骤，保持系列文章标题一致性
+- **大纲解析增强**：`parseOutline()` 支持 Markdown 标题（`##`）、无序列表（`-`）、中文编号（`1、`）等多种 AI 输出格式
+- **文件读取工具调用**：`generateFullArticleWithTools()` 使用 AgentEngine 驱动，在写作过程中可调用 `read_project_files`、`list_project_files`、`search_project_files` 获取项目代码
+
+### 重试机制增强
+
+写作/审阅阶段重试时，保留已有内容重新执行写作阶段，而非从头规划。重试时自动恢复项目上下文、系列上下文、合集关联文件夹等配置。
 
 ## 4. Rust AI 层（src-tauri/src/ai.rs）
 

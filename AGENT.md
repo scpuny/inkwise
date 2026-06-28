@@ -196,6 +196,26 @@ Inkwise/
 3. 前端 `AIBar.tsx` 的 `skillDisplayLabel()` 函数（如需要中文显示名）
 4. 如需快捷键绑定，更新 `AIBar.tsx` 的快捷键处理逻辑
 
+### 修改写作技能 Prompt
+
+内置写作技能的 prompt 定义在 `src/lib/ai/writingSkill/builtins.ts`，默认 prompt 在 `defaults.ts`：
+
+1. 每个技能包含 title/description/outline/tags/writing 阶段的独立 systemPrompt
+2. 修改后需确保：
+   - 每个阶段 prompt 包含「核心规则」或「开篇要求」章节
+   - writing prompt 包含「结构与节奏」「语言」「格式」等章节
+   - 保持 Markdown 语法规范约束
+3. 新增技能需同时加入 `getBuiltinSkills()` 和 `getAllSkills()`
+
+### 添加事件总线事件
+
+事件定义在 `src/lib/events/events.ts`，通过 `eventBus.ts` 的 `emit/on/off` API 操作：
+
+1. 在 `events.ts` 的类型定义中添加新事件名和 payload 类型
+2. 在触发点调用 `emit(eventName, payload)`
+3. 在订阅点调用 `on(eventName, handler)` 并保存返回的取消函数
+4. 组件卸载时调用取消函数清理
+
 ### 操作 SQLite 数据库（db.rs）
 
 1. 在 `Database` 结构体上新增查询/写入方法

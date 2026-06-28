@@ -24,7 +24,7 @@ InkWise is a desktop writing application designed for Chinese writers, offering 
 ## Features
 
 - **Dual-Mode Editor** — Seamless switching between rich text and Markdown source mode, powered by TipTap 3 (ProseMirror)
-- **AI Writing Assistance** — Continue writing, rewrite, polish, translate, summarize, and creative writing with streaming output and inline suggestions; 8 built-in writing skills (General/Academic/Creative/Viral/Tech/Copywriting/News/Review) with quick-switch dropdown and dimension progress bars
+- **AI Writing Assistance** — Continue writing, rewrite, polish, translate, summarize, and creative writing with streaming output and inline suggestions; 9 built-in writing skills (General/Academic/Blog/Creative/Viral/Tech/Copywriting/News/Marketing/Docs/Review) with quick-switch dropdown, dimension progress bars, and collapsible tool event progress cards
 - **Multiple AI Providers** — Built-in support for OpenAI / Anthropic / DeepSeek, plus custom API-compatible providers
 - **Skill System** — Extensible Markdown-based skill files to customize AI writing behavior
 - **Article Context (ArticleContext)** — Per-article independent style persistence; switching articles automatically restores corresponding styles

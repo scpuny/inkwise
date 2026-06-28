@@ -33,6 +33,7 @@ events/
 | `article-style-changed` | `{ articleId }` | 文章样式变更 |
 | `writing-skill-changed` | `{ skillId }` | 写作技能切换 |
 | `ai-config-changed` | `{ provider, model }` | AI 配置变更通知 |
+| `collections-changed` | 无 | 合集数据变更通知（蓝图阶段变更、文章增删、合集更新时触发，CollectionTree 自动刷新） |
 
 ## 使用示例
 
