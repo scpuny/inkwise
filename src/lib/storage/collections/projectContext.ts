@@ -22,7 +22,7 @@ export async function linkCollectionFolder(collectionId: string, path: string): 
 
 let _exploring = false;
 
-async function exploreProjectForCollection(collectionId: string, path: string): Promise<void> {
+export async function exploreProjectForCollection(collectionId: string, path: string): Promise<void> {
   if (_exploring) return;
   _exploring = true;
   const { emit } = await import("../../events/eventBus");
