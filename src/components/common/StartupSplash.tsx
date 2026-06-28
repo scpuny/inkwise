@@ -320,18 +320,19 @@ const [customTone, setCustomTone] = useState("");
               )}
 
               {/* 工具调用进度（写作阶段） */}
-              {planState === "writing" && toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+              {planState === "writing" && toolEvents && toolEvents.filter(ev => true).length > 0 && (
                 <div ref={toolScrollRef} className="startup-splash__tool-events startup-splash__tool-events--writing startup-splash__tool-events--compact">
                   <div className="startup-splash__tool-events-header">
                     <FolderInput size={10} />
                     项目文件读取
                   </div>
-                  {toolEvents.filter(ev => ev.type !== "thinking_done").map((ev, i) => {
+                  {toolEvents.filter(ev => true).map((ev, i) => {
                     const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
                     return (
                       <div key={i} className={cls}>
                         <span className="startup-splash__tool-event-icon">
-                          {ev.type === "thinking" ? <Loader2 size={11} className="startup-splash__spinner" /> :
+                          {ev.type === "thinking" && !ev.arguments ? <Loader2 size={11} className="startup-splash__spinner" /> :
+                           ev.type === "thinking" ? <Check size={11} /> :
                            ev.type === "tool_start" ? <FileText size={11} /> :
                            ev.type === "error" ? <AlertCircle size={11} /> :
                            <Check size={11} />}
@@ -400,7 +401,7 @@ const [customTone, setCustomTone] = useState("");
                     ))}
                   </div>
                   {/* 工具调用进度 */}
-                  {toolEvents && toolEvents.filter(ev => ev.type !== "thinking_done").length > 0 && (
+                  {toolEvents && toolEvents.filter(ev => true).length > 0 && (
                     <div ref={toolScrollRef} className="startup-splash__tool-events">
                       <div className="startup-splash__tool-events-header">
                         <FolderInput size={11} />
