@@ -149,7 +149,7 @@ export async function generateFullArticleWithTools(
     parts.push("## 项目结构");
     parts.push("以下是你已经知道的当前项目结构和关键文件。**不要重新探索目录**，直接读具体文件取代码示例。");
     parts.push("```");
-    parts.push(input.projectContext.slice(0, 8000));
+    parts.push(String(input.projectContext || "").slice(0, 8000));
     parts.push("```");
   }
 

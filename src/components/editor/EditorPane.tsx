@@ -857,7 +857,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       ? `## 项目结构
 以下是你已经知道的当前项目目录结构和关键文件。不要重新探索目录结构，直接读具体文件取代码示例。
 \`\`\`
-${projectCtx.slice(0, 8000)}
+${String(projectCtx || "").slice(0, 8000)}
 \`\`\`
 
 ${augmentedContent}`
