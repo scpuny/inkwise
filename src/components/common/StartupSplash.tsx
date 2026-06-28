@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle, FolderInput } from "lucide-react";
+import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle, FolderInput, ChevronDown, ChevronRight } from "lucide-react";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
@@ -98,16 +98,20 @@ const [tone, setTone] = useState("");
 const [customTone, setCustomTone] = useState("");
   const [wordCount, setWordCount] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [toolEventsCollapsed, setToolEventsCollapsed] = useState(false);
 
   const responseEndRef = useRef<HTMLDivElement>(null);
   const toolScrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll tool events to bottom when new events arrive
+  // Auto-expand and auto-scroll when new tool events arrive during writing
   useEffect(() => {
+    if (planState === "writing" && toolEvents.length > 0) {
+      setToolEventsCollapsed(false);
+    }
     if (toolScrollRef.current) {
       toolScrollRef.current.scrollTop = toolScrollRef.current.scrollHeight;
     }
-  }, [toolEvents]);
+  }, [toolEvents, planState]);
 
   useEffect(() => { ensureSkills(); }, []);
 
@@ -132,6 +136,59 @@ const [customTone, setCustomTone] = useState("");
 
   const isGenerating = planState === "planning" || planState === "writing";
   const showResponse = planState === "planning" || planState === "review" || planState === "writing" || planState === "article-review";
+  // ─── Process tool events into displayable items ───
+  interface ToolEventItem {
+    type: "pending" | "done" | "error";
+    event: ToolEvent;
+  }
+
+  const toolEventItems = (() => {
+    const items: ToolEventItem[] = [];
+    for (const ev of toolEvents) {
+      if (ev.type === "tool_start") {
+        items.push({ type: "pending", event: ev });
+      } else if (ev.type === "tool_end") {
+        // Find and mark the corresponding start as done
+        let found = false;
+        for (let i = items.length - 1; i >= 0; i--) {
+          if (items[i].type === "pending" && items[i].event.toolCallId === ev.toolCallId) {
+            items[i] = { type: "done", event: ev };
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          items.push({ type: "done", event: ev });
+        }
+      } else if (ev.type === "error") {
+        items.push({ type: "error", event: ev });
+      }
+    }
+    return items;
+  })();
+
+  const hasToolEvents = toolEventItems.length > 0;
+  const pendingCount = toolEventItems.filter(i => i.type === "pending").length;
+  const doneCount = toolEventItems.length - pendingCount;
+
+  function renderToolEventItem(item: ToolEventItem, idx: number) {
+    const ev = item.event;
+    const isPending = item.type === "pending";
+    const isError = item.type === "error";
+    return (
+      <div key={ev.toolCallId + "_" + idx} className={"startup-splash__tool-event-item startup-splash__tool-event-item--" + item.type}>
+        <span className="startup-splash__tool-event-item-icon">
+          {isPending ? <Loader2 size={13} className="startup-splash__spinner" /> :
+           isError ? <AlertCircle size={13} /> :
+           <Check size={13} />}
+        </span>
+        <span className="startup-splash__tool-event-item-label">
+          {ev.summary || (isPending ? "执行中…" : isError ? (ev.summary || "错误") : "完成")}
+        </span>
+      </div>
+    );
+  }
+
   // Guard against undefined partialPlan
   const safePlan = partialPlan || { title: '', description: '', outline: [], tags: [], tone: '', targetAudience: '', targetWordCount: 0 };
   const hasTitle = !!safePlan.title;
@@ -320,31 +377,55 @@ const [customTone, setCustomTone] = useState("");
               )}
 
               {/* 工具调用进度（写作阶段） */}
-              {planState === "writing" && toolEvents && toolEvents.filter(ev => true).length > 0 && (
-                <div ref={toolScrollRef} className="startup-splash__tool-events startup-splash__tool-events--writing startup-splash__tool-events--compact">
-                  <div className="startup-splash__tool-events-header">
-                    <FolderInput size={10} />
-                    项目文件读取
+              {planState === "writing" && hasToolEvents && (
+                <div className={"startup-splash__tool-events-card" + (toolEventsCollapsed ? " startup-splash__tool-events-card--collapsed" : "")}>
+                  <div className="startup-splash__tool-events-card-header"
+                    onClick={() => setToolEventsCollapsed(v => !v)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setToolEventsCollapsed(v => !v); } }}
+                  >
+                    <div className="startup-splash__tool-events-card-title">
+                      <FolderInput size={12} />
+                      项目文件读取
+                      <span className={"startup-splash__tool-events-card-badge" + (pendingCount > 0 ? " startup-splash__tool-events-card-badge--active" : "")}>
+                        {doneCount}/{toolEventItems.length}
+                      </span>
+                    </div>
+                    <span className="startup-splash__tool-events-card-toggle">
+                      {toolEventsCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                    </span>
                   </div>
-                  {toolEvents.filter(ev => true).map((ev, i) => {
-                    const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
-                    return (
-                      <div key={i} className={cls}>
-                        <span className="startup-splash__tool-event-icon">
-                          {ev.type === "thinking" && !ev.arguments ? <Loader2 size={11} className="startup-splash__spinner" /> :
-                           ev.type === "thinking" ? <Check size={11} /> :
-                           ev.type === "tool_start" ? <FileText size={11} /> :
-                           ev.type === "error" ? <AlertCircle size={11} /> :
-                           <Check size={11} />}
-                        </span>
-                        <div className="startup-splash__tool-event-title">
-                          {ev.summary || (ev.type === "thinking" ? "AI 分析中…" :
-                            ev.type === "tool_start" ? "读取中…" :
-                            ev.type === "tool_end" ? "完成" : "")}
-                        </div>
+                  <div className={"startup-splash__tool-events-card-body" + (toolEventsCollapsed ? "" : "")}>
+                    {!toolEventsCollapsed && (
+                      <div ref={toolScrollRef}>
+                        {toolEventItems.length === 0 ? (
+                          <div className="startup-splash__tool-events-empty">等待工具调用…</div>
+                        ) : (
+                          toolEventItems.map((item, i) => renderToolEventItem(item, i))
+                        )}
+                        {pendingCount > 0 && (
+                          <div className="startup-splash__tool-events-card-status">
+                            <Loader2 size={11} className="startup-splash__spinner" />
+                            {pendingCount} 个任务执行中…
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
+                  {/* Collapsed summary bar */}
+                  {toolEventsCollapsed && pendingCount > 0 && (
+                    <div className="startup-splash__tool-events-card-summary">
+                      <Loader2 size={10} className="startup-splash__spinner" />
+                      {pendingCount} 个任务执行中
+                    </div>
+                  )}
+                  {toolEventsCollapsed && pendingCount === 0 && toolEventItems.length > 0 && (
+                    <div className="startup-splash__tool-events-card-summary startup-splash__tool-events-card-summary--done">
+                      <Check size={10} />
+                      全部完成（{doneCount} 个任务）
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -401,54 +482,55 @@ const [customTone, setCustomTone] = useState("");
                     ))}
                   </div>
                   {/* 工具调用进度 */}
-                  {toolEvents && toolEvents.filter(ev => true).length > 0 && (
-                    <div ref={toolScrollRef} className="startup-splash__tool-events">
-                      <div className="startup-splash__tool-events-header">
-                        <FolderInput size={11} />
-                        AI 工具调用记录
+                  {hasToolEvents && (
+                    <div className={"startup-splash__tool-events-card" + (toolEventsCollapsed ? " startup-splash__tool-events-card--collapsed" : "")}>
+                      <div className="startup-splash__tool-events-card-header"
+                        onClick={() => setToolEventsCollapsed(v => !v)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setToolEventsCollapsed(v => !v); } }}
+                      >
+                        <div className="startup-splash__tool-events-card-title">
+                          <FolderInput size={12} />
+                          项目文件读取
+                          <span className={"startup-splash__tool-events-card-badge" + (pendingCount > 0 ? " startup-splash__tool-events-card-badge--active" : "")}>
+                            {doneCount}/{toolEventItems.length}
+                          </span>
+                        </div>
+                        <span className="startup-splash__tool-events-card-toggle">
+                          {toolEventsCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                        </span>
                       </div>
-                      {toolEvents.map((ev, i) => {
-                        if (ev.type === "thinking_done") return null;
-                        const cls = "startup-splash__tool-event startup-splash__tool-event--" + ev.type;
-                        const isEnd = ev.type === "tool_end";
-                        const isError = ev.type === "error";
-                        const isThinking = ev.type === "thinking";
-                        const isStart = ev.type === "tool_start";
-                        return (
-                          <div key={i} className={cls}>
-                            <span className="startup-splash__tool-event-icon">
-                              {isThinking ? <Loader2 size={14} className="startup-splash__spinner" /> :
-                               isStart ? <FileText size={14} /> :
-                               isError ? <AlertCircle size={14} /> :
-                               <Check size={14} />}
-                            </span>
-                            <div className="startup-splash__tool-event-body">
-                              <div className="startup-splash__tool-event-title">
-                                <span>
-                                  {isThinking ? (ev.summary || "AI 分析中…") :
-                                   isStart ? (ev.summary || "调用中…") :
-                                   isEnd ? (ev.summary || "完成") :
-                                   isError ? (ev.summary || "错误") :
-                                   (ev.summary || "")}
-                                </span>
-                                {ev.round && (
-                                  <span className="startup-splash__tool-event-round">第{ev.round}轮</span>
-                                )}
+                      <div className={"startup-splash__tool-events-card-body" + (toolEventsCollapsed ? "" : "")}>
+                        {!toolEventsCollapsed && (
+                          <div ref={toolScrollRef}>
+                            {toolEventItems.length === 0 ? (
+                              <div className="startup-splash__tool-events-empty">等待工具调用…</div>
+                            ) : (
+                              toolEventItems.map((item, i) => renderToolEventItem(item, i))
+                            )}
+                            {pendingCount > 0 && (
+                              <div className="startup-splash__tool-events-card-status">
+                                <Loader2 size={11} className="startup-splash__spinner" />
+                                {pendingCount} 个任务执行中…
                               </div>
-                              {ev.result && isEnd && (
-                                <div className="startup-splash__tool-event-detail">
-                                  {ev.result.slice(0, 200)}
-                                </div>
-                              )}
-                              {isError && ev.result && (
-                                <div className="startup-splash__tool-event-detail startup-splash__tool-event-detail--error">
-                                  {ev.result.slice(0, 200)}
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
+                      {/* Collapsed summary bar */}
+                      {toolEventsCollapsed && pendingCount > 0 && (
+                        <div className="startup-splash__tool-events-card-summary">
+                          <Loader2 size={10} className="startup-splash__spinner" />
+                          {pendingCount} 个任务执行中
+                        </div>
+                      )}
+                      {toolEventsCollapsed && pendingCount === 0 && toolEventItems.length > 0 && (
+                        <div className="startup-splash__tool-events-card-summary startup-splash__tool-events-card-summary--done">
+                          <Check size={10} />
+                          全部完成（{doneCount} 个任务）
+                        </div>
+                      )}
                     </div>
                   )}
                   {planError && (

@@ -491,6 +491,81 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
   const handlePlanRetry = useCallback(() => {
     if (!lastPlanInput) return;
     setPlanError(null);
+
+    // If error during writing/article-review, retry only the writing phase
+    if (planState === "writing" || planState === "article-review") {
+      setToolEvents([]);
+      setStreamingContent("");
+      setPlanState("writing");
+
+      const pending = pendingArticleRef.current;
+      if (!pending) {
+        setPlanError("文章信息丢失，请重新开始");
+        setPlanState("article-review");
+        return;
+      }
+
+      (async () => {
+        const genInput: ArticleGenInput = {
+          title: partialPlan.title || "",
+          description: partialPlan.description || "",
+          outline: partialPlan.outline,
+          tone: lastPlanInput?.tone || partialPlan.tone || undefined,
+          targetAudience: lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined,
+          targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
+          skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
+          projectContext: folderContextRef.current || undefined,
+          projectName: folderProjectNameRef.current || undefined,
+          seriesContext: seriesCtxRef.current || undefined,
+          linkedFolder: (await (async () => {
+            if (activeCollectionId) {
+              try {
+                const col = (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId);
+                return col?.linkedFolder || undefined;
+              } catch { return undefined; }
+            }
+            return undefined;
+          })()) || undefined,
+        };
+
+        let accumulatedContent = writtenContentRef.current || "";
+        try {
+          const articleContent = await generateFullArticleWithTools(genInput, (token: string) => {
+            accumulatedContent += token;
+            writtenContentRef.current = accumulatedContent;
+            contentRef.current = accumulatedContent;
+            setEditorContent(accumulatedContent);
+            setStreamingContent(accumulatedContent);
+          }, (event: any) => {
+            setToolEvents(prev => [...prev, event]);
+          });
+
+          // Save completed article
+          if (articleContent && articleContent.length > 10) {
+            const { saveArticleContent } = await import("../../lib/storage/articles");
+            await saveArticleContent(pending.articleId, articleContent);
+            writtenContentRef.current = articleContent;
+            contentRef.current = articleContent;
+            setEditorContent(articleContent);
+          }
+          setPlanState("article-review");
+        } catch (e: any) {
+          console.error("Writing retry failed:", e);
+          // Save partial content
+          if (accumulatedContent.length > 10) {
+            try {
+              const { saveArticleContent } = await import("../../lib/storage/articles");
+              await saveArticleContent(pending.articleId, accumulatedContent);
+            } catch {}
+          }
+          setPlanError(typeof e === "string" ? e : e?.message || "写作重试失败");
+          setPlanState("article-review");
+        }
+      })();
+      return;
+    }
+
+    // Otherwise retry from planning (existing behavior)
     if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
     setPlanState("planning");
     (async () => {
@@ -517,11 +592,11 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         }
         setPlanState("review");
       } catch (e: any) {
-        setPlanError(e?.message || "生成失败");
+        setPlanError(typeof e === "string" ? e : e?.message || "生成失败");
         setPlanState("review");
       }
     })();
-  }, [lastPlanInput]);
+  }, [lastPlanInput, planState, partialPlan, activeCollectionId]);
 
   const handlePlanConfirm = useCallback(async () => {
     try {
@@ -685,6 +760,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         const writingOutline = prev.outline.map(s => ({ ...s, status: "writing" as const }));
         const writingBp = { ...prev, outline: writingOutline };
         saveBlueprint(result.articleId, writingBp);
+        emit("collections-changed");
         return writingBp;
       });
 
@@ -714,6 +790,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           const completeOutline = prev.outline.map(s => ({ ...s, status: "complete" as const }));
           const completeBp = { ...prev, outline: completeOutline };
           saveBlueprint(result.articleId, completeBp);
+          emit("collections-changed");
           return completeBp;
         });
       } catch (e: any) {
@@ -736,6 +813,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           bp.phase = "reviewing";
           bp.updatedAt = Date.now();
           await saveBlueprint(result.articleId, bp);
+          emit("collections-changed");
           onPhaseChange?.("reviewing");
         }
       })();
@@ -751,7 +829,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       }
     } catch (e: any) {
       console.error("Plan execution failed:", e);
-      setPlanError(e?.message || "写作过程出错");
+      setPlanError(typeof e === "string" ? e : e?.message || "写作过程出错");
       setPlanState("article-review");
     }
   }, [partialPlan, lastPlanInput, activeCollectionId, onPlanComplete, folderContextRef, folderProjectNameRef]);
@@ -890,7 +968,6 @@ ${seriesCtx}`;
     const abortController = new AbortController();
     abortPlanRef.current = abortController;
     
-    setLastPlanInput(input);
     // Load linked folder path for tool-based file reading
     const _linkedFolder = activeCollectionId
       ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId)?.linkedFolder || undefined
@@ -902,6 +979,7 @@ ${seriesCtx}`;
       collectionId: activeCollectionId || undefined,
       linkedFolder: _linkedFolder,
     };
+    setLastPlanInput(enrichedInput);
     setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined });
     setPlanError(null);
     setToolEvents([]);
@@ -933,7 +1011,7 @@ ${seriesCtx}`;
       }
     } catch (e: any) {
       if (!abortController.signal.aborted) {
-        setPlanError(e?.message || "生成失败");
+        setPlanError(typeof e === "string" ? e : e?.message || "生成失败");
         setPlanState("review");
       }
     }
@@ -976,6 +1054,8 @@ ${seriesCtx}`;
         targetAudience: targetAudience || undefined,
         targetWordCount: targetWordCount || undefined,
         skillId: skillId || undefined,
+        prefilledTitle: title || undefined,
+        prefilledDescription: description || undefined,
       });
     });
   }, [handleStartPlan]);

@@ -34,6 +34,10 @@ export interface PlanInput {
   collectionId?: string;
   /** linked folder path for tool-based file reading */
   linkedFolder?: string;
+  /** Pre-filled title (from series plan) — skips AI title generation */
+  prefilledTitle?: string;
+  /** Pre-filled description (from series plan) — skips AI description generation */
+  prefilledDescription?: string;
 }
 
 export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
@@ -117,7 +121,7 @@ function buildSystemPrompt(phase: string, skillId?: string, tone?: string): stri
 
 // ─── Tool-based article generation (via AgentEngine) ───
 
-const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 每个段落至少 3-5 句\n- 使用流畅自然的中文";
+const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **前 2 段内亮出核心卖点**，不要用背景铺垫暖场\n- 第一段直接用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），开头段落直接接在标题后面，**不要用\"引言\"之类的二级标题**\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
 
 /**
  * 使用 AgentEngine（tool calling）生成完整文章。
@@ -203,8 +207,8 @@ export async function generateFullArticleWithTools(
       toolName: "generateFullArticleWithTools",
       toolCallId: "fallback",
       arguments: "",
-      result: err.message || "未知错误",
-      summary: "工具调用模式失败：" + (err.message || "未知错误") + "，回退到传统模式",
+      result: typeof err === "string" ? err : err?.message || "未知错误",
+      summary: "工具调用模式失败：" + (typeof err === "string" ? err : err?.message || "未知错误") + "，回退到传统模式",
     });
     // Fallback to legacy
     return generateFullArticleStream(input, onToken);
@@ -243,7 +247,7 @@ export async function generateFullArticleStream(
       lines.push("关联项目：" + input.projectName);
     }
     lines.push("");
-    lines.push("项目文件内容：\n```\n" + input.projectContext.slice(0, 30000) + "\n```");
+    lines.push("项目文件内容：\n```\n" + String(input.projectContext || "").slice(0, 30000) + "\n```");
   }
 
   lines.push("");
@@ -318,12 +322,12 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
     ? { ...input, projectContext: projectInsights }
     : input;
 
-  // Generate title
-  const title = await generateTitle(enriched);
+  // Generate title (skip if pre-filled from series plan)
+  const title = input.prefilledTitle || await generateTitle(enriched);
   yield { step: "title", data: title };
 
-  // Generate description
-  const description = await generateDescription(enriched, title);
+  // Generate description (skip if pre-filled from series plan)
+  const description = input.prefilledDescription || await generateDescription(enriched, title);
   yield { step: "description", data: description };
 
   // Generate outline
@@ -363,6 +367,8 @@ export async function generateTitle(input: PlanInput): Promise<string> {
 
   const ctxBlock = input.projectContext ? buildProjectContextBlockForPlan(input.projectContext, input.projectName) : "";
   const userPrompt = [
+    "请根据以下信息生成标题：",
+    "",
     "灵感：" + input.inspiration,
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
@@ -384,6 +390,8 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 
   const ctxBlock = input.projectContext ? buildProjectContextBlockForPlan(input.projectContext, input.projectName) : "";
   const userPrompt = [
+    "请根据以下信息生成文章简介（一句话概括）：",
+    "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
     "标题：" + title,
@@ -398,6 +406,8 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
   const sysPrompt = buildSystemPrompt("outline", input.skillId, input.tone);
   const userPrompt = [
+    "请根据以下信息生成文章大纲：",
+    "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
     "标题：" + title,
@@ -574,15 +584,23 @@ function parseOutline(text: string): OutlineSection[] {
     const trimmed = line.trim();
     if (!trimmed || /^\d+\.\d+/.test(trimmed)) continue;
 
-    const match = trimmed.match(/^(\d+)\.\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
+    // Try multiple patterns:
+    // 1. "N. title - desc" (standard numbered)
+    // 2. "## N. title" or "## title" (markdown heading)
+    // 3. "- title - desc" (bullet)
+    // 4. "N、title" (Chinese numbered)
+    let match = trimmed.match(/^(\d+)\.\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
+    if (!match) match = trimmed.match(/^##\s+(?:\d+\.)?\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
+    if (!match) match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
+    if (!match) match = trimmed.match(/^(\d+)[、\.\s]\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
     if (!match) continue;
 
-    const title = match[2].trim();
+    const title = (match[2] || match[1]).trim();
     const description = match[3]?.trim();
 
     sections.push({
       id: "sec_plan_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      title,
+      title: title.replace(/^\*\*|\*\*$/g, "").trim(),
       level: 1,
       description: description || undefined,
       status: "pending",

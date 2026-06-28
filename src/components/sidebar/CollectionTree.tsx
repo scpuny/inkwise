@@ -198,9 +198,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     const handler = () => {
       const cols = browserLoad<Collection[]>('inkwise-collections', []);
       setCollections(cols);
+      refresh();
     };
     return on("collections-changed", handler);
-  }, []);
+  }, [refresh]);
 
   // Listen for plan-series-saved to force expand and refresh
   useEffect(() => {

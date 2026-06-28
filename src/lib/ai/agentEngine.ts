@@ -261,7 +261,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
         toolCallId: "think_" + toolRound,
         arguments: "",
         round: toolRound,
-        summary: err.message || "AI 调用失败",
+        summary: typeof err === "string" ? err : err?.message || "AI 调用失败",
       });
       onToolEvent?.({
         type: "error",
@@ -269,7 +269,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
         toolCallId: "err_" + toolRound,
         arguments: "",
         round: toolRound,
-        summary: err.message || "未知错误",
+        summary: typeof err === "string" ? err : err?.message || "未知错误",
       });
       throw err;
     }
@@ -357,7 +357,15 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
           if (toolCall.function.name === "read_project_files") {
             const fileMatches = result.match(/### /g);
             const fileCount = fileMatches ? fileMatches.length : 0;
-            resultSummary = "读取完成：" + fileCount + " 个文件，共 " + result.length + " 字符";
+            const errMatches = result.match(/^文件 /gm);
+            const errCount = errMatches ? errMatches.length : 0;
+            if (fileCount > 0) {
+              resultSummary = "读取完成：" + fileCount + " 个文件" + (errCount > 0 ? "，" + errCount + " 个失败" : "") + "，共 " + result.length + " 字符";
+            } else if (errCount > 0) {
+              resultSummary = "读取失败：" + errCount + " 个文件，共 " + result.length + " 字符";
+            } else {
+              resultSummary = "已响应，共 " + result.length + " 字符";
+            }
           } else if (toolCall.function.name === "list_project_files") {
             const lines = result.split("\n").filter(function(l) { return l.trim(); });
             resultSummary = "找到 " + lines.length + " 个条目";
