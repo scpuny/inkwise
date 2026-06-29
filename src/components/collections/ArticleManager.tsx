@@ -11,6 +11,7 @@ import {
   List,
   LayoutGrid,
   Image,
+  FileSearch,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
 import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, browserLoad, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
@@ -21,6 +22,8 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { saveArticleContent } from "../../lib/storage/articles";
 import { on } from "../../lib/events/eventBus";
+import { searchArticleContent } from "../../lib/storage/collections/search";
+import type { SearchResult } from "../../lib/storage/collections/types";
 
 type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
@@ -31,7 +34,7 @@ interface ArticleEntry {
   title: string;
   collectionId: string;
   collectionTitle: string;
-  wordCount: number;
+  wordCount: number | null;
   phase: string;
   status: string;
   updatedAt: number;
@@ -81,6 +84,9 @@ export function ArticleManager({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [versionHistoryArticle, setVersionHistoryArticle] = useState<{ id: string; title: string } | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
+  const [useFts5, setUseFts5] = useState(false);
+  const [ftsResults, setFtsResults] = useState<SearchResult[] | null>(null);
+  const [ftsSearching, setFtsSearching] = useState(false);
 
   // Collection editing
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
@@ -110,13 +116,12 @@ export function ArticleManager({
       const entries: ArticleEntry[] = [];
       for (const col of cols) {
         for (const art of col.articles) {
-          const content = await loadArticleContent(art.id);
           entries.push({
             id: art.id,
             title: art.title,
             collectionId: col.id,
             collectionTitle: col.title,
-            wordCount: getWordCount(content),
+            wordCount: null,
             phase: "writing",
             status: "draft",
             updatedAt: art.updatedAt,
@@ -132,17 +137,12 @@ export function ArticleManager({
         for (const plan of plans) {
           for (const art of plan.articles) {
             const articleId = art.articleId || `series_${plan.id}_${art.id}`;
-            let wordCount = 0;
-            if (art.articleId) {
-              const artContent = await loadArticleContent(art.articleId);
-              if (artContent) wordCount = getWordCount(artContent);
-            }
             entries.push({
               id: articleId,
               title: `[${plan.title}] ${art.title}`,
               collectionId: colId,
               collectionTitle: col.title,
-              wordCount,
+              wordCount: null,
               phase: art.status === "planned" ? "planning" : art.status === "complete" ? "complete" : "writing",
               status: art.status === "planned" ? "draft" : art.status === "reviewing" ? "draft" : art.status === "writing" ? "draft" : "published",
               updatedAt: 0,
@@ -152,10 +152,49 @@ export function ArticleManager({
         }
       }
       setArticles(entries);
+      // ponytail: deferred word count — N+1 reads moved off critical path
+      loadWordCounts(entries);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadWordCounts = async (entries: ArticleEntry[]) => {
+    const counts = await Promise.all(entries.map(async (entry) => {
+      const content = await loadArticleContent(entry.id);
+      return { id: entry.id, wordCount: content ? getWordCount(content) : 0 };
+    }));
+    setArticles(prev => prev.map(a => {
+      const c = counts.find(x => x.id === a.id);
+      return c ? { ...a, wordCount: c.wordCount } : a;
+    }));
+  };
+
+  // FTS5 full-text search — debounced
+  useEffect(() => {
+    if (!open || !useFts5 || !searchQuery.trim()) {
+      setFtsResults(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setFtsSearching(true);
+      try {
+        if (isTauriEnv()) {
+          const raw = await tryInvoke<SearchResult[]>(TauriCommands.SearchArticleDb, { query: searchQuery, limit: null });
+          setFtsResults(raw);
+        } else {
+          const results = await searchArticleContent(collections, searchQuery);
+          setFtsResults(results);
+        }
+      } catch {
+        const results = await searchArticleContent(collections, searchQuery);
+        setFtsResults(results);
+      } finally {
+        setFtsSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [open, useFts5, searchQuery, collections]);
 
   useEffect(() => { if (open) loadData(); }, [open, loadData]);
   // 外部合集变更时自动刷新（侧边树改名等）
@@ -186,7 +225,7 @@ export function ArticleManager({
     .sort((a, b) => {
       let cmp = 0;
       if (sortField === "title") cmp = a.title.localeCompare(b.title);
-      else if (sortField === "wordCount") cmp = a.wordCount - b.wordCount;
+      else if (sortField === "wordCount") cmp = (a.wordCount ?? 0) - (b.wordCount ?? 0);
       else if (sortField === "updatedAt") cmp = a.updatedAt - b.updatedAt;
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -399,6 +438,13 @@ export function ArticleManager({
                   <X size={12} />
                 </button>
               )}
+              <button
+                className={`article-manager__fts-toggle ${useFts5 ? "is-active" : ""}`}
+                onClick={() => setUseFts5(v => !v)}
+                title={useFts5 ? "关闭全文搜索" : "全文搜索"}
+              >
+                <FileSearch size={13} />
+              </button>
               <div className="article-manager__view-toggle">
                 <button
                   className={`article-manager__view-btn ${viewMode === "table" ? "is-active" : ""}`}
@@ -445,7 +491,35 @@ export function ArticleManager({
                 <div className="article-manager__loading">加载中…</div>
               ) : filtered.length === 0 ? (
                 <div className="article-manager__empty">
-                  {searchQuery ? "没有匹配的文章" : "暂无文章"}
+                  {searchQuery && !useFts5 ? "没有匹配的文章" : searchQuery && useFts5 ? "全文搜索无结果" : "暂无文章"}
+                </div>
+              ) : useFts5 && ftsResults && searchQuery.trim() ? (
+                <div className="article-manager__fts-results">
+                  <div className="article-manager__fts-header">
+                    <FileSearch size={13} />
+                    <span>全文搜索结果 {ftsSearching ? "(搜索中…)" : `(${ftsResults.length} 条)`}</span>
+                  </div>
+                  {ftsResults.length === 0 ? (
+                    <div className="article-manager__empty">无匹配内容</div>
+                  ) : (
+                    ftsResults.map((r) => (
+                      <div
+                        key={r.articleId}
+                        className="article-manager__fts-item"
+                        onClick={() => onOpenArticle?.(r.articleId, r.collectionId)}
+                      >
+                        <div className="article-manager__fts-item-title">{r.title}</div>
+                        <div className="article-manager__fts-item-meta">
+                          {r.collectionTitle} · 匹配类型: {r.matchType === "title" ? "标题" : "内容"}
+                        </div>
+                        {r.snippet && (
+                          <div className="article-manager__fts-item-snippet"
+                            dangerouslySetInnerHTML={{ __html: r.snippet }}
+                          />
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               ) : viewMode === "table" ? (
                 <table className="article-manager__table">
@@ -489,7 +563,7 @@ export function ArticleManager({
                           </button>
                         </td>
                         <td className="article-manager__cell-title">{article.title || "无标题"}</td>
-                        <td className="article-manager__cell-num">{article.wordCount.toLocaleString()}</td>
+                        <td className="article-manager__cell-num">{article.wordCount !== null ? article.wordCount.toLocaleString() : "…"}</td>
                         <td><span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span></td>
                         <td>{getStatusLabel(article.status)}</td>
                         <td className="article-manager__cell-date">{formatDate(article.updatedAt)}</td>
@@ -523,7 +597,7 @@ export function ArticleManager({
                         <div className="article-manager__list-card-meta">
                           <span>{article.collectionTitle}</span>
                           <span>·</span>
-                          <span>{article.wordCount.toLocaleString()} 字</span>
+                          <span>{article.wordCount !== null ? article.wordCount.toLocaleString() : "…"} 字</span>
                           <span>·</span>
                           <span className={`article-manager__phase article-manager__phase--${article.phase}`}>{getPhaseLabel(article.phase)}</span>
                           <span>·</span>

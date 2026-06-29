@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, FileText, FolderOpen, Trash2, Edit3, X, Check, SquarePen, Download, Clipboard, RotateCcw } from "lucide-react";
-import { loadCollections, saveCollections, renameArticle, trashArticle, type Collection, type Article, genId } from "../../lib/storage/collections";
+import { Plus, FileText, FolderOpen, Trash2, Edit3, X, Check, SquarePen, Download, Clipboard } from "lucide-react";
+import { loadCollections, renameArticle, trashArticle, type Collection, type Article } from "../../lib/storage/collections";
+import { useCollectionCrud } from "./useCollectionCrud";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { exportMarkdown, copyAsMarkdown, copyAsHtml, exportAsHtml } from "../../lib/editor/importExport";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
-import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 
 export type DocPickerResult = {
@@ -24,7 +24,7 @@ export function DocPicker({
   onResult: (result: DocPickerResult) => void;
   activeCollectionId?: string | null;
 }) {
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const { collections, loadCols, handleAddCollection, handleRenameCollection, handleDeleteCollection } = useCollectionCrud();
   const [selectedColId, setSelectedColId] = useState<string>("");
   const [editingColId, setEditingColId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -37,8 +37,7 @@ export function DocPicker({
   // Load collections on open
   useEffect(() => {
     if (!open) return;
-    loadCollections().then((cols) => {
-      setCollections(cols);
+    loadCols().then((cols) => {
       setSelectedColId(activeCollectionId && cols.some((c) => c.id === activeCollectionId) ? activeCollectionId : cols[0]?.id || "");
     });
   }, [open, activeCollectionId]);
@@ -64,51 +63,30 @@ export function DocPicker({
   }, [selectedCol, open, articleStats]);
 
   // Create new collection
-  const handleAddCollection = async () => {
-    if (!newColName.trim()) return;
-    const col: Collection = {
-      id: genId(),
-      title: newColName.trim(),
-      articles: [],
-      createdAt: Date.now(),
-    };
-    collections.push(col);
-    await saveCollections(collections);
-    setSelectedColId(col.id);
-    setNewColName("");
-    setShowNewColInput(false);
-    if (isTauriEnv()) {
-      try { await tryInvoke(TauriCommands.CreateCollectionDb, { title: col.title, linkedFolder: null }); } catch {}
+  const handleAddCollectionLocal = async () => {
+    const col = await handleAddCollection(newColName);
+    if (col) {
+      setSelectedColId(col.id);
+      setNewColName("");
+      setShowNewColInput(false);
     }
   };
 
   // Rename collection
   const handleRename = async (colId: string) => {
     if (!editTitle.trim()) return;
-    const col = collections.find((c) => c.id === colId);
-    if (col) {
-      col.title = editTitle.trim();
-      await saveCollections(collections);
-      if (isTauriEnv()) {
-        try { await tryInvoke(TauriCommands.RenameCollectionDb, { id: colId, title: editTitle.trim() }); } catch {}
-      }
-    }
+    await handleRenameCollection(colId, editTitle);
     setEditingColId(null);
   };
 
   // Delete collection
   const handleDeleteCol = async () => {
     if (!deleteConfirmId) return;
-    const idx = collections.findIndex((c) => c.id === deleteConfirmId);
-    if (idx >= 0) {
-      collections.splice(idx, 1);
-      await saveCollections(collections);
-      if (isTauriEnv()) {
-        try { await tryInvoke(TauriCommands.DeleteCollectionDb, { id: deleteConfirmId }); } catch {}
-      }
-      if (selectedColId === deleteConfirmId) {
-        setSelectedColId(collections[0]?.id || "");
-      }
+    const prevId = selectedColId;
+    await handleDeleteCollection(deleteConfirmId);
+    const cols = await loadCols();
+    if (prevId === deleteConfirmId) {
+      setSelectedColId(cols[0]?.id || "");
     }
     setDeleteConfirmId(null);
   };
@@ -146,8 +124,7 @@ export function DocPicker({
   };
 
   const refreshCollections = async () => {
-    const cols = await loadCollections();
-    setCollections(cols);
+    const cols = await loadCols();
     if (selectedColId && !cols.some((c) => c.id === selectedColId)) {
       setSelectedColId(cols[0]?.id || "");
     }
@@ -211,12 +188,12 @@ export function DocPicker({
                   value={newColName}
                   onChange={(e) => setNewColName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddCollection();
+                    if (e.key === "Enter") handleAddCollectionLocal();
                     if (e.key === "Escape") setShowNewColInput(false);
                   }}
                   autoFocus
                 />
-                <button onClick={handleAddCollection} disabled={!newColName.trim()}>
+                <button onClick={handleAddCollectionLocal} disabled={!newColName.trim()}>
                   <Check size={12} />
                 </button>
               </div>

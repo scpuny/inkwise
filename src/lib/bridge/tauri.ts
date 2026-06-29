@@ -19,6 +19,7 @@ export enum TauriCommands {
   DeleteArticleDb = "delete_article_db",
   DeleteCollectionDb = "delete_collection_db",
   MoveArticleDb = "move_article_db",
+  SearchArticleDb = "search_articles_db",
   RenameCollectionDb = "rename_collection_db",
   BuildFolderIndex = "build_folder_index",
   LinkCollectionFolder = "link_collection_folder",
