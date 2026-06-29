@@ -71,7 +71,9 @@ echo "   Codex 退出码: $CODEX_EXIT"
 echo ""
 
 # 4. 注册 session 到 Codex Desktop（修复 source 字段使其可见）
-LATEST_SESSION=$(find ~/.codex/sessions -name "*.jsonl" -newer "$PROJECT_ROOT/ticket/INDEX.md" 2>/dev/null | sort | tail -1 2>/dev/null || true)
+# Find the latest session by modification time (newer than this script's start)
+sleep 2  # ensure session file timestamp is newer
+LATEST_SESSION=$(find ~/.codex/sessions -name "*.jsonl" -mmin -5 2>/dev/null | sort | tail -1 2>/dev/null || true)
 if [ -n "$LATEST_SESSION" ] && [ -f "$LATEST_SESSION" ]; then
   SESSION_ID_EXEC=$(head -1 "$LATEST_SESSION" 2>/dev/null | python3 -c "
 import sys, json
