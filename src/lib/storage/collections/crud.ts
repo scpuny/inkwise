@@ -71,17 +71,22 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
 /* ─── 集合 CRUD ─── */
 
 export async function loadCollections(): Promise<Collection[]> {
+  // localStorage is written first in saveCollections, so it's always the source of truth
+  const local = browserLoad<Collection[]>(COLLECTIONS_KEY, []);
+  if (local.length > 0) return local;
+  // Fallback: migrate from Tauri if localStorage is empty
   try {
     const raw = await tryInvoke<Record<string, unknown>[]>(TauriCommands.GetCollections);
     if (raw && raw.length > 0) {
       const result = raw.map(fromTauriCollection);
-      console.log('[loadCollections] from Tauri, count=%d', result.length);
+      browserSave(COLLECTIONS_KEY, result);
+      console.log('[loadCollections] from Tauri (migrate to localStorage), count=%d', result.length);
       return result;
     }
   } catch (e) {
-    console.warn('[loadCollections] GetCollections failed, fallback to localStorage:', e);
+    console.warn('[loadCollections] GetCollections failed:', e);
   }
-  return browserLoad<Collection[]>(COLLECTIONS_KEY, []);
+  return [];
 }
 
 export async function saveCollections(collections: Collection[]): Promise<void> {
