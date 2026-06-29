@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { FolderInput, MessageSquare, Loader2, X } from "lucide-react";
 import { ProjectFileTree } from "./ProjectFileTree";
-import { useAppStore } from "../../store/appStore";
+import { usePanelStore } from "../../store/panelStore";
 import {
   getStoredProjectFileTree, getStoredProjectInsights,
   storeProjectFileTree, exploreProjectForCollection,
@@ -13,8 +13,8 @@ import { on } from "../../lib/events/eventBus";
 import { marked } from "marked";
 
 export function ProjectExplorer() {
-  const colId = useAppStore((s) => s.projectPanelColId);
-  const setProjectPanelOpen = useAppStore((s) => s.setProjectPanelOpen);
+  const colId = usePanelStore((s) => s.projectPanelColId);
+  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<any[] | null>(null);

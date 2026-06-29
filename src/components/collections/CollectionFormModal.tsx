@@ -3,7 +3,7 @@ import { X, FolderOpen, Save, FolderInput, RefreshCw, Unlink, CheckCircle, Alert
 import type { Collection, ProjectContext } from "../../lib/storage/collections";
 import { linkCollectionFolder, rescanProjectFolder } from "../../lib/storage/collections";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
-import { useAppStore } from "../../store/appStore";
+import { usePanelStore } from "../../store/panelStore";
 import { buildProjectLabel } from "../../lib/utils/projectContext";
 
 export function CollectionFormModal({
@@ -65,8 +65,8 @@ export function CollectionFormModal({
         try {
           const ctx = await linkCollectionFolder(collection?.id || "", path);
           setProjectCtx(ctx);
-          useAppStore.getState().setProjectPanelColId(collection?.id || "");
-          useAppStore.getState().setProjectPanelOpen(true);
+          usePanelStore.getState().setProjectPanelColId(collection?.id || "");
+          usePanelStore.getState().setProjectPanelOpen(true);
         } catch (e: any) {
           setScanError(e?.message || "扫描失败");
         } finally {

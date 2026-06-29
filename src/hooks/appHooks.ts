@@ -9,7 +9,8 @@ import { loadCollections, addCollection, addArticle, renameArticle, genId,
 import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
-import { useAppStore } from "../store/appStore";
+import { usePanelStore } from "../store/panelStore";
+import { useArticleStore } from "../store/articleStore";
 import { useEditorStore } from "../store/editorStore";
 import { useThemeStore } from "../store/themeStore";
 import type { Theme, ThemeStyle } from "../lib/theme/theme";
@@ -70,11 +71,11 @@ export function useThemeHandlers() {
  * 文章生命周期处理器
  */
 export function useArticleLifecycle() {
-  const setActiveArticleId = useAppStore((s) => s.setActiveArticleId);
-  const setActiveCollectionId = useAppStore((s) => s.setActiveCollectionId);
-  const setHasActiveArticle = useAppStore((s) => s.setHasActiveArticle);
-  const setShowFinalPage = useAppStore((s) => s.setShowFinalPage);
-  const setSaveState = useAppStore((s) => s.setSaveState);
+  const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
+  const setActiveCollectionId = useArticleStore((s) => s.setActiveCollectionId);
+  const setHasActiveArticle = useArticleStore((s) => s.setHasActiveArticle);
+  const setShowFinalPage = useArticleStore((s) => s.setShowFinalPage);
+  const setSaveState = useArticleStore((s) => s.setSaveState);
   const setEditorStyleTemplate = useEditorStore((s) => s.setStyleTemplate);
   const setEditorLineHeight = useEditorStore((s) => s.setLineHeight);
   const setEditorFontSize = useEditorStore((s) => s.setFontSize);
@@ -115,10 +116,10 @@ export function useArticleLifecycle() {
  * plan-series: 从 CollectionTree 触发，打开系列规划器
  */
 export function usePlanSeriesListener() {
-  const setSeriesPlannerColId = useAppStore((s) => s.setSeriesPlannerColId);
-  const setSeriesPlannerColTitle = useAppStore((s) => s.setSeriesPlannerColTitle);
-  const setSeriesPlannerFolder = useAppStore((s) => s.setSeriesPlannerFolder);
-  const setSeriesPlannerOpen = useAppStore((s) => s.setSeriesPlannerOpen);
+  const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
+  const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
+  const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
+  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
 
   useEffect(() => {
     const handler = (detail?: EventBusMap["plan-series"]) => {
@@ -146,11 +147,11 @@ export function usePlanSeriesListener() {
  * edit-series-plan: 从 SeriesOverview "编辑规划" 触发
  */
 export function useEditSeriesPlanListener() {
-  const setSeriesPlannerColId = useAppStore((s) => s.setSeriesPlannerColId);
-  const setSeriesPlannerColTitle = useAppStore((s) => s.setSeriesPlannerColTitle);
-  const setSeriesPlannerFolder = useAppStore((s) => s.setSeriesPlannerFolder);
-  const setSeriesPlannerExistingPlan = useAppStore((s) => s.setSeriesPlannerExistingPlan);
-  const setSeriesPlannerOpen = useAppStore((s) => s.setSeriesPlannerOpen);
+  const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
+  const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
+  const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
+  const setSeriesPlannerExistingPlan = useArticleStore((s) => s.setSeriesPlannerExistingPlan);
+  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
 
   useEffect(() => {
     const handler = async (detail?: EventBusMap["edit-series-plan"]) => {
@@ -178,9 +179,9 @@ export function useEditSeriesPlanListener() {
  * plan-series-article: 从 SeriesOverview 触发，导航到规划模式
  */
 export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.MutableRefObject<{ collectionId: string; seriesId: string; articleId: string } | null>) {
-  const setActiveArticleId = useAppStore((s) => s.setActiveArticleId);
-  const setActiveCollectionId = useAppStore((s) => s.setActiveCollectionId);
-  const setHasActiveArticle = useAppStore((s) => s.setHasActiveArticle);
+  const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
+  const setActiveCollectionId = useArticleStore((s) => s.setActiveCollectionId);
+  const setHasActiveArticle = useArticleStore((s) => s.setHasActiveArticle);
 
   useEffect(() => {
     const handler = async (detail?: EventBusMap["plan-series-article"]) => {
