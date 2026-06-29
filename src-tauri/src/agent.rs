@@ -43,7 +43,11 @@ pub async fn execute_agent(
         provider_id: config.id.clone(),
         model: config.model.clone(),
         messages,
-        temperature: Some(0.7),
+        temperature: Some(match skill.effort.as_deref() {
+            Some("high") => 0.3,
+            Some("medium") => 0.5,
+            _ => 0.7,// default/low
+        }),
         max_tokens: Some(4096),
         stream: on_token.is_some(),
         tools: None,
