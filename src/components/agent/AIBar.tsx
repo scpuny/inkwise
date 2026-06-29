@@ -18,6 +18,13 @@ import { IntentMenu, type IntentOption } from "./IntentMenu";
 import { getAllBuiltinSkills, loadCustomSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill/types";
 import { invokeOrFallback } from "../../lib/bridge/tauri";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+function toAssetUrl(path: string) {
+  try { return convertFileSrc(path); } catch { return `file://${path}`; }
+}
+
+import { useDrawConfig } from "../../lib/stores/drawConfig";
 
 const COMPOSER_MIN_HEIGHT = 104;
 const COMPOSER_MAX_HEIGHT = 360;
@@ -121,50 +128,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const [fetchingModels, setFetchingModels] = useState(false);
   // ── Draw config state ──
   const [drawPanelOpen, setDrawPanelOpen] = useState(false);
-  const [drawEnabled, setDrawEnabled] = useState(() => {
-    try { return localStorage.getItem("inkwise-draw-enabled") === "true"; } catch { return false; }
-  });
-  const [drawModel, setDrawModel] = useState(() => {
-    const models = getImageModelsSync();
-    return models.length > 0 ? models[0].id : "dall-e-3";
-  });
-  const [drawStyle, setDrawStyle] = useState(() => {
-    try { return localStorage.getItem("inkwise-draw-style") || "vivid"; } catch { return "vivid"; }
-  });
-  const [drawSize, setDrawSize] = useState(() => {
-    try { return localStorage.getItem("inkwise-draw-size") || "1024x1024"; } catch { return "1024x1024"; }
-  });
-  const [drawCount, setDrawCount] = useState(() => {
-    try { return parseInt(localStorage.getItem("inkwise-draw-count") || "1", 10); } catch { return 1; }
-  });
-  const [drawNegativePrompt, setDrawNegativePrompt] = useState(() => {
-    try { return localStorage.getItem("inkwise-draw-negative-prompt") || ""; } catch { return ""; }
-  });
   const [drawAdvancedOpen, setDrawAdvancedOpen] = useState(false);
-
-  // Sync draw config to window.__drawConfig
-  useEffect(() => {
-    (window as any).__drawConfig = {
-      enabled: drawEnabled,
-      model: drawModel,
-      style: drawStyle,
-      size: drawSize,
-      count: drawCount,
-      negativePrompt: drawNegativePrompt,
-    };
-  }, [drawEnabled, drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
-
-  // Persist draw config to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("inkwise-draw-enabled", String(drawEnabled));
-      localStorage.setItem("inkwise-draw-model", drawModel);
-      localStorage.setItem("inkwise-draw-style", drawStyle);
-      localStorage.setItem("inkwise-draw-size", drawSize);
-      localStorage.setItem("inkwise-draw-count", String(drawCount));
-      localStorage.setItem("inkwise-draw-negative-prompt", drawNegativePrompt);
-    } catch {}
-  }, [drawEnabled, drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
+  const { config: drawCfg, setConfig: setDrawCfg } = useDrawConfig();
 
   // Image model items
   const [imageModelItems, setImageModelItems] = useState<ModelEntry[]>(() => getImageModelsSync());
@@ -262,40 +227,55 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
 
 
   const handleGenerateImage = useCallback(async () => {
-    const sel = (window as any).__lastEditorSelection;
-    if (!sel) return;
     const editor = (window as any).editorInstance?.editor;
     if (!editor) return;
+    // Fallback: use last saved selection or current cursor position
+    const sel = (window as any).__lastEditorSelection || { from: editor.state.selection.from, to: editor.state.selection.to };
     const text = editor.state.doc.textBetween(sel.from, sel.to, " ").trim();
-    if (!text) return;
+    if (!text) {
+      console.warn("[AIBar] no text selected for image generation");
+      return;
+    }
+    const insertPos = sel.to;
+    // Auto-fill model from first available if not set
+    const model = drawCfg.model || (imageModelItems.length > 0 ? imageModelItems[0].id : "");
+    if (!model) {
+      console.warn("[AIBar] no draw model configured");
+      return;
+    }
     const providers = getProvidersSync();
     let providerId = "";
     for (const p of providers) {
       if (!p.enabled) continue;
-      if (p.models.some(m => m.id === drawModel)) { providerId = p.id; break; }
+      if (p.models.some(m => m.id === model)) { providerId = p.id; break; }
     }
-    if (!providerId) { console.warn("未找到图片模型对应的 provider"); return; }
+    if (!providerId) {
+      console.warn("[AIBar] no provider found for model:", model);
+      return;
+    }
     const articleId = (window as any).__currentArticleId || "";
     try {
-      const result = await invokeOrFallback<string[]>("generate_image", {
+      type ImageResult = { localPath: string; altText: string };
+      const result = await invokeOrFallback<ImageResult[]>("generate_image", {
         providerId,
-        model: drawModel,
+        model,
         prompt: text,
-        negativePrompt: drawNegativePrompt || null,
-        size: drawSize || null,
+        negativePrompt: drawCfg.negativePrompt || null,
+        size: drawCfg.size || null,
         quality: null,
-        style: drawStyle || null,
-        n: drawCount,
+        style: drawCfg.style || null,
+        n: drawCfg.count,
         articleId,
         projectFolder: null,
       }, () => []);
       if (result.length > 0) {
-        editor.chain().focus().insertContent("\n" + result.join("\n\n") + "\n").run();
+        const imagesHtml = result.map(r => `<img src="${toAssetUrl(r.localPath)}" alt="${r.altText || "插图"}">`).join("<br>");
+        editor.chain().focus().setTextSelection(insertPos).insertContent("\n" + imagesHtml + "\n").run();
       }
     } catch (err) {
-      console.error("generate_image failed:", err);
+      console.error("[AIBar] generate_image failed:", err);
     }
-  }, [drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
+  }, [drawCfg, imageModelItems]);
 
   const selectedLabel = modelItems.find((m) => m.id === selectedModel)?.label ?? selectedModel ?? "加载中…";
   const tokenLabel = maxTokens ? String(maxTokens) : "∞";
@@ -442,13 +422,15 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <Image size={11} />
               <span>插图</span>
             </button>
-            <button
-              className="composer-action-trigger"
-              title="生成插图"
-              onClick={handleGenerateImage}
-            >
-              <Image size={14} />
-            </button>
+            {imageModelItems.length > 0 && (
+              <button
+                className="composer-action-trigger"
+                title="生成插图"
+                onClick={handleGenerateImage}
+              >
+                <Image size={14} />
+              </button>
+            )}
             <button
               ref={moreBtnRef}
               className="composer-action-trigger"
@@ -474,8 +456,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
             <label className="composer-draw__row">
               <input
                 type="checkbox"
-                checked={drawEnabled}
-                onChange={(e) => setDrawEnabled(e.target.checked)}
+                checked={drawCfg.enabled}
+                onChange={(e) => setDrawCfg({ enabled: e.target.checked })}
               />
               <span>自动配图</span>
             </label>
@@ -484,8 +466,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <span className="composer-draw__label">绘图模型</span>
               <select
                 className="composer-draw__select"
-                value={drawModel}
-                onChange={(e) => setDrawModel(e.target.value)}
+                value={drawCfg.model}
+                onChange={(e) => setDrawCfg({ model: e.target.value })}
               >
                 {imageModelItems.map((m) => (
                   <option key={m.id} value={m.id}>{m.id}</option>
@@ -497,8 +479,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <span className="composer-draw__label">风格</span>
               <select
                 className="composer-draw__select"
-                value={drawStyle}
-                onChange={(e) => setDrawStyle(e.target.value)}
+                value={drawCfg.style}
+                onChange={(e) => setDrawCfg({ style: e.target.value })}
               >
                 <option value="vivid">生动 (Vivid)</option>
                 <option value="natural">自然 (Natural)</option>
@@ -509,11 +491,11 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <span className="composer-draw__label">尺寸</span>
               <select
                 className="composer-draw__select"
-                value={drawSize}
-                onChange={(e) => setDrawSize(e.target.value)}
+                value={drawCfg.size}
+                onChange={(e) => setDrawCfg({ size: e.target.value })}
               >
                 {imageModelItems
-                  .find((m) => m.id === drawModel)
+                  .find((m) => m.id === drawCfg.model)
                   ?.imageConfig?.sizes.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   )) ?? (
@@ -530,8 +512,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
               <span className="composer-draw__label">数量</span>
               <select
                 className="composer-draw__select"
-                value={drawCount}
-                onChange={(e) => setDrawCount(Number(e.target.value))}
+                value={drawCfg.count}
+                onChange={(e) => setDrawCfg({ count: Number(e.target.value) })}
               >
                 {[1, 2, 3, 4].map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -550,8 +532,8 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
                 <textarea
                   className="composer-draw__neg-input"
                   placeholder="负面提示词（不希望出现的内容）…"
-                  value={drawNegativePrompt}
-                  onChange={(e) => setDrawNegativePrompt(e.target.value)}
+                  value={drawCfg.negativePrompt}
+                  onChange={(e) => setDrawCfg({ negativePrompt: e.target.value })}
                   rows={2}
                 />
               )}

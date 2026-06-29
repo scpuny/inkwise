@@ -1,3 +1,19 @@
+
+## v1.9.0 (2026-06-29)
+
+### Bug 修复
+- **图片生成不显示** — 开启 Tauri asset 协议（`assetProtocol.enable: true`）+ 配置 `$APPDATA/**` scope，修复 `convertFileSrc` 生成的 asset:// URL 无法加载
+- **API 400 错误** — 非 DALL-E 模型（如 Agnes）不再发送 `response_format` 参数，该参数仅 DALL-E 模型支持
+- **InlineToolbar 点击生成插图无反应** — drawConfig store 初始化自动从 localStorage 恢复模型配置；模型未配置时编辑器底部显示错误提示
+- **选中文本插入图片位置错误** — `selection.from === to`（无光标移动）时回退到文档末尾插入
+- **AIBar 图片生成失败** — `invokeOrFallback<string[]>` 类型错误（实为 `{localPath, altText}[]`）；选中文本优先作为 prompt；模型自动填充
+
+### 改进
+- **绝对路径转 asset URL** — `convertFileSrc` 转换后端返回的本地文件路径为 Tauri asset protocol URL，浏览器可正常加载
+
+### 修复
+- 全线 typeof 错误处理加固
+
 ## v1.8.0 (2026-06-29)
 
 ### 新功能
@@ -39,6 +55,9 @@
 - 写作/审阅阶段重试不再从头规划，保留已有内容恢复写作
 - 文件读取结果摘要增加失败计数
 - 全线 typeof 错误处理加固
+
+
+
 
 ## v1.7.0 (2026-06-28)
 

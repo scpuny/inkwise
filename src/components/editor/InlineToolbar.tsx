@@ -5,6 +5,13 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, Edit3, Image, Languages, Maximize2, MoreHorizontal, Search, FileText, RotateCw, BookOpen, PenTool, Quote, ListChecks, Hash, MessageSquare } from "lucide-react";
 import { useAgent } from "../../lib/ai/agent";
+import { useDrawConfig } from "../../lib/stores/drawConfig";
+import { emit } from "../../lib/events/eventBus";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+function toAssetUrl(path: string) {
+  try { return convertFileSrc(path); } catch { return `file://${path}`; }
+}
 
 // Skill icon/label helpers
 function getSkillIcon(name: string): React.ReactNode {
@@ -38,6 +45,7 @@ const PRIMARY_SKILLS = ["polish", "rewrite", "translate", "expand", "analysis"];
 
 export function InlineToolbar() {
   const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
+  const [imageGenerating, setImageGenerating] = useState(false);
   const [toolActions, setToolActions] = useState<{id:string;intent:string;label:string}[]>([
     {id:"polish",intent:"polish",label:"润色"},
     {id:"rewrite",intent:"rewrite",label:"改写"},
@@ -193,26 +201,47 @@ export function InlineToolbar() {
   }, [selectedText, selectionRange, execute, getDocumentContent, openPanel, setPanelTab]);
 
   const handleGenerateImage = useCallback(async () => {
-    const drawConfig = (window as any).__drawConfig;
-    if (!drawConfig) return;
+    const drawConfig = useDrawConfig.getState().config;
+    console.log("[InlineToolbar] handleGenerateImage - model:", drawConfig.model, "selectedText length:", selectedText?.length);
+    // Fallback: if store is stale, try reading from localStorage directly
+    const model = drawConfig.model || (() => { try { return localStorage.getItem("inkwise-draw-model") || ""; } catch { return ""; } })();
+    if (!model) {
+      console.warn("[InlineToolbar] no draw model configured");
+      emit("image-gen-error", { message: "请先在设置中配置绘图模型" });
+      return;
+    }
+    // Sync localStorage value back to store for future calls
+    if (!drawConfig.model && model) {
+      useDrawConfig.getState().setConfig({ model });
+    }
     const editor = (window as any).editorInstance?.editor;
-    if (!editor) return;
+    if (!editor) { console.warn("[InlineToolbar] no editor instance"); return; }
     const text = selectedText;
-    if (!text) return;
+    if (!text) { console.warn("[InlineToolbar] no selected text"); return; }
+    // Capture cursor position before async call
+    const { from, to } = editor.state.selection;
+    const insertPos = from === to ? editor.state.doc.content.size : to;
     const { invokeOrFallback } = await import("../../lib/bridge/tauri");
     const { getProvidersSync } = await import("../../lib/storage/providerModels");
     const providers = getProvidersSync();
     let providerId = "";
     for (const p of providers) {
       if (!p.enabled) continue;
-      if (p.models.some(m => m.id === drawConfig.model)) { providerId = p.id; break; }
+      if (p.models.some(m => m.id === model)) { providerId = p.id; break; }
     }
-    if (!providerId) { console.warn("未找到图片模型对应的 provider"); return; }
+    if (!providerId) {
+      console.warn("[InlineToolbar] no provider found for model:", model);
+      emit("image-gen-error", { message: "未找到绘图模型的提供方" });
+      return;
+    }
     const articleId = (window as any).__currentArticleId || "";
+    setImageGenerating(true);
+    emit("image-gen-start", { articleId, total: drawConfig.count ?? 1 });
     try {
-      const result = await invokeOrFallback<string[]>("generate_image", {
+      type ImageResult = { localPath: string; altText: string };
+      const result = await invokeOrFallback<ImageResult[]>("generate_image", {
         providerId,
-        model: drawConfig.model,
+        model: model,
         prompt: text,
         negativePrompt: drawConfig.negativePrompt || null,
         size: drawConfig.size || null,
@@ -223,12 +252,18 @@ export function InlineToolbar() {
         projectFolder: null,
       }, () => []);
       if (result.length > 0) {
-        editor.chain().focus().insertContent("\n" + result.join("\n\n") + "\n").run();
+        const imagesHtml = result.map(r => "<img src=\"" + toAssetUrl(r.localPath) + "\" alt=\"" + (r.altText || "插图") + "\">").join("<br>");
+        editor.chain().focus().setTextSelection(insertPos).insertContent(imagesHtml).run();
       }
+      emit("image-gen-complete", { articleId, count: result.length });
+      setVisible(false);
     } catch (err) {
       console.error("generate_image failed:", err);
+      emit("image-gen-complete", { articleId, count: 0 });
+      const modelName = useDrawConfig.getState().config.model;
+      console.error("[InlineToolbar] generate_image failed for model", modelName, err);
     }
-    setVisible(false);
+    setImageGenerating(false);
   }, [selectedText]);
 
   // More panel state
@@ -306,6 +341,16 @@ export function InlineToolbar() {
           <span>{action.label}</span>
         </button>
       ))}
+      <div className="inline-toolbar__divider" />
+      <button
+        className="inline-toolbar__btn"
+        onClick={handleGenerateImage}
+        disabled={isProcessing || imageGenerating}
+        title={imageGenerating ? "生成中…" : "生成插图"}
+      >
+        {imageGenerating ? <span className="inline-toolbar__spinner" /> : <Image size={13} />}
+        <span>{imageGenerating ? "生成中…" : "生成插图"}</span>
+      </button>
       {secondary.length > 0 && (
         <>
           <div className="inline-toolbar__divider" />
@@ -336,16 +381,6 @@ export function InlineToolbar() {
                     <span>{action.label}</span>
                   </button>
                 ))}
-                <div className="inline-toolbar__divider" />
-                <button
-                  className="inline-toolbar__more-item"
-                  onClick={() => { setMoreOpen(false); handleGenerateImage(); }}
-                  disabled={isProcessing}
-                  title="生成插图"
-                >
-                  <Image size={13} />
-                  <span>生成插图</span>
-                </button>
               </div>
             )}
           </div>
