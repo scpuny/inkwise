@@ -33,21 +33,28 @@ export function seedIfEmpty(): void {
 
 // ── Tauri ↔ frontend type bridge ──
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
 function fromTauriCollection(raw: Record<string, unknown>): Collection {
   return {
     id: String(raw.id ?? ""),
     title: String(raw.title ?? ""),
     createdAt: Number(raw.created_at ?? raw.createdAt ?? 0),
-    articles: Array.isArray(raw.articles) ? raw.articles.map((a: any) => ({
-      id: String(a.id ?? ""),
-      title: String(a.title ?? ""),
-      createdAt: Number(a.created_at ?? a.createdAt ?? 0),
-      updatedAt: Number(a.updated_at ?? a.updatedAt ?? 0),
-      description: a.description ? String(a.description) : undefined,
-      tags: a.tags ? (Array.isArray(a.tags) ? a.tags.map(String) : undefined) : undefined,
-      phase: a.phase ? String(a.phase) : undefined,
-      blueprint: a.blueprint ? String(a.blueprint) : undefined,
-    })) : [],
+    articles: Array.isArray(raw.articles) ? raw.articles.map((a: unknown) => {
+      if (!isRecord(a)) return null;
+      return {
+        id: String(a.id ?? ""),
+        title: String(a.title ?? ""),
+        createdAt: Number(a.created_at ?? a.createdAt ?? 0),
+        updatedAt: Number(a.updated_at ?? a.updatedAt ?? 0),
+        description: a.description ? String(a.description) : undefined,
+        tags: a.tags ? (Array.isArray(a.tags) ? a.tags.map(String) : undefined) : undefined,
+        phase: a.phase ? String(a.phase) : undefined,
+        blueprint: a.blueprint ? String(a.blueprint) : undefined,
+      };
+    }).filter(Boolean) as Article[] : [],
     linkedFolder: raw.linkedFolder ? String(raw.linkedFolder) : undefined,
   };
 }
@@ -63,6 +70,10 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
       title: a.title,
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
+      phase: a.phase,
+      description: a.description,
+      tags: a.tags,
+      blueprint: a.blueprint,
     })),
     linkedFolder: c.linkedFolder,
   };
