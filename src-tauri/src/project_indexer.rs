@@ -27,6 +27,7 @@ pub struct FileNode {
     pub is_dir: bool,
     pub language: Option<String>,
     pub size: u64,
+    pub lines: u64,
     pub children: Vec<FileNode>,
 }
 
@@ -121,7 +122,7 @@ impl FileHashCache {
         }
     }
 
-    fn get_hash(&self, rel_path: &str) -> Option<&str> {
+    fn get_hash(&self, rel_path: &str) -> Option<String> {
         match self {
             Self::Codegraph(conn) => {
                 let mut stmt = conn
@@ -129,14 +130,8 @@ impl FileHashCache {
                     .ok()?;
                 stmt.query_row(rusqlite::params![rel_path], |row| row.get::<_, String>(0))
                     .ok()
-                    .map(|s| {
-                        // Leak the string to get a &str with static lifetime
-                        // (we only hold references temporarily in scan loops)
-                        let leaked: &'static str = Box::leak(s.into_boxed_str());
-                        leaked
-                    })
             }
-            Self::Json { hashes, .. } => hashes.get(rel_path).map(|s| s.as_str()),
+            Self::Json { hashes, .. } => hashes.get(rel_path).cloned(),
         }
     }
 
@@ -270,18 +265,23 @@ fn build_file_tree(dir: &Path, max_depth: usize) -> Vec<FileNode> {
                     is_dir: true,
                     language: None,
                     size: 0,
+                    lines: 0,
                     children,
                 });
             } else {
                 let ext = entry_path.extension().and_then(|e| e.to_str()).unwrap_or("");
                 let lang = detect_language(ext);
                 let size = std::fs::metadata(&entry_path).map(|m| m.len()).unwrap_or(0);
+                let lines = std::fs::read_to_string(&entry_path)
+                    .map(|c| c.lines().count() as u64)
+                    .unwrap_or(0);
                 nodes.push(FileNode {
                     name,
                     path: rel_path,
                     is_dir: false,
                     language: lang.map(|l| l.to_string()),
                     size,
+                    lines,
                     children: vec![],
                 });
             }
@@ -319,11 +319,11 @@ fn collect_summary(structure: &[FileNode]) -> ProjectSummary {
                     .entry(node.language.clone().unwrap_or_else(|| "其他".into()))
                     .or_insert((0, 0));
                 entry.0 += 1;
-                entry.1 += 1;
+                entry.1 += node.lines;
                 all_files.push(FileInfo {
                     path: node.path.clone(),
                     language: node.language.clone(),
-                    lines: 0,
+                    lines: node.lines,
                     size: node.size,
                 });
             }
@@ -1233,7 +1233,7 @@ fn scan_source_symbols(
                     Ok(bytes) => compute_file_hash(&bytes),
                     Err(_) => continue,
                 };
-                if cached_hash == Some(current_hash.as_str()) {
+                if cached_hash.as_deref() == Some(current_hash.as_str()) {
                     continue; // 文件未变化，跳过
                 }
                 hash_cache.set_hash(&rel, &current_hash);
@@ -1359,7 +1359,7 @@ fn scan_imports(
                     Ok(bytes) => compute_file_hash(&bytes),
                     Err(_) => continue,
                 };
-                if cached_hash == Some(current_hash.as_str()) {
+                if cached_hash.as_deref() == Some(current_hash.as_str()) {
                     continue;
                 }
                 hash_cache.set_hash(&rel, &current_hash);
