@@ -73,7 +73,7 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
       else {
         const providers = getProvidersSync();
         const enabled = providers.find((p) => p.enabled && p.models.length > 0);
-        setModelName(enabled && enabled.models.length > 0 ? enabled.models[0] : "—");
+        setModelName(enabled && enabled.models.length > 0 ? enabled.models[0]?.id ?? "—" : "—");
       }
       try {
         const savedEffort = localStorage.getItem("inkwise-effort");

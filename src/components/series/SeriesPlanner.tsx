@@ -41,7 +41,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 4096)
   ];
   return await sendChat({
     providerId: provider.id,
-    model: provider.models[0],
+    model: provider.models[0]?.id ?? '',
     messages,
     temperature: 0.7,
     maxTokens,

@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, Edit3, Languages, Maximize2, MoreHorizontal, Search, FileText, RotateCw, BookOpen, PenTool, Quote, ListChecks, Hash, MessageSquare } from "lucide-react";
+import { Sparkles, Edit3, Image, Languages, Maximize2, MoreHorizontal, Search, FileText, RotateCw, BookOpen, PenTool, Quote, ListChecks, Hash, MessageSquare } from "lucide-react";
 import { useAgent } from "../../lib/ai/agent";
 
 // Skill icon/label helpers
@@ -130,9 +130,15 @@ export function InlineToolbar() {
       const containerRect = editorContainer.getBoundingClientRect();
 
       // Position: above the selection, centered
+      const centerX = rect.left - containerRect.left + rect.width / 2;
+      const toolbarWidth = toolbarRef.current?.offsetWidth ?? 400;
+      const clampedLeft = Math.max(
+        toolbarWidth / 2 + 8,
+        Math.min(centerX, containerRect.width - toolbarWidth / 2 - 8)
+      );
       setPosition({
         top: rect.top - containerRect.top - 40,
-        left: rect.left - containerRect.left + rect.width / 2,
+        left: clampedLeft,
       });
 
       // Try to get character offset from editor
@@ -185,6 +191,45 @@ export function InlineToolbar() {
     openPanel();
     setPanelTab("chat");
   }, [selectedText, selectionRange, execute, getDocumentContent, openPanel, setPanelTab]);
+
+  const handleGenerateImage = useCallback(async () => {
+    const drawConfig = (window as any).__drawConfig;
+    if (!drawConfig) return;
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return;
+    const text = selectedText;
+    if (!text) return;
+    const { invokeOrFallback } = await import("../../lib/bridge/tauri");
+    const { getProvidersSync } = await import("../../lib/storage/providerModels");
+    const providers = getProvidersSync();
+    let providerId = "";
+    for (const p of providers) {
+      if (!p.enabled) continue;
+      if (p.models.some(m => m.id === drawConfig.model)) { providerId = p.id; break; }
+    }
+    if (!providerId) { console.warn("未找到图片模型对应的 provider"); return; }
+    const articleId = (window as any).__currentArticleId || "";
+    try {
+      const result = await invokeOrFallback<string[]>("generate_image", {
+        providerId,
+        model: drawConfig.model,
+        prompt: text,
+        negativePrompt: drawConfig.negativePrompt || null,
+        size: drawConfig.size || null,
+        quality: null,
+        style: drawConfig.style || null,
+        n: drawConfig.count,
+        articleId,
+        projectFolder: null,
+      }, () => []);
+      if (result.length > 0) {
+        editor.chain().focus().insertContent("\n" + result.join("\n\n") + "\n").run();
+      }
+    } catch (err) {
+      console.error("generate_image failed:", err);
+    }
+    setVisible(false);
+  }, [selectedText]);
 
   // More panel state
   const [moreOpen, setMoreOpen] = useState(false);
@@ -291,6 +336,16 @@ export function InlineToolbar() {
                     <span>{action.label}</span>
                   </button>
                 ))}
+                <div className="inline-toolbar__divider" />
+                <button
+                  className="inline-toolbar__more-item"
+                  onClick={() => { setMoreOpen(false); handleGenerateImage(); }}
+                  disabled={isProcessing}
+                  title="生成插图"
+                >
+                  <Image size={13} />
+                  <span>生成插图</span>
+                </button>
               </div>
             )}
           </div>

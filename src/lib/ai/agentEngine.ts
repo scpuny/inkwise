@@ -186,7 +186,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
   const provider = providers.find(function(p) { return p.enabled && p.models.length > 0; });
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const model = resolveModel() || provider.models[0];
+  const model: string = resolveModel() ?? provider.models[0]?.id ?? '';
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userMessage },

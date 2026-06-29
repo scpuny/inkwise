@@ -273,7 +273,7 @@ export async function generateFullArticleStream(
     fullContent = await sendChatStream(
       {
         providerId: provider.id,
-        model: resolveModel() || provider.models[0],
+        model: resolveModel() ?? provider.models[0]?.id ?? '',
         messages,
         temperature: 0.7,
         maxTokens: 8192,
@@ -532,7 +532,7 @@ async function writeArticleSectionLegacy(
   const content = await sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() || provider.models[0],
+      model: resolveModel() ?? provider.models[0]?.id ?? '',
       messages,
       temperature: 0.7,
       maxTokens: 4096,
@@ -568,7 +568,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number
   return sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() || provider.models[0],
+      model: resolveModel() ?? provider.models[0]?.id ?? '',
       messages,
       temperature: 0.7,
       maxTokens,

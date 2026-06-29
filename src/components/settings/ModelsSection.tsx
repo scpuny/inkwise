@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { Check, ChevronDown, X } from "lucide-react";
 import type { Provider } from "../../lib/storage/providerModels";
-import { BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels } from "../../lib/storage/providerModels";
+import { BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels, inferCapabilities, type ModelEntry } from "../../lib/storage/providerModels";
 import { InlineConfirmButton } from "../common/InlineConfirmButton";
 import { tryInvoke, isTauriEnv, TauriCommands } from "../../lib/bridge/tauri";
 import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
@@ -26,6 +26,28 @@ type OfficialProviderKind = "deepseek" | "openai" | "anthropic";
 /* ─── Helpers ─── */
 function uniqueStrings(arr: string[]): string[] { return [...new Set(arr.filter(Boolean))]; }
 
+/** Convert ModelEntry[] to string[] for display/editing */
+function modelEntriesToStrings(entries: ModelEntry[]): string[] {
+  return entries.map((m) => m.id);
+}
+/** Convert string[] back to ModelEntry[] with default capabilities */
+function stringsToModelEntries(ids: string[]): ModelEntry[] {
+  return ids.map((raw) => {
+    // Support "model:cap1,cap2" format for explicit capability setting
+    const parts = raw.split(":");
+    const id = parts[0].trim();
+    const explicitCaps = parts[1] ? parts[1].split(",").map((c) => c.trim()).filter(Boolean) : null;
+    const capabilities = explicitCaps && explicitCaps.length > 0 ? explicitCaps : inferCapabilities(id);
+    return {
+      id,
+      capabilities,
+      imageConfig: capabilities.includes("image")
+        ? { sizes: ["1024x1024", "1792x1024", "1024x1792"], supportsQuality: true, supportsStyle: true }
+        : undefined,
+    };
+  });
+}
+
 function modelOptionFromRef(ref: string, providers: Provider[]): ModelPickerOption | null {
   if (!ref) return null;
   const [pid, ...rest] = ref.split("/");
@@ -42,13 +64,13 @@ function providerAccessGroups(providers: Provider[]): ProviderAccessGroup[] {
     description: `${p.kind} · ${p.baseUrl || "无地址"}`,
     builtIn: p.builtin, providers: [p],
     apiKeyEnv: p.id.toUpperCase() + "_API_KEY",
-    keySet: !!p.apiKey, baseUrl: p.baseUrl ?? "", kind: p.kind, models: p.models,
+    keySet: !!p.apiKey, baseUrl: p.baseUrl ?? "", kind: p.kind, models: modelEntriesToStrings(p.models),
   }));
 }
 
 function isLikelyChatModel(model: string): boolean {
   const lower = model.toLowerCase();
-  const exclude = ["text-embedding","speech","tts","stt","whisper","embedding","moderation","rerank","dall","transcription"];
+  const exclude = ["text-embedding","speech","tts","stt","whisper","embedding","moderation","rerank","transcription"];
   return !exclude.some((t) => lower.includes(t));
 }
 
@@ -104,7 +126,7 @@ export function ModelsSection() {
         setGroupFetchResult(provider.id, { kind: "warn", text: `未获取到模型` });
         setFetchingProvider(null); return;
       }
-      const draft = modelDraftForFetch(provider.id, provider.models, fetched);
+      const draft = modelDraftForFetch(provider.id, modelEntriesToStrings(provider.models), fetched);
       setGroupModelDraft(provider.id, draft);
       setGroupFetchResult(provider.id, { kind: "ok", text: `获取到 ${draft.candidates.length} 个模型候选` });
     } catch (e: any) {
@@ -126,17 +148,41 @@ export function ModelsSection() {
   const saveModelDraft = async (provider: Provider) => {
     const draft = modelDrafts[provider.id];
     if (!draft || draft.selected.length === 0) return;
-    handleSave(providers.map((x) => x.id === provider.id ? { ...x, models: draft.selected } : x));
+    handleSave(providers.map((x) => x.id === provider.id ? { ...x, models: stringsToModelEntries(draft.selected) } : x));
     setGroupModelDraft(provider.id, null);
     setGroupFetchResult(provider.id, { kind: "ok", text: `已保存 ${draft.selected.length} 个模型` });
   };
 
-  const allRefs = providers.filter((p) => p.enabled).flatMap((p) => p.models.map((m) => `${p.id}/${m}`));
+  const allRefs = providers.filter((p) => p.enabled).flatMap((p) => p.models.filter((m) => inferCapabilities(m.id).includes("chat")).map((m) => `${p.id}/${m.id}`));
   const pickerOptions: ModelPickerOption[] = allRefs.map((ref) => {
     const pid = ref.split("/")[0];
     return { ref, provider: pid, model: ref.slice(pid.length + 1), keySet: !!providers.find((x) => x.id === pid)?.apiKey };
   });
   // Read saved model from localStorage for display
+  // Image model refs (filtered to image-capable models)
+  const imageModelRefs = providers.filter((p) => p.enabled).flatMap((p) =>
+    p.models.filter((m) => inferCapabilities(m.id).includes("image")).map((m) => `${p.id}/${m.id}`)
+  );
+  const [selectedImageModelRef, setSelectedImageModelRef] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("inkwise-draw-model");
+      if (saved) {
+        const match = imageModelRefs.find(r => r.endsWith("/" + saved) || r === saved);
+        if (match) return match;
+      }
+    } catch {}
+    return imageModelRefs[0] ?? "";
+  });
+  const [drawSize, setDrawSize] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-size") || "1024x1024"; } catch { return "1024x1024"; }
+  });
+  const [drawStyle, setDrawStyle] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-style") || "vivid"; } catch { return "vivid"; }
+  });
+  const [drawCount, setDrawCount] = useState(() => {
+    try { return Number(localStorage.getItem("inkwise-draw-count")) || 3; } catch { return 3; }
+  });
+
   const [selectedModelRef, setSelectedModelRef] = useState<string>(() => {
     try {
       const saved = localStorage.getItem("inkwise-default-model");
@@ -167,6 +213,29 @@ export function ModelsSection() {
             </SettingsField>
             <SettingsField label="最大 Token" hint="每次生成的最大长度">
               <input type="range" min="256" max="8192" step="256" defaultValue={2048} className="range-input" />
+            </SettingsField>
+          </SettingsSection>
+          <SettingsSection title="插图设置">
+            <SettingsField label="绘图模型">
+              <ModelPicker providers={providers} refs={imageModelRefs} value={selectedImageModelRef} onPick={(ref) => { setSelectedImageModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-draw-model", modelName || ref); } catch {} }} />
+            </SettingsField>
+            <SettingsField label="默认尺寸">
+              <select className="settings-select" value={drawSize} onChange={(e) => { setDrawSize(e.target.value); try { localStorage.setItem("inkwise-draw-size", e.target.value); } catch {} }}>
+                <option value="1024x1024">1:1 方形 (1024x1024)</option>
+                <option value="1792x1024">16:9 横图 (1792x1024)</option>
+                <option value="1024x1792">9:16 竖图 (1024x1792)</option>
+              </select>
+            </SettingsField>
+            <SettingsField label="默认风格">
+              <select className="settings-select" value={drawStyle} onChange={(e) => { setDrawStyle(e.target.value); try { localStorage.setItem("inkwise-draw-style", e.target.value); } catch {} }}>
+                <option value="vivid">鲜艳生动 (vivid)</option>
+                <option value="natural">自然柔和 (natural)</option>
+              </select>
+            </SettingsField>
+            <SettingsField label="默认数量">
+              <select className="settings-select" value={String(drawCount)} onChange={(e) => { setDrawCount(Number(e.target.value)); try { localStorage.setItem("inkwise-draw-count", e.target.value); } catch {} }}>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={String(n)}>{n} 张</option>)}
+              </select>
             </SettingsField>
           </SettingsSection>
         </>
@@ -232,7 +301,7 @@ export function ModelsSection() {
                 defaultProvider={providers[0]?.id ?? ""}
                 editing={editing} kinds={["openai","anthropic","deepseek","custom"]}
                 onEdit={setEditing} onCancelEdit={() => setEditing(null)}
-                onSave={(p) => handleSave(providers.map((x) => x.id === p.id ? { ...x, label: p.label, baseUrl: p.baseUrl, apiKey: p.apiKey, models: p.models } : p))}
+                onSave={(p: any) => handleSave(providers.map((x) => x.id === p.id ? { ...x, label: p.label, baseUrl: p.baseUrl, apiKey: p.apiKey, models: stringsToModelEntries(p.models) } : x))}
                 onRefresh={() => { const pp = providers.find((x) => x.id === group.id); if (pp) refreshModels(pp); }}
                 onToggleDraftModel={(model) => {
                   const d = modelDrafts[group.id]; if (!d) return;
@@ -271,12 +340,13 @@ function ModelPicker({ providers, refs, value, onPick, disabled, includeSameDefa
   const emptyOptionVisible = Boolean(emptyOptionLabel) && (!query.trim() || `${emptyOptionLabel} ${emptyOptionHint || ""}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   const q = query.trim().toLowerCase();
+  const refsSet = new Set(refs);
   const filtered = providers.filter((p) => p.enabled && p.models.length > 0).map((p) => ({
     groupID: p.id, label: p.label, keySet: !!p.apiKey,
     options: p.models.filter((m) => {
-      const ref = `${p.id}/${m}`;
-      return !q || ref.toLowerCase().includes(q) || m.toLowerCase().includes(q);
-    }).map((m) => ({ ref: `${p.id}/${m}`, model: m, provider: p.id, keySet: !!p.apiKey })),
+      const ref = `${p.id}/${m.id}`;
+      return refsSet.has(ref) && (!q || ref.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
+    }).map((m) => ({ ref: `${p.id}/${m.id}`, model: m.id, provider: p.id, keySet: !!p.apiKey })),
   })).filter((g) => g.options.length > 0);
 
   useEffect(() => {
@@ -534,11 +604,11 @@ function CustomProviderEditor({ onSave, onCancel }: { onSave: (p: Provider) => v
         )}
         <label className="set-label">手动输入模型</label>
         <textarea className="settings-textarea" rows={3} value={models} onChange={(e) => setModels(e.target.value)} placeholder="每行一个模型名称，或逗号分隔" />
-        <div className="mem-hint">模型名称列表。可从上方获取结果中自动填入，也可手动输入。</div>
+        <div className="mem-hint">模型名称列表。可从上方获取结果中自动填入，也可手动输入。使用 "模型名:chat,image" 格式可显式指定能力类型。</div>
         {advancedFields}
         <div className="prov-card__actions">
           <button type="button" className="btn btn--small" onClick={onCancel}>取消</button>
-          <button type="button" className="btn btn--primary btn--small" disabled={!name.trim() || !baseUrl.trim() || !models.trim()} onClick={() => onSave({ id: "custom-"+Date.now(), label: name.trim() || "新提供商", kind: "custom", baseUrl: baseUrl.trim() || undefined, apiKey: keyDraft.trim() || undefined, models: models.split("\n").map((s) => s.trim()).filter(Boolean).length > 0 ? models.split("\n").map((s) => s.trim()).filter(Boolean) : models.split(",").map((s) => s.trim()).filter(Boolean), enabled: true, builtin: false })}>确认添加</button>
+          <button type="button" className="btn btn--primary btn--small" disabled={!name.trim() || !baseUrl.trim() || !models.trim()} onClick={() => onSave({ id: "custom-"+Date.now(), label: name.trim() || "新提供商", kind: "custom", baseUrl: baseUrl.trim() || undefined, apiKey: keyDraft.trim() || undefined, models: stringsToModelEntries(models.split("\n").map((s) => s.trim()).filter(Boolean).length > 0 ? models.split("\n").map((s) => s.trim()).filter(Boolean) : models.split(",").map((s) => s.trim()).filter(Boolean)), enabled: true, builtin: false })}>确认添加</button>
         </div>
       </div>
     </>
@@ -633,7 +703,16 @@ function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, de
         <div className="provider-card-block__label">{group.keySet ? "已启用模型" : "模型列表"}</div>
         <div className="provider-model-chips" aria-label={group.keySet ? "已启用模型" : "模型列表"}>
           {visibleModels.length > 0
-            ? visibleModels.map((model) => (<span className="provider-model-chip" key={model}>{model}</span>))
+            ? visibleModels.map((model) => (
+              <span className="provider-model-chip" key={model}>
+                {model}
+                {inferCapabilities(model).map((c) => (
+                  <span className={`provider-model-chip__cap provider-model-chip__cap--${c}`} key={c}>
+                    {c === "chat" ? "文本" : "图片"}
+                  </span>
+                ))}
+              </span>
+            ))
             : <span className="provider-model-chip provider-model-chip--empty">未配置模型</span>}
           {hiddenModelCount > 0 && <span className="provider-model-chip provider-model-chip--more">+{hiddenModelCount}</span>}
         </div>
@@ -652,7 +731,7 @@ function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, de
           {group.providers.map((p) => (
             <div className="provider-profile-row" key={p.id}>
               <span>{p.label}</span>
-              <span>{p.models.join(", ") || "无"}</span>
+              <span>{(p.models || []).map((m) => m.id + " [" + m.capabilities.join("+") + "]").join(", ") || "无"}</span>
               <button className="btn btn--small" disabled={busy} aria-expanded={editing === p.id} onClick={() => editing === p.id ? onCancelEdit() : onEdit(p.id)}>{editing === p.id ? "收起" : "配置"}</button>
             </div>
           ))}
@@ -689,7 +768,7 @@ function ProviderEditor({ provider, onSave, onSaveKey, onClearKey, group, onCanc
   const [val, setVal] = useState("");
   const [name, setName] = useState(provider.label);
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl ?? "");
-  const [models, setModels] = useState(provider.models.join(", "));
+  const [models, setModels] = useState(provider.models.map((m) => m.id).join(", "));
   const [keyDraft, setKeyDraft] = useState("");
   const [apiKeyEnv, setApiKeyEnv] = useState("");
   const [balanceUrl, setBalanceUrl] = useState("");
@@ -860,7 +939,7 @@ function ProviderEditor({ provider, onSave, onSaveKey, onClearKey, group, onCanc
       )}
       <label className="set-label">手动输入模型</label>
       <input className="mem-input" placeholder="模型名称，用逗号分隔" value={models} onChange={(e) => setModels(e.target.value)} />
-      <div className="mem-hint">模型名称列表。可从上方获取结果中自动填入，也可手动输入。</div>
+      <div className="mem-hint">模型名称列表。可从上方获取结果中自动填入，也可手动输入。使用 "模型名:chat,image" 格式可显式指定能力类型。</div>
       {advancedFields}
       <div className="prov-card__actions">
         {onCancel && <button className="btn btn--small" onClick={onCancel}>取消</button>}
@@ -872,7 +951,7 @@ function ProviderEditor({ provider, onSave, onSaveKey, onClearKey, group, onCanc
             label: name.trim() || provider.id, 
             baseUrl: baseUrl.trim() || undefined, 
             apiKey: newApiKey || provider.apiKey,
-            models: models.split(",").map((s) => s.trim()).filter(Boolean) 
+            models: stringsToModelEntries(models.split(",").map((s) => s.trim()).filter(Boolean)) 
           });
         }}>保存</button>
       </div>

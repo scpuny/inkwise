@@ -68,7 +68,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
 
     const sessionId = generateSessionId();
-    const model = resolveModel() || enabled.models[0];
+    const model = resolveModel() ?? enabled.models[0]?.id ?? '';
 
     // Create initial session
     const session: AgentSession = {

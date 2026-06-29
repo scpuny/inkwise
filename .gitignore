@@ -19,6 +19,7 @@ build/
 .vscode/
 *.swp
 *.swo
+.claude
 *~
 *.sublime-project
 *.sublime-workspace
@@ -47,5 +48,9 @@ src-tauri/target/
 tests
 test-results.json
 test-results
+
+# --- claude ---
+ticket
+CLAUDE.md
 
 SECRET.text

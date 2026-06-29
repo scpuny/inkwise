@@ -71,7 +71,7 @@ export async function generateArticleReview(
   const provider = providers.find((p) => p.enabled && p.models.length > 0);
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const model = provider.models[0];
+  const model = provider.models[0]?.id ?? '';
 
   const userPrompt = [
     options?.title ? `## 标题
@@ -190,7 +190,7 @@ export async function applyOptimization(
       return `- ${labels[key] || key}（当前评级：${d.rating}）: ${d.suggestion}`;
     });
 
-  const model = provider.models[0];
+  const model = provider.models[0]?.id ?? '';
 
   const sysPrompt = `你是一位资深写作者，根据编辑的优化建议重写文章。
 

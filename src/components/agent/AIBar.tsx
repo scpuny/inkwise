@@ -2,20 +2,22 @@ import {
   Brain,
   ChevronsUpDown,
   Gauge,
+  Image,
   MoreHorizontal,
   Play,
   SendHorizonal,
   Sparkles,
   Type,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emit, on } from "../../lib/events/eventBus";
-import { getProvidersSync } from "../../lib/storage/providerModels";
+import { getProvidersSync, getImageModelsSync, type ModelEntry } from "../../lib/storage/providerModels";
 import { listSkills, type Skill } from "../../lib/storage/skill";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
 import { IntentMenu, type IntentOption } from "./IntentMenu";
 import { getAllBuiltinSkills, loadCustomSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill/types";
+import { invokeOrFallback } from "../../lib/bridge/tauri";
 
 const COMPOSER_MIN_HEIGHT = 104;
 const COMPOSER_MAX_HEIGHT = 360;
@@ -117,6 +119,63 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     try { localStorage.setItem("inkwise-writing-skill", selectedWritingSkill); } catch {}
   }, [selectedWritingSkill]);
   const [fetchingModels, setFetchingModels] = useState(false);
+  // ── Draw config state ──
+  const [drawPanelOpen, setDrawPanelOpen] = useState(false);
+  const [drawEnabled, setDrawEnabled] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-enabled") === "true"; } catch { return false; }
+  });
+  const [drawModel, setDrawModel] = useState(() => {
+    const models = getImageModelsSync();
+    return models.length > 0 ? models[0].id : "dall-e-3";
+  });
+  const [drawStyle, setDrawStyle] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-style") || "vivid"; } catch { return "vivid"; }
+  });
+  const [drawSize, setDrawSize] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-size") || "1024x1024"; } catch { return "1024x1024"; }
+  });
+  const [drawCount, setDrawCount] = useState(() => {
+    try { return parseInt(localStorage.getItem("inkwise-draw-count") || "1", 10); } catch { return 1; }
+  });
+  const [drawNegativePrompt, setDrawNegativePrompt] = useState(() => {
+    try { return localStorage.getItem("inkwise-draw-negative-prompt") || ""; } catch { return ""; }
+  });
+  const [drawAdvancedOpen, setDrawAdvancedOpen] = useState(false);
+
+  // Sync draw config to window.__drawConfig
+  useEffect(() => {
+    (window as any).__drawConfig = {
+      enabled: drawEnabled,
+      model: drawModel,
+      style: drawStyle,
+      size: drawSize,
+      count: drawCount,
+      negativePrompt: drawNegativePrompt,
+    };
+  }, [drawEnabled, drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
+
+  // Persist draw config to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("inkwise-draw-enabled", String(drawEnabled));
+      localStorage.setItem("inkwise-draw-model", drawModel);
+      localStorage.setItem("inkwise-draw-style", drawStyle);
+      localStorage.setItem("inkwise-draw-size", drawSize);
+      localStorage.setItem("inkwise-draw-count", String(drawCount));
+      localStorage.setItem("inkwise-draw-negative-prompt", drawNegativePrompt);
+    } catch {}
+  }, [drawEnabled, drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
+
+  // Image model items
+  const [imageModelItems, setImageModelItems] = useState<ModelEntry[]>(() => getImageModelsSync());
+  useEffect(() => {
+    const handler = () => {
+      setImageModelItems(getImageModelsSync());
+    };
+    return on("providers-changed", handler);
+  }, []);
+
+
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -200,6 +259,43 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     { id: "export-md", label: "导出 Markdown", icon: <Play size={13} />, onClick: () => {} },
     { id: "export-pdf", label: "导出 PDF", icon: <Play size={13} />, onClick: () => {} },
   ];
+
+
+  const handleGenerateImage = useCallback(async () => {
+    const sel = (window as any).__lastEditorSelection;
+    if (!sel) return;
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return;
+    const text = editor.state.doc.textBetween(sel.from, sel.to, " ").trim();
+    if (!text) return;
+    const providers = getProvidersSync();
+    let providerId = "";
+    for (const p of providers) {
+      if (!p.enabled) continue;
+      if (p.models.some(m => m.id === drawModel)) { providerId = p.id; break; }
+    }
+    if (!providerId) { console.warn("未找到图片模型对应的 provider"); return; }
+    const articleId = (window as any).__currentArticleId || "";
+    try {
+      const result = await invokeOrFallback<string[]>("generate_image", {
+        providerId,
+        model: drawModel,
+        prompt: text,
+        negativePrompt: drawNegativePrompt || null,
+        size: drawSize || null,
+        quality: null,
+        style: drawStyle || null,
+        n: drawCount,
+        articleId,
+        projectFolder: null,
+      }, () => []);
+      if (result.length > 0) {
+        editor.chain().focus().insertContent("\n" + result.join("\n\n") + "\n").run();
+      }
+    } catch (err) {
+      console.error("generate_image failed:", err);
+    }
+  }, [drawModel, drawStyle, drawSize, drawCount, drawNegativePrompt]);
 
   const selectedLabel = modelItems.find((m) => m.id === selectedModel)?.label ?? selectedModel ?? "加载中…";
   const tokenLabel = maxTokens ? String(maxTokens) : "∞";
@@ -336,8 +432,23 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
             </div>
           </div>
 
-          {/* More actions */}
+          {/* Draw / More actions */}
           <div className="composer-meta__actions">
+            <button
+              className="pill-btn"
+              title="插图设置"
+              onClick={() => setDrawPanelOpen(!drawPanelOpen)}
+            >
+              <Image size={11} />
+              <span>插图</span>
+            </button>
+            <button
+              className="composer-action-trigger"
+              title="生成插图"
+              onClick={handleGenerateImage}
+            >
+              <Image size={14} />
+            </button>
             <button
               ref={moreBtnRef}
               className="composer-action-trigger"
@@ -356,6 +467,97 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
             />
           </div>
         </div>
+
+        {/* Draw settings panel */}
+        {drawPanelOpen && (
+          <div className="composer-draw-panel">
+            <label className="composer-draw__row">
+              <input
+                type="checkbox"
+                checked={drawEnabled}
+                onChange={(e) => setDrawEnabled(e.target.checked)}
+              />
+              <span>自动配图</span>
+            </label>
+
+            <div className="composer-draw__row">
+              <span className="composer-draw__label">绘图模型</span>
+              <select
+                className="composer-draw__select"
+                value={drawModel}
+                onChange={(e) => setDrawModel(e.target.value)}
+              >
+                {imageModelItems.map((m) => (
+                  <option key={m.id} value={m.id}>{m.id}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="composer-draw__row">
+              <span className="composer-draw__label">风格</span>
+              <select
+                className="composer-draw__select"
+                value={drawStyle}
+                onChange={(e) => setDrawStyle(e.target.value)}
+              >
+                <option value="vivid">生动 (Vivid)</option>
+                <option value="natural">自然 (Natural)</option>
+              </select>
+            </div>
+
+            <div className="composer-draw__row">
+              <span className="composer-draw__label">尺寸</span>
+              <select
+                className="composer-draw__select"
+                value={drawSize}
+                onChange={(e) => setDrawSize(e.target.value)}
+              >
+                {imageModelItems
+                  .find((m) => m.id === drawModel)
+                  ?.imageConfig?.sizes.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  )) ?? (
+                  <>
+                    <option value="1024x1024">1024x1024</option>
+                    <option value="1792x1024">1792x1024</option>
+                    <option value="1024x1792">1024x1792</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div className="composer-draw__row">
+              <span className="composer-draw__label">数量</span>
+              <select
+                className="composer-draw__select"
+                value={drawCount}
+                onChange={(e) => setDrawCount(Number(e.target.value))}
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="composer-draw__advanced">
+              <button
+                className="composer-draw__advanced-toggle"
+                onClick={() => setDrawAdvancedOpen(!drawAdvancedOpen)}
+              >
+                {drawAdvancedOpen ? "收起" : "展开"}高级设置
+              </button>
+              {drawAdvancedOpen && (
+                <textarea
+                  className="composer-draw__neg-input"
+                  placeholder="负面提示词（不希望出现的内容）…"
+                  value={drawNegativePrompt}
+                  onChange={(e) => setDrawNegativePrompt(e.target.value)}
+                  rows={2}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -405,8 +607,8 @@ function buildModelItems(): MenuItem[] {
   for (const p of providers) {
     if (p.models.length > 0) {
       for (const m of p.models) {
-        modelProviderMap.set(m, p.label);
-        allModels.push(m);
+        modelProviderMap.set(m.id, p.label);
+        allModels.push(m.id);
       }
     }
   }

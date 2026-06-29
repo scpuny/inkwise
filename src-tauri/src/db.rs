@@ -42,6 +42,18 @@ pub struct CollectionRow {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ArticleImageRow {
+    pub id: String,
+    pub article_id: String,
+    pub local_path: String,
+    pub alt_text: String,
+    pub revised_prompt: Option<String>,
+    pub section_index: Option<i64>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub article_id: String,
     pub collection_id: String,
@@ -56,6 +68,16 @@ pub struct SearchResult {
 pub struct Database {
     conn: Mutex<Connection>,
 }
+
+/// Lock the database connection mutex, converting a poison error to a rusqlite error.
+fn lock_conn(conn: &Mutex<Connection>) -> Result<std::sync::MutexGuard<'_, Connection>, rusqlite::Error> {
+    conn.lock().map_err(|e| {
+        rusqlite::Error::ToSqlConversionFailure(
+            Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+        )
+    })
+}
+
 
 impl Database {
     pub fn open(app_dir: &PathBuf) -> SqlResult<Self> {
@@ -72,7 +94,7 @@ impl Database {
     }
 
     fn initialize_schema(&self) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute_batch("
             CREATE TABLE IF NOT EXISTS collections (
                 id          TEXT PRIMARY KEY,
@@ -138,6 +160,21 @@ impl Database {
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS article_images (
+                id          TEXT PRIMARY KEY,
+                article_id  TEXT NOT NULL REFERENCES articles(id),
+                local_path  TEXT NOT NULL,
+                alt_text    TEXT NOT NULL DEFAULT '',
+                revised_prompt TEXT,
+                section_index INTEGER,
+                created_at  INTEGER NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_article_images_article
+                ON article_images(article_id);
+            CREATE INDEX IF NOT EXISTS idx_article_images_section
+                ON article_images(section_index);
         ")?;
         Ok(())
     }
@@ -145,7 +182,7 @@ impl Database {
     // ─── Collections ───
 
     pub fn list_collections(&self) -> SqlResult<Vec<CollectionRow>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("
             SELECT c.id, c.title, c.sort_order, c.linked_folder, c.created_at,
                    (SELECT COUNT(*) FROM articles a WHERE a.collection_id = c.id) as article_count
@@ -166,7 +203,7 @@ impl Database {
     }
 
     pub fn create_collection(&self, id: &str, title: &str, sort_order: i64, created_at: i64) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute(
             "INSERT INTO collections (id, title, sort_order, created_at) VALUES (?1, ?2, ?3, ?4)",
             params![id, title, sort_order, created_at],
@@ -175,20 +212,20 @@ impl Database {
     }
 
     pub fn rename_collection(&self, id: &str, title: &str) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute("UPDATE collections SET title = ?1 WHERE id = ?2", params![title, id])?;
         Ok(())
     }
 
     pub fn delete_collection(&self, id: &str) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute("DELETE FROM articles WHERE collection_id = ?1", params![id])?;
         conn.execute("DELETE FROM collections WHERE id = ?1", params![id])?;
         Ok(())
     }
 
     pub fn update_collection_folder(&self, id: &str, folder: Option<&str>) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute("UPDATE collections SET linked_folder = ?1 WHERE id = ?2", params![folder, id])?;
         Ok(())
     }
@@ -196,7 +233,7 @@ impl Database {
     // ─── Articles ───
 
     pub fn list_articles(&self, collection_id: Option<&str>, status: Option<&str>, offset: i64, limit: i64) -> SqlResult<Vec<ArticleRow>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
 
         let mut sql = String::from(
             "SELECT a.id, a.collection_id, a.title, '', a.description, a.tags,
@@ -245,7 +282,7 @@ impl Database {
     }
 
     pub fn get_article(&self, id: &str) -> SqlResult<Option<ArticleRow>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("
             SELECT a.id, a.collection_id, a.title, a.content, a.description, a.tags,
                    a.tone, a.audience, a.target_word_count, a.outline,
@@ -281,7 +318,7 @@ impl Database {
     }
 
     pub fn save_article(&self, article: &ArticleRow) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let word_count = count_words(&article.content);
         conn.execute(
             "INSERT OR REPLACE INTO articles
@@ -299,13 +336,13 @@ impl Database {
     }
 
     pub fn delete_article(&self, id: &str) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute("DELETE FROM articles WHERE id = ?1", params![id])?;
         Ok(())
     }
 
     pub fn move_article(&self, id: &str, new_collection_id: &str) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute(
             "UPDATE articles SET collection_id = ?1, updated_at = ?2 WHERE id = ?3",
             params![new_collection_id, unix_now(), id],
@@ -313,10 +350,68 @@ impl Database {
         Ok(())
     }
 
+    // ─── Article Images ───
+
+    pub fn save_article_images(&self, article_id: &str, images: &[ArticleImageRow]) -> SqlResult<()> {
+        let conn = lock_conn(&self.conn)?;
+        // Delete existing images for this article, then insert new ones
+        conn.execute("DELETE FROM article_images WHERE article_id = ?1", params![article_id])?;
+        let mut stmt = conn.prepare(
+            "INSERT INTO article_images (id, article_id, local_path, alt_text, revised_prompt, section_index, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+        )?;
+        for img in images {
+            stmt.execute(params![
+                img.id, img.article_id, img.local_path, img.alt_text,
+                img.revised_prompt, img.section_index, img.created_at,
+            ])?;
+        }
+        // Enrich article description with image alt_text for FTS5 indexing
+        let img_descs: Vec<String> = images.iter()
+            .filter(|img| !img.alt_text.is_empty())
+            .map(|img| format!("[图片: {}]", img.alt_text))
+            .collect();
+        if !img_descs.is_empty() {
+            let desc_text = img_descs.join(" ");
+            conn.execute(
+                "UPDATE articles SET description = CASE
+                    WHEN description = '' OR description IS NULL THEN ?1
+                    ELSE description || ' ' || ?1
+                 END, updated_at = ?2 WHERE id = ?3",
+                params![desc_text, unix_now(), article_id],
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn get_article_images(&self, article_id: &str) -> SqlResult<Vec<ArticleImageRow>> {
+        let conn = lock_conn(&self.conn)?;
+        let mut stmt = conn.prepare(
+            "SELECT id, article_id, local_path, alt_text, revised_prompt, section_index, created_at FROM article_images WHERE article_id = ?1 ORDER BY section_index ASC, created_at ASC"
+        )?;
+        let rows = stmt.query_map(params![article_id], |row| {
+            Ok(ArticleImageRow {
+                id: row.get(0)?,
+                article_id: row.get(1)?,
+                local_path: row.get(2)?,
+                alt_text: row.get(3)?,
+                revised_prompt: row.get(4)?,
+                section_index: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    pub fn delete_article_images(&self, article_id: &str) -> SqlResult<()> {
+        let conn = lock_conn(&self.conn)?;
+        conn.execute("DELETE FROM article_images WHERE article_id = ?1", params![article_id])?;
+        Ok(())
+    }
+
     // ─── FTS5 搜索 ───
 
     pub fn search(&self, query: &str, limit: i64) -> SqlResult<Vec<SearchResult>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("
             SELECT a.id, a.collection_id, c.title as collection_title, a.title,
                    snippet(articles_fts, 1, '<mark>', '</mark>', '…', 32) as snippet,
@@ -344,14 +439,14 @@ impl Database {
     // ─── Settings KV ───
 
     pub fn get_setting(&self, key: &str) -> SqlResult<Option<String>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
         let mut rows = stmt.query_map(params![key], |row| row.get::<_, String>(0))?;
         Ok(rows.next().map(|r| r.unwrap_or_default()))
     }
 
     pub fn set_setting(&self, key: &str, value: &str) -> SqlResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
             params![key, value],
@@ -362,7 +457,7 @@ impl Database {
     // ─── 获取所有文章的概要（用于文章管理页） ───
 
     pub fn list_all_articles(&self) -> SqlResult<Vec<ArticleRow>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("
             SELECT a.id, a.collection_id, a.title, '', a.description, a.tags,
                    a.tone, a.audience, a.target_word_count, a.outline,

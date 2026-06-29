@@ -4,12 +4,15 @@
  * 工作流程：
  *  1. markdownToHtml() 渲染 HTML
  *  2. collectPublishCss() 收集所有样式
+ *
+ * Mermaid 图表在导出时自动渲染为 SVG，确保图文完整性。
  *  3. resolveCssColors() 解析 CSS 变量
  *  4. inlineCss() / inlineCssFull() 内联样式
  *  5. addStyledClasses() 加语义 class（辅助微信识别元素）
  *  6. renderWechatHtml() 组装最终 HTML
  */
 import { markdownToHtml } from "../markdown/renderer";
+import { renderMermaidInHtml } from "./mermaid";
 import { collectPublishCss } from "../styles/collector";
 import { resolveCssColors } from "../styles/resolver";
 import { inlineCss } from "../styles/inliner";
@@ -142,7 +145,8 @@ ${styledHtml}
  */
 export async function compileToWechatHtml(markdown: string): Promise<ExportResult> {
   // 1. markdown → 纯净 HTML
-  const bodyHtml = markdownToHtml(markdown);
+  let bodyHtml = markdownToHtml(markdown);
+  bodyHtml = await renderMermaidInHtml(bodyHtml);
 
   // 2. 收集发布样式，作用域改为 section.wechat-wrapper，背景色/字体直接内联到 <section> 上
   let cssText = collectPublishCss().replace(/\.article-body\b/g, "section.wechat-wrapper");
@@ -151,8 +155,9 @@ export async function compileToWechatHtml(markdown: string): Promise<ExportResul
   const wechatCss = cssText
     // 隐藏默认列表符号
     + "\nsection.wechat-wrapper ul,section.wechat-wrapper ol{list-style:none!important}"
-    + "\nsection.wechat-wrapper h1,section.wechat-wrapper h2,section.wechat-wrapper h3,section.wechat-wrapper h4,section.wechat-wrapper h5,section.wechat-wrapper h6{line-height:1.3!important;margin:1.2em 0 0.5em!important}";
-  // 微信会丢弃外层 wrapper 上的样式，复制到所有内容块级元素上
+    + "\nsection.wechat-wrapper h1,section.wechat-wrapper h2,section.wechat-wrapper h3,section.wechat-wrapper h4,section.wechat-wrapper h5,section.wechat-wrapper h6{line-height:1.3!important;margin:1.2em 0 0.5em!important}"
+    + "\nsection.wechat-wrapper .mermaid-export{text-align:center;margin:16px 0}"
+    + "\nsection.wechat-wrapper .mermaid-export svg{max-width:100%;height:auto;display:inline-block}";
   // 取最后一条 section.wechat-wrapper 规则（主题覆盖模板后的最终值）
   const styleRules = wechatCss.match(/section\.wechat-wrapper\s*\{[^}]*\}/g) || [];
   // 倒序查找最后一条带 font-size 的规则（accent-color 等也会产生不带 font-size 的 wrapper 块）

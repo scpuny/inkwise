@@ -89,7 +89,8 @@ export function getEnabledModels(): string[] {
   const providers = getProvidersSync();
   return providers
     .filter((p) => p.enabled && p.models.length > 0)
-    .flatMap((p) => p.models);
+    .flatMap((p) => p.models)
+    .map((m) => m.id);
 }
 
 /** 获取默认模型的 provider 信息 */
@@ -105,7 +106,7 @@ export function resolveModel(defaultModel?: string | null): string | null {
     if (models.includes(defaultModel)) return defaultModel;
   }
   const provider = getDefaultProvider();
-  return provider?.models[0] || null;
+  return provider?.models[0]?.id ?? null;
 }
 
 /** 获取所有模型 + provider 映射 */
@@ -115,7 +116,7 @@ export function buildModelList(): { id: string; label: string; provider: string 
   for (const p of providers) {
     if (!p.enabled || p.models.length === 0) continue;
     for (const m of p.models) {
-      result.push({ id: m, label: m, provider: p.label });
+      result.push({ id: m.id, label: m.id, provider: p.label });
     }
   }
   return result;

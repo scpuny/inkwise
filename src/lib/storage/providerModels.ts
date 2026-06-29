@@ -9,13 +9,25 @@ const CACHE_KEY = "providers";
 
 export type ProviderKind = "openai" | "anthropic" | "deepseek" | "custom";
 
+export interface ImageModelConfig {
+  sizes: string[];
+  supportsQuality: boolean;
+  supportsStyle: boolean;
+}
+
+export interface ModelEntry {
+  id: string;
+  capabilities: string[];
+  imageConfig?: ImageModelConfig;
+}
+
 export type Provider = {
   id: string;
   label: string;
   kind: ProviderKind;
   baseUrl?: string;
   apiKey?: string;
-  models: string[];
+  models: ModelEntry[];
   enabled: boolean;
   builtin: boolean;
 };
@@ -47,6 +59,45 @@ function migrateLegacyCache(): void {
 
 migrateLegacyCache();
 
+// ─── 旧 models: string[] → ModelEntry[] 迁移 ───
+
+function migrateLegacyModels(): void {
+  try {
+    const raw = localStorage.getItem("inkwise:providers");
+    if (!raw) return;
+    const providers = JSON.parse(raw) as any[];
+    let changed = false;
+    for (const p of providers) {
+      // Case 1: Old format (string[])
+      if (Array.isArray(p.models) && p.models.length > 0 && typeof p.models[0] === "string") {
+        p.models = (p.models as string[]).map((id: string) => ({
+          id,
+          capabilities: inferCapabilities(id),
+          imageConfig: undefined,
+        }));
+        changed = true;
+      }
+      // Case 2: Already-migrated ModelEntry[] — re-infer capabilities to fix migration artifacts
+      if (Array.isArray(p.models) && p.models.length > 0 && typeof p.models[0] === "object") {
+        for (const m of p.models) {
+          const expected = inferCapabilities(m.id);
+          const storedSorted = [...(m.capabilities || [])].sort();
+          const expectedSorted = [...expected].sort();
+          if (JSON.stringify(storedSorted) !== JSON.stringify(expectedSorted)) {
+            m.capabilities = expected;
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      localStorage.setItem("inkwise:providers", JSON.stringify(providers));
+    }
+  } catch { /* ignore */ }
+}
+
+migrateLegacyModels();
+
 // ─── Storage Engine ───
 
 const engine = new StorageEngine<Provider[]>(CACHE_KEY, {
@@ -71,16 +122,54 @@ function defaultProviders(): Provider[] {
   return [];
 }
 
-function defaultModels(id: string): string[] {
-  const map: Record<string, string[]> = {
-    openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
-    anthropic: ["claude-3.5-sonnet", "claude-3-haiku"],
-    deepseek: ["deepseek-chat", "deepseek-coder"],
+function defaultModels(id: string): ModelEntry[] {
+  const map: Record<string, ModelEntry[]> = {
+    openai: [
+      { id: "gpt-4o", capabilities: ["chat"] },
+      { id: "gpt-4o-mini", capabilities: ["chat"] },
+      { id: "dall-e-3", capabilities: ["image"], imageConfig: { sizes: ["1024x1024", "1792x1024", "1024x1792"], supportsQuality: true, supportsStyle: true } },
+    ],
+    anthropic: [
+      { id: "claude-3.5-sonnet", capabilities: ["chat"] },
+      { id: "claude-3-haiku", capabilities: ["chat"] },
+    ],
+    deepseek: [
+      { id: "deepseek-chat", capabilities: ["chat"] },
+      { id: "deepseek-coder", capabilities: ["chat"] },
+    ],
   };
   return map[id] ?? [];
 }
 
+
+/** 根据模型名称推断能力类型 */
 export { defaultModels };
+
+export function inferCapabilities(modelName: string): string[] {
+  const lower = modelName.toLowerCase();
+  const caps: string[] = [];
+  // Image generation models
+  if (
+    lower.includes("dall-e") ||
+    lower.includes("cogview") ||
+    lower.includes("wanx") ||
+    lower.includes("image") ||
+    lower.includes("candy") ||
+    lower.match(/sd[\d-]*$/)
+  ) {
+    caps.push("image");
+  }
+  // Text/chat models — exclude known non-chat model types
+  const nonChat = [
+    "embedding", "speech", "tts", "stt", "whisper",
+    "moderation", "rerank", "transcription",
+  ];
+  if (!nonChat.some((t) => lower.includes(t))) {
+    caps.push("chat");
+  }
+  return caps.length > 0 ? caps : ["chat"];
+}
+
 
 // ─── Public API ───
 
@@ -112,13 +201,27 @@ export function saveProvidersSync(providers: Provider[]): void {
 export function getEnabledModelsSync(): string[] {
   return getProvidersSync()
     .filter((p) => p.enabled && p.models.length > 0)
-    .flatMap((p) => p.models);
+    .flatMap((p) => p.models)
+    .filter((m) => m.capabilities.includes("chat"))
+    .map((m) => m.id);
 }
 
 /** 获取所有已启用的模型列表（异步权威） */
 export async function getEnabledModels(): Promise<string[]> {
   const providers = await getProviders();
-  return providers.filter((p) => p.enabled && p.models.length > 0).flatMap((p) => p.models);
+  return providers
+    .filter((p) => p.enabled && p.models.length > 0)
+    .flatMap((p) => p.models)
+    .filter((m) => m.capabilities.includes("chat"))
+    .map((m) => m.id);
+}
+
+/** 获取所有启用的图片模型列表（同步） */
+export function getImageModelsSync(): ModelEntry[] {
+  return getProvidersSync()
+    .filter((p) => p.enabled && p.models.length > 0)
+    .flatMap((p) => p.models)
+    .filter((m) => inferCapabilities(m.id).includes("image"));
 }
 
 /** 从提供商 API 拉取可用模型列表（调用 Tauri 后端） */

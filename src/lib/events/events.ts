@@ -50,6 +50,25 @@ export interface ContentSavedDetail {
   content: string;
 }
 
+// ── Image Generation Events ──
+
+export interface ImageGenStartDetail {
+  articleId: string;
+  total: number;
+}
+
+export interface ImageGenProgressDetail {
+  articleId: string;
+  index: number;
+  total: number;
+  path: string;
+}
+
+export interface ImageGenCompleteDetail {
+  articleId: string;
+  count: number;
+}
+
 export type EventBusKey =
   | "article-theme-changed"
   | "collections-changed"
@@ -64,7 +83,10 @@ export type EventBusKey =
   | "editor-ready"
   | "providers-changed"
   | "reset-plan"
-  | "ai-config-changed";
+  | "ai-config-changed"
+  | "image-gen-start"
+  | "image-gen-progress"
+  | "image-gen-complete";
 
 export interface EventBusMap {
   "article-theme-changed": void;
@@ -81,4 +103,7 @@ export interface EventBusMap {
   "providers-changed": void;
   "reset-plan": void;
   "ai-config-changed": void;
+  "image-gen-start": ImageGenStartDetail;
+  "image-gen-progress": ImageGenProgressDetail;
+  "image-gen-complete": ImageGenCompleteDetail;
 }

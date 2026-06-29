@@ -28,6 +28,11 @@ import { EditorContent, type EditorMode } from "./EditorContent";
 import { InlineToolbar } from "./InlineToolbar";
 import { Toolbar } from "./Toolbar";
 
+import { extractImageKeywords, insertImagesIntoArticle } from "../../lib/ai/draw";
+import { tryInvoke } from "../../lib/bridge/tauri";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { getProvidersSync } from "../../lib/storage/providerModels";
+
 export function EditorPane({
   hasActiveArticle,
   activeArticleId,
@@ -288,12 +293,140 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       currentContent = currentContent.replace(/\n{3,}/g, "\n\n");
       await saveArticleContent(articleId, currentContent);
     }
+    // Prompt user for illustration after article generation
+    if (!writingAbortRef.current) {
+      const drawCfg = (window as any).__drawConfig;
+      if (drawCfg?.model) {
+        setPendingImageArticleId(articleId);
+        setPendingImageContent(currentContent);
+        setShowImagePrompt(true);
+      }
+    }
     return true;
   }
 
 
+
+  /**
+   * 自动配图：提取关键词 → 批量生成 → 插入文章
+   */
+  async function autoGenerateImages(articleId: string, content: string): Promise<void> {
+    const drawCfg = (window as any).__drawConfig;
+    if (!drawCfg?.model) return;
+    // Note: drawCfg.enabled is intentionally NOT checked here because this function
+    // can also be triggered by the post-generation prompt dialog, where the user
+    // explicitly chose to illustrate. The "自动配图" checkbox only controls automatic
+    // (unprompted) illustration.
+
+    emit("image-gen-start", { articleId, total: drawCfg.count ?? 1 });
+
+    // 1. LLM 提取配图计划
+    const imagePlans = await extractImageKeywords(content, drawCfg.count ?? 1);
+    if (imagePlans.length === 0) {
+      emit("image-gen-complete", { articleId, count: 0 });
+      return;
+    }
+
+    // 2. 获取图片模型对应的 providerId
+    let providerId = "";
+    for (const p of getProvidersSync()) {
+      if (!p.enabled) continue;
+      if (p.models.some(m => m.id === drawCfg.model)) {
+        providerId = p.id;
+        break;
+      }
+    }
+    if (!providerId) {
+      console.warn("未找到图片模型对应的 provider");
+      emit("image-gen-complete", { articleId, count: 0 });
+      return;
+    }
+
+    // 3. 获取 projectFolder（关联目录）
+    let projectFolder: string | undefined;
+    if (activeCollectionId) {
+      try {
+        const { loadCollections } = await import("../../lib/storage/collections");
+        const cols = await loadCollections();
+        const col = cols.find(c => c.id === activeCollectionId);
+        if (col?.linkedFolder) {
+          projectFolder = col.linkedFolder;
+        }
+      } catch { /* 非必须 */ }
+    }
+
+    // 4. 批量生成图片（并行）
+    const savedImages = await Promise.all(
+      imagePlans.map(async (plan, idx) => {
+        emit("image-gen-progress", { articleId, index: idx, total: imagePlans.length, path: "" });
+        try {
+          const res = await tryInvoke<any[]>("generate_image", {
+            providerId,
+            model: drawCfg.model,
+            prompt: plan.keywords + (drawCfg.style ? `, ${drawCfg.style}` : ""),
+            negativePrompt: drawCfg.negativePrompt || null,
+            size: drawCfg.size || null,
+            quality: null,
+            style: null,
+            n: 1,
+            articleId,
+            projectFolder: projectFolder || null,
+          });
+          if (res && res.length > 0) {
+            return {
+              path: res[0].localPath,
+              altText: plan.alt_text,
+              targetSectionTitle: plan.section_title,
+              revisedPrompt: res[0].revisedPrompt,
+            };
+          }
+        } catch (e) {
+          console.warn(`生成图片失败 (${plan.section_title}):`, e);
+        }
+        return null;
+      }),
+    );
+
+    const validImages = savedImages.filter(Boolean) as { path: string; altText: string; targetSectionTitle?: string; revisedPrompt?: string }[];
+    if (validImages.length === 0) {
+      emit("image-gen-complete", { articleId, count: 0 });
+      return;
+    }
+
+    // 5. 插入图片到文章
+    const newContent = insertImagesIntoArticle(content, validImages);
+
+    // 6. 保存 + 刷新编辑器
+    await saveArticleContent(articleId, newContent);
+    contentRef.current = newContent;
+    setEditorContent(newContent);
+
+    // 7. 保存图片记录到数据库（用于 FTS5 检索 + 文章删除时清理）
+    try {
+      const now = Date.now();
+      const imageRows = validImages.map((img, idx) => ({
+        id: articleId + "-img-" + idx,
+        articleId,
+        localPath: img.path,
+        altText: img.altText,
+        revisedPrompt: img.revisedPrompt || null,
+        sectionIndex: idx,
+        createdAt: now,
+      }));
+      await tryInvoke("save_article_images", { articleId, images: imageRows });
+    } catch (e) {
+      console.warn("保存图片记录失败:", e);
+    }
+
+    // 8. 完成事件
+    emit("image-gen-complete", { articleId, count: validImages.length });
+  }
+
   // Style template
   const [styleTemplate, setStyleTemplate] = useState(() => getTemplate(editorStyleTemplateId || getSelectedTemplateId()));
+  const [showImagePrompt, setShowImagePrompt] = useState(false);
+  const [pendingImageArticleId, setPendingImageArticleId] = useState<string | null>(null);
+  const [pendingImageContent, setPendingImageContent] = useState<string>("");
 
   // Sync styleTemplate when parent changes editorStyleTemplateId (e.g. from StylePanel)
   useEffect(() => {
@@ -420,6 +553,14 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       }
     });
   }, [activeArticleId]);
+
+  // Sync article/collection IDs to window for other components (AIBar, InlineToolbar)
+  useEffect(() => {
+    (window as any).__currentArticleId = activeArticleId ?? null;
+  }, [activeArticleId]);
+  useEffect(() => {
+    (window as any).__currentCollectionId = activeCollectionId ?? null;
+  }, [activeCollectionId]);
 
   // Sync AI processing state to blueprint section status
   const prevProcessingRef = useRef(false);
@@ -793,6 +934,12 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           emit("collections-changed");
           return completeBp;
         });
+
+        // Auto-generate images if configured (非阻塞)
+        const drawCfg = (window as any).__drawConfig;
+        if (drawCfg?.enabled && drawCfg?.model) {
+          autoGenerateImages(result.articleId, contentRef.current || "").catch(console.warn);
+        }
       } catch (e: any) {
         console.error("Stream writing failed:", e);
         // 保存已累积的部分内容
@@ -1306,6 +1453,30 @@ ${seriesCtx}`;
           onSave={handleSaveBlueprint}
         />
       )}
+
+      {/* Illustration prompt after article generation */}
+      <ConfirmDialog
+        open={showImagePrompt}
+        title="文章已生成"
+        message="是否要为这篇文章生成配套插图？插图将根据文章内容自动提取关键词并调用绘图模型生成。"
+        confirmLabel="配图"
+        cancelLabel="不配"
+        onConfirm={() => {
+          setShowImagePrompt(false);
+          const id = pendingImageArticleId;
+          const c = pendingImageContent;
+          setPendingImageArticleId(null);
+          setPendingImageContent("");
+          if (id && c) {
+            autoGenerateImages(id, c).catch(console.warn);
+          }
+        }}
+        onCancel={() => {
+          setShowImagePrompt(false);
+          setPendingImageArticleId(null);
+          setPendingImageContent("");
+        }}
+      />
     </section>
   );
 }

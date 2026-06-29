@@ -51,6 +51,30 @@ pub struct SeriesArticle {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ImageModelConfig {
+    pub sizes: Vec<String>,
+    pub supports_quality: bool,
+    pub supports_style: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelEntry {
+    pub id: String,
+    pub capabilities: Vec<String>,
+    pub image_config: Option<ImageModelConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageSavedResult {
+    pub local_path: String,
+    pub alt_text: String,
+    pub revised_prompt: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashItem {
     pub id: String,
     pub title: String,
@@ -67,7 +91,7 @@ pub struct Provider {
     pub kind: String,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
-    pub models: Vec<String>,
+    pub models: Vec<ModelEntry>,
     pub enabled: bool,
     pub builtin: bool,
 }
@@ -230,8 +254,100 @@ impl DataStore {
 
     // ─── Providers ───
 
+    /// Infer model capabilities from its name (mirrors frontend inferCapabilities)
+    fn infer_capabilities(name: &str) -> Vec<String> {
+        let lower = name.to_lowercase();
+        let mut caps = Vec::new();
+        // Image generation models
+        if lower.contains("dall-e")
+            || lower.contains("cogview")
+            || lower.contains("wanx")
+            || lower.contains("candy")
+            || lower.contains("image")
+            || (lower.starts_with("sd") && lower.len() <= 4)
+        {
+            caps.push("image".to_string());
+        }
+        // Text/chat models — exclude known non-chat model types
+        let non_chat = ["embedding", "speech", "tts", "stt", "whisper", "moderation", "rerank", "transcription"];
+        if !non_chat.iter().any(|t| lower.contains(t)) {
+            caps.push("chat".to_string());
+        }
+        if caps.is_empty() {
+            caps.push("chat".to_string());
+        }
+        caps
+    }
+
     pub fn load_providers(&self) -> Vec<Provider> {
-        self.read_json("providers").unwrap_or_default()
+        let path = self.data_dir.join("providers.json");
+        if !path.exists() {
+            return Vec::new();
+        }
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => return Vec::new(),
+        };
+        // Try new format first (Vec<Provider> with ModelEntry)
+        if let Ok(mut providers) = serde_json::from_str::<Vec<Provider>>(&content) {
+            // Re-infer capabilities to fix any migration artifacts
+            for p in &mut providers {
+                for m in &mut p.models {
+                    let expected = Self::infer_capabilities(&m.id);
+                    if m.capabilities != expected {
+                        m.capabilities = expected;
+                    }
+                }
+            }
+            return providers;
+        }
+        // Fallback: old format where models was Vec<String>
+        #[derive(Deserialize)]
+        struct OldProvider {
+            id: String,
+            label: String,
+            kind: String,
+            base_url: Option<String>,
+            api_key: Option<String>,
+            models: Vec<String>,
+            enabled: bool,
+            builtin: bool,
+        }
+        if let Ok(old_providers) = serde_json::from_str::<Vec<OldProvider>>(&content) {
+            let providers: Vec<Provider> = old_providers.into_iter().map(|old| {
+                let models = old.models.into_iter().map(|name| {
+                    let caps = Self::infer_capabilities(&name);
+                    let image_config = if caps.contains(&"image".to_string()) {
+                        Some(ImageModelConfig {
+                            sizes: vec!["1024x1024".into(), "1792x1024".into(), "1024x1792".into()],
+                            supports_quality: true,
+                            supports_style: true,
+                        })
+                    } else {
+                        None
+                    };
+                    ModelEntry {
+                        id: name,
+                        capabilities: caps,
+                        image_config,
+                    }
+                }).collect();
+                Provider {
+                    id: old.id,
+                    label: old.label,
+                    kind: old.kind,
+                    base_url: old.base_url,
+                    api_key: old.api_key,
+                    models,
+                    enabled: old.enabled,
+                    builtin: old.builtin,
+                }
+            }).collect();
+            // Write back in new format
+            let _ = self.write_json("providers", &providers);
+            return providers;
+        }
+        Vec::new()
     }
 
     pub fn save_providers(&self, providers: &[Provider]) -> Result<(), String> {
