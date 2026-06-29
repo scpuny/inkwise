@@ -70,7 +70,7 @@ echo "   结束时间: $(date '+%H:%M:%S')"
 echo "   Codex 退出码: $CODEX_EXIT"
 echo ""
 
-# 4. 注册 session 到 Codex Desktop（扫描 sessions 目录找最新的 exec session）
+# 4. 注册 session 到 Codex Desktop（修复 source 字段使其可见）
 LATEST_SESSION=$(find ~/.codex/sessions -name "*.jsonl" -newer "$PROJECT_ROOT/ticket/INDEX.md" 2>/dev/null | sort | tail -1 2>/dev/null || true)
 if [ -n "$LATEST_SESSION" ] && [ -f "$LATEST_SESSION" ]; then
   SESSION_ID_EXEC=$(head -1 "$LATEST_SESSION" 2>/dev/null | python3 -c "
@@ -83,13 +83,15 @@ except:
     print('')
 " 2>/dev/null || true)
   if [ -n "$SESSION_ID_EXEC" ]; then
+    # Codex Desktop 过滤 source='exec' 的会话，改为 'unknown' 使其可见
+    sqlite3 ~/.codex/state_5.sqlite "UPDATE threads SET source='unknown' WHERE id='$SESSION_ID_EXEC' AND source='exec';" 2>/dev/null || true
     NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%S.000000Z")
     echo "→ 注册 session ($SESSION_ID_EXEC) 到 Codex Desktop..."
     echo "$(python3 -c "
 import json
 print(json.dumps({'id': '$SESSION_ID_EXEC', 'thread_name': 'fix: ${TICKET_NAME}', 'updated_at': '$NOW_ISO'}))
 ")" >> ~/.codex/session_index.jsonl
-    echo "   ✅ 现在可以在 Codex Desktop 的 Recent Sessions 中看到此会话"
+    echo "   ✅ 现在可以在 Codex Desktop 中看到此会话"
   fi
 fi
 

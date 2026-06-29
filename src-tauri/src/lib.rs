@@ -10,7 +10,7 @@ use platform::Platform;
 use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
-use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
+use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
 use skill::{Skill, SkillStore, RunAs, builtin_skills};
 use std::sync::Mutex;
@@ -93,24 +93,7 @@ fn set_ai_config(state: tauri::State<AppState>, config: AiConfig) -> Result<(), 
 
 #[tauri::command]
 async fn chat(state: tauri::State<'_, AppState>, provider_id: String, model: String, messages: Vec<ChatMessage>, temperature: Option<f32>, max_tokens: Option<u32>) -> Result<String, String> {
-    let config = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
-        let providers = store.load_providers();
-        let provider = providers.iter().find(|p| p.id == provider_id).ok_or_else(|| format!("未找到提供商: {}", provider_id))?.clone();
-        ProviderConfig {
-            id: provider.id.clone(),
-            kind: provider.kind.clone(),
-            base_url: provider.base_url.clone().unwrap_or_else(|| {
-                match provider.kind.as_str() {
-                    "anthropic" => "https://api.anthropic.com/v1".into(),
-                    "deepseek" => "https://api.deepseek.com/v1".into(),
-                    _ => "https://api.openai.com/v1".into(),
-                }
-            }),
-            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
-            model: model.clone(),
-        }
-    };
+    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
 
     let req = ChatRequest {
         provider_id,
@@ -138,24 +121,7 @@ async fn chat_stream(
     temperature: Option<f32>,
     max_tokens: Option<u32>,
 ) -> Result<(), String> {
-    let config = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
-        let providers = store.load_providers();
-        let provider = providers.iter().find(|p| p.id == provider_id).ok_or_else(|| format!("未找到提供商: {}", provider_id))?.clone();
-        ProviderConfig {
-            id: provider.id.clone(),
-            kind: provider.kind.clone(),
-            base_url: provider.base_url.clone().unwrap_or_else(|| {
-                match provider.kind.as_str() {
-                    "anthropic" => "https://api.anthropic.com/v1".into(),
-                    "deepseek" => "https://api.deepseek.com/v1".into(),
-                    _ => "https://api.openai.com/v1".into(),
-                }
-            }),
-            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
-            model: model.clone(),
-        }
-    };
+    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
 
     let req = ChatRequest {
         provider_id,
@@ -358,9 +324,8 @@ async fn run_skill(
     blueprint: Option<ArticleBlueprint>,
     current_section_id: Option<String>,
 ) -> Result<agent::AgentResult, String> {
-    let provider_info = {
+    let skill = {
         let store = state.store.lock().map_err(|e| e.to_string())?;
-        let providers = store.load_providers();
         let data_dir = store.data_dir().parent().unwrap().to_path_buf();
         let global_dir = data_dir.join("skills");
         drop(store);
@@ -370,29 +335,10 @@ async fn run_skill(
             skill_store.add_builtin(builtin);
         }
 
-        let skill = skill_store.find(&name).ok_or_else(|| format!("未找到 skill: {}", name))?;
-        let provider = providers.iter().find(|p| p.enabled && p.models.len() > 0)
-            .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?;
-
-        let model = skill.model.clone().unwrap_or_else(|| provider.models[0].id.clone());
-        let config = ProviderConfig {
-            id: provider.id.clone(),
-            kind: provider.kind.clone(),
-            base_url: provider.base_url.clone().unwrap_or_else(|| {
-                match provider.kind.as_str() {
-                    "anthropic" => "https://api.anthropic.com/v1".into(),
-                    "deepseek" => "https://api.deepseek.com/v1".into(),
-                    _ => "https://api.openai.com/v1".into(),
-                }
-            }),
-            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
-            model: model.clone(),
-        };
-
-        (skill, config, model)
+        skill_store.find(&name).ok_or_else(|| format!("未找到 skill: {}", name))?
     };
 
-    let (skill, config, _model) = provider_info;
+    let config = resolve_provider(&state.store, None, skill.model.as_deref())?;
 
     // Set up streaming callback
     let app_clone = app.clone();
@@ -496,30 +442,8 @@ fn list_disabled_skills(state: tauri::State<AppState>) -> Result<Vec<String>, St
 #[tauri::command]
 async fn generate_skill(state: tauri::State<'_, AppState>, name: String, description: String) -> Result<String, String> {
     // Get provider info
-    let (config, model) = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
-        let providers = store.load_providers();
-        drop(store);
-
-        let provider = providers.iter().find(|p| p.enabled && p.models.len() > 0)
-            .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?;
-
-        let model: String = provider.models[0].id.clone();
-        let config = ProviderConfig {
-            id: provider.id.clone(),
-            kind: provider.kind.clone(),
-            base_url: provider.base_url.clone().unwrap_or_else(|| {
-                match provider.kind.as_str() {
-                    "anthropic" => "https://api.anthropic.com/v1".into(),
-                    "deepseek" => "https://api.deepseek.com/v1".into(),
-                    _ => "https://api.openai.com/v1".into(),
-                }
-            }),
-            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
-            model: model.clone(),
-        };
-        (config, model)
-    };
+    let config = resolve_provider(&state.store, None, None)?;
+    let model = config.model.clone();
 
     let system_prompt = "你是 Skill 生成器。根据用户提供的名称和描述，生成一个完整的 Skill 定义文件。
 
@@ -1310,24 +1234,7 @@ async fn chat_tool(
     tools: Option<Vec<ToolDefinition>>,
     tool_choice: Option<serde_json::Value>,
 ) -> Result<ChatToolResponse, String> {
-    let config = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
-        let providers = store.load_providers();
-        let provider = providers.iter().find(|p| p.id == provider_id).ok_or_else(|| format!("未找到提供商: {}", provider_id))?.clone();
-        ProviderConfig {
-            id: provider.id.clone(),
-            kind: provider.kind.clone(),
-            base_url: provider.base_url.clone().unwrap_or_else(|| {
-                match provider.kind.as_str() {
-                    "anthropic" => "https://api.anthropic.com/v1".into(),
-                    "deepseek" => "https://api.deepseek.com/v1".into(),
-                    _ => "https://api.openai.com/v1".into(),
-                }
-            }),
-            api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
-            model: model.clone(),
-        }
-    };
+    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
 
     // If tools are provided, use non-streaming tool-capable completion
     let has_tools = tools.as_ref().map_or(false, |t| !t.is_empty());
