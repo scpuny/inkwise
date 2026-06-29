@@ -178,7 +178,7 @@ export function useArticleLifecycle() {
           }
         }
       }
-    } catch {}
+    } catch { console.warn("[ArticleLifecycle] syncSeriesArticleStatus failed (non-critical)"); }
   }, []);
 
   const handlePhaseChange = useCallback((phase: string) => {

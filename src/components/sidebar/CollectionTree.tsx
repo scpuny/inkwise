@@ -119,7 +119,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     if (isTauriEnv()) {
       try {
         folderPath = await tryInvoke<string | null>(TauriCommands.PickFolder, {});
-      } catch {}
+      } catch { console.warn("[CollectionTree] PickFolder failed (non-critical)"); }
     }
     // Browser fallback
     if (!folderPath) {
@@ -158,7 +158,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       await new Promise(r => setTimeout(r, 50));
       try {
         await linkCollectionFolder(colId, folderPath);
-      } catch {}
+      } catch { console.warn("[CollectionTree] linkCollectionFolder failed (non-critical)"); }
       setFolderScanning((prev) => ({ ...prev, [colId]: false }));
       await refresh();
     }
