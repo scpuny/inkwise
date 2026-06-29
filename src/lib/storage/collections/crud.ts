@@ -179,31 +179,31 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
   try {
     const { deleteArticleContent } = await import("../../storage/articles");
     await deleteArticleContent(articleId);
-  } catch {}
+  } catch { console.warn("[trashArticle] deleteArticleContent failed (non-critical cleanup)"); }
   try {
     const { deleteAllVersions } = await import("../../storage/articleVersions");
     await deleteAllVersions(articleId);
-  } catch {}
+  } catch { console.warn("[trashArticle] deleteAllVersions failed (non-critical cleanup)"); }
   try {
     if (isTauriEnv()) {
       await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
     }
-  } catch {}
+  } catch { console.warn("[trashArticle] DeleteArticle failed (non-critical cleanup)"); }
   try {
     localStorage.removeItem('plan-draft-' + articleId);
-  } catch {}
+  } catch { console.warn('[trashArticle] remove plan-draft failed (non-critical cleanup)'); }
 }
 
 /* ─── 回收站 ─── */
 
 export async function loadTrash(): Promise<TrashItem[]> {
-  try { return await tryInvoke<TrashItem[]>(TauriCommands.GetTrash); } catch {}
+  try { return await tryInvoke<TrashItem[]>(TauriCommands.GetTrash); } catch { console.warn("[loadTrash] GetTrash failed, using localStorage fallback"); }
   return browserLoad<TrashItem[]>(TRASH_KEY, []);
 }
 
 export async function saveTrash(items: TrashItem[]): Promise<void> {
   browserSave(TRASH_KEY, items);
-  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch {}
+  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch { console.warn("[saveTrash] SetTrash failed (localStorage already saved)"); }
 }
 
 export async function restoreArticle(trashId: string): Promise<void> {
@@ -239,15 +239,15 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
   if (!c) return;
   c.linkedFolder = undefined;
   // Clean up all AI-related cache for this collection
-  try { localStorage.removeItem("folder_index:" + collectionId); } catch {}
+  try { localStorage.removeItem("folder_index:" + collectionId); } catch { console.warn("[unlinkCollectionFolder] remove folder_index cache failed (non-critical)"); }
   try {
     const { clearProjectInsights, clearProjectFileTree } = await import("./projectContext");
     clearProjectInsights(collectionId);
     clearProjectFileTree(collectionId);
-  } catch {}
+  } catch { console.warn("[unlinkCollectionFolder] clearProjectInsights/clearProjectFileTree failed (non-critical)"); }
   // Clean up plan drafts for every article in the collection
   for (const art of c.articles) {
-    try { localStorage.removeItem("plan-draft-" + art.id); } catch {}
+    try { localStorage.removeItem("plan-draft-" + art.id); } catch { console.warn("[unlinkCollectionFolder] remove plan-draft failed (non-critical)"); }
   }
   await saveCollections(all);
 }
@@ -263,15 +263,15 @@ export async function getCollectionFolderContext(collectionId: string): Promise<
       const parsed = JSON.parse(cached);
       if (parsed.timestamp && Date.now() - parsed.timestamp < 3600000) return parsed.content || "";
     }
-  } catch {}
+  } catch { /* stale/invalid cache, safe to ignore */ }
   if (isTauriEnv()) {
     try {
       const ctx = await invokeOrFallback<string>(TauriCommands.BuildFolderIndex, { path: c.linkedFolder }, () => "");
       if (ctx) {
-        try { localStorage.setItem(cacheKey, JSON.stringify({ content: ctx, timestamp: Date.now() })); } catch {}
+        try { localStorage.setItem(cacheKey, JSON.stringify({ content: ctx, timestamp: Date.now() })); } catch { console.warn("[getCollectionFolderContext] localStorage setItem failed (non-critical)"); }
         return ctx;
       }
-    } catch { return ""; }
+    } catch { console.warn("[getCollectionFolderContext] BuildFolderIndex failed"); return ""; }
   }
   return "";
 }
