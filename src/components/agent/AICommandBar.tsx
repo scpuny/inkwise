@@ -3,11 +3,17 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  SendHorizonal, Sparkles, X, Brain, ArrowLeftRight, ChevronDown, History,
+  SendHorizonal, Sparkles, X, Brain, ArrowLeftRight, ChevronDown, History, Image,
 } from "lucide-react";
 import { useAgent } from "../../lib/ai/agent";
 import { IntentMenu, type IntentOption } from "./IntentMenu";
 import { listSkills, type Skill } from "../../lib/storage/skill";
+import { useDrawConfig } from "../../lib/stores/drawConfig";
+import { convertFileSrc } from "@tauri-apps/api/core";
+
+function toAssetUrl(path: string) {
+  try { return convertFileSrc(path); } catch { return `file://${path}`; }
+}
 
 export function AICommandBar() {
   const {
@@ -17,6 +23,8 @@ export function AICommandBar() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [drawOpen, setDrawOpen] = useState(false);
+  const { config: drawCfg, setConfig: setDrawCfg } = useDrawConfig();
 
   // Focus when opened
   useEffect(() => {
@@ -64,6 +72,48 @@ export function AICommandBar() {
     ? commandBarText.slice(1).split(/\s+/)[0]
     : null;
 
+  const handleImageGen = useCallback(async () => {
+    const model = drawCfg.model || (() => { try { return localStorage.getItem("inkwise-draw-model") || ""; } catch { return ""; } })();
+    if (!model) {
+      console.warn("[AICommandBar] no draw model configured");
+      return;
+    }
+    if (!drawCfg.model && model) { useDrawConfig.getState().setConfig({ model }); }
+    closeCommandBar();
+    // Re-use the inline toolbar's editor access
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return;
+    const sel = editor.state.selection;
+    const text = editor.state.doc.textBetween(sel.from, sel.to, " ").trim() || editor.getText() || "";
+    if (!text.trim()) { alert("编辑器中没有内容，无法生成插图"); return; }
+    const { invokeOrFallback } = await import("../../lib/bridge/tauri");
+    const { getProvidersSync } = await import("../../lib/storage/providerModels");
+    const providers = getProvidersSync();
+    let providerId = "";
+    for (const p of providers) {
+      if (!p.enabled) continue;
+      if (p.models.some(m => m.id === drawCfg.model)) { providerId = p.id; break; }
+    }
+    if (!providerId) { alert("未找到图片模型对应的 provider"); return; }
+    const articleId = (window as any).__currentArticleId || "";
+    try {
+      type ImageResult = { localPath: string; altText: string };
+      const result = await invokeOrFallback<ImageResult[]>("generate_image", {
+        providerId, model: model, prompt: text,
+        negativePrompt: drawCfg.negativePrompt || null,
+        size: drawCfg.size || null, quality: null,
+        style: drawCfg.style || null, n: drawCfg.count,
+        articleId, projectFolder: null,
+      }, () => []);
+      if (result.length > 0) {
+        const imagesHtml = result.map(r => "<img src=\"" + toAssetUrl(r.localPath) + "\" alt=\"" + (r.altText || "插图") + "\">").join("<br>");
+        const end = editor.state.doc.content.size;
+        editor.chain().focus().setTextSelection(end).insertContent(imagesHtml).run();
+      }
+    } catch (err) {
+      alert("图片生成失败（模型: " + drawCfg.model + "）：" + (err instanceof Error ? err.message : String(err)) + "\n\n请确认 设置 → 模型 → 插图设置 中选择的绘图模型是否正确");
+    }
+  }, [drawCfg, closeCommandBar]);
   if (!commandBarOpen) return null;
 
   return (
@@ -128,6 +178,16 @@ export function AICommandBar() {
             <ArrowLeftRight size={13} />
             <span>面板</span>
           </button>
+          {drawCfg.model && (
+            <button
+              className="ai-command-bar__tool-btn"
+              onClick={handleImageGen}
+              title="生成插图"
+            >
+              <Image size={13} />
+              <span>插图</span>
+            </button>
+          )}
           <button
             className="ai-command-bar__tool-btn"
             onClick={closeCommandBar}

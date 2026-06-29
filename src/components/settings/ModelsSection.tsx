@@ -3,6 +3,7 @@ import { emit } from "../../lib/events/eventBus";
 import { Check, ChevronDown, X } from "lucide-react";
 import type { Provider } from "../../lib/storage/providerModels";
 import { BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels, inferCapabilities, type ModelEntry } from "../../lib/storage/providerModels";
+import { useDrawConfig } from "../../lib/stores/drawConfig";
 import { InlineConfirmButton } from "../common/InlineConfirmButton";
 import { tryInvoke, isTauriEnv, TauriCommands } from "../../lib/bridge/tauri";
 import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
@@ -217,7 +218,7 @@ export function ModelsSection() {
           </SettingsSection>
           <SettingsSection title="插图设置">
             <SettingsField label="绘图模型">
-              <ModelPicker providers={providers} refs={imageModelRefs} value={selectedImageModelRef} onPick={(ref) => { setSelectedImageModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-draw-model", modelName || ref); } catch {} }} />
+              <ModelPicker providers={providers} refs={imageModelRefs} value={selectedImageModelRef} onPick={(ref) => { setSelectedImageModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-draw-model", modelName || ref); if (modelName) useDrawConfig.getState().setConfig({ model: modelName }); } catch {} }} />
             </SettingsField>
             <SettingsField label="默认尺寸">
               <select className="settings-select" value={drawSize} onChange={(e) => { setDrawSize(e.target.value); try { localStorage.setItem("inkwise-draw-size", e.target.value); } catch {} }}>

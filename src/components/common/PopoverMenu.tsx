@@ -86,6 +86,11 @@ export function PopoverMenu({
       const clampedTop = Math.min(Math.max(top, EDGE_GAP), Math.max(EDGE_GAP, viewportH - menuH - EDGE_GAP));
       const clampedLeft = Math.min(Math.max(rawLeft, EDGE_GAP), Math.max(EDGE_GAP, viewportW - menuW - EDGE_GAP));
 
+      // Guard against NaN from missing layout
+      if (!Number.isFinite(clampedLeft) || !Number.isFinite(clampedTop)) {
+        frameId = requestAnimationFrame(measure);
+        return;
+      }
       setPos({ left: clampedLeft, top: clampedTop });
     };
 

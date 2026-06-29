@@ -60,17 +60,20 @@ async fn openai_image_gen(
         "model": req.model,
         "prompt": req.prompt,
         "n": req.n.unwrap_or(1),
-        "response_format": "b64_json",
     });
 
     if let Some(ref size) = req.size {
         body["size"] = serde_json::json!(size);
     }
-    if let Some(ref quality) = req.quality {
-        body["quality"] = serde_json::json!(quality);
-    }
-    if let Some(ref style) = req.style {
-        body["style"] = serde_json::json!(style);
+    // response_format is only supported by DALL-E models
+    if req.model.to_lowercase().contains("dall-e") {
+        body["response_format"] = serde_json::json!("b64_json");
+        if let Some(ref quality) = req.quality {
+            body["quality"] = serde_json::json!(quality);
+        }
+        if let Some(ref style) = req.style {
+            body["style"] = serde_json::json!(style);
+        }
     }
 
     let response = client

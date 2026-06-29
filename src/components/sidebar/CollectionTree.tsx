@@ -87,7 +87,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
         phasePromises.push(
           loadBlueprint(article.id).then(bp => {
             if (bp) phaseMap[article.id] = bp.phase;
-          }).catch(() => {})
+          }).catch(() => console.warn("[CollectionTree] loadBlueprint failed"))
         );
       }
     }

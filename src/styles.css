@@ -11562,6 +11562,11 @@ body {
   color: var(--fg);
 }
 
+.agent-chat__tool-select-divider {
+  height: 1px;
+  background: var(--border-color, #e5e7eb);
+  margin: 4px 8px;
+}
 .agent-chat__tool-select-item:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -22846,3 +22851,28 @@ body {
 .spin {
   animation: spin 1s linear infinite;
 }
+
+/* Image generation status bar */
+.editor-pane__image-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* InlineToolbar spinner */
+.inline-toolbar__spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: inline-spin 0.6s linear infinite;
+}
+@keyframes inline-spin { to { transform: rotate(360deg); } }

@@ -262,7 +262,7 @@ impl Platform for WeChat {
         styled_html: &str, options: &PublishOptions, action: &str,
     ) -> Result<PublishResult, String> {
         // 上传封面（支持本地文件路径和 base64 data URL）
-        eprintln!("[publish] cover_image: {:?}", options.cover_image);
+        log::info!("[publish] cover_image: {:?}", options.cover_image);
         let thumb_media_id = if let Some(ref cover) = options.cover_image {
             if cover.starts_with("data:") {
                 // base64 data URL → 临时文件 → 上传为永久素材
@@ -271,18 +271,18 @@ impl Platform for WeChat {
                         let result = self.upload_image_as_material(&temp_path).await;
                         let _ = std::fs::remove_file(&temp_path);
                         match result {
-                            Ok(mid) => { eprintln!("[publish] 封面 media_id: {}", mid); mid },
-                            Err(e) => { eprintln!("上传 base64 封面失败: {}", e); String::new() }
+                            Ok(mid) => { log::info!("[publish] 封面 media_id: {}", mid); mid },
+                            Err(e) => { log::error!("上传 base64 封面失败: {}", e); String::new() }
                         }
                     }
-                    None => { eprintln!("解析 base64 封面失败"); String::new() }
+                    None => { log::error!("解析 base64 封面失败"); String::new() }
                 }
             } else {
                 let p = Path::new(cover);
                 if p.exists() {
                     match self.upload_image_as_material(cover).await {
-                        Ok(mid) => { eprintln!("[publish] 封面 media_id: {}", mid); mid },
-                        Err(e) => { eprintln!("上传封面失败: {}", e); String::new() }
+                        Ok(mid) => { log::info!("[publish] 封面 media_id: {}", mid); mid },
+                        Err(e) => { log::error!("上传封面失败: {}", e); String::new() }
                     }
                 } else { String::new() }
             }
@@ -292,7 +292,7 @@ impl Platform for WeChat {
         let thumb_media_id = if thumb_media_id.is_empty() {
             let images = extract_images(markdown);
             if let Some(first_img) = images.first() {
-                eprintln!("[publish] 从正文取封面: {}", first_img);
+                log::info!("[publish] 从正文取封面: {}", first_img);
                 let img_path = if Path::new(first_img).is_absolute() {
                     first_img.clone()
                 } else { format!("{}/{}", article_dir, first_img) };
@@ -323,9 +323,9 @@ impl Platform for WeChat {
                 if Path::new(&full_path).exists() {
                     match self.upload_image(&full_path).await {
                         Ok(cdn_url) => image_mappings.push((img_path.clone(), cdn_url)),
-                        Err(e) => eprintln!("skip img {}: {}", img_path, e),
+                        Err(e) => log::warn!("skip img {}: {}", img_path, e),
                     }
-                } else { eprintln!("img not found: {}", full_path); }
+                } else { log::error!("img not found: {}", full_path); }
             }
             if !image_mappings.is_empty() {
                 processed_markdown = replace_image_urls(&processed_markdown, &image_mappings);
@@ -339,16 +339,16 @@ impl Platform for WeChat {
 
         // 清理 HTML：微信不支持 style/script 标签、base64 图片、!important
         let clean_html = sanitize_wechat_html(&final_html);
-        eprintln!("[publish] HTML 长度: {} chars", clean_html.len());
-        eprintln!("[publish] 含 style 标签: {}", clean_html.contains("<style"));
-        eprintln!("[publish] 含 script 标签: {}", clean_html.contains("<script"));
-        eprintln!("[publish] 文章标题: {}", article_title);
-        eprintln!("[publish] thumb_media_id: {}", thumb_media_id);
+        log::info!("[publish] HTML 长度: {} chars", clean_html.len());
+        log::info!("[publish] 含 style 标签: {}", clean_html.contains("<style"));
+        log::info!("[publish] 含 script 标签: {}", clean_html.contains("<script"));
+        log::info!("[publish] 文章标题: {}", article_title);
+        log::info!("[publish] thumb_media_id: {}", thumb_media_id);
         if clean_html.len() > 200 {
             let preview: String = clean_html.chars().take(200).collect();
-            eprintln!("[publish] HTML 前 200 字: {:?}", preview);
+            log::info!("[publish] HTML 前 200 字: {:?}", preview);
             let tail: String = clean_html.chars().rev().take(200).collect::<Vec<_>>().into_iter().rev().collect();
-            eprintln!("[publish] HTML 后 200 字: {:?}", tail);
+            log::info!("[publish] HTML 后 200 字: {:?}", tail);
         }
 
         let media_id = self.create_draft(
@@ -405,7 +405,7 @@ async fn upload_html_images(wechat: &mut WeChat, article_dir: &str, html: &str) 
                     if let Some(temp_path) = save_base64_to_temp(src) {
                         match wechat.upload_image(&temp_path).await {
                             Ok(cdn_url) => replacements.push((src.to_string(), cdn_url)),
-                            Err(e) => eprintln!("skip base64 img: {}", e),
+                            Err(e) => log::warn!("skip base64 img: {}", e),
                         }
                         let _ = std::fs::remove_file(&temp_path);
                     }
@@ -417,7 +417,7 @@ async fn upload_html_images(wechat: &mut WeChat, article_dir: &str, html: &str) 
                     if Path::new(&full_path).exists() {
                         match wechat.upload_image(&full_path).await {
                             Ok(cdn_url) => replacements.push((src.to_string(), cdn_url)),
-                            Err(e) => eprintln!("skip HTML img {}: {}", src, e),
+                            Err(e) => log::warn!("skip HTML img {}: {}", src, e),
                         }
                     }
                 }

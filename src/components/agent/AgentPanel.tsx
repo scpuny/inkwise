@@ -18,6 +18,7 @@ import {
   Scale,
   Search,
   Sparkles,
+  Image,
   X
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -287,6 +288,44 @@ function QuickActionDropdown({
   };
 
   // Get currently selected text for preview
+  const handleImageFromPanel = useCallback(async () => {
+    const { useDrawConfig } = await import("../../lib/stores/drawConfig");
+    const drawCfg = useDrawConfig.getState().config;
+    const model = drawCfg.model || (() => { try { return localStorage.getItem("inkwise-draw-model") || ""; } catch { return ""; } })();
+    if (!model) { console.warn("[AgentPanel] no draw model configured"); return; }
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return;
+    const text = editor.getText() || "";
+    if (!text.trim()) { alert("编辑器中没有内容"); return; }
+    const { invokeOrFallback } = await import("../../lib/bridge/tauri");
+    const { getProvidersSync } = await import("../../lib/storage/providerModels");
+    const providers = getProvidersSync();
+    let providerId = "";
+    for (const p of providers) {
+      if (!p.enabled) continue;
+      if (p.models.some(m => m.id === drawCfg.model)) { providerId = p.id; break; }
+    }
+    if (!providerId) { alert("未找到图片模型对应的 provider"); return; }
+    const articleId = (window as any).__currentArticleId || "";
+    try {
+      type ImageResult = { localPath: string; altText: string };
+      const result = await invokeOrFallback<ImageResult[]>("generate_image", {
+        providerId, model: model, prompt: text,
+        negativePrompt: drawCfg.negativePrompt || null,
+        size: drawCfg.size || null, quality: null,
+        style: drawCfg.style || null, n: drawCfg.count,
+        articleId, projectFolder: null,
+      }, () => []);
+      if (result.length > 0) {
+        const imagesHtml = result.map(r => "<img src=\"" + r.localPath + "\" alt=\"" + (r.altText || "插图") + "\">").join("<br>");
+        const end = editor.state.doc.content.size;
+        editor.chain().focus().setTextSelection(end).insertContent(imagesHtml).run();
+      }
+    } catch (err) {
+      alert("图片生成失败（模型: " + drawCfg.model + "）：" + (err instanceof Error ? err.message : String(err)) + "\n\n请确认 设置 → 模型 → 插图设置 中选择的绘图模型是否正确");
+    }
+  }, []);
+
   const getSelectedPreview = () => {
     const editor = (window as any).editorInstance?.editor;
     if (!editor) return null;
@@ -334,6 +373,18 @@ function QuickActionDropdown({
               <span>{skillLabels[s] || s}</span>
             </button>
           ))}
+          <div className="agent-chat__tool-select-divider" />
+          <button
+            className="agent-chat__tool-select-item"
+            onClick={() => {
+              setOpen(false);
+              handleImageFromPanel();
+            }}
+            disabled={isProcessing}
+          >
+            <Image size={13} />
+            <span>生成插图</span>
+          </button>
         </div>
       )}
     </div>

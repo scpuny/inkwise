@@ -27,11 +27,13 @@ import { BlueprintEditor } from "./BlueprintEditor";
 import { EditorContent, type EditorMode } from "./EditorContent";
 import { InlineToolbar } from "./InlineToolbar";
 import { Toolbar } from "./Toolbar";
+import { AICommandBar } from "../agent/AICommandBar";
 
 import { extractImageKeywords, insertImagesIntoArticle } from "../../lib/ai/draw";
 import { tryInvoke } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { getProvidersSync } from "../../lib/storage/providerModels";
+import { useDrawConfig } from "../../lib/stores/drawConfig";
 
 export function EditorPane({
   hasActiveArticle,
@@ -99,7 +101,7 @@ export function EditorPane({
   onToggleSidebar?: () => void;}) {
   const articleCtx = useContext(ArticleCtx);
   const { state: streamState, startStream, cancelStream, clearResponse } = useChatStream();
-  const { execute, isProcessing, openPanel, setPanelTab } = useAgent();
+  const { execute, isProcessing, openPanel, setPanelTab, openCommandBar } = useAgent();
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "writing" | "article-review">("idle");
@@ -295,8 +297,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     }
     // Prompt user for illustration after article generation
     if (!writingAbortRef.current) {
-      const drawCfg = (window as any).__drawConfig;
-      if (drawCfg?.model) {
+      const drawCfg = useDrawConfig.getState().config;
+      if (drawCfg.model) {
         setPendingImageArticleId(articleId);
         setPendingImageContent(currentContent);
         setShowImagePrompt(true);
@@ -311,8 +313,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
    * 自动配图：提取关键词 → 批量生成 → 插入文章
    */
   async function autoGenerateImages(articleId: string, content: string): Promise<void> {
-    const drawCfg = (window as any).__drawConfig;
-    if (!drawCfg?.model) return;
+    const drawCfg = useDrawConfig.getState().config;
+    if (!drawCfg.model) return;
     // Note: drawCfg.enabled is intentionally NOT checked here because this function
     // can also be triggered by the post-generation prompt dialog, where the user
     // explicitly chose to illustrate. The "自动配图" checkbox only controls automatic
@@ -427,6 +429,25 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [pendingImageArticleId, setPendingImageArticleId] = useState<string | null>(null);
   const [pendingImageContent, setPendingImageContent] = useState<string>("");
+  const [imageGenStatus, setImageGenStatus] = useState<string | null>(null);
+  // Listen to image-gen events for progress feedback
+  useEffect(() => {
+    const unsubStart = on("image-gen-start", () => setImageGenStatus("正在提取配图关键词…"));
+    const unsubProgress = on("image-gen-progress", (d) => {
+      if (d) setImageGenStatus(`正在生成配图 (${d.index + 1}/${d.total})…`);
+    });
+    const unsubComplete = on("image-gen-complete", (d) => {
+      if (d && d.count > 0) setImageGenStatus(`配图完成 (${d.count} 张)`);
+      else if (d && d.count === 0) setImageGenStatus("配图失败");
+      else setImageGenStatus("配图完成");
+      setTimeout(() => setImageGenStatus(null), 4000);
+    });
+    const unsubError = on("image-gen-error", (d) => {
+      setImageGenStatus(d?.message || "配图失败");
+      setTimeout(() => setImageGenStatus(null), 4000);
+    });
+    return () => { unsubStart(); unsubProgress(); unsubComplete(); unsubError(); };
+  }, []);
 
   // Sync styleTemplate when parent changes editorStyleTemplateId (e.g. from StylePanel)
   useEffect(() => {
@@ -936,8 +957,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         });
 
         // Auto-generate images if configured (非阻塞)
-        const drawCfg = (window as any).__drawConfig;
-        if (drawCfg?.enabled && drawCfg?.model) {
+        const drawCfg = useDrawConfig.getState().config;
+        if (drawCfg.enabled && drawCfg.model) {
           autoGenerateImages(result.articleId, contentRef.current || "").catch(console.warn);
         }
       } catch (e: any) {
@@ -1027,6 +1048,15 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     articleCtx?.applyStyles();
     articleCtx?.save();
     emit("article-theme-changed");
+    // Prompt for illustration when completing article
+    if (activeArticleId && contentRef.current) {
+      const drawCfg = useDrawConfig.getState().config;
+      if (drawCfg.model && activeArticleId) {
+        setPendingImageArticleId(activeArticleId);
+        setPendingImageContent(contentRef.current);
+        setShowImagePrompt(true);
+      }
+    }
   }, [activeArticleId, blueprint, onPhaseChange]);
 
   const handleSaveBlueprint = useCallback((bp: ArticleBlueprint) => {
@@ -1277,6 +1307,17 @@ ${seriesCtx}`;
         setPanelTab?.("chat");
         return;
       }
+      // Slash key opens AI command bar
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "TEXTAREA" || tag === "INPUT" || (e.target as HTMLElement)?.isContentEditable) {
+          // Let the editor handle / normally in text inputs
+        } else {
+          e.preventDefault();
+          openCommandBar?.();
+          return;
+        }
+      }
       // Skill shortcuts: Alt+1..5 for quick polish/rewrite/translate/expand/analysis
       if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         const skillMap: Record<string, string> = {
@@ -1352,7 +1393,7 @@ ${seriesCtx}`;
             showHeadingNumber={showHeadingNumber}
           />
           <InlineToolbar />
-        </div>
+          <AICommandBar />        </div>
       ) : folderProjectName ? (
         <div className="editor-pane__startup-split">
           <div className="editor-pane__project-panel">
@@ -1452,6 +1493,13 @@ ${seriesCtx}`;
           onClose={() => setBlueprintEditorOpen(false)}
           onSave={handleSaveBlueprint}
         />
+      )}
+
+      {/* Image generation status bar */}
+      {imageGenStatus && (
+        <div className="editor-pane__image-status">
+          <span>{imageGenStatus}</span>
+        </div>
       )}
 
       {/* Illustration prompt after article generation */}

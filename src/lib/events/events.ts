@@ -69,6 +69,10 @@ export interface ImageGenCompleteDetail {
   count: number;
 }
 
+export interface ImageGenErrorDetail {
+  message: string;
+}
+
 export type EventBusKey =
   | "article-theme-changed"
   | "collections-changed"
@@ -86,7 +90,9 @@ export type EventBusKey =
   | "ai-config-changed"
   | "image-gen-start"
   | "image-gen-progress"
-  | "image-gen-complete";
+  | "image-gen-complete"
+  | "image-gen-error"
+  | "writing-skill-changed";
 
 export interface EventBusMap {
   "article-theme-changed": void;
@@ -106,4 +112,6 @@ export interface EventBusMap {
   "image-gen-start": ImageGenStartDetail;
   "image-gen-progress": ImageGenProgressDetail;
   "image-gen-complete": ImageGenCompleteDetail;
+  "image-gen-error": ImageGenErrorDetail;
+  "writing-skill-changed": string;
 }
