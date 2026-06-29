@@ -142,14 +142,6 @@ fn parse_sse_line(line: &str) -> Option<String> {
                 return Some(text.to_string());
             }
         }
-        // DeepSeek reasoning: choices[0].delta.reasoning_content
-        if let Some(choice) = parsed["choices"].as_array()?.first() {
-            if let Some(delta) = choice["delta"].as_object() {
-                if let Some(reasoning) = delta.get("reasoning_content") {
-                    return reasoning.as_str().map(|s| s.to_string());
-                }
-            }
-        }
     }
     None
 }
@@ -466,7 +458,7 @@ async fn anthropic_chat(
     let mut body = serde_json::json!({
         "model": req.model,
         "messages": messages,
-        "max_tokens": 4096,
+        "max_tokens": req.max_tokens.unwrap_or(4096),
     });
 
     if let Some(s) = system {
@@ -564,7 +556,7 @@ async fn anthropic_chat_stream(
     let mut body = serde_json::json!({
         "model": req.model,
         "messages": messages,
-        "max_tokens": 4096,
+        "max_tokens": req.max_tokens.unwrap_or(4096),
         "stream": true,
     });
 
@@ -618,16 +610,9 @@ async fn anthropic_chat_stream(
             buf = buf[pos + 2..].to_string();
 
             for line in event.lines() {
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
-                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
-                        if parsed["type"] == "content_block_delta" {
-                            if let Some(text) = parsed["delta"]["text"].as_str() {
-                                full_content.push_str(text);
-                                on_token(text.to_string());
-                            }
-                        }
-                    }
+                if let Some(token) = parse_sse_line(line) {
+                    full_content.push_str(&token);
+                    on_token(token);
                 }
             }
         }
