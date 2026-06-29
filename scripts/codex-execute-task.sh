@@ -83,8 +83,8 @@ except:
     print('')
 " 2>/dev/null || true)
   if [ -n "$SESSION_ID_EXEC" ]; then
-    # Codex Desktop 过滤 source='exec' 的会话，改为 'unknown' 使其可见
-    sqlite3 ~/.codex/state_5.sqlite "UPDATE threads SET source='unknown' WHERE id='$SESSION_ID_EXEC' AND source='exec';" 2>/dev/null || true
+    # Codex Desktop 过滤 source='exec' 的会话，改为 'cli' 使其可见
+    sqlite3 ~/.codex/state_5.sqlite "UPDATE threads SET source='cli', title='fix: ${TICKET_NAME}', preview='fix: ${TICKET_NAME}' WHERE id='$SESSION_ID_EXEC' AND source='exec';" 2>/dev/null || true
     NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%S.000000Z")
     echo "→ 注册 session ($SESSION_ID_EXEC) 到 Codex Desktop..."
     echo "$(python3 -c "
