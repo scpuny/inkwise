@@ -228,10 +228,15 @@ impl DataStore {
 
     fn write_json<T: serde::Serialize + ?Sized>(&self, name: &str, data: &T) -> Result<(), String> {
         let path = self.data_dir.join(format!("{}.json", name));
+        let tmp_path = self.data_dir.join(format!("{}.json.tmp", name));
         let content = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
-        std::fs::write(&path, &content).map_err(|e| e.to_string())
+        std::fs::write(&tmp_path, &content).map_err(|e| e.to_string())?;
+        let f = std::fs::File::open(&tmp_path).map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+        drop(f);
+        std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
+        Ok(())
     }
-
     // ─── Collections ───
 
     pub fn load_collections(&self) -> Vec<Collection> {
