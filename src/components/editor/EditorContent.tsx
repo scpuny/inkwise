@@ -11,6 +11,7 @@ import { Markdown } from "@tiptap/markdown";
 import { EditorContent as TipTapEditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
+import { MermaidNode } from "../../extensions/editor/MermaidNode";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgent } from "../../lib/ai/agent";
@@ -145,6 +146,7 @@ export function EditorContent({
         underline: false,
       }),
       Underline,
+      MermaidNode,
       CodeBlockLowlight.configure({
         lowlight: createLowlight(common),
       }),

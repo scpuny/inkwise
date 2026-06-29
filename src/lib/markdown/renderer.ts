@@ -9,7 +9,8 @@ import hljs from "./highlight";
 // ─── Helpers ───
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Don't double-escape already-escaped HTML entities (&amp;, &lt;, &gt;, &quot;, &#...;)
+  return s.replace(/&(?!(?:amp|lt|gt|quot|#\d+|#x[a-fA-F0-9]+);)/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function inlineHtml(s: string): string {
@@ -69,14 +70,28 @@ export function markdownToHtml(content: string): string {
     if (/^```/.test(trimmed)) {
       closePara(); closeLists();
       if (inCode) {
-        let lang = codeBuf.length > 0 ? codeBuf[0].trim() : "";
-        if (lang && hljs.getLanguage(lang)) codeBuf.shift(); else lang = "";
-        const code = codeBuf.join("\n");
-        const hCode = lang
-          ? formatCodeHtml(hljs.highlight(code, { language: lang }).value)
-          : formatCodeHtml(escapeHtml(code));
-        out.push(`<pre class="hljs"><span class="mac-dots">${macDots}</span><code class="language-${lang || "plaintext"}">${hCode}</code></pre>\n`);
-        codeBuf = []; inCode = false;
+        let rawLang = codeBuf.length > 0 ? codeBuf[0].trim() : "";
+        // Check for mermaid BEFORE hljs processing (hljs doesn't recognize mermaid)
+        if (rawLang === "mermaid") {
+          codeBuf.shift(); // remove the language tag
+          const code = codeBuf.join("\n");
+          const safeCode = escapeHtml(code);
+          // Output placeholder with unique ID - mermaid renders asynchronously
+          const mmId = "mm-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+          // Escape newlines for HTML attribute safety, then store full code in textContent
+          const attrCode = safeCode.replace(/\n/g, "&#10;").replace(/\r/g, "&#13;");
+          out.push(`<div id="${mmId}" class="mermaid" data-code="${attrCode}">${safeCode}</div>\n`);
+          codeBuf = []; inCode = false;
+        } else {
+          let lang = rawLang;
+          if (lang && hljs.getLanguage(lang)) codeBuf.shift(); else lang = "";
+          const code = codeBuf.join("\n");
+          const hCode = lang
+            ? formatCodeHtml(hljs.highlight(code, { language: lang }).value)
+            : formatCodeHtml(escapeHtml(code));
+          out.push(`<pre class="hljs"><span class="mac-dots">${macDots}</span><code class="language-${lang || "plaintext"}">${hCode}</code></pre>\n`);
+          codeBuf = []; inCode = false;
+        }
       } else {
         inCode = true;
         codeBuf = [trimmed.slice(3).trim()];
