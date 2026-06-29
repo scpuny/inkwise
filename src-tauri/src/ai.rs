@@ -1,4 +1,6 @@
 // ai.rs — AI 聊天接口，支持多 provider 和 function/tool calling
+use crate::store::DataStore;
+use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -106,6 +108,41 @@ pub struct ProviderListConfig {
     pub kind: String,
     pub base_url: String,
     pub api_key: String,
+}
+
+// ─── Provider resolution ───
+
+/// Look up a provider and build a ProviderConfig.
+/// If `provider_id` is Some, finds by id; otherwise finds the first enabled provider with models.
+/// If `model` is Some, uses it; otherwise uses the provider's first model.
+pub fn resolve_provider(
+    store: &Mutex<DataStore>,
+    provider_id: Option<&str>,
+    model: Option<&str>,
+) -> Result<ProviderConfig, String> {
+    let store = store.lock().map_err(|e| e.to_string())?;
+    let providers = store.load_providers();
+
+    let provider = match provider_id {
+        Some(pid) => providers.iter().find(|p| p.id == pid)
+            .ok_or_else(|| format!("未找到提供商: {pid}"))?,
+        None => providers.iter().find(|p| p.enabled && !p.models.is_empty())
+            .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?,
+    };
+
+    let model = model.map(|m| m.to_string()).unwrap_or_else(|| provider.models[0].id.clone());
+
+    Ok(ProviderConfig {
+        id: provider.id.clone(),
+        kind: provider.kind.clone(),
+        base_url: provider.base_url.clone().unwrap_or_else(|| match provider.kind.as_str() {
+            "anthropic" => "https://api.anthropic.com/v1".into(),
+            "deepseek" => "https://api.deepseek.com/v1".into(),
+            _ => "https://api.openai.com/v1".into(),
+        }),
+        api_key: provider.api_key.clone().ok_or("未配置 API Key")?,
+        model,
+    })
 }
 
 // ─── Callback type ───
