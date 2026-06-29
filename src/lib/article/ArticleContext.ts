@@ -68,7 +68,7 @@ export class ArticleContext {
         "article-style-config:" + this.articleId,
         JSON.stringify(this._styleConfig),
       );
-    } catch { /* ignore */ }
+    } catch { console.warn("[ArticleContext.save] localStorage failed (quota exceeded?)"); }
   }
 
   // ── private ──
