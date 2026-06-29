@@ -1,4 +1,29 @@
-## v1.7.1 (2026-06-28)
+## v1.8.0 (2026-06-29)
+
+### 新功能
+- **图片生成** — 支持 OpenAI DALL·E 3 / OpenAI 兼容 API 绘图引擎，前端画板集成，图片持久化（article_images SQLite 表），封面图上传
+- **Mermaid 图表渲染** — 编辑器内 Mermaid 代码块实时渲染为图表，Markdown/Markdown 导出支持 SVGs
+- **写作技能/工具事件 UI 增强** — 阶段进度可见性改善，事件详情可折叠展示
+
+### 安全加固
+- **Rust unwrap 全面消除** — 消除 `db.rs` 和 `lib.rs` 中 82 处 `lock().unwrap()` 恐慌风险，全部改为 `map_err` 错误传播
+- **JSON 原子写入** — `store.rs` write_json 改为 `tmp + sync_all + rename` 原子模式，防止崩溃导致文件损坏
+- **空 catch 块补全** — `crud.ts` 和 `ArticleContext.ts` 中所有空 `catch {}` 添加 `console.warn` 日志输出
+
+### Bug 修复
+- **双环境持久化不一致** — `loadCollections()` 改为优先读取 localStorage（可信数据源），Tauri 仅作为迁移回退
+- **前后端类型映射补全** — `toTauriCollection` 补全 `phase/description/tags/blueprint` 字段，`fromTauriCollection` 用类型守卫替代 `any`
+- **project_indexer 行数统计错误** — `LanguageStat.lines` 使用实际代码行数而非文件计数
+- **project_indexer 内存泄漏** — `FileHashCache::get_hash()` 返回 `Option<String>` 消除 `Box::leak`
+- **AI max_tokens 硬编码** — Anthropic `max_tokens` 从请求参数传递，移除 4096 固定值
+- **agent.rs temperature 映射** — 根据 `skill.effort` 映射 temperature（high→0.3, medium→0.5, default→0.7）
+- **SSE 解析去重** — 删除 `parse_sse_line` 中重复的 DeepSeek reasoning 分支
+
+### 重构
+- **AI Provider 代码去重** — 抽取 `resolve_provider()` 公共函数，lib.rs 5 个 command 各减少 15-20 行重复代码
+- **appStore 状态拆分** — 拆分为 `panelStore`（15 字段）+ `articleStore`（14 字段），`appStore.ts` 保留为 re-export 入口
+- **MainEditorPage 拆分** — 750 行 → 332 行，提取 `useKeyboardShortcuts`/`usePanelManager`/`useOutlineNavigation`/`useArticleLifecycle` 四个 hook
+- **类型同步清单** — 创建 `docs/type-sync-manifest.md` 维护 Rust/TypeScript 字段对应关系
 
 ### 改进
 - **写作技能提示词全面升级** — 9 种内置技能（博客/文学/自媒体/教程/商业/新闻/营销/文档/评论）增加开篇要求、结构规则、质量检查环节
