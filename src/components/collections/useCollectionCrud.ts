@@ -7,6 +7,7 @@ import {
   browserLoad, genId, type Collection
 } from "../../lib/storage/collections";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
+import { emit } from "../../lib/events/eventBus";
 
 export function useCollectionCrud() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -27,6 +28,7 @@ export function useCollectionCrud() {
     if (!title.trim()) return null;
     const col = await addCollection(title.trim());
     setCollections(prev => [...prev, col]);
+    emit("collections-changed");
     return col;
   }, []);
 
@@ -48,6 +50,7 @@ export function useCollectionCrud() {
     setCollections(updated);
     if (isTauriEnv()) {
       try { await tryInvoke(TauriCommands.DeleteCollectionDb, { id }); } catch {}
+    emit("collections-changed");
     }
   }, [collections]);
 
@@ -69,6 +72,7 @@ export function useCollectionCrud() {
       all.push(col);
       await saveCollections(all);
       setCollections(all);
+      emit("collections-changed");
       if (isTauriEnv()) { try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {} }
     }
   }, []);

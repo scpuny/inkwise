@@ -65,6 +65,11 @@ export enum TauriCommands {
   ChatStream = "chat_stream",
 
   // ── Utilities ──
+  GetSettings = "get_settings",
+  SetSettings = "set_settings",
+  GetStoragePath = "get_storage_path",
+  ExportData = "export_data",
+  ImportData = "import_data",
   CheckPublicIp = "check_public_ip",
   DialogOpen = "dialog_open",
   DialogSave = "dialog_save",

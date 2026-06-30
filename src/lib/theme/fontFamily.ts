@@ -5,7 +5,7 @@ export const FONT_FAMILIES = ["system", "yahei", "pingfang", "noto", "serif", "c
 export type FontFamily = (typeof FONT_FAMILIES)[number];
 export const DEFAULT_FONT_FAMILY: FontFamily = "system";
 
-const FONT_FAMILY_KEY = "inkwise-font-family";
+export const FONT_FAMILY_KEY = "inkwise-font-family";
 const CUSTOM_FONT_KEY = "inkwise-font-family-custom";
 
 export function isFontFamily(value: unknown): value is FontFamily {

@@ -9,7 +9,7 @@ export type {
 export { genId, browserLoad, browserSave } from "./internal";
 
 export {
-  seedIfEmpty, loadCollections, saveCollections,
+  seedIfEmpty, loadCollections, saveCollections, forceSync,
   addCollection, renameCollection, removeCollection, updateCollection,
   addArticle, renameArticle, trashArticle,
   loadTrash, saveTrash, restoreArticle,

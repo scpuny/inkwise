@@ -1,5 +1,9 @@
 // crud.ts — 集合/文章/回收站 CRUD 操作
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../bridge/tauri";
+import { initTheme, normalizeThemePreference, normalizeThemeStyle, THEME_KEY, STYLE_KEY } from "../../theme/theme";
+import { initTextSize, isTextSize, TEXT_SIZE_KEY } from "../../theme/textSize";
+import { initFontFamily, isFontFamily, FONT_FAMILY_KEY } from "../../theme/fontFamily";
+import { useThemeStore } from "../../../store/themeStore";
 import type { Article, Collection, TrashItem } from "./types";
 import { genId, browserLoad, browserSave } from "./internal";
 
@@ -17,6 +21,8 @@ export function seedIfEmpty(): void {
   if (localStorage.getItem(SEEDED_KEY)) return;
   const existing = browserLoad<Collection[]>(COLLECTIONS_KEY, []);
   if (existing.length > 0) return;
+  // In Tauri env, skip demo data — loadCollections will fetch from backend
+  if (typeof (window as any)?.__TAURI_INTERNALS__ !== 'undefined') return;
   const now = Date.now();
   const demo: Collection = {
     id: genId(),
@@ -81,32 +87,54 @@ function toTauriCollection(c: Collection): Record<string, unknown> {
 
 /* ─── 集合 CRUD ─── */
 
+// ponytail: session-level flags, sync from backend once per app start
+let _syncedFromBackend = false;
+let _syncedSettings = false;
+
+/** Force a full re-sync from backend on next loadCollections call */
+export function forceSync(): void {
+  _syncedFromBackend = false;
+  _syncedSettings = false;
+}
+
 export async function loadCollections(): Promise<Collection[]> {
-  // localStorage is written first in saveCollections, so it's always the source of truth
+  // Backend is source of truth — sync on first load in Tauri
+  if (!_syncedFromBackend && typeof (window as any)?.__TAURI_INTERNALS__ !== 'undefined') {
+    _syncedFromBackend = true;
+    try {
+      const raw = await tryInvoke<Record<string, unknown>[]>(TauriCommands.GetCollections);
+      if (raw) {
+        const result = raw.map(fromTauriCollection);
+        browserSave(COLLECTIONS_KEY, result);
+        console.log('[loadCollections] from backend, count=%d', result.length);
+        return result;
+      }
+      // Backend returned empty — clear stale cache
+      browserSave(COLLECTIONS_KEY, []);
+      return [];
+    } catch (e) {
+      console.warn('[loadCollections] GetCollections failed, using cache:', e);
+    }
+  }
+  // Sync appearance settings from backend once per app start
+  if (!_syncedSettings && typeof (window as any)?.__TAURI_INTERNALS__ !== 'undefined') {
+    _syncedSettings = true;
+    trySettingsSync();
+  }
+  // Cache fast path or non-Tauri fallback
   const local = browserLoad<Collection[]>(COLLECTIONS_KEY, []);
   if (local.length > 0) return local;
-  // Fallback: migrate from Tauri if localStorage is empty
-  try {
-    const raw = await tryInvoke<Record<string, unknown>[]>(TauriCommands.GetCollections);
-    if (raw && raw.length > 0) {
-      const result = raw.map(fromTauriCollection);
-      browserSave(COLLECTIONS_KEY, result);
-      console.log('[loadCollections] from Tauri (migrate to localStorage), count=%d', result.length);
-      return result;
-    }
-  } catch (e) {
-    console.warn('[loadCollections] GetCollections failed:', e);
-  }
   return [];
 }
 
 export async function saveCollections(collections: Collection[]): Promise<void> {
-  browserSave(COLLECTIONS_KEY, collections);
+  // ponytail: backend is source of truth — write there first, then cache
   try {
     await tryInvoke(TauriCommands.SetCollections, { collections: collections.map(toTauriCollection) });
   } catch (e) {
     console.error('[saveCollections] SetCollections failed:', e);
   }
+  browserSave(COLLECTIONS_KEY, collections);
 }
 
 export async function addCollection(title: string): Promise<Collection> {
@@ -202,8 +230,9 @@ export async function loadTrash(): Promise<TrashItem[]> {
 }
 
 export async function saveTrash(items: TrashItem[]): Promise<void> {
+  // ponytail: backend is source of truth — write there first, then cache
+  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch { console.warn("[saveTrash] SetTrash failed"); }
   browserSave(TRASH_KEY, items);
-  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch { console.warn("[saveTrash] SetTrash failed (localStorage already saved)"); }
 }
 
 export async function restoreArticle(trashId: string): Promise<void> {
@@ -232,6 +261,34 @@ export async function emptyTrash(): Promise<void> {
 }
 
 /* ─── 文集文件夹关联 ─── */
+
+// ponytail: sync appearance settings from backend once per session
+async function trySettingsSync(): Promise<void> {
+  try {
+    const s = await tryInvoke<Record<string,string>|null>(TauriCommands.GetSettings);
+    if (!s) return;
+    let changed = false;
+    if (s.theme) { localStorage.setItem(THEME_KEY, s.theme); changed = true; }
+    if (s.theme_style) { localStorage.setItem(STYLE_KEY, s.theme_style); changed = true; }
+    if (s.text_size) { localStorage.setItem(TEXT_SIZE_KEY, s.text_size); changed = true; }
+    if (s.font_family) { localStorage.setItem(FONT_FAMILY_KEY, s.font_family); changed = true; }
+    if (changed) {
+      initTheme();
+      initTextSize();
+      initFontFamily();
+      // Sync Zustand store so settings panel reflects saved values
+      const ts = localStorage.getItem(TEXT_SIZE_KEY);
+      const ff = localStorage.getItem(FONT_FAMILY_KEY);
+      useThemeStore.setState({
+        themeStyle: normalizeThemeStyle(localStorage.getItem(STYLE_KEY) ?? undefined),
+        themeMode: normalizeThemePreference(localStorage.getItem(THEME_KEY)),
+        ...(isTextSize(ts) ? { textSize: ts } : {}),
+        ...(isFontFamily(ff) ? { fontFamily: ff } : {}),
+      });
+      console.log('[trySettingsSync] synced from backend');
+    }
+  } catch { /* first launch, no saved settings yet */ }
+}
 
 export async function unlinkCollectionFolder(collectionId: string): Promise<void> {
   const all = await loadCollections();

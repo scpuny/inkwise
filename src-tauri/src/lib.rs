@@ -76,6 +76,56 @@ fn get_settings(state: tauri::State<AppState>) -> Result<AppSettings, String> {
 fn set_settings(state: tauri::State<AppState>, settings: AppSettings) -> Result<(), String> {
     state.store.lock().map_err(|e| e.to_string())?.save_settings(&settings)
 }
+
+// ─── Storage Management ───
+
+#[tauri::command]
+fn get_storage_path(state: tauri::State<AppState>) -> Result<String, String> {
+    let path = state.store.lock().map_err(|e| e.to_string())?.data_dir().to_string_lossy().to_string();
+    Ok(path)
+}
+
+#[tauri::command]
+fn export_data(state: tauri::State<AppState>, dest: String) -> Result<(), String> {
+    let src = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    let dst = std::path::PathBuf::from(&dest);
+    if dst.exists() {
+        std::fs::remove_dir_all(&dst).map_err(|e| e.to_string())?;
+    }
+    copy_dir_recursive(&src, &dst).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn import_data(state: tauri::State<AppState>, src: String) -> Result<(), String> {
+    let dst = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    let src_path = std::path::PathBuf::from(&src);
+    if !src_path.exists() {
+        return Err("备份路径不存在".into());
+    }
+    // Backup current data before restoring
+    // Clear and restore
+    for entry in std::fs::read_dir(&src_path).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name();
+        let src_child = entry.path();
+        let dst_child = dst.join(&name);
+        if dst_child.exists() {
+            if dst_child.is_dir() {
+                std::fs::remove_dir_all(&dst_child).map_err(|e| e.to_string())?;
+            } else {
+                std::fs::remove_file(&dst_child).map_err(|e| e.to_string())?;
+            }
+        }
+        if src_child.is_dir() {
+            copy_dir_recursive(&src_child, &dst_child).map_err(|e| e.to_string())?;
+        } else {
+            std::fs::copy(&src_child, &dst_child).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 // ─── AI Config ───
 
 #[tauri::command]
@@ -1406,11 +1456,15 @@ fn stop_watching_project(state: tauri::State<'_, AppState>) -> Result<(), String
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            let app_dir = app.path().app_data_dir().expect("failed to get app data dir");
+            let app_dir = app.path().home_dir().expect("failed to get home dir").join(".inkwise");
             std::fs::create_dir_all(&app_dir).ok();
-            // Migrate data from old com.inkwise.desktop if fresh install
-            let old_app_dir = app_dir.parent().map(|p| p.join("com.inkwise.desktop"));
-            if let Some(ref old_dir) = old_app_dir {
+            // Migrate from previous data locations if fresh install
+            let old_candidates = [
+                app.path().app_data_dir().ok(),
+                app.path().app_data_dir().ok().and_then(|d| d.parent().map(|p| p.join("com.inkwise.desktop"))),
+            ];
+            for old_dir in old_candidates.into_iter().flatten() {
+                if old_dir == app_dir { continue; }
                 if !app_dir.join("data/collections.json").exists()
                     && old_dir.join("data/collections.json").exists()
                 {
@@ -1427,6 +1481,7 @@ pub fn run() {
                             }
                         }
                     }
+                    break;
                 }
             }
             let database = db::Database::open(&app_dir).ok();
@@ -1462,6 +1517,9 @@ pub fn run() {
             set_providers,
             get_settings,
             set_settings,
+            get_storage_path,
+            export_data,
+            import_data,
             get_ai_config,
             set_ai_config,
             chat,

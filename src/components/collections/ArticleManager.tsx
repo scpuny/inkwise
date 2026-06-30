@@ -21,7 +21,7 @@ import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { saveArticleContent } from "../../lib/storage/articles";
-import { on } from "../../lib/events/eventBus";
+import { on, emit } from "../../lib/events/eventBus";
 import { searchArticleContent } from "../../lib/storage/collections/search";
 import type { SearchResult } from "../../lib/storage/collections/types";
 
@@ -271,6 +271,7 @@ export function ArticleManager({
     await saveCollections(collections);
     setShowDeleteConfirm(false);
     setSelectedIds(new Set());
+    emit("collections-changed");
     await loadData();
   };
 
@@ -289,6 +290,7 @@ export function ArticleManager({
     }
     await saveCollections(collections);
     setSelectedIds(new Set());
+    emit("collections-changed");
     await loadData();
   };
 
@@ -327,6 +329,7 @@ export function ArticleManager({
     if (editingId) {
       setCollections(prev => prev.map(c => c.id === editingId ? { ...c, title } : c));
     }
+    emit("collections-changed");
     await loadData();
   };
 
@@ -338,6 +341,7 @@ export function ArticleManager({
       if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteCollectionDb, { id: colId }); } catch {} }
       if (filterCollection === colId) setFilterCollection("all");
     }
+    emit("collections-changed");
     await loadData();
   };
 

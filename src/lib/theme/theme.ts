@@ -19,8 +19,8 @@ export type ThemeStyle = (typeof THEME_STYLES)[number];
 const DEFAULT_THEME_STYLE: ThemeStyle = "graphite";
 const DEFAULT_THEME: Theme = "dark";
 
-const THEME_KEY = "inkwise-theme";
-const STYLE_KEY = "inkwise-theme-style";
+export const THEME_KEY = "inkwise-theme";
+export const STYLE_KEY = "inkwise-theme-style";
 
 let currentTheme: Theme = DEFAULT_THEME;
 let currentThemeStyle: ThemeStyle = DEFAULT_THEME_STYLE;

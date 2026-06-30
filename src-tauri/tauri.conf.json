@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "InkWise",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "identifier": "com.inkwise.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "InkWise",
+        "title": "InkWise \u58a8\u667a ",
         "width": 1280,
         "height": 800,
         "resizable": true,
@@ -24,7 +24,7 @@
         "enable": true,
         "scope": {
           "allow": [
-            "$APPDATA/**"
+            "$HOME/.inkwise/**"
           ]
         }
       }

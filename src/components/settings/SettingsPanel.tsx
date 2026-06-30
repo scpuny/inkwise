@@ -1,7 +1,7 @@
 // SettingsPanel.tsx — 设置面板主容器：标签导航 + 按需渲染各设置页面
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { X, Palette, FileText, Cpu, Keyboard, Globe, Info, Sparkles } from "lucide-react";
+import { X, Palette, FileText, Cpu, Keyboard, Globe, Info, Sparkles, FolderOpen } from "lucide-react";
 import type { SettingsTab } from "./settingsHelpers";
 import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
 import { ModelsSection } from "./ModelsSection";
@@ -13,6 +13,7 @@ import { SkillsSection } from "./SkillsSection";
 import { ThemesSection } from "./ThemesSection";
 import { WritingStylesSection } from "./WritingStylesSection";
 import { AboutSection } from "./AboutSection";
+import { StorageSection } from "./StorageSection";
 
 const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
   { id: "appearance", icon: <Palette size={14} />, label: "外观" },
@@ -22,6 +23,7 @@ const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
   { id: "themes",    icon: <FileText size={14} />,      label: "文章主题" },
   { id: "platforms", icon: <Globe size={14} />,     label: "发布平台" },
   { id: "styles",    icon: <Sparkles size={14} />,   label: "写作风格" },
+  { id: "storage",   icon: <FolderOpen size={14} />, label: "存储" },
   { id: "about",     icon: <Info size={14} />,      label: "关于" },
 ];
 
@@ -106,6 +108,7 @@ export function SettingsPanel({
             {tab === "styles" && <WritingStylesSection />}
             {tab === "themes" && <ThemesSection />}
             {tab === "platforms" && <PlatformsSection />}
+            {tab === "storage" && <StorageSection />}
             {tab === "about" && <AboutSection />}
           </main>
         </div>

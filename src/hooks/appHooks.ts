@@ -18,6 +18,7 @@ import type { TextSize } from "../lib/theme/textSize";
 import type { FontFamily } from "../lib/theme/fontFamily";
 import type { OutlineItem } from "../components/sidebar/OutlinePanel";
 import type { DocPickerResult } from "../components/collections/DocPicker";
+import { isTauriEnv, tryInvoke, TauriCommands } from "../lib/bridge/tauri";
 import { applyTheme, persistTheme } from "../lib/theme/theme";
 import { applyTextSize } from "../lib/theme/textSize";
 import { applyFontFamily } from "../lib/theme/fontFamily";
@@ -27,6 +28,18 @@ import type { EventBusMap } from "../lib/events/events";
 /**
  * 主题/样式处理器
  */
+async function saveSettingsToBackend(opts: {
+  theme?: string; theme_style?: string; text_size?: string; font_family?: string;
+}) {
+  if (!isTauriEnv()) return;
+  try {
+    const cur = await tryInvoke<Record<string,string>>(TauriCommands.GetSettings).catch(() => ({}));
+    await tryInvoke(TauriCommands.SetSettings, { settings: { ...cur, ...opts } });
+  } catch (e) {
+    console.warn('[saveSettings] failed:', e);
+  }
+}
+
 export function useThemeHandlers() {
   const themeMode = useThemeStore((s) => s.themeMode);
   const themeStyle = useThemeStore((s) => s.themeStyle);
@@ -40,6 +53,7 @@ export function useThemeHandlers() {
       setThemeStyle(style);
       applyTheme(themeMode, style);
       persistTheme(themeMode, style);
+      saveSettingsToBackend({ theme: themeMode, theme_style: style });
       emit("article-theme-changed");
     },
     [themeMode, setThemeStyle],
@@ -50,6 +64,7 @@ export function useThemeHandlers() {
       setThemeMode(mode);
       applyTheme(mode, themeStyle);
       persistTheme(mode, themeStyle);
+      saveSettingsToBackend({ theme: mode, theme_style: themeStyle });
     },
     [themeStyle, setThemeMode],
   );
@@ -57,11 +72,13 @@ export function useThemeHandlers() {
   const handleSelectTextSize = useCallback((size: TextSize) => {
     setTextSize(size);
     applyTextSize(size);
+    saveSettingsToBackend({ text_size: size });
   }, [setTextSize]);
 
   const handleSelectFontFamily = useCallback((font: FontFamily) => {
     setFontFamily(font);
     applyFontFamily(font);
+    saveSettingsToBackend({ font_family: font });
   }, [setFontFamily]);
 
   return { handleSelectStyle, handleSelectMode, handleSelectTextSize, handleSelectFontFamily };
