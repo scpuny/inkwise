@@ -138,11 +138,11 @@ export function ModelsSection() {
 
   const saveProviderKey = async (apiKeyEnv: string, value: string) => {
     const p = providers.find((pr) => pr.id === apiKeyEnv.replace("_API_KEY","").toLowerCase());
-    if (p) handleSave(providers.map((x) => x.id === p.id ? { ...x, apiKey: value } : x));
+    if (p) handleSave(providers.map((x) => x.id === p.id ? { ...x, apiKey: value, enabled: true } : x));
   };
   const clearProviderKey = async (apiKeyEnv: string) => {
     const p = providers.find((pr) => pr.id === apiKeyEnv.replace("_API_KEY","").toLowerCase());
-    if (p) handleSave(providers.map((x) => x.id === p.id ? { ...x, apiKey: undefined } : x));
+    if (p) handleSave(providers.map((x) => x.id === p.id ? { ...x, apiKey: undefined, enabled: false } : x));
     setGroupFetchResult(p?.id ?? "", null);
     setGroupModelDraft(p?.id ?? "", null);
   };

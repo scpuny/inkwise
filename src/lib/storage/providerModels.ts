@@ -119,7 +119,12 @@ const engine = new StorageEngine<Provider[]>(CACHE_KEY, {
 });
 
 function defaultProviders(): Provider[] {
-  return [];
+  return BUILTIN_PROVIDERS.map((bp) => ({
+    ...bp,
+    apiKey: undefined,
+    models: defaultModels(bp.id),
+    enabled: false,
+  }));
 }
 
 function defaultModels(id: string): ModelEntry[] {
