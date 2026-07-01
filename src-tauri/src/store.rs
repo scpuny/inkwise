@@ -132,6 +132,16 @@ pub struct AppSettings {
     pub theme_style: String,
     pub font_family: String,
     pub text_size: String,
+    #[serde(default)]
+    pub draw_model: String,
+    #[serde(default)]
+    pub draw_style: String,
+    #[serde(default)]
+    pub draw_size: String,
+    #[serde(default)]
+    pub draw_count: u32,
+    #[serde(default)]
+    pub draw_negative_prompt: String,
 }
 
 // ─── AI Config ───
@@ -367,6 +377,11 @@ impl DataStore {
             theme_style: "graphite".into(),
             font_family: "system".into(),
             text_size: "default".into(),
+            draw_model: String::new(),
+            draw_style: "vivid".into(),
+            draw_size: "1024x1024".into(),
+            draw_count: 3,
+            draw_negative_prompt: String::new(),
         })
     }
 
