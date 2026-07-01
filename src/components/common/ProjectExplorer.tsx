@@ -11,6 +11,7 @@ import {
 import { getProjectContext } from "../../lib/storage/collections";
 import { loadCollections, type Collection } from "../../lib/storage/collections";
 import { on, emit } from "../../lib/events/eventBus";
+import type { EventBusMap } from "../../lib/events/events";
 import { marked } from "marked";
 import type { ToolEvent as AgentToolEvent } from "../../lib/ai/agentEngine";
 
@@ -143,24 +144,24 @@ export function ProjectExplorer() {
   // Listen for AI exploration events
   useEffect(() => {
     if (!colId) return;
-    const unsub = on("project-exploring", (ev: any) => {
-      if (ev.collectionId !== colId) return;
-      if (ev.status === "start") {
+    const unsub = on("project-exploring", (detail) => {
+      if (!detail || detail.collectionId !== colId) return;
+      if (detail.status === "start") {
         setExploring(true);
         setLogs([{ id: nextId(), icon: "🚀", text: "开始 AI 扫描分析…", time: formatTime() }]);
         setInsights(null);
-      } else if (ev.status === "progress" && ev.toolEvent) {
-        setLogs((prev) => [...prev, ...toolEventToLogEntries(ev.toolEvent)]);
-      } else if (ev.status === "done") {
+      } else if (detail.status === "progress") {
+        setLogs((prev) => [...prev, ...toolEventToLogEntries(detail.toolEvent)]);
+      } else if (detail.status === "done") {
         setExploring(false);
         abortRef.current = null;
         setLogs((prev) => [...prev, { id: nextId(), icon: "🎉", text: "扫描分析完成", time: formatTime() }]);
         setInsights(getStoredProjectInsights(colId));
         setLogCollapsed(true);
-      } else if (ev.status === "error") {
+      } else if (detail.status === "error") {
         setExploring(false);
         abortRef.current = null;
-        setLogs((prev) => [...prev, { id: nextId(), icon: "❌", text: "扫描失败: " + (ev.message || "未知错误"), time: formatTime() }]);
+        setLogs((prev) => [...prev, { id: nextId(), icon: "❌", text: "扫描失败: " + (detail.message || "未知错误"), time: formatTime() }]);
       }
     });
     return () => unsub();

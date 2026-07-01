@@ -9,6 +9,8 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
   const [review, setReview] = useState<ArticleReview | null>(null);
   const [loading, setLoading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmOptimize, setConfirmOptimize] = useState(false);
   const [articleTitle, setArticleTitle] = useState("");
 
   // Load existing review on mount
@@ -23,6 +25,7 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
   const handleReview = async () => {
     if (!articleId || loading) return;
     setLoading(true);
+    setError(null);
 
     try {
       const content = await loadArticleContent(articleId);
@@ -33,8 +36,9 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
       const result = await generateArticleReview(articleId, content);
       setReview(result);
       await saveArticleReview(articleId, result);
-    } catch (e: any) {
-      alert(e?.message || "评估失败");
+    } catch (e: unknown) {
+      console.error("[review] error:", e);
+      setError(e instanceof Error ? e.message : "评估失败");
     } finally {
       setLoading(false);
     }
@@ -42,8 +46,15 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
 
   const handleOptimize = async () => {
     if (!articleId || !review || optimizing) return;
-    if (!confirm("将根据评估建议重新生成全文（约消耗 4000-8000 token），确定吗？")) return;
+    // ponytail: inline confirm replaces browser confirm() — Tauri WebView may hide dialog behind window
+    setConfirmOptimize(true);
+  };
+
+  const executeOptimize = async () => {
+    if (!articleId || !review || optimizing) return;
+    setConfirmOptimize(false);
     setOptimizing(true);
+    setError(null);
 
     try {
       const content = await loadArticleContent(articleId);
@@ -55,8 +66,10 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
         emit("content-saved", { articleId, content: optimized });
         alert("优化完成！已保存到文章。切换到编辑 tab 可查看。");
       }
-    } catch (e: any) {
-      alert(e?.message || "优化失败");
+    } catch (e: unknown) {
+      console.error("[optimize] error:", e);
+      const fallback = e instanceof Error ? e.message : JSON.stringify(e);
+      setError("优化失败: " + fallback);
     } finally {
       setOptimizing(false);
     }
@@ -114,21 +127,20 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
       {review ? (
         <div>
           {Object.entries(review.dimensions).map(([key, dim]) => {
-            const d = dim as any;
             return (
               <div key={key} style={{
                 padding: "8px 0",
                 borderBottom: "1px solid var(--border, rgba(128,128,128,0.15))",
                 fontSize: 12,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: d.suggestion ? 4 : 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: dim.suggestion ? 4 : 0 }}>
                   <span style={{ width: 56, flexShrink: 0, color: "var(--text)", fontWeight: 500 }}>
                     {DIMENSION_LABELS[key] || key}
                   </span>
-                  <RatingBadge rating={d.rating} />
-                  <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>{d.comment}</span>
+                  <RatingBadge rating={dim.rating} />
+                  <span style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>{dim.comment}</span>
                 </div>
-                {d.suggestion && (
+                {dim.suggestion && (
                   <div style={{
                     marginTop: 4,
                     marginLeft: 64,
@@ -140,12 +152,17 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
                     lineHeight: 1.5,
                   }}>
                     <span style={{ fontWeight: 500, color: "var(--warning, #d4920b)" }}>建议：</span>
-                    {d.suggestion}
+                    {dim.suggestion}
                   </div>
                 )}
               </div>
             );
           })}
+                    {error && (
+            <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12, color: "#cf222e", background: "rgba(207,34,46,0.08)", border: "1px solid rgba(207,34,46,0.2)", lineHeight: 1.5 }}>
+              ❌ {error}
+            </div>
+          )}
           {review.summary && (
             <div style={{
               marginTop: 10,
@@ -162,10 +179,17 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
             </div>
           )}
           <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
-            <button className="agent-chat__action agent-chat__action--confirm" onClick={handleReview} disabled={loading || optimizing}>
+          <button className="agent-chat__action agent-chat__action--confirm" onClick={handleReview} disabled={loading || optimizing}>
               {loading ? "评估中…" : "重新评估"}
             </button>
-            <button className="agent-chat__action" onClick={handleOptimize} disabled={loading || optimizing}
+          {confirmOptimize ? (
+            <div style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 12, color: "var(--text-secondary)" }}>
+              <span style={{ whiteSpace: "nowrap" }}>将消耗 ~4000-8000 token，确定？</span>
+              <button className="btn btn--small" style={{ color: "var(--accent, #0969da)" }} onClick={executeOptimize}>确认</button>
+              <button className="btn btn--small" onClick={() => setConfirmOptimize(false)}>取消</button>
+            </div>
+          ) : (
+          <button className="agent-chat__action" onClick={handleOptimize} disabled={loading || optimizing}
               style={optimizing ? { opacity: 0.6 } : {}}>
               {optimizing ? (
                 <><Loader2 size={12} className="agent-chat__spinner" style={{ marginRight: 4 }} />优化中…</>
@@ -173,6 +197,7 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
                 "一键优化"
               )}
             </button>
+          )}
           </div>
         </div>
       ) : (
@@ -181,6 +206,11 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
             从开头吸引力、结构逻辑、内容质量、表达节奏、格式规范五个维度评估文章质量，
             每个维度附带具体优化建议。评估结果可永久保存在文章中。
           </p>
+                    {error && (
+            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 4, fontSize: 12, color: "#cf222e", background: "rgba(207,34,46,0.08)", border: "1px solid rgba(207,34,46,0.2)", lineHeight: 1.5 }}>
+              ❌ {error}
+            </div>
+          )}
           <button className="agent-chat__action agent-chat__action--confirm" onClick={handleReview} disabled={loading}>
             {loading ? (
               <>

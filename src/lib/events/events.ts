@@ -1,5 +1,6 @@
 // events.ts — 全局事件类型定义
 // 所有自定义事件名和 payload 类型集中在此管理
+import type { ToolEvent } from "../ai/agentEngine";
 
 export interface OutlineNavigateDetail {
   headingText: string;
@@ -60,7 +61,7 @@ export interface ProjectExploringStartDetail {
 export interface ProjectExploringProgressDetail {
   collectionId: string;
   status: "progress";
-  toolEvent: any;
+  toolEvent: ToolEvent;
 }
 
 export interface ProjectExploringDoneDetail {

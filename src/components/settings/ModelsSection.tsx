@@ -92,6 +92,8 @@ export function ModelsSection() {
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState<AddProviderMode>(null);
   const [fetchingProvider, setFetchingProvider] = useState<string | null>(null);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, ProviderFetchResult>>({});
   const [fetchResults, setFetchResults] = useState<Record<string, ProviderFetchResult>>({});
   const [modelDrafts, setModelDrafts] = useState<Record<string, ProviderModelDraft>>({});
 
@@ -115,6 +117,29 @@ export function ModelsSection() {
     const candidates = providerModelCandidates(currentModels, fetched);
     const selected = mergedFetchedProviderModels(currentModels, fetched, { preserveCurated: true });
     return { providerName: name, candidates, selected: candidates.filter((m) => selected.includes(m)) };
+  };
+
+  const testConnection = async (provider: Provider) => {
+    setTestingProvider(provider.id);
+    setTestResults((prev) => {
+      const n = { ...prev };
+      delete n[provider.id];
+      return n;
+    });
+    try {
+      // ponytail: reuse fetch_models to verify connectivity; no model list UI needed
+      const fetched = await tryInvoke<string[]>(TauriCommands.FetchModels, { providerId: provider.id });
+      setTestResults((prev) => ({
+        ...prev,
+        [provider.id]: { kind: "ok", text: `✅ 连接成功 (${(fetched || []).length} 个模型可用)` },
+      }));
+    } catch (e: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [provider.id]: { kind: "warn", text: `❌ 连接失败: ${e?.message ?? e}` },
+      }));
+    }
+    setTestingProvider(null);
   };
 
   const refreshModels = async (provider: Provider) => {
@@ -299,11 +324,14 @@ export function ModelsSection() {
                 key={group.id} group={group}
                 busy={false} fetching={fetchingProvider === group.id}
                 fetchResult={fetchResults[group.id]} modelDraft={modelDrafts[group.id]}
+                testing={testingProvider === group.id}
+                testResult={testResults[group.id]}
                 defaultProvider={providers[0]?.id ?? ""}
                 editing={editing} kinds={["openai","anthropic","deepseek","custom"]}
                 onEdit={setEditing} onCancelEdit={() => setEditing(null)}
                 onSave={(p: any) => handleSave(providers.map((x) => x.id === p.id ? { ...x, label: p.label, baseUrl: p.baseUrl, apiKey: p.apiKey, models: stringsToModelEntries(p.models) } : x))}
                 onRefresh={() => { const pp = providers.find((x) => x.id === group.id); if (pp) refreshModels(pp); }}
+                onTestConnection={() => { const pp = providers.find((x) => x.id === group.id); if (pp) testConnection(pp); }}
                 onToggleDraftModel={(model) => {
                   const d = modelDrafts[group.id]; if (!d) return;
                   const selected = d.selected.includes(model) ? d.selected.filter((m) => m !== model) : [...d.selected, model];
@@ -657,12 +685,12 @@ function ProviderModelDraftPicker({ draft, busy, fetching, onToggle, onSelectAll
 }
 
 /* ─── ProviderAccessCard (Reasonix exact) ─── */
-function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, defaultProvider, editing, kinds, onEdit, onCancelEdit, onSave, onRefresh, onToggleDraftModel, onSelectAllDraftModels, onClearDraftModels, onCancelDraftModels, onSaveDraftModels, onSaveEditorKey, onClearEditorKey, onDelete }: {
-  group: ProviderAccessGroup; busy: boolean; fetching: boolean;
-  fetchResult?: ProviderFetchResult; modelDraft?: ProviderModelDraft;
+function ProviderAccessCard({ group, busy, fetching, fetchResult, testing, testResult, modelDraft, defaultProvider, editing, kinds, onEdit, onCancelEdit, onSave, onRefresh, onTestConnection, onToggleDraftModel, onSelectAllDraftModels, onClearDraftModels, onCancelDraftModels, onSaveDraftModels, onSaveEditorKey, onClearEditorKey, onDelete }: {
+  group: ProviderAccessGroup; busy: boolean; fetching: boolean; testing: boolean;
+  fetchResult?: ProviderFetchResult; testResult?: ProviderFetchResult; modelDraft?: ProviderModelDraft;
   defaultProvider: string; editing: string | null; kinds: string[];
   onEdit: (name: string | null) => void; onCancelEdit: () => void;
-  onSave: (p: Provider) => void; onRefresh: () => void;
+  onSave: (p: Provider) => void; onRefresh: () => void; onTestConnection: () => void;
   onToggleDraftModel: (model: string) => void; onSelectAllDraftModels: () => void; onClearDraftModels: () => void;
   onCancelDraftModels: () => void; onSaveDraftModels: () => void;
   onSaveEditorKey: (env: string, value: string) => void; onClearEditorKey: (env: string) => void;
@@ -688,6 +716,7 @@ function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, de
         <div className="provider-access-card__actions">
           <button className="btn btn--small" disabled={busy} aria-expanded={editingProvider} onClick={() => editingProvider ? onCancelEdit() : onEdit(group.id)}>{editingProvider ? "收起" : "配置"}</button>
           <button className="btn btn--small" disabled={busy || fetching || !group.baseUrl || !group.apiKeyEnv || !group.keySet} onClick={onRefresh}>{fetching ? "获取中…" : "获取模型"}</button>
+          <button className="btn btn--small" disabled={busy || testing || !group.baseUrl || !group.keySet} onClick={onTestConnection}>{testing ? "测试中…" : "测试连接"}</button>
           {provider && onDelete && !group.builtIn && (
             <InlineConfirmButton label="删除" confirmLabel="确认删除" cancelLabel="取消" danger onConfirm={() => onDelete(provider)} />
           )}
