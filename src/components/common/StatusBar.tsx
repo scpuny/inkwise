@@ -248,11 +248,13 @@ export function StatusBar({ saveState: _saveState, phase }: { saveState?: SaveSt
         </span>
       )}
 
-      {/* Status dot */}
+      {/* Status dot — reflects AI/document state */}
       <span className="statusbar__group">
-        <span className="statusbar__item statusbar__dot" />
+        <span className={"statusbar__item statusbar__dot" + (exploringStatus?.status === "start" || exploringStatus?.status === "progress" ? " statusbar__dot--busy" : "")} />
         <span className="statusbar__item stat">
-          <span className="stat__label">{hasDocs ? "就绪" : "空闲"}</span>
+          <span className="stat__label">
+            {exploringStatus?.status === "start" || exploringStatus?.status === "progress" ? "分析中…" : exploringStatus?.status === "done" ? "就绪" : hasDocs ? "就绪" : "空闲"}
+          </span>
         </span>
       </span>
     </div>

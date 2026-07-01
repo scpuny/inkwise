@@ -50,6 +50,25 @@ export interface ContentSavedDetail {
   content: string;
 }
 
+// ── Project Exploring Events ──
+
+export interface ProjectExploringStartDetail {
+  collectionId: string;
+  status: "start";
+}
+
+export interface ProjectExploringProgressDetail {
+  collectionId: string;
+  status: "progress";
+  toolEvent: any;
+}
+
+export interface ProjectExploringDoneDetail {
+  collectionId: string;
+  status: "done" | "error";
+  message?: string;
+}
+
 // ── Image Generation Events ──
 
 export interface ImageGenStartDetail {
@@ -92,7 +111,8 @@ export type EventBusKey =
   | "image-gen-progress"
   | "image-gen-complete"
   | "image-gen-error"
-  | "writing-skill-changed";
+  | "writing-skill-changed"
+  | "project-exploring";
 
 export interface EventBusMap {
   "article-theme-changed": void;
@@ -114,4 +134,5 @@ export interface EventBusMap {
   "image-gen-complete": ImageGenCompleteDetail;
   "image-gen-error": ImageGenErrorDetail;
   "writing-skill-changed": string;
+  "project-exploring": ProjectExploringStartDetail | ProjectExploringProgressDetail | ProjectExploringDoneDetail;
 }

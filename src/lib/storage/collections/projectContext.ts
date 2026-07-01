@@ -22,56 +22,199 @@ export async function linkCollectionFolder(collectionId: string, path: string): 
 
 const _exploringSet = new Set<string>();
 
-export async function exploreProjectForCollection(collectionId: string, path: string): Promise<void> {
+export async function exploreProjectForCollection(collectionId: string, path: string, signal?: AbortSignal): Promise<void> {
   if (_exploringSet.has(collectionId)) return;
+  if (signal?.aborted) return;
   _exploringSet.add(collectionId);
   const { emit } = await import("../../events/eventBus");
+  const { sendChat } = await import("../../ai/ai");
+  const { getProvidersSync } = await import("../../storage/providerModels");
+  const { resolveModel } = await import("../../config/globalAIConfig");
   try {
     emit("project-exploring" as any, { collectionId, status: "start" });
-    const { runAgentLoop, PROJECT_TOOLS } = await import("../../ai/agentEngine");
-    // 把 Rust 扫描的目录树提前喂给 AI，省去它自己探索目录的时间
-    let treePreview = "";
-    try {
-      const cached = getStoredProjectFileTree(collectionId);
-      if (cached && cached.length > 0) {
-        function flatten(nodes: any[], depth: number = 0): string {
-          let result = "";
-          for (const n of nodes) {
-            result += "  ".repeat(depth) + (n.isDir ? "📁 " : "📄 ") + n.name + "\n";
-            if (n.isDir && n.children && depth < 3) result += flatten(n.children, depth + 1);
-          }
-          return result;
-        }
-        treePreview = "\n## 项目目录结构\n```\n" + flatten(cached) + "```\n";
-      }
-    } catch (e) {}
-    const result = await runAgentLoop({
-      systemPrompt: "你是一个项目结构分析助手，负责分析关联项目的技术架构。请根据提供的目录结构和文件内容，给出全面的项目分析报告，包括：技术栈、模块划分、核心架构设计、关键文件说明、构建/运行方式。要求分点列出，清晰完整。",
-      userMessage: "以下是我的项目目录结构（由系统预扫描）：" + treePreview + "\n请分析这个项目的技术栈、架构设计、关键模块和核心文件作用。你可以使用工具读取关键文件来获取更多细节。",
-      tools: PROJECT_TOOLS,
-      toolContext: { projectPath: path },
-      maxToolRounds: 8,
-      requestTimeoutMs: 120000,
-      onToolEvent: function(ev: any) {
-        // Forward tool events as exploration progress
-        emit("project-exploring" as any, {
-          collectionId,
-          status: "progress",
-          toolEvent: ev,
-        });
-      },
+    emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "thinking", toolName: "", toolCallId: "think_0", arguments: "", summary: "\u{1F50D} 正在读取项目目录\u2026" } });
+
+    // 1. Get project context from Rust (fast)
+    const ctx = await getProjectContext(path);
+    if (signal?.aborted) throw new Error("\u626B\u63CF\u5DF2\u53D6\u6D88");
+
+    // 2. Identify key files
+    const keyFiles = identifyKeyFiles(ctx);
+    emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "thinking", arguments: "\u627E\u5230 " + keyFiles.length + " \u4E2A\u5173\u952E\u6587\u4EF6", summary: "\u627E\u5230 " + keyFiles.length + " \u4E2A\u5173\u952E\u6587\u4EF6", toolName: "", toolCallId: "think_1" } });
+
+    // 3. Read key files in batch
+    emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "tool_start", toolName: "read_project_files", toolCallId: "preload", arguments: JSON.stringify({ paths: keyFiles }), summary: "\u9884\u8BFB\u53D6 " + keyFiles.length + " \u4E2A\u5173\u952E\u6587\u4EF6" } });
+    const fileContents = keyFiles.length > 0 ? await readProjectFiles(path, keyFiles) : [];
+    if (signal?.aborted) throw new Error("\u626B\u63CF\u5DF2\u53D6\u6D88");
+    emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "tool_end", toolName: "read_project_files", toolCallId: "preload", arguments: "", summary: "\u8BFB\u53D6\u5B8C\u6210: " + fileContents.length + " \u4E2A\u6587\u4EF6", result: "" } });
+
+    // 4. Build comprehensive prompt with all data
+    emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "thinking", toolName: "", toolCallId: "think_2", arguments: "\u6B63\u5728\u5206\u6790\u9879\u76EE\u67B6\u6784\u2026", summary: "\u6B63\u5728\u5206\u6790\u9879\u76EE\u67B6\u6784\u2026" } });
+    const contextStr = buildProjectContextPrompt(ctx, fileContents);
+
+    // 5. Single AI call (no tools, one round only!)
+    const providers = getProvidersSync();
+    const provider = providers.find(function(p: any) { return p.enabled && p.models && p.models.length > 0; });
+    if (!provider) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u63D0\u4F9B\u5546");
+    const model: string = resolveModel() || provider.models[0]?.id || "";
+    const providerId: string = provider.id;
+
+    const result = await sendChat({
+      providerId,
+      model,
+      messages: [
+        { role: "system", content:
+          "\u4F60\u662F\u4E00\u4E2A\u8D44\u6DF1\u9879\u76EE\u67B6\u6784\u5206\u6790\u5E08\u3002\u6839\u636E\u63D0\u4F9B\u7684\u9879\u76EE\u76EE\u5F55\u7ED3\u6784\u3001\u914D\u7F6E\u6587\u4EF6\u548C\u5173\u952E\u6E90\u7801\uFF0C\u7ED9\u51FA\u7CBE\u70BC\u3001\u7ED3\u6784\u5316\u7684\u9879\u76EE\u5206\u6790\u62A5\u544A\u3002\u8981\u6C42\uFF1A\n" +
+          "1. \u6280\u672F\u6808\uFF08\u8BED\u8A00\u3001\u6846\u67B6\u3001\u6784\u5EFA\u5DE5\u5177\u3001\u6570\u636E\u5E93\u7B49\uFF09\n" +
+          "2. \u9879\u76EE\u67B6\u6784\uFF08\u6574\u4F53\u67B6\u6784\u98CE\u683C\u3001\u6A21\u5757\u5212\u5206\u3001\u6838\u5FC3\u8BBE\u8BA1\u6A21\u5F0F\uFF09\n" +
+          "3. \u5173\u952E\u6A21\u5757\u8BF4\u660E\uFF08\u5404\u76EE\u5F55/%E6%A8%A1%E5%9D%97%E7%9A%84%E8%81%8C%E8%B4%A3%EF%BC%89\n" +
+          "4. \u5173\u952E\u6587\u4EF6\u8BE6\u89E3\uFF08\u5165\u53E3\u6587\u4EF6\u3001\u6838\u5FC3\u903B\u8F91\u6587\u4EF6\u7684\u4F5C\u7528\uFF09\n" +
+          "5. \u6784\u5EFA\u4E0E\u8FD0\u884C\u65B9\u5F0F\n\n" +
+          "\u7528\u7B80\u6D01\u7684\u5206\u70B9\u683C\u5F0F\u8F93\u51FA\uFF0C\u6BCF\u4E2A\u70B9 1-3 \u884C\uFF0C\u4F18\u5148\u4F7F\u7528\u4E2D\u6587\u3002\u4E0D\u8981\u6709\u5BA2\u5957\u8BDD\u548C\u7075\u9B42\u9E21\u6C64\u3002"
+        },
+        { role: "user", content: "\u4EE5\u4E0B\u662F\u6211\u7684\u9879\u76EE\u5B8C\u6574\u4E0A\u4E0B\u6587\uFF0C\u8BF7\u5168\u9762\u5206\u6790\uFF1A\n\n" + contextStr },
+      ],
+      temperature: 0.3,
+      maxTokens: 4096,
     });
-    if (result.content) {
-      storeProjectInsights(collectionId, result.content);
+
+    if (signal?.aborted) throw new Error("\u626B\u63CF\u5DF2\u53D6\u6D88");
+
+    if (result) {
+      storeProjectInsights(collectionId, result);
     }
     emit("project-exploring" as any, { collectionId, status: "done" });
   } catch (e: any) {
-    console.warn("[exploreProjectForCollection] Failed:", e);
-    emit("project-exploring" as any, { collectionId, status: "error", message: e.message });
+    if (e.message === "\u626B\u63CF\u5DF2\u53D6\u6D88") {
+      emit("project-exploring" as any, { collectionId, status: "done" });
+    } else {
+      console.warn("[exploreProjectForCollection] Failed:", e);
+      emit("project-exploring" as any, { collectionId, status: "error", message: e.message });
+    }
   } finally {
     _exploringSet.delete(collectionId);
   }
 }
+
+/** Identify key files from project context for batch reading */
+function identifyKeyFiles(ctx: any): string[] {
+  const files: any[] = ctx.files || [];
+  const configFiles: any[] = ctx.configFiles || ctx.configs || [];
+  const candidates: string[] = [];
+
+  // Config/build files (by name matching)
+  const configNames = ["package.json", "Cargo.toml", "pyproject.toml", "go.mod", "tsconfig.json", "composer.json", "Gemfile", "build.gradle", "pom.xml", "Makefile", "Cargo.lock", "package-lock.json"];
+  for (const name of configNames) {
+    if (files.some((f: any) => f.path && f.path === name)) {
+      candidates.push(name);
+    }
+  }
+
+  // Config files from Rust scan
+  for (const cf of configFiles) {
+    const fpath = cf.path || cf.name;
+    if (fpath && !candidates.includes(fpath)) candidates.push(fpath);
+  }
+
+  // README files
+  for (const f of files) {
+    if (f.name && /^README/i.test(f.name) && f.path) candidates.push(f.path);
+  }
+
+  // Entry point files
+  const entryNames = ["src/main.tsx", "src/main.ts", "src/main.rs", "src/lib.rs", "src/App.tsx", "src/App.ts", "src/index.ts", "src/index.tsx", "src/index.js", "src/index.jsx", "main.rs", "lib.rs", "src/main.js", "src/main.jsx"];
+  for (const name of entryNames) {
+    if (files.some((f: any) => f.path === name) && !candidates.includes(name)) {
+      candidates.push(name);
+    }
+  }
+
+  // Top 5 largest source files (skip node_modules/.git/target/dist/build)
+  const srcFiles = files
+    .filter((f: any) => f.path && !f.isDir && !candidates.includes(f.path) && !/^(node_modules|\.git|target|dist|build|vendor)/.test(f.path))
+    .sort((a: any, b: any) => (b.lines || 0) - (a.lines || 0))
+    .slice(0, 5);
+  for (const f of srcFiles) {
+    if (!candidates.includes(f.path)) candidates.push(f.path);
+  }
+
+  return [...new Set(candidates)].filter(Boolean).slice(0, 15);
+}
+
+/** Build a comprehensive project context string for the AI prompt */
+function buildProjectContextPrompt(ctx: any, fileContents: any[]): string {
+  const parts: string[] = [];
+
+  // Project summary
+  parts.push("## \u9879\u76EE\u57FA\u672C\u4FE1\u606F");
+  parts.push("- \u540D\u79F0: " + (ctx.name || ""));
+  parts.push("- \u8DDF\u8DEF\u5F84: " + (ctx.rootPath || ""));
+  parts.push("- \u4E3B\u8BED\u8A00: " + (ctx.primaryLanguage || "\u672A\u77E5"));
+  parts.push("- \u6587\u4EF6\u6570: " + (ctx.summary?.totalFiles || 0) + ", \u76EE\u5F55\u6570: " + (ctx.summary?.totalDirs || 0) + ", \u4EE3\u7801\u884C\u6570: " + (ctx.summary?.totalLines || 0));
+  parts.push("");
+
+  // Languages
+  const langs = ctx.summary?.languages || [];
+  if (langs.length > 0) {
+    parts.push("## \u8BED\u8A00\u5206\u5E03");
+    for (const lang of langs) {
+      parts.push("- " + (lang.language || lang.name || "\u672A\u77E5") + ": " + (lang.files || lang.count || 0) + " files" + (lang.lines ? ", " + lang.lines + " lines" : ""));
+    }
+    parts.push("");
+  }
+
+  // Top files by line count
+  const topFiles = ctx.summary?.topFiles || [];
+  if (topFiles.length > 0) {
+    parts.push("## \u6700\u5927\u6E90\u6587\u4EF6");
+    for (const f of topFiles.slice(0, 10)) {
+      parts.push("- " + f.path + " (" + f.lines + " lines, " + (f.language || "\u672A\u77E5") + ")");
+    }
+    parts.push("");
+  }
+
+  // Directory tree (max depth 4)
+  if (ctx.structure && ctx.structure.length > 0) {
+    parts.push("## \u76EE\u5F55\u7ED3\u6784");
+    parts.push(flattenTree(ctx.structure, 4));
+    parts.push("");
+  }
+
+  // Key file contents
+  if (fileContents.length > 0) {
+    parts.push("## \u5173\u952E\u6587\u4EF6\u5185\u5BB9");
+    for (const fc of fileContents) {
+      if (fc.content && !fc.error) {
+        const allLines = fc.content.split("\n");
+        const truncated = allLines.length > 200
+          ? allLines.slice(0, 200).join("\n") + "\n... (file truncated at 200 lines)"
+          : fc.content;
+        parts.push("### " + fc.path);
+        parts.push("```" + (fc.language || ""));
+        parts.push(truncated);
+        parts.push("```");
+        parts.push("");
+      }
+    }
+  }
+
+  return parts.join("\n");
+}
+
+function flattenTree(nodes: any[], maxDepth: number, depth: number = 0): string {
+  let result = "";
+  for (const n of nodes) {
+    const indent = "  ".repeat(depth);
+    if (n.isDir) {
+      result += indent + "\uD83D\uDCC1 " + n.name + "/\n";
+      if (n.children && depth < maxDepth) result += flattenTree(n.children, maxDepth, depth + 1);
+    } else {
+      result += indent + "\uD83D\uDCC4 " + n.name + "\n";
+    }
+  }
+  return result;
+}
+
 
 export async function getProjectContext(path: string): Promise<ProjectContext> {
   const fallback: ProjectContext = {

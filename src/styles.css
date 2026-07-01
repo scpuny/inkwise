@@ -4040,6 +4040,16 @@ body {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 16%, transparent);
   flex: 0 0 auto
 }
+.statusbar__dot--busy {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  animation: statusbar-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes statusbar-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
 
 /* ── Footer (holds composer + status bar) ── */
 .footer {
@@ -8318,7 +8328,7 @@ body {
 .error-boundary__title {
   font-size: var(--text-xl);
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--fg);
 }
 
@@ -22764,8 +22774,8 @@ body {
   font-size: 13px;
   line-height: 1.75;
   color: var(--fg);
-  white-space: pre-wrap;
-  padding: 4px 0;
+  padding: 12px 24px;
+  background-color: var(--bg-subtle);
 }
 .project-explorer__insights strong {
   color: var(--accent);
@@ -22774,7 +22784,6 @@ body {
 .project-explorer__insights code {
   font-family: var(--mono);
   font-size: 11.5px;
-  background: var(--bg-elev);
   padding: 1px 5px;
   border-radius: 4px;
   color: var(--accent-strong);
@@ -22784,26 +22793,23 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
-  margin: 10px 0;
   overflow-x: auto;
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--fg-dim);
 }
 .project-explorer__insights p {
-  margin: 0 0 8px;
+  margin: 0;
 }
 .project-explorer__insights p:last-child {
   margin-bottom: 0;
 }
 .project-explorer__insights ul,
 .project-explorer__insights ol {
-  margin: 6px 0;
-  padding-left: 20px;
+  padding-left: 40px;
 }
 .project-explorer__insights li {
-  margin-bottom: 3px;
-  line-height: 1.6;
+  line-height: 1.75;
 }
 .project-explorer__insights h1,
 .project-explorer__insights h2,
@@ -22811,20 +22817,18 @@ body {
 .project-explorer__insights h4 {
   font-weight: 650;
   color: var(--fg);
-  margin: 14px 0 6px;
-  line-height: 1.4;
+   margin: 6px 0;
 }
 .project-explorer__insights h1 { font-size: 15px; }
-.project-explorer__insights h2 { font-size: 14px; }
-.project-explorer__insights h3 { font-size: 13px; }
+.project-explorer__insights h2 { font-size: 14px;  }
+.project-explorer__insights h3 { font-size: 13px;}
 .project-explorer__insights hr {
   border: none;
   border-top: 1px solid var(--border-soft);
-  margin: 14px 0;
+  margin: 12px 0;
 }
 .project-explorer__insights blockquote {
   border-left: 2px solid var(--accent);
-  margin: 8px 0;
   padding: 4px 12px;
   color: var(--text-secondary);
   font-style: italic;
@@ -22835,7 +22839,7 @@ body {
 }
 .project-explorer__insights a:hover {
   text-decoration: underline;
-}
+} 
 .project-explorer__loading {
   display: flex;
   align-items: center;
@@ -22845,6 +22849,134 @@ body {
   gap: 8px;
   font-size: 13px;
 }
+
+/* ── Project Explorer Toolbar ── */
+.project-explorer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-soft);
+  flex-shrink: 0;
+}
+.project-explorer__toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+  white-space: nowrap;
+}
+.project-explorer__toolbar-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg);
+  border-color: var(--accent);
+}
+.project-explorer__toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.project-explorer__toolbar-btn--stop:hover:not(:disabled) {
+  color: #e06c75;
+  border-color: #e06c75;
+}
+
+/* ── Project Explorer Progress Log ── */
+.project-explorer__log {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0;
+}
+.project-explorer__log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg);
+  border-radius: 4px;
+  transition: background var(--dur-fast);
+}
+.project-explorer__log-entry:hover {
+  background: var(--bg-hover);
+}
+.project-explorer__log-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.project-explorer__log-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-explorer__log-time {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.project-explorer__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+/* ── Project Explorer Collapsible Log ── */
+.project-explorer__log-wrap {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-tertiary);
+}
+.project-explorer__log-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.project-explorer__log-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+.project-explorer__log-toggle-arrow {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--mono);
+  transition: transform var(--dur-fast);
+  width: 10px;
+  text-align: center;
+}
+.project-explorer__log-toggle-arrow--open {
+  transform: rotate(90deg);
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

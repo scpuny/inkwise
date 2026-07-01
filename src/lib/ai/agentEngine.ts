@@ -168,6 +168,7 @@ export interface AgentOptions {
   requestTimeoutMs?: number;
   onToolEvent?: (event: ToolEvent) => void;
   onToken?: (token: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> {
@@ -179,6 +180,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
     maxToolRounds = 15,
     requestTimeoutMs = 150000,
     onToolEvent,
+    signal,
     onToken,
   } = options;
 
@@ -207,6 +209,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
   });
 
   while (true) {
+    if (signal?.aborted) throw new Error("扫描已取消");
     toolRound++;
     const isFirstRound = toolRound === 1;
     if (!isFirstRound) {
@@ -386,6 +389,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
         });
       }
 
+      if (signal?.aborted) throw new Error("扫描已取消");
       continue; // Next round
     }
 

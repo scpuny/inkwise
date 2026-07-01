@@ -277,6 +277,22 @@ impl Platform for WeChat {
                     }
                     None => { log::error!("解析 base64 封面失败"); String::new() }
                 }
+            } else if cover.starts_with("asset://localhost/") {
+                // asset:// URL → 解码为本地路径 → 上传为永久素材
+                match asset_url_to_path(cover) {
+                    Some(local_path) => {
+                        if Path::new(&local_path).exists() {
+                            match self.upload_image_as_material(&local_path).await {
+                                Ok(mid) => { log::info!("[publish] asset 封面 media_id: {}", mid); mid },
+                                Err(e) => { log::error!("上传 asset 封面失败: {}", e); String::new() }
+                            }
+                        } else {
+                            log::error!("asset 封面文件不存在: {} -> {}", cover, local_path);
+                            String::new()
+                        }
+                    }
+                    None => { log::error!("解析 asset 封面 URL 失败: {}", cover); String::new() }
+                }
             } else {
                 let p = Path::new(cover);
                 if p.exists() {
@@ -293,10 +309,12 @@ impl Platform for WeChat {
             let images = extract_images(markdown);
             if let Some(first_img) = images.first() {
                 log::info!("[publish] 从正文取封面: {}", first_img);
-                let img_path = if Path::new(first_img).is_absolute() {
+                let img_path = if first_img.starts_with("asset://localhost/") {
+                    asset_url_to_path(first_img).unwrap_or_default()
+                } else if Path::new(first_img).is_absolute() {
                     first_img.clone()
                 } else { format!("{}/{}", article_dir, first_img) };
-                if Path::new(&img_path).exists() {
+                if !img_path.is_empty() && Path::new(&img_path).exists() {
                     self.upload_image_as_material(&img_path).await.unwrap_or_default()
                 } else { String::new() }
             } else { String::new() }
@@ -388,6 +406,28 @@ pub async fn verify_credentials(app_id: &str, app_secret: &str) -> Result<bool, 
 
 // ─── HTML 图片上传（支持本地路径和 base64）───
 
+/// 将 asset://localhost/ URL 解码为本地文件路径
+fn asset_url_to_path(url: &str) -> Option<String> {
+    let path = url.strip_prefix("asset://localhost/")?;
+    // URL 解码：%2F -> /, %20 -> 空格, etc.
+    let mut decoded = String::with_capacity(path.len());
+    let mut chars = path.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let hex: String = chars.by_ref().take(2).collect();
+            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                decoded.push(byte as char);
+            } else {
+                decoded.push('%');
+                decoded.push_str(&hex);
+            }
+        } else {
+            decoded.push(c);
+        }
+    }
+    Some(decoded)
+}
+
 /// 上传 HTML 中的本地/base64 图片并替换为微信 CDN URL
 async fn upload_html_images(wechat: &mut WeChat, article_dir: &str, html: &str) -> String {
     let mut result = html.to_string();
@@ -408,6 +448,18 @@ async fn upload_html_images(wechat: &mut WeChat, article_dir: &str, html: &str) 
                             Err(e) => log::warn!("skip base64 img: {}", e),
                         }
                         let _ = std::fs::remove_file(&temp_path);
+                    }
+                } else if src.starts_with("asset://localhost/") {
+                    // asset:// URL (Tauri generated images) -> 解码为本地路径 -> 上传
+                    if let Some(local_path) = asset_url_to_path(src) {
+                        if Path::new(&local_path).exists() {
+                            match wechat.upload_image(&local_path).await {
+                                Ok(cdn_url) => replacements.push((src.to_string(), cdn_url)),
+                                Err(e) => log::warn!("skip asset img {}: {}", src, e),
+                            }
+                        } else {
+                            log::error!("asset img not found: {} -> {}", src, local_path);
+                        }
                     }
                 } else if !src.starts_with("http://") && !src.starts_with("https://") {
                     // 本地文件
