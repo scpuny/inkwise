@@ -173,6 +173,20 @@ export function inferCapabilities(modelName: string): string[] {
 
 // ─── Public API ───
 
+/** 从后端加载 providers 到 localStorage（解决 dev/prod localStorage 隔离问题） */
+async function syncProvidersFromBackend(): Promise<void> {
+  try {
+    const { isTauriEnv, tryInvoke } = await import("../bridge/tauri");
+    if (!isTauriEnv()) return;
+    const data = await tryInvoke<any[]>("get_providers");
+    if (data && data.length > 0) {
+      localStorage.setItem("inkwise:providers", JSON.stringify(data));
+    }
+  } catch {}
+}
+// 在模块加载时同步一次（不阻塞渲染）
+syncProvidersFromBackend();
+
 /** 权威读：后端 → 更新缓存 → 返回 */
 export async function getProviders(): Promise<Provider[]> {
   const data = await engine.get();
