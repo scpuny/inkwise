@@ -1,122 +1,159 @@
-# InkWise 架构演进方案
+# InkWise v2.0.0 架构演进主方案
 
-> 版本: v1.0 | 状态: 设计阶段 | 日期: 2026-07-03
+> 版本: v2.0.0 | 状态: 规划完成 | 最后更新: 2026-07-03
+> 基于: [Kiro tree-sitter Query 验证] + 15 份专题设计文档 + 全功能代码审查
 
 ---
 
-## 背景
+## 核心问题一览
 
-基于对 InkWise 现有代码的全面审查，发现以下核心问题：
-
-| # | 问题 | 严重度 | 涉及模块 |
+| # | 问题 | 严重度 | 方案文档 |
 |---|------|--------|---------|
-| 1 | **数据多源头不一致**：Rust JSON / localStorage / SQLite 三套存储互相覆盖 | P0 | crud.ts, store.rs, db.rs |
-| 2 | **删除级联遗漏**：删除合集不删子文章、回收站操作不清理向量和 SQLite | P0 | crud.ts, series.ts |
-| 3 | **离线变更无法检测**：文件 watcher 只在运行时有效，关 app 后的变更完全丢失 | P0 | project_indexer.rs |
-| 4 | **AST 遍历方式落后**：200 行手写 node_stack 遍历，而非 tree-sitter Query | P1 | project_indexer.rs |
-| 5 | **缺少语义检索**：只能精确匹配符号名，无法语义搜索相关代码/文章 | P1 | 无（新模块） |
-| 6 | **工具使用缺乏规划**：所有项目上下文一股脑塞给 AI，没有按意图裁剪 | P2 | agent.rs |
-| 7 | **CodeGraph 角色模糊**：装了也不知能额外得到什么 | P2 | project_indexer.rs |
+| 1 | **数据多源头不一致**：Rust JSON / localStorage / SQLite 三套存储互相覆盖 | P0 | 01 |
+| 2 | **删除级联遗漏**：删除合集不删子文章、回收站操作不清理向量和 SQLite | P0 | 02 |
+| 3 | **回收站逻辑错误**：trashArticle 物理删内容导致恢复后无内容 | P0 (新) | 17 |
+| 4 | **"风格"和"动作"混淆**：skill 容器同时承担两个完全不同的语义 | P0 | 13 |
+| 5 | **审阅不感知风格**：5 维度硬编码，不匹配当前写作风格 | P0 | 13 |
+| 6 | **离线变更无法检测**：文件 watcher 只在运行时有效，关 app 后变更丢失 | P0 | 03 |
+| 7 | **AST 遍历方式落后**：200 行手写 node_stack 遍历，而非 tree-sitter Query | P1 | 04 |
+| 8 | **缺少语义检索**：只能精确匹配符号名，无法语义搜索相关代码/文章 | P1 | 05 |
+| 9 | **两套平行技能体系**：Rust 14 个 + 前端 10 个，完全脱节 | P0 | 09 |
+| 10 | **agent 双套执行引擎**：前端 agentEngine.ts + Rust agent.rs 重复 | P0 | 09, 11 |
+| 11 | **工具使用缺乏规划**：所有项目上下文一股脑塞给 AI | P1 | 06 |
+| 12 | **CodeGraph 角色模糊**：装了也不知能额外得到什么 | P2 | 08 |
+| 13 | **editorStyles.ts 1585 行**：编辑器配置 + 样式 + 导入导出全部混在一个文件 | P1 | 11 |
+| 14 | **搜索实现性能差**：前端 search.ts 内存遍历全文，SQLite FTS 未被调用 | P1 | 01, 17 |
+| 15 | **主题数量过多**：25 个主题含大量同质重复 | P1 | 10 |
+| 16 | **UX 三层面板视觉过载**：右侧固定面板 + 侧栏同时打开压缩编辑器 | P0 | 14 |
+| 17 | **前端搜索不调 SQLite**：search.ts 内存遍历，SQLite FTS 闲置 | P1 | 01 |
+
+> **新发现（doc 17）**：回收站当前策略有问题——trashArticle 物理删内容 meta，
+> 恢复后只有标题回来内容丢了。正确做法是软删除：只移出合集列表，不删物理文件。
+> permanentlyDelete 再做物理清理。
 
 ---
 
-## 方案总览
-
-整个演进分为 7 个有序步骤，每步独立可部署：
+## 方案全景
 
 ```
-步骤 1: 数据一致性        →  单源头 + 统一 CRUD 入口
-步骤 2: 删除级联          →  所有删除操作补全清理链
-步骤 3: 离线增量扫描      →  三层降级策略 (git/mtime/hash)
-步骤 4: Query 化 AST      →  tree-sitter Query 替代手写遍历
-步骤 5: 本地向量嵌入      →  ONNX 模型 + 三层索引
-步骤 6: Context Planner   →  按意图预检 → 精准上下文注入
-步骤 7: 新技能注册        →  项目变动报告、影响评估等
+问题域                       方案                           实施阶段
+──────────────────────────────────────────────────────────────────────
+数据一致性                  单源头(Rust JSON) + 统一 CRUD       Sprint 1
+删除级联                    完整清理矩阵                         Sprint 1
+风格/动作分离               Style/Action/Phase/Review 四分离    Sprint 1
+回收站逻辑修复              软删除 → 物理删除两阶段             Sprint 1
+──────────────────────────────────────────────────────────────────────
+技能系统统一                UnifiedSkill（Rust 权威）           Sprint 2
+agent 统一                  Rust 主执行 + 前端调度              Sprint 2
+模块重构                    按领域分包                           Sprint 2
+UX 改造                    浮动层 + 双栏精简                    Sprint 2
+──────────────────────────────────────────────────────────────────────
+Query AST                   tree-sitter .scm 三层查询           Sprint 3
+向量嵌入                    bge-small-zh-v1.5 + 三层索引         Sprint 3
+增量扫描                    三层降级 + IndexSnapshot            Sprint 3
+──────────────────────────────────────────────────────────────────────
+Context Planner             关键词规则 + 向量检索 + 小模型      Sprint 4
+新技能                      项目变动报告/导读/影响评估          Sprint 4
+主题系统精简                25→12 核心 + 平台变体               Sprint 4
+未来扩展                    热点/改写/音视频                    Sprint 4+
+──────────────────────────────────────────────────────────────────────
 ```
 
 ---
 
 ## 文档索引
 
-| 文档 | 核心内容 | 前置依赖 |
-|------|---------|---------|
-| [01-data-consistency.md](01-data-consistency.md) | 存储现状、单源头设计、CRUD 改造方案 | — |
-| [02-deletion-cascade.md](02-deletion-cascade.md) | 删除/回收站操作的级联清理矩阵 | 01 |
-| [03-incremental-scanning.md](03-incremental-scanning.md) | 三层降级扫描、IndexSnapshot、watcher 补齐 | 01 |
-| [04-query-ast.md](04-query-ast.md) | tree-sitter Query 体系、三层 .scm 文件 | 03 |
-| [05-vector-embedding.md](05-vector-embedding.md) | ONNX 模型选择、chunk 策略、增量索引 | 03, 04 |
-| [06-context-planner.md](06-context-planner.md) | 意图识别、预检路由、精准注入 | 04, 05 |
-| [07-new-skills.md](07-new-skills.md) | 项目变动报告、影响评估、智能工具选择 | 06 |
-| [08-codegraph-role.md](08-codegraph-role.md) | CodeGraph 定位：可选加速器 vs 向量互补 | 04, 05 |
+| # | 文档名 | 核心内容 | 前置依赖 | 状态 |
+|---|--------|---------|---------|------|
+| — | **[INDEX.md](INDEX.md)** | 主方案索引（本文档） | — | ✅ 完整 |
+| 01 | **[数据一致性](01-data-consistency.md)** | 单源头、统一 CRUD、SQLite 瘦身 | — | ✅ 完整 |
+| 02 | **[删除级联](02-deletion-cascade.md)** | 清理矩阵、Rust 级联命令 | 01 | ✅ 完整 |
+| 03 | **[增量扫描](03-incremental-scanning.md)** | 三层降级、IndexSnapshot | 01 | ✅ 完整 |
+| 04 | **[Query AST](04-query-ast.md)** | tree-sitter Query 体系、.scm 文件 | 03 | ✅ 完整 |
+| 05 | **[向量嵌入](05-vector-embedding.md)** | ONNX 模型、三层索引、增量策略 | 03, 04 | ✅ 完整 |
+| 06 | **[Context Planner](06-context-planner.md)** | 意图预检、精准注入 | 04, 05 | ✅ 完整 |
+| 07 | **[新技能](07-new-skills.md)** | 变动报告、导读、影响评估 | 06 | ✅ 完整 |
+| 08 | **[CodeGraph 角色](08-codegraph-role.md)** | 可选加速器、向量互补 | 04, 05 | ✅ 完整 |
+| 09 | **[技能系统缺陷](09-skill-system-review.md)** | UnifiedSkill 统一契约 | — | ✅ 完整 |
+| 10 | **[主题系统缺陷](10-theme-system-review.md)** | 语义类型、25→12 精简 | — | ✅ 完整 |
+| 11 | **[架构重塑](11-architecture-restructure.md)** | 模块拆分、4 层重构 | — | ✅ 完整 |
+| 12 | **[功能地图](12-feature-map.md)** | 11 域完整功能审查 | — | ✅ 完整 |
+| 13 | **[写作业务重塑](13-skill-business-redesign.md)** | Style/Action/Phase/Review 四分离 | 09, 12 | ✅ 完整 |
+| 14 | **[UX 审查](14-ux-review.md)** | 14 个 UX 问题、布局调整、交互优化 | 12, 13 | ✅ 完整 |
+| **15** | **[未来扩展](15-future-expansion.md)** | 热点追踪、视频/音频提取、改写、效果分析 | — | 🆕 新增 |
+| **16** | **[实施路线图](16-implementation-roadmap.md)** | 4 Sprint + 依赖关系 + 验收标准 | 全部 | 🆕 新增 |
+| **17** | **[代码质量审查](17-code-quality-review.md)** | 11 域逐功能审查 + 插图/审阅/修复专项 | 12 | 🆕 新增 |
 
 ---
 
-## 优先级路线图
+## 新增关键发现（New Findings）
+
+### 1. Kiro 代码验证（doc 04）
+
+Kiro 已采用三层 Query 结构：
 
 ```
-P0（当前 Sprint）
-├── 01-data-consistency: 修复数据一致性问题
-├── 02-deletion-cascade: 补全删除级联
-└── 03-incremental-scanning: 离线启动检测 + watcher 补齐
-
-P1（下个 Sprint）
-├── 04-query-ast: tree-sitter Query 重构
-└── 05-vector-embedding: ONNX 模型 + 三层向量索引
-
-P2（未来 Sprint）
-├── 06-context-planner: 意图预检
-└── 07-new-skills: 新技能注册
-└── 08-codegraph-role: 文档澄清 + UI 优化
+code-snippet/     → 函数/类/接口定义提取（~10 种语言）
+import/           → 依赖关系提取（~10 种语言）
+root-context/     → 类型标注提取（按语法节点细分）
 ```
 
-| 5 | **"风格"和"动作"混淆为 skill**：文章绑定风格后后续操作丢失风格上下文 | P0 | skill.rs, agent.rs, plan.ts |
-| 6 | **审阅不感知风格**：5 维度硬编码，不匹配当前写作风格 | P1 | articleReview.ts |
-| 7 | **1585 行 editorStyles.ts**：编辑器/模板/导入导出耦合成一个文件 | P1 | editorStyles.ts |
-| 8 | **markdown 手写解析器**：易遗漏 edge case | P1 | markdown/renderer.ts |
+与我们设计的 doc 04 完全一致。Kiro 使用 `@vscode/tree-sitter-wasm`（WASM 运行时）支持 27 种语言，
+而我们当前用原生 Rust tree-sitter crate 只支持 3 种（ts/js/rs）。
+**建议**：不着急切换到 WASM，先用 raw crate + .scm 文件验证方案，长期可切。
+
+### 2. 向量模型（doc 05）
+
+Kiro **未内置向量模型**。InkWise 自主选型 `bge-small-zh-v1.5`（中文优化、384 维、~33MB）路径正确。
+
+### 3. 回收站逻辑缺陷（doc 17 🔴 新发现）
+
+当前 `trashArticle` 物理删 content/meta，若恢复则无内容。
+**修正**：改为软删除（只移出合集，不删文件），`permanentlyDelete` 再做物理清理。
+
+### 4. 搜索实现漏洞（doc 17 🟡 新发现）
+
+前端 `search.ts` 内存遍历每篇文章内容，性能差。SQLite FTS `search_articles_db` 已实现但未被前端调用。
 
 ---
 
-## 完整文档索引
-
-| 文档 | 核心内容 |
-|------|---------|
-| [INDEX.md](INDEX.md) | 方案索引 + 优先级路线图（本文档） |
-| [01-data-consistency.md](01-data-consistency.md) | 存储现状、单源头设计、CRUD 改造方案 |
-| [02-deletion-cascade.md](02-deletion-cascade.md) | 删除/回收站操作的级联清理矩阵 |
-| [03-incremental-scanning.md](03-incremental-scanning.md) | 三层降级扫描、IndexSnapshot、watcher 补齐 |
-| [04-query-ast.md](04-query-ast.md) | tree-sitter Query 体系、三层 .scm 文件 |
-| [05-vector-embedding.md](05-vector-embedding.md) | ONNX 模型选择、chunk 策略、增量索引 |
-| [06-context-planner.md](06-context-planner.md) | 意图识别、预检路由、精准注入 |
-| [07-new-skills.md](07-new-skills.md) | 项目变动报告、影响评估、智能工具选择 |
-| [08-codegraph-role.md](08-codegraph-role.md) | CodeGraph 定位：可选加速器 vs 向量互补 |
-| [09-skill-system-review.md](09-skill-system-review.md) | 技能系统缺陷分析 + UnifiedSkill 统一契约 |
-| [10-theme-system-review.md](10-theme-system-review.md) | 文章主题缺陷分析 + 类型语义化 + 25→12 精简 |
-| [11-architecture-restructure.md](11-architecture-restructure.md) | 整体架构重塑原则 + 目标模块树 |
-| [12-feature-map.md](12-feature-map.md) | 完整功能地图 + 11 个业务域逐功能审查 |
-
-## 优先级路线图
+## 实施优先级路线图
 
 ```
-P0（当前 Sprint）
-├── 01-data-consistency: 修复数据一致性问题
-├── 02-deletion-cascade: 补全删除级联
-├── 03-incremental-scanning: 离线启动检测 + watcher 补齐
-└── 12-skill-business-redesign: 风格/动作拆分 + 审阅感知风格（核心业务修复）
-
-P1（下个 Sprint）
-├── 04-query-ast: tree-sitter Query 重构
-├── 05-vector-embedding: ONNX 模型 + 三层向量索引
-├── 09-skill-system-review: UnifiedSkill 统一契约
-├── 10-theme-system-review: 主题类型精简
-└── 11-architecture-restructure: 模块重组（editorStyles 拆分等）
-
-P2（未来 Sprint）
-├── 06-context-planner: 意图预检
-├── 07-new-skills: 新技能注册
-├── 08-codegraph-role: 文档澄清 + UI 优化
-└── 12-feature-map: 持续更新功能地图
+          Sprint 1 (2-3周)          Sprint 2 (3-4周)         Sprint 3 (3-4周)         Sprint 4 (2-3周)
+         ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+P0 核心   │ 数据一致性       │     │ 技能系统统一     │     │ Query AST       │     │ Context Planner  │
+          │ 删除级联         │     │ 模块重构         │     │ 向量嵌入         │     │ 新技能           │
+          │ 风格/动作分离     │     │ UX 改造          │     │ 增量扫描         │     │ 主题系统精简     │
+          │ 回收站修正       │     │ agent 统一       │     │                 │     │                  │
+          └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
+            v2.0.0-alpha             v2.0.0-beta              v2.0.0-rc               v2.0.0
 ```
 
-| 文档 | 核心内容 |
-|------|---------|
-| [14-ux-review.md](14-ux-review.md) | 前端 UX 易用性审查 + 布局调整方案 + 14 个问题 |
+---
+
+## 分支与版本
+
+```
+codex/v2.0.0            ← 主分支，保存完整规划文档
+  ├── codex/v2.0.0-docs   ← 最终方案文档（当前分支）
+  ├── codex/v2.0.0-s1     ← Sprint 1 实施
+  ├── codex/v2.0.0-s2     ← Sprint 2 实施
+  ├── codex/v2.0.0-s3     ← Sprint 3 实施
+  └── codex/v2.0.0-s4     ← Sprint 4 实施
+
+v2.0.0-alpha  ← Sprint 1 完成
+v2.0.0-beta   ← Sprint 2 完成
+v2.0.0-rc     ← Sprint 3 完成
+v2.0.0        ← Sprint 4 完成（正式发布）
+```
+
+---
+
+## 推荐实施顺序
+
+1. **Sprint 1** 优先：修复最影响数据正确性和业务逻辑的缺陷
+2. **Sprint 2** 其次：架构重塑 + UX 改造，提升可维护性和使用体验
+3. **Sprint 3** 再次：智能能力增强，依赖 Sprint 2 的模块重构
+4. **Sprint 4** 最后：体验优化 + 新技能 + 主题精简
+5. **未来扩展**：基于 v2.0.0 正式版按需开发
