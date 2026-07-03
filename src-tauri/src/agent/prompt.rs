@@ -6,51 +6,105 @@ use crate::skill::{Skill, ToolCapability};
 pub fn build_agent_prompt(skill: &Skill, context: &AgentContext, plan: &ContextPlan) -> String {
     let mut prompt = String::new();
 
-    // Inject blueprint context (article structure)
-    if let Some(ref bp) = context.blueprint {
-        prompt.push_str("# 文章信息\n\n");
-        prompt.push_str(&format!("## 标题\n{}\n", bp.working_title));
-        if !bp.description.is_empty() {
-            prompt.push_str(&format!("## 简介\n{}\n", bp.description));
-        }
-        if let Some(ref tone) = bp.tone {
-            prompt.push_str(&format!("## 语气风格\n{}\n", tone));
-        }
-        if let Some(ref audience) = bp.target_audience {
-            prompt.push_str(&format!("## 目标读者\n{}\n", audience));
-        }
-        if let Some(wc) = bp.target_word_count {
-            prompt.push_str(&format!("## 目标字数\n{} 字\n", wc));
-        }
+    // ─── ContextPlan: 意图声明 ───
+    if plan.intent != "default" {
+        prompt.push_str(&format!("# 任务意图: {}\n\n", plan.intent));
+    }
 
-        // Outline with current section marker
-        if !bp.outline.is_empty() {
-            prompt.push_str("## 文章大纲\n");
-            for (i, section) in bp.outline.iter().enumerate() {
-                let marker = if let Some(ref cur_id) = context.current_section_id {
-                    if section.id == *cur_id {
-                        " ← 当前位置"
-                    } else {
-                        ""
-                    }
-                } else {
-                    ""
-                };
-                let desc = section
-                    .description
-                    .as_ref()
-                    .map(|d| format!(" — {}", d))
-                    .unwrap_or_default();
-                prompt.push_str(&format!("{}. {}{}{}\n", i + 1, section.title, desc, marker));
-            }
+    // ─── ContextPlan: 优先读取文件 ───
+    if !plan.priority_files.is_empty() {
+        prompt.push_str("## 优先关注的文档\n");
+        for f in &plan.priority_files {
+            prompt.push_str(&format!("- `{}`\n", f));
         }
         prompt.push_str("\n");
-        // Inject style/action context
-        if let Some(ref style_id) = bp.style_id {
-            prompt.push_str(&format!("## 写作风格\n{}\n", style_id));
+    }
+
+    // ─── ContextPlan: 建议使用的工具 ───
+    if !plan.suggested_tools.is_empty() {
+        prompt.push_str("## 建议优先使用的工具\n");
+        for t in &plan.suggested_tools {
+            prompt.push_str(&format!("- `{}`\n", t));
         }
-        if let Some(ref action_id) = bp.action_id {
-            prompt.push_str(&format!("## 当前动作\n{}\n", action_id));
+        prompt.push_str("\n");
+    }
+
+    // ─── ContextPlan: 要求注入的上下文 ───
+    if !plan.required_contexts.is_empty() {
+        prompt.push_str("## 已注入的上下文\n");
+        for ctx in &plan.required_contexts {
+            let source_str = match ctx.source {
+                crate::agent::ContextSourceKind::GitDiff => "Git 变更记录",
+                crate::agent::ContextSourceKind::AstSymbols => "AST 符号表",
+                crate::agent::ContextSourceKind::ConfigFile => "配置文件",
+                crate::agent::ContextSourceKind::VectorSearch => "向量语义检索",
+                crate::agent::ContextSourceKind::ArticleSeries => "系列文章规划",
+                crate::agent::ContextSourceKind::PublishHistory => "发布历史",
+                crate::agent::ContextSourceKind::ProjectStructure => "项目结构",
+                crate::agent::ContextSourceKind::DocumentContent => "文档内容",
+                crate::agent::ContextSourceKind::SelectedText => "选中文本",
+            };
+            let scope_str = match ctx.scope.as_str() {
+                "changed_files" => "仅变更文件",
+                "full_project" => "全量",
+                "related_only" => "关联项",
+                _ => &ctx.scope,
+            };
+            prompt.push_str(&format!(
+                "- {}（范围: {}, Token预算: {}, 优先级: {}/5）\n",
+                source_str, scope_str, ctx.max_tokens, ctx.priority
+            ));
+        }
+        prompt.push_str("\n");
+    }
+
+    // Inject blueprint context (article structure)
+    if !plan.skip_sections.contains(&"blueprint".to_string()) {
+        if let Some(ref bp) = context.blueprint {
+            prompt.push_str("# 文章信息\n\n");
+            prompt.push_str(&format!("## 标题\n{}\n", bp.working_title));
+            if !bp.description.is_empty() {
+                prompt.push_str(&format!("## 简介\n{}\n", bp.description));
+            }
+            if let Some(ref tone) = bp.tone {
+                prompt.push_str(&format!("## 语气风格\n{}\n", tone));
+            }
+            if let Some(ref audience) = bp.target_audience {
+                prompt.push_str(&format!("## 目标读者\n{}\n", audience));
+            }
+            if let Some(wc) = bp.target_word_count {
+                prompt.push_str(&format!("## 目标字数\n{} 字\n", wc));
+            }
+
+            // Outline with current section marker
+            if !bp.outline.is_empty() {
+                prompt.push_str("## 文章大纲\n");
+                for (i, section) in bp.outline.iter().enumerate() {
+                    let marker = if let Some(ref cur_id) = context.current_section_id {
+                        if section.id == *cur_id {
+                            " ← 当前位置"
+                        } else {
+                            ""
+                        }
+                    } else {
+                        ""
+                    };
+                    let desc = section
+                        .description
+                        .as_ref()
+                        .map(|d| format!(" — {}", d))
+                        .unwrap_or_default();
+                    prompt.push_str(&format!("{}. {}{}{}\n", i + 1, section.title, desc, marker));
+                }
+            }
+            prompt.push_str("\n");
+            // Inject style/action context
+            if let Some(ref style_id) = bp.style_id {
+                prompt.push_str(&format!("## 写作风格\n{}\n", style_id));
+            }
+            if let Some(ref action_id) = bp.action_id {
+                prompt.push_str(&format!("## 当前动作\n{}\n", action_id));
+            }
         }
     }
 
