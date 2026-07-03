@@ -128,8 +128,6 @@ export default function MainEditorPage() {
   const layoutClass = [
     "layout",
     sidebarOpen ? "layout--sidebar-open" : "",
-    panelOpen ? "layout--ai-open" : "",
-    stylePanelOpen ? "layout--style-open" : "",
     resizing ? "layout--resizing" : "",
     focusMode ? "layout--focus" : "",
   ].filter(Boolean).join(" ");
@@ -143,7 +141,7 @@ export default function MainEditorPage() {
     <ErrorBoundary name="app">
     <div className={"app" + (focusMode ? " app--focus" : "")}>
       <div ref={layoutRef} className={layoutClass}
-        style={{ "--sidebar-width": `${sidebarWidth}px`, "--ai-dock-width": "420px" } as React.CSSProperties}
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
         <Sidebar
           seriesRefreshKey={seriesRefreshKey}
@@ -246,25 +244,39 @@ export default function MainEditorPage() {
           onCloseStylePanel={() => setStylePanelOpen(false)}
         />
         )}
-        <AgentPanel />
-        <StylePanel
-          key={activeArticleId}
-          open={stylePanelOpen}
-          onClose={() => setStylePanelOpen(false)}
-          editorStyleTemplateId={editorStyleTemplate}
-          lineHeight={editorLineHeight}
-          onSetEditorStyleTemplate={setEditorStyleTemplate}
-          onSetLineHeight={setEditorLineHeight}
-          editorFontSize={editorFontSize}
-          onSetEditorFontSize={setEditorFontSize}
-          editorMaxWidth={editorMaxWidth}
-          editorParagraphGap={editorParagraphGap}
-          editorFontFamily={editorFontFamily}
-          onSetEditorFontFamily={setEditorFontFamily}
-          codeThemeId={codeThemeId}
-          onSetCodeTheme={setCodeThemeId}
-          onApplyHeadingNumbers={handleApplyHeadingNumbers}
-        />
+        {panelOpen && (
+          <div className="floating-layer">
+            <div className="floating-layer__backdrop" onClick={closePanel} />
+            <div className="floating-layer__panel">
+              <AgentPanel />
+            </div>
+          </div>
+        )}
+        {stylePanelOpen && (
+          <div className="floating-layer">
+            <div className="floating-layer__backdrop" onClick={() => setStylePanelOpen(false)} />
+            <div className="floating-layer__panel">
+              <StylePanel
+                key={activeArticleId}
+                open={stylePanelOpen}
+                onClose={() => setStylePanelOpen(false)}
+                editorStyleTemplateId={editorStyleTemplate}
+                lineHeight={editorLineHeight}
+                onSetEditorStyleTemplate={setEditorStyleTemplate}
+                onSetLineHeight={setEditorLineHeight}
+                editorFontSize={editorFontSize}
+                onSetEditorFontSize={setEditorFontSize}
+                editorMaxWidth={editorMaxWidth}
+                editorParagraphGap={editorParagraphGap}
+                editorFontFamily={editorFontFamily}
+                onSetEditorFontFamily={setEditorFontFamily}
+                codeThemeId={codeThemeId}
+                onSetCodeTheme={setCodeThemeId}
+                onApplyHeadingNumbers={handleApplyHeadingNumbers}
+              />
+            </div>
+          </div>
+        )}
       </ArticleCtx.Provider>
       </div>
 
