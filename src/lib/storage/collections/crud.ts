@@ -124,12 +124,11 @@ export async function loadCollections(): Promise<Collection[]> {
 }
 
 export async function saveCollections(collections: Collection[]): Promise<void> {
-  // ponytail: backend is source of truth — write there first, then cache
-  try {
+  // 原子写入：Rust JSON 是权威源，写入失败则抛异常，不更新缓存
+  if (isTauriEnv()) {
     await tryInvoke(TauriCommands.SetCollections, { collections: collections.map(toTauriCollection) });
-  } catch (e) {
-    console.error('[saveCollections] SetCollections failed:', e);
   }
+  // 浏览器模式 或 Rust 写入成功后，更新前端缓存
   browserSave(COLLECTIONS_KEY, collections);
 }
 
