@@ -4,31 +4,31 @@
 
 /* ─── 可配置的 CSS 变量项 ─── */
 export interface ArticleThemeVars {
-  fontFamily: string;       // 正文字体
-  fontSize: string;         // 正文字号 (px)
-  lineHeight: number;       // 行距
-  paragraphGap: string;     // 段落间距 (em)
-  maxWidth: string;         // 内容最大宽度 (px)
-  textColor: string;        // 正文颜色
-  bgColor: string;          // 背景色
-  headingColor: string;     // 标题颜色
-  linkColor: string;        // 链接颜色
-  codeBg: string;           // 代码块背景
-  codeText: string;         // 代码块文字颜色
-  blockquoteBorder: string; // 引用块边框色
-  blockquoteBg: string;     // 引用块背景
+  fontFamily: string;          // 正文字体
+  fontSize: PxValue;           // 正文字号（如 "16" → "16px"）
+  lineHeight: number;          // 行距
+  paragraphGap: EmValue;       // 段落间距（如 "1.25" → "1.25em"）
+  maxWidth: PxValue;           // 内容最大宽度（如 "780" → "780px"）
+  textColor: HexColor;         // 正文颜色
+  bgColor: HexColor;           // 背景色
+  headingColor: HexColor;      // 标题颜色
+  linkColor: HexColor;         // 链接颜色
+  codeBg: HexColor;            // 代码块背景
+  codeText: HexColor;          // 代码块文字颜色
+  blockquoteBorder: HexColor;  // 引用块边框色
+  blockquoteBg: HexColor;      // 引用块背景
   // 增强视觉
-  accentColor?: string;     // 强调色（引用块/装饰元素）
-  strongColor?: string;     // 加粗文字色，缺省用 headingColor
-  markBg?: string;          // ==高亮== 背景色
-  hrColor?: string;         // 分割线颜色，缺省用 #e0e0e0
-  pageBg?: string;          // 整页背景（可渐变/图案），缺省用 bgColor
-  pageBgSize?: string;      // 背景尺寸
+  accentColor?: HexColor;      // 强调色（引用块/装饰元素）
+  strongColor?: HexColor;      // 加粗文字色，缺省用 headingColor
+  markBg?: HexColor;           // ==高亮== 背景色
+  hrColor?: HexColor;          // 分割线颜色，缺省用 #e0e0e0
+  pageBg?: string;             // 整页背景（可渐变/图案），缺省用 bgColor
+  pageBgSize?: string;         // 背景尺寸
   // 标题变体
-  headingVariant?: 'ribbon';  // 标题视觉结构
-  headingBg?: string;         // 标题块背景
-  headingText?: string;       // 标题块文字色，缺省用 #ffffff
-  headingLine?: string;       // 标题底线色，缺省用 accentColor
+  headingVariant?: 'ribbon';   // 标题视觉结构
+  headingBg?: HexColor;        // 标题块背景
+  headingText?: HexColor;      // 标题块文字色，缺省用 #ffffff
+  headingLine?: HexColor;      // 标题底线色，缺省用 accentColor
 }
 
 /* ─── 主题定义 ─── */
@@ -74,6 +74,98 @@ const BASE_VARS: ArticleThemeVars = {
   blockquoteBorder: '#dfe1e5',
   blockquoteBg: '#f8f9fa',
 };
+// ─── 语义类型别名 ───
+
+/** 像素值（数字字符串，构建 CSS 时自动追加 "px"） */
+export type PxValue = string;
+
+/** EM 相对单位值（数字字符串，构建 CSS 时自动追加 "em"） */
+export type EmValue = string;
+
+/** 十六进制颜色值，如 "#2c2c2c" */
+export type HexColor = string;
+
+/** CSS 变量键值对 */
+export interface CssVarEntry {
+  key: string;
+  value: string;
+  important?: boolean;
+}
+
+/** CSS 单位 */
+export type CssUnit = 'px' | 'em' | 'rem' | '%' | 'vh' | 'vw';
+
+/**
+ * 将主题变量值拼合 CSS 单位。
+ * 保持向后兼容：纯数字字符串（如 "16"）自动拼单位，已有单位的（如 "16px"）原样输出。
+ *
+ * @param value  变量值
+ * @param unit   目标 CSS 单位（默认 'px'）
+ * @returns 拼合单位后的值，如 "16px"
+ *
+ * @example
+ *   renderThemeUnit('16')        → '16px'
+ *   renderThemeUnit('1.75', 'em') → '1.75em'
+ *   renderThemeUnit('50%')        → '50%'
+ */
+export function renderThemeUnit(value: string, unit: CssUnit = 'px'): string {
+  if (!value) return value;
+  // 已有单位或 % → 直接返回
+  if (/[a-z%]$/i.test(value)) return value;
+  return value + unit;
+}
+
+/**
+ * 将 ArticleThemeVars 转换为 CSS 自定义属性字符串。
+ * 统一处理单位拼接，供 buildThemeCss / buildEditorThemeCss 等函数使用。
+ *
+ * @param vars  主题变量
+ * @param prefix  CSS 变量前缀，默认 "--"
+ * @returns CSS 自定义属性文本
+ *
+ * @example
+ *   renderThemeVars(theme.vars)
+ *   // → "--font-size: 16px; --line-height: 1.75; --text-color: #2c2c2c; ..."
+ */
+export function renderThemeVars(vars: ArticleThemeVars, prefix = '--'): CssVarEntry[] {
+  const entries: CssVarEntry[] = [];
+
+  if (vars.fontFamily) entries.push({ key: prefix + 'font-family', value: vars.fontFamily });
+  if (vars.fontSize) entries.push({ key: prefix + 'font-size', value: renderThemeUnit(vars.fontSize, 'px') });
+  if (vars.lineHeight) entries.push({ key: prefix + 'line-height', value: String(vars.lineHeight) });
+  if (vars.paragraphGap) entries.push({ key: prefix + 'paragraph-gap', value: renderThemeUnit(vars.paragraphGap, 'em') });
+  if (vars.maxWidth) entries.push({ key: prefix + 'max-width', value: renderThemeUnit(vars.maxWidth, 'px') });
+  if (vars.textColor) entries.push({ key: prefix + 'text-color', value: vars.textColor });
+  if (vars.bgColor) entries.push({ key: prefix + 'bg-color', value: vars.bgColor });
+  if (vars.headingColor) entries.push({ key: prefix + 'heading-color', value: vars.headingColor });
+  if (vars.linkColor) entries.push({ key: prefix + 'link-color', value: vars.linkColor });
+  if (vars.codeBg) entries.push({ key: prefix + 'code-bg', value: vars.codeBg });
+  if (vars.codeText) entries.push({ key: prefix + 'code-text', value: vars.codeText });
+  if (vars.blockquoteBorder) entries.push({ key: prefix + 'blockquote-border', value: vars.blockquoteBorder });
+  if (vars.blockquoteBg) entries.push({ key: prefix + 'blockquote-bg', value: vars.blockquoteBg });
+  if (vars.accentColor) entries.push({ key: prefix + 'accent-color', value: vars.accentColor });
+  if (vars.strongColor) entries.push({ key: prefix + 'strong-color', value: vars.strongColor });
+  if (vars.markBg) entries.push({ key: prefix + 'mark-bg', value: vars.markBg });
+  if (vars.hrColor) entries.push({ key: prefix + 'hr-color', value: vars.hrColor });
+  if (vars.pageBg) entries.push({ key: prefix + 'page-bg', value: vars.pageBg });
+  if (vars.pageBgSize) entries.push({ key: prefix + 'page-bg-size', value: vars.pageBgSize });
+  if (vars.headingBg) entries.push({ key: prefix + 'heading-bg', value: vars.headingBg });
+  if (vars.headingText) entries.push({ key: prefix + 'heading-text', value: vars.headingText });
+  if (vars.headingLine) entries.push({ key: prefix + 'heading-line', value: vars.headingLine });
+
+  return entries;
+}
+
+/**
+ * 将 CssVarEntry[] 渲染为 CSS 文本。
+ */
+export function cssEntriesToText(entries: CssVarEntry[]): string {
+  return entries
+    .map(e => `${e.key}: ${e.value}${e.important ? ' !important' : ''};`)
+    .join('\n');
+}
+
+
 
 /* ─── 预设主题 ─── */
 export const ARTICLE_THEMES: ArticleTheme[] = [

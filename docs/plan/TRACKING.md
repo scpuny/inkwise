@@ -183,8 +183,8 @@
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 4.3.1 | 完善类型定义（`PxValue` / `EmValue` / `HexColor`） | `articleThemes.ts` | 🔴 | — | — | — |
-| 4.3.2 | 定义 `renderThemeVars()` 统一单位拼接 | `articleThemes.ts` | 🔴 | — | — | px/em 自动拼 |
+| 4.3.1 | 完善类型定义（`PxValue` / `EmValue` / `HexColor`） | `articleThemes.ts` | 🟢 | — | 2026-07-03 | PxValue/EmValue/HexColor 语义类型 + ArticleThemeVars 字段注解 |
+| 4.3.2 | 定义 `renderThemeVars()` 统一单位拼接 | `articleThemes.ts` | 🟢 | — | 2026-07-03 | renderThemeVars + renderThemeUnit + cssEntriesToText |
 | 4.3.3 | 按风格标签重组主题分组（简约/暖色/暗色/纸墨） | `articleThemes.ts` | 🔴 | — | — | 不再按平台分 |
 | 4.3.4 | 合并同质主题为平台变体（25 → 12 核心 + platformOverrides） | `articleThemes.ts` | 🔴 | — | — | 最大精简 |
 | 4.3.5 | 技能 ↔ 主题联动：`recommendedThemeId` | `UnifiedSkill`, `plan.ts` | 🔴 | — | — | — |
@@ -230,9 +230,9 @@
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
-| S4: 体验优化 | 16 | 7 | 0 | 8 | 1 | 44% |
+| S4: 体验优化 | 16 | 9 | 0 | 6 | 1 | 56% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **81** | 0 | 10 | 1 | 89% |
+| **总计** | **91** | **83** | 0 | 8 | 1 | 91% |
 ---
 
 ## 里程碑记录
