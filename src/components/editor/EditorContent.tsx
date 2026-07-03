@@ -134,7 +134,22 @@ export function EditorContent({
       prevMdRef.current = md;
       onChange(md, editorModeRef.current);
     }
-  }, [onChange]);
+    // 实时从编辑器解析大纲（ProseMirror 节点而非静态 markdown）
+    if (onOutlineChange) {
+      const items: OutlineItem[] = [];
+      let headingIdx = 0;
+      editor.state.doc.descendants((node: any, pos: number) => {
+        if (node.type.name === "heading") {
+          const text = node.textContent.trim();
+          const id = text.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-").replace(/^-+|-+$/g, "") || `h-${headingIdx}`;
+          items.push({ id, text, level: node.attrs.level });
+          headingIdx++;
+        }
+      });
+      if (outlineTimer.current) clearTimeout(outlineTimer.current);
+      outlineTimer.current = setTimeout(() => onOutlineChange(items), 300);
+    }
+  }, [onChange, onOutlineChange]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -463,6 +478,15 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
             const editorCenter = editorRect.top + editorRect.height / 2;
             const scrollOffset = coords.top - editorCenter;
             editorEl.scrollBy({ top: scrollOffset, behavior: "smooth" });
+            // 高亮目标标题
+            const el = editor.view.domAtPos(pos)?.node;
+            if (el) {
+              const headingEl = el.nodeType === Node.TEXT_NODE ? el.parentElement : el as HTMLElement;
+              if (headingEl) {
+                headingEl.classList.add("heading-highlight");
+                setTimeout(() => headingEl.classList.remove("heading-highlight"), 2000);
+              }
+            }
           });
           return false; // stop traversal
         }
