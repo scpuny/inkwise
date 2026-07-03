@@ -89,7 +89,7 @@
 |---|--------|------|------|--------|--------|------|
 | 2.2.1 | `skill.rs` → `skill/` 模块拆分（类型/builtins/store/frontmatter） | `skill/` | 🟢 | — | 2026-07-03 | types/builtins/store/frontmatter 4 文件拆分 |
 | 2.2.2 | `agent.rs` → `agent/` 模块拆分（engine/prompt） | `agent/` | 🟢 | — | 2026-07-03 | engine/prompt/tools/types 4 文件拆分 |
-| 2.2.3 | `project_indexer.rs` → `project_indexer/` 模块拆分 | `project_indexer/` | 🔴 | — | — | scanner/snapshot/watcher/codegraph |
+| 2.2.3 | `project_indexer.rs` → `project_indexer/` 模块拆分 | `project_indexer/` | 🟢 | — | 2026-07-03 | types/scanner/watcher 3 文件拆分 |
 | 2.2.4 | `editorStyles.ts` 拆分（1585 行 → 3 文件） | `editorStyles.ts` | 🔴 | — | — | 配置/样式/导入导出 |
 | 2.2.5 | `storage/collections/` 整合（7 文件精简） | `collections/` | 🔴 | — | — | — |
 | 2.2.6 | `lib/ai/` 扁平化 → 按领域分包（skill/agent/article/project） | `lib/` | 🔴 | — | — | — |
@@ -228,11 +228,11 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 8 | 0 | 21 | 0 | 28% |
+| S2: 架构+UX | 29 | 9 | 0 | 20 | 0 | 31% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **31** | **0** | **60** | **1** | **34%** |
+| **总计** | **92** | **32** | **0** | **59** | **1** | **35%** |
 
 ---
 
