@@ -466,6 +466,7 @@ async fn run_skill(
     current_section_id: Option<String>,
     project_path: Option<String>,
     model: Option<String>,
+    provider_id: Option<String>,
 ) -> Result<agent::AgentResult, String> {
     let skill = {
         let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -482,7 +483,7 @@ async fn run_skill(
     };
 
     let effective_model = model.as_deref().or(skill.model.as_deref());
-    let config = resolve_provider(&state.store, None, effective_model)?;
+    let config = resolve_provider(&state.store, provider_id.as_deref(), effective_model)?;
 
     // Set up streaming callback
     let app_clone = app.clone();

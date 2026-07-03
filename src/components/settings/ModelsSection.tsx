@@ -230,7 +230,7 @@ export function ModelsSection() {
         <>
           <SettingsSection title="模型选择">
             <SettingsField label="默认模型">
-              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-default-model", modelName || ref); emit("providers-changed"); } catch {} }} />
+              <ModelPicker providers={providers} refs={allRefs} value={selectedModelRef} onPick={(ref) => { setSelectedModelRef(ref); try { const parts = ref.split("/"); const providerId = parts[0]; const modelName = parts.slice(1).join("/"); localStorage.setItem("inkwise-default-model", modelName || ref); localStorage.setItem("inkwise-default-provider", providerId || ""); emit("providers-changed"); } catch {} }} />
             </SettingsField>
           </SettingsSection>
           <SettingsSection title="生成参数">

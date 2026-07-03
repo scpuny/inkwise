@@ -53,6 +53,9 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
     if (saved && items.some((m) => m.id === saved)) return saved;
     return items.length > 0 ? items[0].id : "";
   });
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    return typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-provider") ?? "" : "";
+  });
 
   // Re-read model items when providers change (event dispatched by ModelsSection)
   useEffect(() => {
@@ -66,6 +69,14 @@ export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?:
   const handleSelectModel = useCallback((id: string) => {
     setSelectedModel(id);
     try { localStorage.setItem("inkwise-default-model", id); } catch {}
+    // Find providerId for this model
+    const providers = getProvidersSync();
+    for (const p of providers) {
+      if (p.enabled && p.models.some(m => m.id === id)) {
+        try { localStorage.setItem("inkwise-default-provider", p.id); } catch {}
+        break;
+      }
+    }
     emit("providers-changed");
   }, []);
   const [selectedEffort, setSelectedEffort] = useState(() => {
