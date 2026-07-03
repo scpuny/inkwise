@@ -1198,6 +1198,138 @@ pub fn scan_project(path: &str, force_rescan: bool) -> Result<ProjectContext, St
     })
 }
 
+// ─── 单文件解析助手（供增量扫描使用） ───
+
+/// 对单个文件源码提取符号信息
+fn extract_symbols_per_file(source: &str, ext: &str, rel_path: &str) -> Vec<SymbolInfo> {
+    let mut syms = if ts_supported_ext(ext) {
+        extract_symbols_treesitter(source, ext)
+    } else {
+        extract_symbols_basic(source, ext)
+    };
+    for s in &mut syms {
+        s.file_path = rel_path.to_string();
+    }
+    syms
+}
+
+/// 对单个文件源码提取导入关系
+fn extract_imports_per_file(source: &str, ext: &str, rel_path: &str) -> Vec<ImportEdge> {
+    if !ts_supported_ext(ext) {
+        return Vec::new();
+    }
+    let imports = extract_imports_treesitter(source, ext);
+    imports
+        .into_iter()
+        .map(|(target, kind)| ImportEdge {
+            source: rel_path.to_string(),
+            target,
+            kind,
+        })
+        .collect()
+}
+
+// ─── 增量扫描（只重新扫描变更文件） ───
+
+/// 增量式项目扫描：只对 changed_files 中的文件重新执行树解析，
+/// 其余字段（结构/摘要/配置）保留现有值，大幅减少全量扫描开销。
+///
+/// 适用于: 文件监听回调 + 启动时 diff 检测
+pub fn rescan_project_incremental(
+    base_path: &str,
+    changed_files: &[String],
+    data_dir: Option<&Path>,
+) -> Result<ProjectContext, String> {
+    let dir = Path::new(base_path);
+    if !dir.is_dir() {
+        return Err("路径不是有效的文件夹".into());
+    }
+
+    // 全量构建树状结构和摘要
+    let structure = build_file_tree(dir, 5);
+    let summary = collect_summary(&structure);
+    let configs = read_configs(dir);
+    let primary_language = detect_primary_language(&summary, &configs);
+    let project_name = dir
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "未命名项目".into());
+
+    // CodeGraph 数据
+    let cg_db_path = dir.join(".codegraph").join("codegraph.db");
+    let codegraph_available = cg_db_path.exists();
+    let (cg_symbols, cg_imports, cg_file_hashes) = if codegraph_available {
+        read_codegraph_data(&cg_db_path)
+    } else {
+        (vec![], vec![], HashMap::new())
+    };
+
+    let mut symbols = if codegraph_available {
+        cg_symbols.clone()
+    } else {
+        Vec::new()
+    };
+    let mut imports = if codegraph_available {
+        cg_imports.clone()
+    } else {
+        Vec::new()
+    };
+
+    let mut hc = FileHashCache::open(dir, data_dir);
+
+    for rel_path in changed_files {
+        let full_path = dir.join(rel_path);
+        if !full_path.exists() {
+            // 文件已删除 — 从 symbols/imports 中移除
+            symbols.retain(|s| s.file_path != *rel_path);
+            imports.retain(|i| i.source != *rel_path && i.target != *rel_path);
+            continue;
+        }
+
+        // 重新解析单个文件
+        let ext = full_path.extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        if !ts_supported_ext(&ext) {
+            continue;
+        }
+
+        // 移除该文件的旧符号
+        symbols.retain(|s| s.file_path != *rel_path);
+        imports.retain(|i| i.source != *rel_path && i.target != *rel_path);
+
+        // 解析新符号
+        if let Ok(source) = std::fs::read_to_string(&full_path) {
+            let current_hash = compute_file_hash(source.as_bytes());
+            let new_symbols = extract_symbols_per_file(&source, &ext, rel_path);
+            symbols.extend(new_symbols);
+
+            let new_imports = extract_imports_per_file(&source, &ext, rel_path);
+            imports.extend(new_imports);
+
+            hc.set_hash(rel_path, &current_hash);
+        }
+    }
+
+    hc.persist();
+    symbols.sort_by(|a, b| a.file_path.cmp(&b.file_path));
+    imports.sort_by(|a, b| a.source.cmp(&b.source));
+
+    Ok(ProjectContext {
+        name: project_name,
+        root_path: dir.to_string_lossy().to_string(),
+        primary_language,
+        structure,
+        summary,
+        configs,
+        symbols,
+        imports,
+        codegraph_available,
+    })
+}
+
 // 全量扫描（忽略缓存）
 fn scan_source_symbols_fresh(dir: &Path) -> Vec<SymbolInfo> {
     let mut all_symbols = Vec::new();

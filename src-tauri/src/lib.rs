@@ -12,7 +12,7 @@ use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
-use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
+use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
 use vector::{VectorSearchResult, IndexResult, ChunkStrategy};
 use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
 use std::sync::Mutex;
@@ -1227,6 +1227,14 @@ async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
 }
 
 #[tauri::command]
+async fn rescan_project_folder_incremental(
+    path: String,
+    changed_files: Vec<String>,
+) -> Result<ProjectContext, String> {
+    rescan_project_incremental(&path, &changed_files, None)
+}
+
+#[tauri::command]
 fn read_project_files(path: String, files: Vec<String>) -> Result<Vec<serde_json::Value>, String> {
     // Parallel file reading using scoped threads
     let results: Vec<serde_json::Value> = std::thread::scope(|s| {
@@ -1819,6 +1827,7 @@ pub fn run() {
             get_project_context,
             get_project_context_text,
             rescan_project_folder,
+            rescan_project_folder_incremental,
             read_project_files,
             save_series_plan,
             save_all_series_plans,

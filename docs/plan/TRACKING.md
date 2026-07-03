@@ -153,7 +153,7 @@
 | 3.3.1 | 定义 `IndexSnapshot` 和 `StartupDiff` 类型 | `project_indexer/snapshot.rs` | 🟢 | — | 2026-07-03 | — |
 | 3.3.2 | 实现 `save_snapshot()` / `load_snapshot()` | `project_indexer/snapshot.rs` | 🟢 | — | 2026-07-03 | JSON 文件 |
 | 3.3.3 | 实现 `detect_startup_changes()` 三层降级 | `project_indexer/snapshot.rs` | 🟢 | — | 2026-07-03 | git → mtime → hash |
-| 3.3.4 | 改造 `scan_project()` 支持增量模式（`changed_files` 参数） | `project_indexer/scanner.rs` | 🔴 | — | — | 传空=全量 |
+| 3.3.4 | 改造 `scan_project()` 支持增量模式（`changed_files` 参数） | `project_indexer/scanner.rs` | 🟢 | — | 2026-07-03 | 新增 rescan_project_incremental + Tauri命令 |
 | 3.3.5 | 扩展 watcher 支持的语言列表 | `project_indexer/watcher.rs` | 🔴 | — | — | md/json/yaml 等 |
 | 3.3.6 | 关 app / 切项目时保存 IndexSnapshot | `lib.rs` | 🔴 | — | — | on_window_event |
 
@@ -229,10 +229,10 @@
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
-| S3: 智能增强 | 22 | 19 | 0 | 3 | 0 | 86% |
+| S3: 智能增强 | 22 | 20 | 0 | 2 | 0 | 91% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **71** | 0 | 20 | 1 | 78% |
+| **总计** | **91** | **72** | 0 | 19 | 1 | 79% |
 ---
 
 ## 里程碑记录

@@ -13,5 +13,6 @@ pub(crate) mod types;
 // Re-export public types and functions
 pub use types::*;
 pub use scanner::scan_project;
+pub use scanner::rescan_project_incremental;
 pub use snapshot::{IndexSnapshot, StartupDiff, save_snapshot, load_snapshot, snapshot_dir_files, detect_startup_changes, detect_git_changes};
 pub use watcher::{build_context_text, spawn_folder_watcher};

@@ -34,6 +34,7 @@ export enum TauriCommands {
   GetProjectContext = "get_project_context",
   GetProjectContextText = "get_project_context_text",
   RescanProjectFolder = "rescan_project_folder",
+  RescanProjectFolderIncremental = "rescan_project_folder_incremental",
   SaveAllSeriesPlans = "save_all_series_plans",
   LoadAllSeriesPlans = "load_all_series_plans",
   LoadSeriesPlan = "load_series_plan",
