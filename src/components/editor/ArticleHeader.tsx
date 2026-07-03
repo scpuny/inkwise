@@ -23,6 +23,7 @@ export function ArticleHeader({
   blueprint, activeSectionId, onUpdateBlueprint, onSelectSection, onOpenBlueprintEditor, onSave,
 }: ArticleHeaderProps) {
   const [expanded, setExpanded] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
   const [editingTarget, setEditingTarget] = useState(false);
 
   return (
@@ -37,7 +38,32 @@ export function ArticleHeader({
           >
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
-          <h2 className="article-header__title">{blueprint.workingTitle || "无标题"}</h2>
+          {editingTitle ? (
+            <input
+              className="article-header__title-input"
+              type="text"
+              autoFocus
+              defaultValue={blueprint.workingTitle || ""}
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (val && val !== (blueprint.workingTitle || "")) {
+                  onUpdateBlueprint({ ...blueprint, workingTitle: val });
+                }
+                setEditingTitle(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+                if (e.key === "Escape") { setEditingTitle(false); }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <h2
+              className="article-header__title"
+              onDoubleClick={() => setEditingTitle(true)}
+              title="双击编辑标题"
+            >{blueprint.workingTitle || "无标题"}</h2>
+          )}
         </div>
         <div className="article-header__meta">
           <span className={`article-header__phase article-header__phase--${blueprint.phase}`}>

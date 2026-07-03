@@ -13772,6 +13772,22 @@ body {
   margin: 0;
   line-height: 1.4;
 }
+.article-header__title-input {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0;
+  line-height: 1.4;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  background: var(--bg);
+  outline: none;
+  min-width: 80px;
+  width: auto;
+  font-family: inherit;
+}
+
 
 .article-header__meta {
   display: flex;
