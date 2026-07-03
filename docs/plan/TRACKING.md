@@ -32,7 +32,7 @@
 |---|--------|------|------|--------|--------|------|
 | 1.1.1 | `loadCollections` 统一入口，移除直接 `browserLoad` 调用 | `crud.ts`, `CollectionTree.tsx`, `ArticleManager.tsx`, `useCollectionCrud.ts` | 🟢 | — | 2026-07-03 | 3 处直接调用需改 |
 | 1.1.2 | `saveCollections` 原子写入：Rust JSON 先写，localStorage 后跟，失败则回滚 | `crud.ts` | 🟢 | — | 2026-07-03 | 关键一致性的保底 |
-| 1.1.3 | SQLite `articles_search` 新表，只存 FTS 所需最小字段 | `db.rs` | 🔴 | — | — | content_snippet 取前 2000 字 |
+| 1.1.3 | SQLite `articles_search` 新表，只存 FTS 所需最小字段 | `db.rs` | 🟢 | — | 2026-07-03 | content_snippet 取前 2000 字，FTS5 改指向 articles_search |
 | 1.1.4 | 前端搜索改为调 SQLite FTS，废弃 `search.ts` 内存遍历 | `search.ts`, `db.rs` | 🔴 | — | — | doc 17 新发现 |
 | 1.1.5 | 浏览器模式 localStorage 降级路径 | `crud.ts` | 🔴 | — | — | browserSave/browserLoad 作为 fallback |
 | 1.1.6 | 保存失败时前端 toast 提示用户 | `useArticleLifecycle.ts` | 🔴 | — | — | doc 17 新发现 |
@@ -228,12 +228,12 @@
 
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
-| S1: 核心修复 | 23 | 2 | 0 | 21 | 0 | 9% |
+| S1: 核心修复 | 23 | 3 | 0 | 20 | 0 | 13% |
 | S2: 架构+UX | 29 | 0 | 0 | 29 | 0 | 0% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **2** | **0** | **89** | **1** | **2%** |
+| **总计** | **92** | **3** | **0** | **88** | **1** | **3%** |
 
 ---
 
