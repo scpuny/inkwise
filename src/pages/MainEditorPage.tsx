@@ -207,18 +207,14 @@ export default function MainEditorPage() {
           activeArticleId={activeArticleId}
           activeCollectionId={activeCollectionId}
           onNewDoc={async (collectionId?: string) => {
-            if (collectionId) {
-              const cols = await loadCollections();
-              const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id);
-              const article = await addArticle(targetId, "无标题");
-              if (article) {
-                setActiveArticleId(article.id);
-                setActiveCollectionId(targetId);
-                setHasActiveArticle(true);
-              }
-              return;
+            const cols = await loadCollections();
+            const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id);
+            const article = await addArticle(targetId, "无标题");
+            if (article) {
+              setActiveArticleId(article.id);
+              setActiveCollectionId(targetId);
+              setHasActiveArticle(true);
             }
-            setDocPickerOpen(true);
           }}
           onPlanComplete={handlePlanComplete}
           onEnterEditor={handleEnterEditor}
