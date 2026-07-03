@@ -4098,7 +4098,33 @@ body {
   pointer-events: none
 }
 
-.toolbar-dropdown-btn {
+
+.toolbar-btn__shortcut {
+  display: none;
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--fg-faint);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10
+}
+
+.toolbar-btn {
+  position: relative
+}
+
+.toolbar-btn:hover .toolbar-btn__shortcut {
+  display: block
+}\.toolbar-dropdown-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;

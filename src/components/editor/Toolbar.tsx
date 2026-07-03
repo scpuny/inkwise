@@ -44,17 +44,19 @@ function toggleCmd(cmd: string) {
 
 // ── Button ──
 function ToolBtn({
-  icon, title, active, onClick,
+  icon, title, shortcut, active, onClick,
 }: {
-  icon: React.ReactNode; title: string; active?: boolean; onClick: () => void;
+  icon: React.ReactNode; title: string; shortcut?: string; active?: boolean; onClick: () => void;
 }) {
+  const fullTitle = shortcut ? `${title} (${shortcut})` : title;
   return (
     <button
       className={`toolbar-btn${active ? " toolbar-btn--active" : ""}`}
-      title={title}
+      title={fullTitle}
       onClick={onClick}
     >
       {icon}
+      {shortcut && <kbd className="toolbar-btn__shortcut">{shortcut}</kbd>}
     </button>
   );
 }
@@ -273,8 +275,8 @@ export function Toolbar({
       {/* Left: History + Headings + Format */}
       <div className="toolbar__group">
         {/* History */}
-        <ToolBtn icon={<Undo2 size={14} />} title="撤销 (Ctrl+Z)" onClick={() => toggleCmd("undo")} />
-        <ToolBtn icon={<Redo2 size={14} />} title="重做 (Ctrl+Shift+Z)" onClick={() => toggleCmd("redo")} />
+        <ToolBtn icon={<Undo2 size={14} />} title="撤销" shortcut="⌘Z" onClick={() => toggleCmd("undo")} />
+        <ToolBtn icon={<Redo2 size={14} />} title="重做" shortcut="⌘⇧Z" onClick={() => toggleCmd("redo")} />
         <span className="toolbar__divider" />
 
         {/* Heading */}
@@ -292,10 +294,10 @@ export function Toolbar({
         <span className="toolbar__divider" />
 
         {/* Text formatting */}
-        <ToolBtn icon={<Bold size={14} />} title="加粗" onClick={() => toggleCmd("bold")} active={isActive("bold")} />
-        <ToolBtn icon={<Italic size={14} />} title="斜体" onClick={() => toggleCmd("italic")} active={isActive("italic")} />
-        <ToolBtn icon={<Underline size={14} />} title="下划线" onClick={() => toggleCmd("underline")} active={isActive("underline")} />
-        <ToolBtn icon={<Strikethrough size={14} />} title="删除线" onClick={() => toggleCmd("strike")} active={isActive("strike")} />
+        <ToolBtn icon={<Bold size={14} />} title="加粗" shortcut="⌘B" onClick={() => toggleCmd("bold")} active={isActive("bold")} />
+        <ToolBtn icon={<Italic size={14} />} title="斜体" shortcut="⌘I" onClick={() => toggleCmd("italic")} active={isActive("italic")} />
+        <ToolBtn icon={<Underline size={14} />} title="下划线" shortcut="⌘U" onClick={() => toggleCmd("underline")} active={isActive("underline")} />
+        <ToolBtn icon={<Strikethrough size={14} />} title="删除线" shortcut="⌘⇧S" onClick={() => toggleCmd("strike")} active={isActive("strike")} />
         <span className="toolbar__divider" />
 
         {/* Highlight */}
@@ -313,9 +315,9 @@ export function Toolbar({
 
       {/* Middle: Blocks + Insert */}
       <div className="toolbar__group">
-        <ToolBtn icon={<Quote size={14} />} title="引用" onClick={() => toggleCmd("quote")} active={isActive("blockquote")} />
-        <ToolBtn icon={<List size={14} />} title="无序列表" onClick={() => toggleCmd("bullet")} active={isActive("bulletList")} />
-        <ToolBtn icon={<ListOrdered size={14} />} title="有序列表" onClick={() => toggleCmd("ordered")} active={isActive("orderedList")} />
+        <ToolBtn icon={<Quote size={14} />} title="引用" shortcut="⌘⇧." onClick={() => toggleCmd("quote")} active={isActive("blockquote")} />
+        <ToolBtn icon={<List size={14} />} title="无序列表" shortcut="⌘⇧8" onClick={() => toggleCmd("bullet")} active={isActive("bulletList")} />
+        <ToolBtn icon={<ListOrdered size={14} />} title="有序列表" shortcut="⌘⇧7" onClick={() => toggleCmd("ordered")} active={isActive("orderedList")} />
         <span className="toolbar__divider" />
 
         <>
@@ -329,8 +331,8 @@ export function Toolbar({
             </button>
             {imageOpen && <ImagePopover onClose={() => setImageOpen(false)} />}
           </div>
-          <ToolBtn icon={<LinkIcon size={14} />} title="链接" onClick={() => togglePopover("link")} active={linkOpen || isActive("link")} />
-          <ToolBtn icon={<Code2 size={14} />} title="代码" onClick={() => toggleCmd("code")} active={isActive("code")} />
+          <ToolBtn icon={<LinkIcon size={14} />} title="链接" shortcut="⌘K" onClick={() => togglePopover("link")} active={linkOpen || isActive("link")} />
+          <ToolBtn icon={<Code2 size={14} />} title="代码" shortcut="⌘E" onClick={() => toggleCmd("code")} active={isActive("code")} />
         </>
       </div>
 
