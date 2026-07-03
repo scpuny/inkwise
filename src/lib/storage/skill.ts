@@ -47,6 +47,7 @@ export async function runSkill(
   selectedText?: string,
   blueprint?: any,
   currentSectionId?: string,
+  projectPath?: string,
 ): Promise<AgentResult> {
   if (isTauriEnv()) {
     try {
@@ -57,6 +58,7 @@ export async function runSkill(
         selectedText: selectedText ?? "",
         blueprint: blueprint ?? null,
         currentSectionId: currentSectionId ?? null,
+        projectPath: projectPath ?? null,
       });
     } catch (e: any) {
       const msg = e?.message ?? String(e);
@@ -144,9 +146,10 @@ export async function runSkillStream(
   selectedText?: string,
   blueprint?: any,
   currentSectionId?: string,
+  projectPath?: string,
 ): Promise<string> {
   if (!isTauriEnv()) {
-    const result = await runSkill(name, userInput, documentContent, selectedText, blueprint, currentSectionId);
+    const result = await runSkill(name, userInput, documentContent, selectedText, blueprint, currentSectionId, projectPath);
     return result.content;
   }
 

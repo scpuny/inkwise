@@ -80,7 +80,7 @@
 | 2.1.2 | 合并 `builtin_skills()` 和 `getBuiltinSkills()` 为一套 | `skill.rs` | 🟢 | — | 2026-07-03 | unified_builtin_skills()+前端unifiedSkills.ts+Tauri命令list_unified_skills |
 | 2.1.3 | 前端改为从 IPC 获取技能列表 | `storage.ts`, `builtins.ts` | 🟢 | — | 2026-07-03 | builtins.ts IPC优先+本地降级, storage.ts getAllSkills整合UnifiedSkill |
 | 2.1.4 | 枚举替换 `allowed_tools` 字符串 | `skill.rs`, `agent.rs` | 🟢 | — | 2026-07-03 | ToolCapability 枚举替换字符串比较 |
-| 2.1.5 | `agent.rs` 支持 tool calling + ContextPlan | `agent.rs` | 🔴 | — | — | 完整的 tool loop |
+2.1.5 | `agent.rs` 支持 tool calling + ContextPlan | `agent.rs`, `lib.rs`, `skill.ts` | 🟢 | — | 2026-07-03 | tool loop + ContextPlan + dispatch_tool_call |
 | 2.1.6 | 废弃前端 `writingSkill/` 独立目录 | 清理 | 🔴 | — | — | 合并后删除 |
 
 ### 2.2 模块重构（doc 11）
@@ -228,11 +228,11 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 4 | 0 | 25 | 0 | 14% |
+| S2: 架构+UX | 29 | 5 | 0 | 24 | 0 | 17% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **27** | **0** | **64** | **1** | **29%** |
+| **总计** | **92** | **28** | **0** | **63** | **1** | **30%** |
 
 ---
 

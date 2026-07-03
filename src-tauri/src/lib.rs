@@ -395,6 +395,7 @@ async fn run_skill(
     selected_text: Option<String>,
     blueprint: Option<ArticleBlueprint>,
     current_section_id: Option<String>,
+    project_path: Option<String>,
 ) -> Result<agent::AgentResult, String> {
     let skill = {
         let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -424,6 +425,7 @@ async fn run_skill(
         user_input,
         blueprint,
         current_section_id,
+        project_path,
     };
 
     let result = agent::execute_agent(&skill, &config, &agent_context, on_token).await?;
