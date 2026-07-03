@@ -23,6 +23,8 @@ struct AppState {
     store: Mutex<DataStore>,
     db: Mutex<Option<db::Database>>,
     watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
+    /// 当前活跃的项目路径（用于退出时保存快照）
+    current_project_path: Mutex<Option<String>>,
 }
 
 #[allow(dead_code)]
@@ -31,6 +33,46 @@ fn now_ms() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64
+}
+
+// ─── 项目快照保存 ───
+
+fn save_project_snapshot(app_state: &AppState, project_path: &str) {
+    use std::collections::HashMap;
+    use std::hash::{Hash, Hasher};
+    use crate::project_indexer::{snapshot_dir_files, save_snapshot};
+
+    let app_dir = match app_state.store.lock() {
+        Ok(store) => store.data_dir().parent().unwrap().to_path_buf(),
+        Err(_) => return,
+    };
+
+    let snapshots_dir = app_dir.join("data").join("index").join("snapshots");
+    let _ = std::fs::create_dir_all(&snapshots_dir);
+
+    // 用项目路径的 hash 作文件名，避免路径字符问题
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    project_path.hash(&mut hasher);
+    let hash = hasher.finish();
+    let snapshot_path = snapshots_dir.join(format!("{}.json", hash));
+
+    match snapshot_dir_files(std::path::Path::new(project_path)) {
+        Ok(files) => {
+            let mut snapshot = crate::project_indexer::IndexSnapshot {
+                project_path: project_path.to_string(),
+                created_at: now_ms(),
+                files,
+                file_map: HashMap::new(),
+            };
+            snapshot.build_map();
+            if let Err(e) = save_snapshot(&snapshot, &snapshot_path) {
+                log::warn!("保存项目快照失败: {}", e);
+            }
+        }
+        Err(e) => {
+            log::warn!("扫描项目文件（用于快照）失败: {}", e);
+        }
+    }
 }
 
 // ─── Collections ───
@@ -1211,27 +1253,35 @@ fn unlink_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: 
 }
 
 #[tauri::command]
-async fn get_project_context(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path, false)
+async fn get_project_context(state: tauri::State<'_, AppState>, path: String) -> Result<ProjectContext, String> {
+    let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
 }
 
 #[tauri::command]
-async fn get_project_context_text(path: String) -> Result<String, String> {
+async fn get_project_context_text(state: tauri::State<'_, AppState>, path: String) -> Result<String, String> {
     let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
     Ok(build_context_text(&ctx))
 }
 
 #[tauri::command]
-async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path, true)
+async fn rescan_project_folder(state: tauri::State<'_, AppState>, path: String) -> Result<ProjectContext, String> {
+    let ctx = scan_project(&path, true)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
 }
 
 #[tauri::command]
 async fn rescan_project_folder_incremental(
+    state: tauri::State<'_, AppState>,
     path: String,
     changed_files: Vec<String>,
 ) -> Result<ProjectContext, String> {
-    rescan_project_incremental(&path, &changed_files, None)
+    let ctx = rescan_project_incremental(&path, &changed_files, None)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
 }
 
 #[tauri::command]
@@ -1519,6 +1569,11 @@ fn start_watching_project(
     if !dir.is_dir() {
         return Err("路径不是有效的文件夹".into());
     }
+    // 记录当前项目路径，用于退出时保存快照
+    {
+        let mut cur = state.current_project_path.lock().map_err(|e| e.to_string())?;
+        *cur = Some(path.clone());
+    }
     // 如果已有 watcher 在运行，先停止
     {
         let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
@@ -1750,6 +1805,7 @@ pub fn run() {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
                 db: Mutex::new(database),
                 watcher_handle: Mutex::new(None),
+                current_project_path: Mutex::new(None),
             });
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -1765,6 +1821,16 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_global_shortcut::Builder::default().build())?;
             app.handle().plugin(tauri_plugin_window_state::Builder::default().build())?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Some(state) = window.try_state::<AppState>() {
+                    let project_path = state.current_project_path.lock().ok().and_then(|p| p.clone());
+                    if let Some(path) = project_path {
+                        save_project_snapshot(&state, &path);
+                    }
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
         list_writing_skills,

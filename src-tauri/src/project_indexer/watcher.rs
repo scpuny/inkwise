@@ -132,7 +132,7 @@ where
                             continue;
                         }
                         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                        if !matches!(ext, "ts" | "tsx" | "js" | "jsx" | "rs") {
+                        if !crate::project_indexer::SUPPORTED_TEXT_EXTS.contains(&ext) {
                             continue;
                         }
                         let rel = match path.strip_prefix(&base) {

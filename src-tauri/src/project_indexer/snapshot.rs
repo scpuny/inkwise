@@ -168,19 +168,8 @@ fn walk_dir(
 /// 简单判断是否为文本文件（基于扩展名）
 fn is_text_file(path: &Path) -> bool {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-        matches!(
-            ext.to_lowercase().as_str(),
-            "rs" | "go" | "py" | "js" | "ts" | "tsx" | "jsx" | "vue" | "svelte"
-                | "java" | "kt" | "swift" | "c" | "cpp" | "h" | "hpp"
-                | "css" | "scss" | "less" | "html" | "htm" | "xml" | "json"
-                | "yaml" | "yml" | "toml" | "ini" | "cfg" | "conf"
-                | "md" | "mdx" | "txt" | "log" | "csv" | "sql"
-                | "sh" | "bash" | "zsh" | "fish" | "ps1"
-                | "env" | "gitignore" | "dockerignore" | "editorconfig"
-                | "lock" | "gradle" | "sbt" | "ex" | "exs" | "erl"
-                | "lua" | "r" | "rb" | "php" | "pl" | "pm" | "scala"
-                | "zig" | "nim" | "crystal" | "dart" | "clj" | "cljs"
-        )
+        let ext_lower = ext.to_lowercase();
+        crate::project_indexer::SUPPORTED_TEXT_EXTS.iter().any(|s| *s == ext_lower)
     } else {
         false
     }
