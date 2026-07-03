@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 
 use crate::project_indexer::*;
+use streaming_iterator::StreamingIterator;
 
 // ─── 文件 Hash 缓存（增量扫描）───
 
@@ -340,7 +341,8 @@ fn detect_primary_language(summary: &ProjectSummary, configs: &[ConfigFile]) -> 
 }
 
 // ═══════════════════════════════════════════════════════════════
-// tree-sitter 符号提取（Level 2）
+// ═══════════════════════════════════════════════════════════════
+// tree-sitter Query 通用执行（参考 Kiro AST 算法，基于 .scm 文件）
 // ═══════════════════════════════════════════════════════════════
 
 /// 判断扩展名是否可被 tree-sitter 解析
@@ -367,518 +369,300 @@ fn get_tree_sitter_language(ext: &str) -> Option<(tree_sitter::Language, &'stati
     }
 }
 
-/// 用 tree-sitter 解析源码，提取符号（替代正则方案）
-fn extract_symbols_treesitter(source: &str, ext: &str) -> Vec<SymbolInfo> {
-    let mut symbols = Vec::new();
-    let (lang, _lang_name) = match get_tree_sitter_language(ext) {
+/// 扩展名 → .scm 查询文件语言名
+fn ext_to_query_lang(ext: &str) -> Option<&'static str> {
+    match ext {
+        "ts" | "tsx" | "js" | "jsx" => Some("typescript"),
+        "rs" => Some("rust"),
+        "py" => Some("python"),
+        "go" => Some("go"),
+        "java" => Some("java"),
+        _ => None,
+    }
+}
+
+/// 加载 .scm 查询文件文本
+fn load_query_text(lang_name: &str, layer: &str) -> Option<String> {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tree-sitter-queries")
+        .join(layer)
+        .join(format!("{}.scm", lang_name));
+    std::fs::read_to_string(&path).ok()
+}
+
+// ─── tree-sitter Query 执行结果类型 ───
+
+/// 单次捕获（一个 @name 标签）
+#[derive(Debug, Clone)]
+struct QueryCapture {
+    /// 捕获名（definition / name / parameters / source 等）
+    name: String,
+    /// 捕获节点的 tree-sitter kind（function_declaration / string 等）
+    node_kind: String,
+    /// 捕获到的源码文本
+    text: String,
+    /// 起始字节偏移
+    start_byte: usize,
+    /// 结束字节偏移
+    end_byte: usize,
+    /// 起始行（0-based）
+    start_line: u32,
+    /// 结束行（0-based）
+    end_line: u32,
+}
+
+/// 一次 pattern 匹配的所有 captures 分组
+#[derive(Debug, Clone)]
+struct QueryMatch {
+    captures: Vec<QueryCapture>,
+    pattern_index: usize,
+}
+
+/// 通用 tree-sitter Query 执行函数
+///
+/// 加载指定层的 .scm 文件，执行查询，返回所有匹配的 capture 分组。
+/// layer 可选值: "code-snippet" / "import" / "root-context"
+fn query_execute(source: &str, ext: &str, layer: &str) -> Vec<QueryMatch> {
+    let (lang, _) = match get_tree_sitter_language(ext) {
         Some(v) => v,
-        None => return symbols,
+        None => return Vec::new(),
+    };
+    let lang_name = match ext_to_query_lang(ext) {
+        Some(v) => v,
+        None => return Vec::new(),
+    };
+    let query_text = match load_query_text(lang_name, layer) {
+        Some(t) => t,
+        None => return Vec::new(),
     };
 
+    // 编译 query
+    let query = match tree_sitter::Query::new(&lang, &query_text) {
+        Ok(q) => q,
+        Err(_) => return Vec::new(),
+    };
+
+    // 解析源码
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&lang)
         .expect("tree-sitter language 初始化失败");
-
     let tree = match parser.parse(source, None) {
         Some(t) => t,
-        None => return symbols,
+        None => return Vec::new(),
     };
 
-    let root = tree.root_node();
-    let _cursor = root.walk();
-    let mut visited = std::collections::HashSet::new();
-    let mut node_stack = vec![root];
+    // 执行 query（tree-sitter 0.24 API: QueryMatches::next() 手动迭代）
+    let mut cursor = tree_sitter::QueryCursor::new();
+    let mut query_matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+    let capture_names = query.capture_names();
 
-    while let Some(node) = node_stack.pop() {
-        let node_id = node.id() as usize;
-        if !visited.insert(node_id) {
-            continue;
+    let mut results: Vec<QueryMatch> = Vec::new();
+    query_matches.advance();
+    while let Some(match_) = query_matches.get() {
+        let mut captures: Vec<QueryCapture> = Vec::with_capacity(match_.captures.len());
+        for cap in match_.captures.iter() {
+            let node = cap.node;
+            if let Ok(text) = node.utf8_text(source.as_bytes()) {
+                captures.push(QueryCapture {
+                    name: capture_names[cap.index as usize].to_string(),
+                    node_kind: node.kind().to_string(),
+                    text: text.to_string(),
+                    start_byte: node.start_byte(),
+                    end_byte: node.end_byte(),
+                    start_line: node.start_position().row as u32,
+                    end_line: node.end_position().row as u32,
+                });
+            }
         }
+        captures.shrink_to_fit();
+        results.push(QueryMatch {
+            captures,
+            pattern_index: match_.pattern_index,
+        });
+        query_matches.advance();
+    }
+    results
+}
 
-        let kind = node.kind();
-        let start_line = node.start_position().row as u32 + 1;
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
+// ─── code-snippet 层：Query → SymbolInfo ───
 
-        // 是否导出（检查 preceding 的 export 关键字）
-        let is_exported = if ext == "rs" {
-            // Rust: pub 关键字
-            kind == "function" || kind == "struct" || kind == "enum" || kind == "trait"
-                || kind == "type_alias" || kind == "const_item" || kind == "static_item"
-                || kind == "mod_item"
-        } else {
-            // TS/JS: export 关键字
-            false
+/// 从 code-snippet 层 query 结果提取 SymbolInfo
+fn symbols_from_query(source: &str, ext: &str, matches: &[QueryMatch]) -> Vec<SymbolInfo> {
+    let mut symbols = Vec::new();
+    for m in matches {
+        let def = match m.captures.iter().find(|c| c.name == "definition") {
+            Some(d) => d,
+            None => continue,
+        };
+        let name = match m.captures.iter().find(|c| c.name == "name") {
+            Some(n) => n,
+            None => continue,
         };
 
-        // 提取命名符号
-        match kind {
-            "function_declaration"
-            | "function"
-            | "method_definition"
-            | "method_declaration"
-            | "arrow_function" if !kind.is_empty() =>
-            {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let sig = build_signature_treesitter(node, source, ext);
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: "function".into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported,
-                        docstring: doc,
-                        signature: sig,
-                    });
-                }
-            }
-            "class_declaration" | "class" => {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: "class".into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported,
-                        docstring: doc,
-                        signature: None,
-                    });
-                }
-            }
-            "interface_declaration" | "struct" | "trait" => {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let kind_label = match kind {
-                        "interface_declaration" => "interface",
-                        "struct" => "struct",
-                        "trait" => "trait",
-                        _ => kind,
-                    };
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: kind_label.into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported,
-                        docstring: doc,
-                        signature: None,
-                    });
-                }
-            }
-            "enum_declaration" | "enum" => {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: "enum".into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported,
-                        docstring: doc,
-                        signature: None,
-                    });
-                }
-            }
-            "type_alias" | "type_definition" => {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    let sig = Some(source[start_byte..end_byte].to_string());
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: "type_alias".into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported,
-                        docstring: doc,
-                        signature: sig,
-                    });
-                }
-            }
-            "lexical_declaration" | "variable_declaration" => {
-                // const/let/var 提取每个声明
-                if kind == "lexical_declaration" || kind == "variable_declaration" {
-                    let is_const = source[start_byte..end_byte].starts_with("const")
-                        || source[start_byte..end_byte].starts_with("export const");
-                    let name = find_child_text(node, &["name", "identifier"], source);
-                    if let Some(name) = name {
-                        let sig = Some(source[start_byte..end_byte].to_string());
-                        let doc = extract_doc_comment_treesitter(node, source);
-                        symbols.push(SymbolInfo {
-                            name,
-                            kind: if is_const { "constant".into() } else { "variable".into() },
-                            file_path: String::new(),
-                            line: start_line,
-                            is_exported,
-                            docstring: doc,
-                            signature: sig,
-                        });
-                    }
-                }
-            }
-            "const_item" | "static_item" => {
-                let name = find_child_text(node, &["name", "identifier"], source);
-                if let Some(name) = name {
-                    let sig = Some(source[start_byte..end_byte].to_string());
-                    let doc = extract_doc_comment_treesitter(node, source);
-                    symbols.push(SymbolInfo {
-                        name,
-                        kind: "constant".into(),
-                        file_path: String::new(),
-                        line: start_line,
-                        is_exported: true,
-                        docstring: doc,
-                        signature: sig,
-                    });
-                }
-            }
-            _ => {}
-        }
+        // node_kind → SymbolInfo.kind
+        let kind: &str = match def.node_kind.as_str() {
+            // TypeScript/JavaScript
+            "function_declaration" | "method_definition" | "arrow_function"
+            | "generator_function_declaration" => "function",
+            "class_declaration" => "class",
+            "interface_declaration" => "interface",
+            "type_alias" => "type_alias",
+            "enum_declaration" => "enum",
+            // Rust
+            "function_item" => "function",
+            "struct_item" => "struct",
+            "enum_item" => "enum",
+            "trait_item" => "trait",
+            "impl_item" => "impl",
+            "type_item" => "type_alias",
+            "const_item" | "static_item" => "constant",
+            _ => &def.node_kind,
+        };
 
-        // 遍历子节点
-        for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
-                node_stack.push(child);
-            }
-        }
-    }
+        // docstring: 优先 @comment 捕获，降级源码行扫描
+        let docstring = m
+            .captures
+            .iter()
+            .find(|c| c.name == "comment")
+            .map(|c| c.text.clone())
+            .or_else(|| extract_docstring_lines(source, def.start_line));
 
-    symbols
-}
-
-/// 查找命名子节点文本
-fn find_child_text(node: tree_sitter::Node, names: &[&str], source: &str) -> Option<String> {
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            let child_kind = child.kind();
-            if names.contains(&child_kind) {
-                return child.utf8_text(source.as_bytes()).ok().map(|s| s.to_string());
-            }
-        }
-    }
-    None
-}
-
-/// 构建函数签名文本
-fn build_signature_treesitter(node: tree_sitter::Node, source: &str, ext: &str) -> Option<String> {
-    let start = node.start_byte();
-    let end = node.end_byte();
-    let text = source[start..end].to_string();
-    // 函数/方法截取签名行（第一行或到 { 为止）
-    let sig = if ext == "rs" {
-        text.lines().next().map(|l| {
-            if let Some(pos) = l.find("->") {
-                let upto = pos + 2;
-                let rest: String = l[upto..].trim().chars().take_while(|c| !c.is_whitespace() || *c == ' ').collect();
-                format!("{} {}", &l[..=pos], rest.trim())
-            } else if let Some(pos) = l.find('{') {
-                l[..pos].trim().to_string()
-            } else if let Some(pos) = l.find("where") {
-                format!("{} ...", l[..pos].trim())
-            } else {
-                l.trim().to_string()
-            }
-        })
-    } else {
-        text.lines().next().map(|l| {
+        // 签名: 截取定义第一行到 {
+        let signature = def.text.lines().next().map(|l| {
             if let Some(pos) = l.find('{') {
                 l[..pos].trim().to_string()
             } else {
                 l.trim().to_string()
             }
-        })
-    };
-    sig
+        });
+
+        // is_exported
+        let is_exported = if ext == "rs" {
+            true // Rust: 简化标记所有项
+        } else {
+            check_export_keyword(source, def.start_byte)
+        };
+
+        symbols.push(SymbolInfo {
+            name: name.text.clone(),
+            kind: kind.to_string(),
+            file_path: String::new(),
+            line: def.start_line + 1, // 1-based
+            is_exported,
+            docstring,
+            signature,
+        });
+    }
+    symbols
 }
 
-/// 提取 AST 节点上方的文档注释
-fn extract_doc_comment_treesitter(node: tree_sitter::Node, source: &str) -> Option<String> {
-    let start_line = node.start_position().row;
-    let lines: Vec<&str> = source.lines().collect();
-    let mut docs = Vec::new();
+/// 检查 definition 节点前是否有 export 关键字
+fn check_export_keyword(source: &str, def_start_byte: usize) -> bool {
+    if def_start_byte == 0 {
+        return false;
+    }
+    let before = &source[..def_start_byte];
+    before
+        .split(|c: char| c.is_whitespace() || c == '\n' || c == '\r')
+        .any(|w| w == "export")
+}
 
-    // 向上扫描连续注释行
-    let mut line = if start_line > 0 { start_line - 1 } else { return None };
-    loop {
-        let current = lines.get(line)?;
-        let trimmed = current.trim();
-        if trimmed.starts_with("///") {
-            docs.push(trimmed.trim_start_matches("///").trim());
-        } else if trimmed.starts_with("//!") {
-            docs.push(trimmed.trim_start_matches("//!").trim());
-        } else if trimmed.starts_with("/**") {
-            // 多行 /** ... */
-            let mut block = Vec::new();
-            block.push(trimmed.trim_start_matches("/**").trim().trim_end_matches("*/").trim());
-            // 反向往上读（当前行已经是注释行）
-            for l in lines[..line].iter().rev() {
-                let t = l.trim();
-                if t.ends_with("*/") && !t.starts_with("/**") {
-                    break;
-                }
-                if t.starts_with('*') {
-                    block.push(t.trim_start_matches('*').trim());
-                } else if t.starts_with('/') {
-                    break;
-                } else {
-                    // 非注释行
-                    break;
+/// 源码行扫描提取文档注释（用于无 @comment 捕获的语言）
+fn extract_docstring_lines(source: &str, def_start_line: u32) -> Option<String> {
+    let lines: Vec<&str> = source.lines().collect();
+    let mut docs: Vec<&str> = Vec::new();
+    let mut line = def_start_line as isize - 1;
+    while line >= 0 {
+        let current = lines[line as usize].trim();
+        if current.starts_with("///") {
+            docs.push(current.trim_start_matches("///").trim());
+        } else if current.starts_with("//!") {
+            docs.push(current.trim_start_matches("//!").trim());
+        } else if current.starts_with('/') {
+            // block comment /* ... */ — 简单提取最后一段
+            if let Some(text) = current
+                .trim_start_matches('/')
+                .trim_start_matches('*')
+                .trim_end_matches('*')
+                .trim_end_matches('/')
+                .trim()
+                .split('*')
+                .last()
+            {
+                if !text.is_empty() {
+                    docs.push(text.trim());
                 }
             }
-            // 实际顺序应该是从上往下
-            block.reverse();
-            docs.extend(block);
             break;
-        } else if trimmed.starts_with("/*") {
-            let mut block = Vec::new();
-            block.push(trimmed.trim_start_matches("/*").trim().trim_end_matches("*/").trim());
-            for l in lines[..line].iter().rev() {
-                let t = l.trim();
-                if t.contains("*/") && !t.contains("/*") {
-                    break;
-                }
-                if t.starts_with('*') || t.starts_with("/*") {
-                    block.push(t.trim_start_matches('*').trim_start_matches('/').trim());
-                } else {
-                    break;
-                }
-            }
-            block.reverse();
-            docs.extend(block);
-            break;
+        } else if current.is_empty() {
+            // skip empty line
         } else {
             break;
         }
-        if line == 0 {
-            break;
-        }
-        line = line.wrapping_sub(1);
+        line -= 1;
     }
-
     docs.reverse();
     if docs.is_empty() {
         None
     } else {
-        Some(docs.join(" ").trim().to_string())
+        Some(docs.join(" ").to_string())
     }
 }
 
+// ─── 入口：统一调用 query_execute + 转换 ───
 
-/// 用 tree-sitter 解析源码导入语句（替代正则方案）
-fn extract_imports_treesitter(source: &str, ext: &str) -> Vec<(String, String)> {
+/// 用 tree-sitter query 提取符号（替代手写 AST 遍历）
+fn extract_symbols_treesitter(source: &str, ext: &str) -> Vec<SymbolInfo> {
+    let matches = query_execute(source, ext, "code-snippet");
+    symbols_from_query(source, ext, &matches)
+}
+
+// ─── import 层：Query → ImportEdge 列表 ───
+
+/// 从 import 层 query 结果提取导入列表
+fn imports_from_query(matches: &[QueryMatch]) -> Vec<(String, String)> {
     let mut imports = Vec::new();
-    let (lang, _lang_name) = match get_tree_sitter_language(ext) {
-        Some(v) => v,
-        None => return imports,
-    };
-
-    let mut parser = tree_sitter::Parser::new();
-    parser
-        .set_language(&lang)
-        .expect("tree-sitter language 初始化失败");
-
-    let tree = match parser.parse(source, None) {
-        Some(t) => t,
-        None => return imports,
-    };
-
-    let root = tree.root_node();
-    traverse_imports(root, source, ext, &mut imports);
+    for m in matches {
+        // TypeScript/JS: @source 捕获
+        if let Some(src) = m.captures.iter().find(|c| c.name == "source") {
+            let cleaned = src.text.trim().trim_matches('\'').trim_matches('"');
+            if !cleaned.is_empty() && !cleaned.starts_with('.') {
+                let pkg = cleaned.split('/').next().unwrap_or(cleaned);
+                imports.push((pkg.to_string(), "module".to_string()));
+            }
+        }
+        // Python: @module 捕获
+        if let Some(module) = m.captures.iter().find(|c| c.name == "module") {
+            let cleaned = module.text.trim();
+            if !cleaned.is_empty() {
+                imports.push((cleaned.to_string(), "module".to_string()));
+            }
+        }
+        // Rust: @path 捕获（use 声明）
+        if let Some(path) = m.captures.iter().find(|c| c.name == "path") {
+            let parts: Vec<&str> = path.text.split("::").collect();
+            if !parts.is_empty() {
+                let root = parts[0];
+                if root != "crate" && root != "self" && root != "super" {
+                    imports.push((root.to_string(), "module".to_string()));
+                } else if parts.len() > 1 {
+                    imports.push((parts[1].to_string(), "module".to_string()));
+                }
+            }
+        }
+        // Rust: @crate_name 捕获（extern crate）
+        if let Some(crate_name) = m.captures.iter().find(|c| c.name == "crate_name") {
+            imports.push((crate_name.text.clone(), "module".to_string()));
+        }
+    }
     imports
 }
 
-/// 遍历 AST 节点提取 import 信息
-fn traverse_imports(
-    node: tree_sitter::Node,
-    source: &str,
-    ext: &str,
-    imports: &mut Vec<(String, String)>,
-) {
-    if ext == "rs" {
-        // Rust: use 声明
-        if node.kind() == "use_declaration" {
-            if let Some(use_val) = find_use_target(node, source) {
-                imports.push((use_val, "module".to_string()));
-            }
-        }
-    } else {
-        // TS/JS: import 语句
-        if node.kind() == "import_statement" {
-            if let Some(target) = find_import_source(node, source) {
-                imports.push((target, "module".to_string()));
-            }
-        }
-        // require() 调用
-        if node.kind() == "call_expression" {
-            if let Some(target) = find_require_target(node, source) {
-                imports.push((target, "module".to_string()));
-            }
-        }
-        // dynamic import()
-        if node.kind() == "import_expression" || node.kind() == "import" {
-            if let Some(target) = find_dynamic_import_target(node, source) {
-                imports.push((target, "module".to_string()));
-            }
-        }
-    }
-
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            if child.child_count() > 0 {
-                traverse_imports(child, source, ext, imports);
-            }
-        }
-    }
-}
-
-/// 从 import 语句提取模块路径
-fn find_import_source(node: tree_sitter::Node, source: &str) -> Option<String> {
-    // import 语句中找 string 类型的子节点（模块路径）
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            let kind = child.kind();
-            if kind == "string" || kind == "string_fragment" {
-                if let Ok(text) = child.utf8_text(source.as_bytes()) {
-                    let cleaned = text.trim().trim_matches('\'').trim_matches('"');
-                    if !cleaned.is_empty() && !cleaned.starts_with('.') && !cleaned.starts_with('/') {
-                        // 外部模块：取包名（第一个 / 之前的部分）
-                        let pkg = cleaned.split('/').next().unwrap_or(cleaned);
-                        return Some(pkg.to_string());
-                    }
-                }
-            }
-        }
-    }
-    // 尝试从 named_imports 或 namespace_import 的父节点找 source
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            for j in 0..child.child_count() {
-                if let Some(grandchild) = child.child(j) {
-                    let kind = grandchild.kind();
-                    if kind == "string" || kind == "string_fragment" {
-                        if let Ok(text) = grandchild.utf8_text(source.as_bytes()) {
-                            let cleaned = text.trim().trim_matches('\'').trim_matches('"');
-                            if !cleaned.is_empty() && !cleaned.starts_with('.') {
-                                let pkg = cleaned.split('/').next().unwrap_or(cleaned);
-                                return Some(pkg.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// 从 require() 调用提取模块路径
-fn find_require_target(node: tree_sitter::Node, source: &str) -> Option<String> {
-    let text = node.utf8_text(source.as_bytes()).ok()?;
-    if !text.contains("require(") {
-        return None;
-    }
-    // 从 call_expression 中找 string 参数
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            if child.kind() == "string" || child.kind() == "string_fragment" || child.kind() == "arguments" {
-                for j in 0..child.child_count() {
-                    if let Some(grandchild) = child.child(j) {
-                        let gk = grandchild.kind();
-                        if gk == "string" || gk == "string_fragment" {
-                            if let Ok(t) = grandchild.utf8_text(source.as_bytes()) {
-                                let cleaned = t.trim().trim_matches('\'').trim_matches('"');
-                                if !cleaned.is_empty() && !cleaned.starts_with('.') {
-                                    let pkg = cleaned.split('/').next().unwrap_or(cleaned);
-                                    return Some(pkg.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// 从 dynamic import() 提取模块路径
-fn find_dynamic_import_target(node: tree_sitter::Node, source: &str) -> Option<String> {
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            let kind = child.kind();
-            if kind == "string" || kind == "string_fragment" || kind == "arguments" {
-                for j in 0..child.child_count() {
-                    if let Some(grandchild) = child.child(j) {
-                        let gk = grandchild.kind();
-                        if gk == "string" || gk == "string_fragment" {
-                            if let Ok(t) = grandchild.utf8_text(source.as_bytes()) {
-                                let cleaned = t.trim().trim_matches('\'').trim_matches('"');
-                                if !cleaned.is_empty() && !cleaned.starts_with('.') {
-                                    let pkg = cleaned.split('/').next().unwrap_or(cleaned);
-                                    return Some(pkg.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// 从 Rust use 声明提取模块路径
-fn find_use_target(node: tree_sitter::Node, source: &str) -> Option<String> {
-    // use crate::module; -> crate
-    // use module::SubModule; -> module
-    // use module::{Sub1, Sub2}; -> module
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            let kind = child.kind();
-            // scoped_identifier: crate::module or module::sub
-            if kind == "scoped_identifier" {
-                if let Ok(text) = child.utf8_text(source.as_bytes()) {
-                    let parts: Vec<&str> = text.split("::").collect();
-                    if !parts.is_empty() {
-                        let root = parts[0];
-                        if root != "crate" && root != "self" && root != "super" {
-                            return Some(root.to_string());
-                        } else if parts.len() > 1 {
-                            return Some(parts[1].to_string());
-                        }
-                    }
-                }
-            }
-            // use_as_clause: use foo as bar
-            if kind == "use_as_clause" {
-                for j in 0..child.child_count() {
-                    if let Some(inner) = child.child(j) {
-                        if inner.kind() == "scoped_identifier" {
-                            if let Ok(text) = inner.utf8_text(source.as_bytes()) {
-                                let parts: Vec<&str> = text.split("::").collect();
-                                if !parts.is_empty() {
-                                    let root = parts[0];
-                                    if root != "crate" && root != "self" && root != "super" {
-                                        return Some(root.to_string());
-                                    } else if parts.len() > 1 {
-                                        return Some(parts[1].to_string());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
+/// 用 tree-sitter query 提取导入关系（替代手写 AST 遍历）
+fn extract_imports_treesitter(source: &str, ext: &str) -> Vec<(String, String)> {
+    let matches = query_execute(source, ext, "import");
+    imports_from_query(&matches)
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -35,6 +35,7 @@ notify = "6.1"
 notify-debouncer-mini = "0.4"
 
 tree-sitter = "0.24"
+streaming-iterator = "0.1.9"
 tree-sitter-rust = "0.23"
 tree-sitter-typescript = "0.23"
 sha2 = "0.10"

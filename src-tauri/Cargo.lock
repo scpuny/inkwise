@@ -102,6 +102,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "streaming-iterator",
  "tauri",
  "tauri-build",
  "tauri-plugin-clipboard-manager",
