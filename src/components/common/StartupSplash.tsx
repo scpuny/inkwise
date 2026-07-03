@@ -99,6 +99,7 @@ const [customTone, setCustomTone] = useState("");
   const [wordCount, setWordCount] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [toolEventsCollapsed, setToolEventsCollapsed] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const responseEndRef = useRef<HTMLDivElement>(null);
   const toolScrollRef = useRef<HTMLDivElement>(null);
@@ -564,6 +565,71 @@ const [customTone, setCustomTone] = useState("");
                 <h1>开始写作</h1>
                 <p className="startup-splash__tagline">输入灵感，AI 帮你完成从规划到成文的全部工作</p>
               </div>
+
+              {/* Onboarding toggle */}
+              <button className="startup-splash__onboarding-btn" onClick={() => setShowOnboarding(true)}>
+                新手引导
+              </button>
+
+              {/* Onboarding overlay */}
+              {showOnboarding && (
+                <div className="startup-splash__onboarding-overlay" onClick={() => setShowOnboarding(false)}>
+                  <div className="startup-splash__onboarding" onClick={e => e.stopPropagation()}>
+                    <div className="startup-splash__onboarding-header">
+                      InkWise 新手引导
+                      <button className="startup-splash__onboarding-close" onClick={() => setShowOnboarding(false)}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                    <div className="startup-splash__onboarding-steps">
+                      <div className="startup-splash__onboarding-step">
+                        <span className="startup-splash__onboarding-step-num">1</span>
+                        <div className="startup-splash__onboarding-step-content">
+                          <strong>输入灵感</strong>
+                          <p>输入一个主题或一句话，AI 会帮你规划文章大纲</p>
+                        </div>
+                      </div>
+                      <div className="startup-splash__onboarding-step">
+                        <span className="startup-splash__onboarding-step-num">2</span>
+                        <div className="startup-splash__onboarding-step-content">
+                          <strong>AI 规划</strong>
+                          <p>AI 自动生成标题、简介、大纲和标签，你可以在确认前编辑</p>
+                        </div>
+                      </div>
+                      <div className="startup-splash__onboarding-step">
+                        <span className="startup-splash__onboarding-step-num">3</span>
+                        <div className="startup-splash__onboarding-step-content">
+                          <strong>写作与审阅</strong>
+                          <p>在富文本编辑器中写作，完成后让 AI 审阅并优化</p>
+                        </div>
+                      </div>
+                      <div className="startup-splash__onboarding-step">
+                        <span className="startup-splash__onboarding-step-num">4</span>
+                        <div className="startup-splash__onboarding-step-content">
+                          <strong>发布</strong>
+                          <p>文章定稿后，可一键导出或发布到各平台</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="startup-splash__onboarding-shortcuts">
+                      <div className="startup-splash__onboarding-shortcuts-title">常用快捷键</div>
+                      <div className="startup-splash__onboarding-shortcuts-grid">
+                        <span><kbd>⌘</kbd><kbd>⏎</kbd> AI 规划</span>
+                        <span><kbd>⌘</kbd><kbd>B</kbd> 加粗</span>
+                        <span><kbd>⌘</kbd><kbd>I</kbd> 斜体</span>
+                        <span><kbd>⌘</kbd><kbd>K</kbd> 插入链接</span>
+                        <span><kbd>⌘</kbd><kbd>Z</kbd> 撤销</span>
+                        <span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Z</kbd> 重做</span>
+                        <span><kbd>⌘</kbd><kbd>\</kbd> 侧边栏</span>
+                        <span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>\</kbd> Agent</span>
+                      </div>
+                    </div>
+                    <div className="startup-splash__onboarding-footer">
+                      <button className="btn btn--primary" onClick={() => setShowOnboarding(false)}>知道了</button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {showSuggestions && inspiration.length === 0 && (
                 <div className="startup-splash__suggestions">
