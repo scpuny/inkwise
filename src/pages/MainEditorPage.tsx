@@ -5,7 +5,8 @@ import { AgentPanel } from "../components/agent/AgentPanel";
 import { ThemePicker } from "../components/settings/ThemePicker";
 import { SettingsPanel } from "../components/settings";
 import { StylePanel } from "../components/settings/StylePanel";
-import { StatusBar } from "../components/common/StatusBar";
+import { ToastContainer } from "../components/common/Toast";
+import { StatusBar} from "../components/common/StatusBar";
 import { ProjectExplorer } from "../components/common/ProjectExplorer";
 import { ArticleManager } from "../components/collections/ArticleManager";
 import { DocPicker } from "../components/collections/DocPicker";
@@ -326,6 +327,7 @@ export default function MainEditorPage() {
           setSeriesPlannerExistingPlan(null);
         }}
       />
+      <ToastContainer />
     </div>
     </ErrorBoundary>
   );

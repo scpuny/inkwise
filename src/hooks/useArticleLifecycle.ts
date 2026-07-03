@@ -8,6 +8,7 @@ import { useAgent } from "../lib/ai/agent";
 import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
 import { ArticleContext } from "../lib/article/ArticleContext";
 import { emit } from "../lib/events/eventBus";
+import { useToastStore } from "../store/toastStore";
 import { useArticleStore } from "../store/articleStore";
 import { useEditorStore } from "../store/editorStore";
 import { usePanelStore } from "../store/panelStore";
@@ -199,52 +200,72 @@ export function useArticleLifecycle() {
     title: string; description: string; outline: OutlineSection[];
     tags: string[]; tone: string; targetAudience: string; targetWordCount: number;
   }, collectionId: string): Promise<{ articleId: string; collectionId: string } | null> => {
+    const addToast = useToastStore.getState().addToast;
     let targetId = collectionId;
-    const cols = await loadCollections();
-    if (!targetId || !cols.some(c => c.id === targetId)) {
-      targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
+    try {
+      const cols = await loadCollections();
+      if (!targetId || !cols.some(c => c.id === targetId)) {
+        targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
+      }
+    } catch (e) {
+      addToast({ type: "error", message: "加载文集列表失败：" + (e as Error).message });
+      return null;
     }
 
     // Check series article for existing articleId
     let existingArticleId: string | null = null;
     const seriesRef = pendingSeriesArticleRef.current;
     if (seriesRef && seriesRef.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
-      const seriesArt = seriesPlan?.articles.find(a => a.id === seriesRef.articleId);
-      if (seriesArt?.articleId) existingArticleId = seriesArt.articleId;
+      try {
+        const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
+        const seriesArt = seriesPlan?.articles.find(a => a.id === seriesRef.articleId);
+        if (seriesArt?.articleId) existingArticleId = seriesArt.articleId;
+      } catch (e) {
+        addToast({ type: "warning", message: "加载系列计划失败：" + (e as Error).message });
+      }
     }
 
     let article: { id: string };
-    if (existingArticleId) {
-      article = { id: existingArticleId };
-      await saveBlueprint(existingArticleId, makeBlueprint(plan.title || "无标题", plan));
-      await saveArticleContent(existingArticleId, makeSkeletonDoc(plan));
-    } else if (seriesRef && seriesRef.collectionId === targetId) {
-      article = { id: seriesRef.articleId };
-      await saveBlueprint(seriesRef.articleId, makeBlueprint(plan.title || "无标题", plan));
-    } else {
-      const newArticle = await addArticle(targetId, plan.title || "无标题");
-      if (!newArticle) return null;
-      article = newArticle;
-      await saveBlueprint(article.id, makeBlueprint(plan.title || "无标题", plan));
-      await saveArticleContent(article.id, makeSkeletonDoc(plan));
+    try {
+      if (existingArticleId) {
+        article = { id: existingArticleId };
+        await saveBlueprint(existingArticleId, makeBlueprint(plan.title || "无标题", plan));
+        await saveArticleContent(existingArticleId, makeSkeletonDoc(plan));
+      } else if (seriesRef && seriesRef.collectionId === targetId) {
+        article = { id: seriesRef.articleId };
+        await saveBlueprint(seriesRef.articleId, makeBlueprint(plan.title || "无标题", plan));
+      } else {
+        const newArticle = await addArticle(targetId, plan.title || "无标题");
+        if (!newArticle) return null;
+        article = newArticle;
+        await saveBlueprint(article.id, makeBlueprint(plan.title || "无标题", plan));
+        await saveArticleContent(article.id, makeSkeletonDoc(plan));
+      }
+    } catch (e) {
+      addToast({ type: "error", message: "保存文章失败：" + (e as Error).message });
+      return null;
     }
 
     // Link series article if applicable
     if (seriesRef && seriesRef.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
-      if (seriesPlan) {
-        await saveSeriesPlan(seriesRef.collectionId, {
-          ...seriesPlan,
-          articles: seriesPlan.articles.map(a =>
-            a.id === seriesRef.articleId ? { ...a, status: "writing" as const, articleId: article.id } : a
-          ),
-        });
+      try {
+        const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
+        if (seriesPlan) {
+          await saveSeriesPlan(seriesRef.collectionId, {
+            ...seriesPlan,
+            articles: seriesPlan.articles.map(a =>
+              a.id === seriesRef.articleId ? { ...a, status: "writing" as const, articleId: article.id } : a
+            ),
+          });
+        }
+        pendingSeriesArticleRef.current = null;
+      } catch (e) {
+        addToast({ type: "warning", message: "更新系列状态失败：" + (e as Error).message });
       }
-      pendingSeriesArticleRef.current = null;
     }
 
     emit("collections-changed");
+    addToast({ type: "success", message: "文章创建成功" });
     return { articleId: article.id, collectionId: targetId };
   }, [pendingSeriesArticleRef]);
 
