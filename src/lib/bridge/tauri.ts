@@ -21,6 +21,13 @@ export enum TauriCommands {
   DeleteCollectionCascade = "delete_collection_cascade",
   MoveArticleDb = "move_article_db",
   SearchArticleDb = "search_articles_db",
+
+  // ── Vector Search ──
+  VectorSearch = "vector_search",
+  IndexArticleVector = "index_article_vector",
+  DeleteArticleVector = "delete_article_vector",
+  GetVectorStats = "get_vector_stats",
+  IndexAllVectors = "index_all_vectors",
   RenameCollectionDb = "rename_collection_db",
   BuildFolderIndex = "build_folder_index",
   LinkCollectionFolder = "link_collection_folder",

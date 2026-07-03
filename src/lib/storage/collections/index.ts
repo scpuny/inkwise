@@ -17,8 +17,11 @@ export {
   unlinkCollectionFolder, getCollectionFolderContext,
   generateSeriesId, saveSeriesPlan, loadAllSeriesPlans,
   loadSeriesPlan, deleteSeriesPlan,
-  searchArticleTitles, searchArticleContent,
 } from "./crud";
+
+export {
+  searchArticleTitles, searchArticleContent,
+} from "./search";
 
 export {
   linkCollectionFolder, getProjectContext, getProjectContextText,
