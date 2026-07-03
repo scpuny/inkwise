@@ -1,5 +1,5 @@
 use crate::ai::{self, ChatMessage, ChatRequest, ProviderConfig, TokenCallback};
-use crate::skill::Skill;
+use crate::skill::{Skill, ToolCapability};
 use crate::store::ArticleBlueprint;
 
 use serde::{Deserialize, Serialize};
@@ -130,13 +130,13 @@ fn build_agent_prompt(skill: &Skill, context: &AgentContext) -> String {
 
     // Tool info
     prompt.push_str("## 可用工具\n");
-    if skill.allowed_tools.contains(&"read_document".to_string()) {
+    if skill.allowed_tools.contains(&ToolCapability::ReadDocument) {
         prompt.push_str("- read_document: 读取当前文档内容\n");
     }
-    if skill.allowed_tools.contains(&"write_document".to_string()) {
+    if skill.allowed_tools.contains(&ToolCapability::WriteDocument) {
         prompt.push_str("- write_document: 写入内容到文档\n");
     }
-    if skill.allowed_tools.contains(&"search_document".to_string()) {
+    if skill.allowed_tools.contains(&ToolCapability::SearchDocument) {
         prompt.push_str("- search_document: 搜索文档中的特定内容\n");
     }
     prompt.push_str("\n");
