@@ -1,5 +1,5 @@
-// articleReview.ts — AI 文章质量评估（风格感知·动态维度）
-// 根据写作风格动态调整评估维度，不再硬编码 5 维
+// articleReview.ts — AI 文章质量评估（风格感知·动态维度·逐段修复）
+// 根据写作风格动态调整评估维度，支持逐段优化与接受/拒绝
 
 import { getProvidersSync } from "../storage/providerModels";
 import { sendChat } from "./ai";
@@ -22,25 +22,28 @@ export interface ArticleReview {
   styleId?: string;
 }
 
-/** 维度元信息（用于 UI 渲染） */
 export interface DimensionMeta {
   id: string;
   label: string;
   description: string;
 }
 
+export interface ParagraphFix {
+  paragraphIndex: number;
+  originalText: string;
+  fixedText: string;
+  dimensionId: string;
+  status: "pending" | "accepted" | "rejected";
+}
+
 /* ─── 风格→维度映射 ─── */
 
 interface StyleDimensionOverride {
-  /** 额外维度 */
   extra?: DimensionMeta[];
-  /** 移除的维度 ID */
   remove?: string[];
-  /** 提示词补充 */
   promptAddendum?: string;
 }
 
-/** 基础 5 维（所有风格共享） */
 const BASE_DIMENSIONS: DimensionMeta[] = [
   { id: "opening", label: "开头", description: "文章开头是否有吸引力" },
   { id: "structure", label: "结构逻辑", description: "段落递进是否合理，过渡是否自然" },
@@ -49,7 +52,6 @@ const BASE_DIMENSIONS: DimensionMeta[] = [
   { id: "formatting", label: "格式规范", description: "Markdown 格式是否正确使用" },
 ];
 
-/** 风格维度覆写表 */
 const STYLE_DIMENSION_OVERRIDES: Record<string, StyleDimensionOverride> = {
   academic: {
     extra: [
@@ -92,7 +94,6 @@ function getDimensionsForStyle(styleId?: string): { dimensions: DimensionMeta[];
   if (!override) {
     return { dimensions: BASE_DIMENSIONS, promptAddendum: "" };
   }
-
   const filtered = BASE_DIMENSIONS.filter((d) => !override.remove?.includes(d.id));
   const all = [...filtered, ...(override.extra || [])];
   return { dimensions: all, promptAddendum: override.promptAddendum || "" };
@@ -105,8 +106,27 @@ function buildDimensionPromptLines(dimensions: DimensionMeta[]): string {
 }
 
 function buildDimensionOutputHint(dimensions: DimensionMeta[]): string {
-  const lines = dimensions.map((d) => `    "${d.id}": { "rating": "优|良|差", "comment": "简短理由", "suggestion": "具体优化建议" }`);
+  const lines = dimensions.map((d) =>
+    `    "${d.id}": { "rating": "优|良|差", "comment": "简短理由", "suggestion": "具体优化建议" }`
+  );
   return "{\n" + lines.join(",\n") + ',\n  "summary": "总体评价（一句话概括）"\n}';
+}
+
+/* ─── 段落工具 ─── */
+
+export function splitIntoParagraphs(content: string): { index: number; text: string; start: number; end: number }[] {
+  const paragraphs: { index: number; text: string; start: number; end: number }[] = [];
+  const parts = content.split(/\n{2,}/);
+  let cursor = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const text = parts[i].trim();
+    if (!text) { cursor += parts[i].length + 2; continue; }
+    const startIdx = content.indexOf(text, cursor);
+    if (startIdx === -1) { cursor += parts[i].length + 2; continue; }
+    paragraphs.push({ index: i, text, start: startIdx, end: startIdx + text.length });
+    cursor = startIdx + text.length + 2;
+  }
+  return paragraphs;
 }
 
 /* ─── 评估函数 ─── */
@@ -128,7 +148,6 @@ export async function generateArticleReview(
   const style = options?.styleId ? getStyle(options.styleId) : undefined;
   const { dimensions, promptAddendum } = getDimensionsForStyle(options?.styleId);
 
-  // Style context for system prompt
   let styleContext = "";
   if (style) {
     styleContext = `\n\n## 写作风格参考\n当前文章采用「${style.name}」风格。\n${style.description}\n请在评估时考虑此风格的特点和写作目标。`;
@@ -178,13 +197,11 @@ ${outputHint}${styleContext}`;
     maxTokens: 2048,
   });
 
-  // 解析 JSON
   const jsonStr = extractJson(result);
   let data: Record<string, any>;
   try {
     data = JSON.parse(jsonStr);
   } catch {
-    // Fallback: use generic ratings
     data = {};
   }
 
@@ -203,7 +220,6 @@ ${outputHint}${styleContext}`;
   };
 }
 
-/** 从 AI 回复中提取 JSON 块 */
 function extractJson(text: string): string {
   const codeMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (codeMatch) return codeMatch[1].trim();
@@ -213,6 +229,114 @@ function extractJson(text: string): string {
     return text.slice(braceStart, braceEnd + 1);
   }
   return text;
+}
+
+/* ─── 逐段修复 ─── */
+
+/**
+ * 对指定段落生成 AI 修复建议
+ */
+export async function generateParagraphFix(
+  articleId: string,
+  content: string,
+  paragraphIndex: number,
+  dimensionId: string,
+  suggestion: string,
+  options?: { title?: string },
+): Promise<ParagraphFix> {
+  const providers = getProvidersSync();
+  const provider = providers.find((p) => p.enabled && p.models.length > 0);
+  if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
+  const paragraphs = splitIntoParagraphs(content);
+  const para = paragraphs[paragraphIndex];
+  if (!para) throw new Error(`段落 ${paragraphIndex} 不存在`);
+
+  const contextBefore = paragraphIndex > 0 ? paragraphs[paragraphIndex - 1].text : "";
+  const contextAfter = paragraphIndex < paragraphs.length - 1 ? paragraphs[paragraphIndex + 1].text : "";
+
+  const model = provider.models[0]?.id ?? "";
+
+  const sysPrompt = "你是一位资深编辑，负责逐段优化文章。\n"
+    + "请只优化指定的段落，保持上下文连贯性。\n"
+    + "直接输出优化后的段落内容，不要额外说明。";
+
+  const userParts: string[] = [];
+  if (options?.title) userParts.push("## 文章标题\n" + options.title);
+  if (contextBefore) userParts.push("## 上一段\n" + contextBefore.slice(0, 500));
+  userParts.push("## 待优化段落\n" + para.text);
+  if (contextAfter) userParts.push("## 下一段\n" + contextAfter.slice(0, 500));
+  userParts.push("");
+  userParts.push("## 优化方向（" + dimensionId + "）");
+  userParts.push(suggestion);
+  userParts.push("");
+  userParts.push("请根据以上优化建议，只优化指定的段落。保持上下文的连贯性。直接输出优化后的段落内容。");
+
+  const result = await sendChat({
+    providerId: provider.id,
+    model,
+    messages: [
+      { role: "system", content: sysPrompt },
+      { role: "user", content: userParts.join("\n") },
+    ],
+    temperature: 0.5,
+    maxTokens: 2048,
+  });
+
+  return {
+    paragraphIndex,
+    originalText: para.text,
+    fixedText: result.trim(),
+    dimensionId,
+    status: "pending",
+  };
+}
+
+/**
+ * 批量生成所有有建议维度的段落修复
+ */
+export async function generateAllParagraphFixes(
+  articleId: string,
+  content: string,
+  review: ArticleReview,
+  options?: { title?: string },
+): Promise<ParagraphFix[]> {
+  const dimensionMetas = getDimensionMetas(review);
+  const fixPromises: Promise<ParagraphFix>[] = [];
+
+  for (const meta of dimensionMetas) {
+    const dim = review.dimensions[meta.id];
+    if (!dim || !dim.suggestion) continue;
+    // Find the paragraph that relates to this issue
+    // For now, target paragraph 0 as default (simplified)
+    // In a full implementation, AI would identify which paragraph has the issue
+    fixPromises.push(
+      generateParagraphFix(articleId, content, 0, meta.id, dim.suggestion, options)
+    );
+  }
+
+  return Promise.all(fixPromises);
+}
+
+/**
+ * 将段落修复应用到文章中
+ */
+export function applyParagraphFixes(content: string, fixes: ParagraphFix[]): string {
+  const accepted = fixes.filter((f) => f.status === "accepted");
+  if (accepted.length === 0) return content;
+
+  const paragraphs = splitIntoParagraphs(content);
+  let result = content;
+
+  // Apply from last to first to preserve offset
+  const sorted = [...accepted].sort((a, b) => b.paragraphIndex - a.paragraphIndex);
+  for (const fix of sorted) {
+    const para = paragraphs[fix.paragraphIndex];
+    if (!para) continue;
+    result = result.slice(0, para.start) + fix.fixedText + result.slice(para.end);
+  }
+
+  return result;
 }
 
 /* ─── 存储 ─── */
@@ -239,6 +363,32 @@ export async function loadArticleReview(
   }
 }
 
+/** 保存段落修复结果 */
+export async function saveParagraphFixes(
+  articleId: string,
+  fixes: ParagraphFix[],
+): Promise<void> {
+  const key = `article_fixes:${articleId}`;
+  try {
+    localStorage.setItem(key, JSON.stringify(fixes));
+  } catch { /* ignore */ }
+}
+
+/** 加载段落修复结果 */
+export async function loadParagraphFixes(
+  articleId: string,
+): Promise<ParagraphFix[] | null> {
+  const key = `article_fixes:${articleId}`;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/* ─── UI 工具 ─── */
+
 export function getReviewLabel(rating: "优" | "良" | "差"): string {
   return rating;
 }
@@ -251,15 +401,12 @@ export function getReviewColor(rating: "优" | "良" | "差"): string {
   }
 }
 
-/** 获取某个文章审阅的维度元信息列表 */
 export function getDimensionMetas(review: ArticleReview): DimensionMeta[] {
-  // Match known dimensions; fall back to generating from keys
   const knownMap = new Map<string, string>();
   for (const d of BASE_DIMENSIONS) knownMap.set(d.id, d.label);
   for (const [_k, overrides] of Object.entries(STYLE_DIMENSION_OVERRIDES)) {
     for (const d of overrides.extra || []) knownMap.set(d.id, d.label);
   }
-
   return Object.keys(review.dimensions).map((id) => ({
     id,
     label: knownMap.get(id) || id,
@@ -267,7 +414,7 @@ export function getDimensionMetas(review: ArticleReview): DimensionMeta[] {
   }));
 }
 
-/* ─── 优化函数 ─── */
+/* ─── 全量优化（保留兼容） ─── */
 
 export async function applyOptimization(
   articleId: string,
@@ -281,7 +428,6 @@ export async function applyOptimization(
   const provider = providers.find((p) => p.enabled && p.models.length > 0);
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  // 收集有建议的维度（适配动态维度）
   const dimensionLabels = getDimensionMetas(review);
   const suggestions = dimensionLabels
     .filter((meta) => {
@@ -290,37 +436,35 @@ export async function applyOptimization(
     })
     .map((meta) => {
       const d = review.dimensions[meta.id]!;
-      return `- ${meta.label}（当前评级：${d.rating}）: ${d.suggestion}`;
+      return "- " + meta.label + "（当前评级：" + d.rating + "）: " + d.suggestion;
     });
 
   const model = provider.models[0]?.id ?? '';
 
-  const sysPrompt = `你是一位资深写作者，根据编辑的优化建议重写文章。
+  const sysPrompt = "你是一位资深写作者，根据编辑的优化建议重写文章。\n\n"
+    + "## 原则\n"
+    + "- 保留原文的核心观点、事实和案例，不编造新内容\n"
+    + "- 只改进编辑指出的问题，不改变文章主旨和结构框架\n"
+    + "- 如果编辑建议涉及删减，果断删除冗余内容\n"
+    + "- 保持原文的技术准确性和专业度\n"
+    + "- 直接输出完整的重写后文章（Markdown 格式），不要额外说明";
 
-## 原则
-- 保留原文的核心观点、事实和案例，不编造新内容
-- 只改进编辑指出的问题，不改变文章主旨和结构框架
-- 如果编辑建议涉及删减，果断删除冗余内容
-- 保持原文的技术准确性和专业度
-- 直接输出完整的重写后文章（Markdown 格式），不要额外说明`;
-
-  const userPrompt = [
-    options?.title ? `## 标题\n${options.title}` : "",
-    "## 优化建议",
-    ...suggestions,
-    "",
-    "## 原文",
-    content.slice(0, 12000),
-    "",
-    "请根据以上优化建议重写文章，直接输出完整的 Markdown 内容。",
-  ].join("\n");
+  const userParts: string[] = [];
+  if (options?.title) userParts.push("## 标题\n" + options.title);
+  userParts.push("## 优化建议");
+  userParts.push(...suggestions);
+  userParts.push("");
+  userParts.push("## 原文");
+  userParts.push(content.slice(0, 12000));
+  userParts.push("");
+  userParts.push("请根据以上优化建议重写文章，直接输出完整的 Markdown 内容。");
 
   const result = await sendChat({
     providerId: provider.id,
     model,
     messages: [
       { role: "system", content: sysPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: userParts.join("\n") },
     ],
     temperature: 0.5,
     maxTokens: 8192,
