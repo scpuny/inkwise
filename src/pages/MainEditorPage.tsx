@@ -281,7 +281,7 @@ export default function MainEditorPage() {
         <button className="focus-exit-btn"
           onClick={() => setFocusMode(false)}
           title="退出焦点模式 (Esc)"
-        >Exit Focus</button>
+        >退出焦点模式 <kbd className="focus-exit-btn__kbd">Esc</kbd></button>
       )}
       <StatusBar saveState={saveState} phase={articlePhase} />
       <ThemePicker
