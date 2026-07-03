@@ -1,4 +1,5 @@
-// storage.ts — 写作技能存储：CRUD 与工具函数
+// storage.ts [DEPRECATED] — 旧版技能存储层
+// @deprecated 请通过 IPC (tryInvoke/ListUnifiedSkills) 获取统一技能列表。将在 v2.0.0 后移除。
 // 优先通过 IPC 从 Rust 端获取技能列表，Tauri 不可用时降级 localStorage
 import { tryInvoke, isTauriEnv, TauriCommands } from "../../bridge/tauri";
 import type { WritingSkill, SkillPhase, PhaseConfig } from "./types";

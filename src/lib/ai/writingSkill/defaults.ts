@@ -1,4 +1,5 @@
-// defaults.ts — 默认 fallback prompt 与阶段配置
+// defaults.ts [DEPRECATED] — 旧版默认阶段 Prompt
+// @deprecated 保留以兼容 WritingStyle 模块。将在 v2.0.0 后移除。
 import type { SkillPhase, PhaseConfig } from "./types";
 
 export const DEFAULT_TITLE_PROMPT =
