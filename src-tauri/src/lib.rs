@@ -12,7 +12,7 @@ use platform::wechat::WeChat;
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
-use skill::{Skill, SkillStore, RunAs, builtin_skills};
+use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
@@ -363,7 +363,29 @@ fn read_skill(state: tauri::State<AppState>, name: String) -> Result<Option<Skil
     Ok(skill_store.find(&name))
 }
 
+
 #[tauri::command]
+fn list_unified_skills(state: tauri::State<AppState>) -> Result<Vec<UnifiedSkill>, String> {
+    let mut skills = unified_builtin_skills();
+    let disabled = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let data_dir = store.data_dir().parent().unwrap().to_path_buf();
+        drop(store);
+        let disabled_list_path = data_dir.join("disabled_skills.json");
+        if disabled_list_path.exists() {
+            std::fs::read_to_string(&disabled_list_path)
+                .ok()
+                .and_then(|c| serde_json::from_str::<Vec<String>>(&c).ok())
+                .unwrap_or_default()
+        } else { vec![] }
+    };
+    for skill in &mut skills {
+        if disabled.contains(&skill.name) {
+            skill.enabled = false;
+        }
+    }
+    Ok(skills)
+}#[tauri::command]
 async fn run_skill(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -1589,6 +1611,7 @@ pub fn run() {
             save_article_blueprint,
             load_article_blueprint,
             list_skills,
+            list_unified_skills,
             read_skill,
             run_skill,
             install_skill,

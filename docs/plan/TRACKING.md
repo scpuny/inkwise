@@ -77,7 +77,7 @@
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
 | 2.1.1 | 定义 `UnifiedSkill` + `ToolCapability` 枚举类型 | `skill.rs`, `skillTypes.ts` | 🟢 | — | 2026-07-03 | 新增9种ToolCapability+ContextSourceType+EffortLevel+SkillPhase+PhaseConfigUnified+UnifiedSkill | |
-| 2.1.2 | 合并 `builtin_skills()` 和 `getBuiltinSkills()` 为一套 | `skill.rs` | 🔴 | — | — | 以 Rust 为权威 |
+| 2.1.2 | 合并 `builtin_skills()` 和 `getBuiltinSkills()` 为一套 | `skill.rs` | 🟢 | — | 2026-07-03 | unified_builtin_skills()+前端unifiedSkills.ts+Tauri命令list_unified_skills |
 | 2.1.3 | 前端改为从 IPC 获取技能列表 | `storage.ts`, `builtins.ts` | 🔴 | — | — | 不再前端自定 |
 | 2.1.4 | 枚举替换 `allowed_tools` 字符串 | `skill.rs` | 🔴 | — | — | ToolCapability 枚举 |
 | 2.1.5 | `agent.rs` 支持 tool calling + ContextPlan | `agent.rs` | 🔴 | — | — | 完整的 tool loop |
@@ -228,11 +228,11 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 1 | 0 | 28 | 0 | 3% |
+| S2: 架构+UX | 29 | 2 | 0 | 27 | 0 | 7% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **24** | **0** | **67** | **1** | **26%** |
+| **总计** | **92** | **25** | **0** | **66** | **1** | **27%** |
 
 ---
 

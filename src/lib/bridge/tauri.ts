@@ -48,7 +48,7 @@ export enum TauriCommands {
   SaveWritingSkill = "save_writing_skill",
   DeleteWritingSkill = "delete_writing_skill",
   ListSkills = "list_skills",
-  ReadSkill = "read_skill",
+  ListUnifiedSkills = "list_unified_skills",  ReadSkill = "read_skill",
   DeleteSkill = "delete_skill",
   SetSkillEnabled = "set_skill_enabled",
   RunSkill = "run_skill",
