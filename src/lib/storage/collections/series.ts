@@ -1,6 +1,7 @@
 // series.ts — 系列文章计划管理
 import type { SeriesPlan } from "./types";
 import { genId, browserLoad, browserSave } from "./internal";
+import { isTauriEnv, tryInvoke, TauriCommands } from "../../bridge/tauri";
 
 export function generateSeriesId(): string {
   return genId();
@@ -50,4 +51,12 @@ export async function deleteSeriesPlan(collectionId: string, seriesId: string): 
     localStorage.removeItem(NEW_SERIES_KEY(collectionId));
     localStorage.removeItem(OLD_SERIES_KEY(collectionId));
   }
+  // Tauri 后端清理
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteSeriesPlan, { collectionId, seriesId });
+    }
+  } catch { console.warn("[deleteSeriesPlan] backend cleanup failed (non-critical)"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteCollectionChunks("series:" + seriesId); } catch { /* ignore */ }
 }
