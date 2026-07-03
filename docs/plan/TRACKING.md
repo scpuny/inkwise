@@ -185,9 +185,9 @@
 |---|--------|------|------|--------|--------|------|
 | 4.3.1 | 完善类型定义（`PxValue` / `EmValue` / `HexColor`） | `articleThemes.ts` | 🟢 | — | 2026-07-03 | PxValue/EmValue/HexColor 语义类型 + ArticleThemeVars 字段注解 |
 | 4.3.2 | 定义 `renderThemeVars()` 统一单位拼接 | `articleThemes.ts` | 🟢 | — | 2026-07-03 | renderThemeVars + renderThemeUnit + cssEntriesToText |
-| 4.3.3 | 按风格标签重组主题分组（简约/暖色/暗色/纸墨） | `articleThemes.ts` | 🔴 | — | — | 不再按平台分 |
-| 4.3.4 | 合并同质主题为平台变体（25 → 12 核心 + platformOverrides） | `articleThemes.ts` | 🔴 | — | — | 最大精简 |
-| 4.3.5 | 技能 ↔ 主题联动：`recommendedThemeId` | `UnifiedSkill`, `plan.ts` | 🔴 | — | — | — |
+| 4.3.3 | 按风格标签重组主题分组（简约/暖色/暗色/纸墨） | `articleThemes.ts` | 🟢 | — | 2026-07-03 | CoreTheme+PlatformOverride 类型，12 核心风格按标签分组 |
+| 4.3.4 | 合并同质主题为平台变体（25 → 12 核心 + platformOverrides） | `articleThemes.ts` | 🟢 | — | 2026-07-03 | generateFullThemes 展开，31 主题保持向后兼容 |
+| 4.3.5 | 技能 ↔ 主题联动：`recommendedThemeId` | `UnifiedSkill`, `plan.ts` | 🔴 | — | — | 需在 Rust+TS 添加字段 + builtins 赋值 |
 | 4.3.6 | 自定义主题支持 Rust 后端持久化 | `store.rs`, `crud.ts` | 🔴 | — | — | 不再只存 localStorage |
 
 ### 4.4 图片/插图专项改进（doc 17）
@@ -230,9 +230,9 @@
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
-| S4: 体验优化 | 16 | 9 | 0 | 6 | 1 | 56% |
+| S4: 体验优化 | 16 | 11 | 0 | 5 | 0 | 69% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **83** | 0 | 8 | 1 | 91% |
+| **总计** | **91** | **82** | 0 | 9 | 1 | 90% |
 ---
 
 ## 里程碑记录

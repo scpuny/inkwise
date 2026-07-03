@@ -166,315 +166,283 @@ export function cssEntriesToText(entries: CssVarEntry[]): string {
 }
 
 
+// ─── 平台覆写类型 ───
 
-/* ─── 预设主题 ─── */
-export const ARTICLE_THEMES: ArticleTheme[] = [
-  // ═══ 通用 ═══
+/**
+ * 平台覆写：为同一核心主题在不同平台的差异化调整。
+ * 只包含跨平台会变化的字段，固定字段由核心主题提供。
+ */
+export interface PlatformOverride {
+  /** 覆写主题的 ID（默认自动生成） */
+  id?: string;
+  /** 目标平台 ID */
+  platform: string;
+  /** 平台标签后缀（如 "默认"、"暗色"），用于生成 label */
+  labelSuffix?: string;
+  /** 平台描述后缀 */
+  descSuffix?: string;
+  /** 覆写的主题变量 */
+  vars: Partial<ArticleThemeVars>;
+  /** 额外标签 */
+  tags?: string[];
+}
+
+/**
+ * 核心主题定义：比 ArticleTheme 更精简，
+ * 通过 platformOverrides 生成平台变体。
+ */
+export interface CoreTheme {
+  id: string;
+  label: string;
+  desc: string;
+  tags: string[];
+  vars: ArticleThemeVars;
+  /** 平台覆写列表。不指定则只保留通用（general）版本 */
+  platformOverrides?: PlatformOverride[];
+}
+
+/** 平台默认覆写：各平台的基础差异化配置（字号、最大宽度、字体等） */
+export const CORE_THEMES: CoreTheme[] = [
+  // ═══ 简约（干净、无彩色干扰）═══
   {
     id: 'clean',
     label: '极简白',
     desc: '最高可读性，无彩色干扰',
-    platform: 'general',
     tags: ['简约', '通用'],
-    vars: { ...BASE_VARS ,
-    accentColor: '#1a73e8',
-    strongColor: '#111111',
-    markBg: '#e8f0fe',
-    hrColor: '#d0d7de',},
+    vars: { ...BASE_VARS, accentColor: '#1a73e8', strongColor: '#111111', markBg: '#e8f0fe', hrColor: '#d0d7de' },
+    platformOverrides: [
+      { id: 'wechat-default', platform: 'wechat', labelSuffix: '默认', descSuffix: '微信默认风格',
+        vars: { fontSize: '17', lineHeight: 1.8, paragraphGap: '1.4', linkColor: '#576b95', codeBg: '#f0f0f0',
+                fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif', maxWidth: '660' } },
+      { id: 'zhihu-default', platform: 'zhihu', labelSuffix: '默认', descSuffix: '知乎默认风格',
+        vars: { lineHeight: 1.7, linkColor: '#056de8', blockquoteBorder: '#056de8', blockquoteBg: '#f0f7ff',
+                fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', fontSize: '15', maxWidth: '768' } },
+      { id: 'toutiao-default', platform: 'toutiao', labelSuffix: '默认', descSuffix: '头条默认风格',
+        vars: { lineHeight: 1.6, paragraphGap: '1.0', headingColor: '#cc0000', blockquoteBorder: '#cc0000', blockquoteBg: '#fff5f5',
+                fontSize: '18', maxWidth: '720' } },
+      { id: 'jianshu-default', platform: 'jianshu', labelSuffix: '默认', descSuffix: '简书默认风格，暖灰底色',
+        vars: { bgColor: '#f7f7f7', textColor: '#404040', linkColor: '#3194d0', codeBg: '#f8f8f8', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f0f0f0',
+                fontSize: '16', maxWidth: '760', fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif' } },
+      { id: 'csdn-default', platform: 'csdn', labelSuffix: '默认', descSuffix: 'CSDN 默认风格，代码友好',
+        vars: { lineHeight: 1.65, linkColor: '#c00000', codeBg: '#f5f5f5', codeText: '#c7254e', blockquoteBorder: '#c00000', blockquoteBg: '#fff5f5',
+                fontSize: '15', maxWidth: '860' } },
+    ],
   },
+  // ═══ 暖色 ═══
   {
     id: 'paper',
     label: '纸墨',
     desc: '暖色底色，仿纸张质感',
-    platform: 'general',
     tags: ['暖色', '阅读'],
-    vars: { ...BASE_VARS, bgColor: '#faf8f5', textColor: '#3a3a3a', blockquoteBg: '#f5f0eb' ,
-    accentColor: '#b08968',
-    strongColor: '#5a4a3a',
-    markBg: '#f0e3cc',
-    hrColor: '#d7c19a',},
+    vars: { ...BASE_VARS, bgColor: '#faf8f5', textColor: '#3a3a3a', blockquoteBg: '#f5f0eb', accentColor: '#b08968', strongColor: '#5a4a3a', markBg: '#f0e3cc', hrColor: '#d7c19a' },
+    platformOverrides: [
+      { id: 'wechat-novel', platform: 'wechat', labelSuffix: '小说', descSuffix: '微信小说风格，宽行距',
+        vars: { fontSize: '17', lineHeight: 2.0, paragraphGap: '1.6', textColor: '#3a3a3a', blockquoteBg: '#f5f5f5',
+                fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', maxWidth: '660' } },
+      { id: 'zhihu-essay', platform: 'zhihu', labelSuffix: '专栏', descSuffix: '知乎专栏风格，大留白',
+        vars: { fontSize: '16', lineHeight: 1.8, paragraphGap: '1.5', linkColor: '#056de8',
+                fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', maxWidth: '720' } },
+    ],
   },
+  // ═══ 暗色 ═══
   {
     id: 'night',
     label: '暗色护眼',
     desc: '深色背景，适合夜间阅读',
-    platform: 'general',
     tags: ['暗色', '护眼'],
-    vars: { ...BASE_VARS, bgColor: '#1a1a2e', textColor: '#e0e0e0', headingColor: '#ffffff', codeBg: '#16213e', codeText: '#e0e0e0', blockquoteBg: '#16213e', blockquoteBorder: '#4a4a6a' ,
-    accentColor: '#7c8cff',
-    strongColor: '#ffffff',
-    markBg: '#1f2a55',
-    hrColor: '#2f3763',},
+    vars: { ...BASE_VARS, bgColor: '#1a1a2e', textColor: '#e0e0e0', headingColor: '#ffffff', codeBg: '#16213e', codeText: '#e0e0e0', blockquoteBg: '#16213e', blockquoteBorder: '#4a4a6a', accentColor: '#7c8cff', strongColor: '#ffffff', markBg: '#1f2a55', hrColor: '#2f3763' },
+    platformOverrides: [
+      { id: 'zhihu-dark', platform: 'zhihu', labelSuffix: '暗色', descSuffix: '知乎暗色风格',
+        vars: { bgColor: '#1e1e1e', textColor: '#d0d0d0', linkColor: '#58a6ff', codeBg: '#2d2d2d', blockquoteBorder: '#58a6ff', blockquoteBg: '#1a2332',
+                fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', fontSize: '15', maxWidth: '768' } },
+      { id: 'toutiao-dark', platform: 'toutiao', labelSuffix: '暗色', descSuffix: '头条暗色风格',
+        vars: { bgColor: '#1a1a1a', textColor: '#d4d4d4', headingColor: '#ff4444', linkColor: '#ff4444', codeBg: '#2a2a2a', codeText: '#ff6b6b', blockquoteBorder: '#ff4444', blockquoteBg: '#221111',
+                fontSize: '18', lineHeight: 1.6, maxWidth: '720' } },
+      { id: 'jianshu-dark', platform: 'jianshu', labelSuffix: '暗色', descSuffix: '简书暗色风格',
+        vars: { bgColor: '#1c1c1c', textColor: '#cfcfcf', headingColor: '#f0f0f0', linkColor: '#58a6ff', codeBg: '#2a2a2a', codeText: '#e0e0e0', blockquoteBorder: '#444444', blockquoteBg: '#252525',
+                fontSize: '16', maxWidth: '760', fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif' } },
+      { id: 'csdn-dark', platform: 'csdn', labelSuffix: '暗色', descSuffix: 'CSDN 暗色风格',
+        vars: { bgColor: '#1d1d1d', textColor: '#cccccc', headingColor: '#e0e0e0', linkColor: '#ff6b6b', codeBg: '#2b2b2b', codeText: '#ff6b6b', blockquoteBorder: '#ff6b6b', blockquoteBg: '#2a1a1a',
+                fontSize: '15', maxWidth: '860' } },
+    ],
   },
-  {
-    id: 'elegant',
-    label: '典雅',
-    desc: '衬线字体，传统排版',
-    platform: 'general',
-    tags: ['衬线', '正式'],
-    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif', fontSize: '17', lineHeight: 1.9 ,
-    accentColor: '#b08968',
-    strongColor: '#8a5a36',
-    markBg: '#f6e6cf',
-    hrColor: '#d7c19a',},
-  },
-  {
-    id: 'modern',
-    label: '现代',
-    desc: '无衬线字体，干净利落',
-    platform: 'general',
-    tags: ['无衬线', '商务'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif', maxWidth: '800' ,
-    accentColor: '#2d8cf0',
-    strongColor: '#1a1a1a',
-    markBg: '#dcedff',
-    hrColor: '#d0d7de',},
-  },
-
-  // ═══ 微信 ═══
-  {
-    id: 'wechat-default',
-    label: '微信默认',
-    desc: '窄版大字号，经典微信风格',
-    platform: 'wechat',
-    tags: ['默认', '窄版'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif', fontSize: '17', lineHeight: 1.8, paragraphGap: '1.4', maxWidth: '660', linkColor: '#576b95', codeBg: '#f0f0f0' ,
-    accentColor: '#576b95',
-    strongColor: '#1a1a1a',
-    markBg: '#e8f0fe',
-    hrColor: '#d0d7de',},
-  },
-  {
-    id: 'wechat-novel',
-    label: '微信小说',
-    desc: '宽行距，适合长文阅读',
-    platform: 'wechat',
-    tags: ['长文', '舒适'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '17', lineHeight: 2.0, paragraphGap: '1.6', maxWidth: '660', textColor: '#3a3a3a', blockquoteBg: '#f5f5f5' ,
-    accentColor: '#576b95',
-    strongColor: '#3a3a3a',
-    markBg: '#e8f0fe',
-    hrColor: '#d0d7de',},
-  },
-  {
-    id: 'wechat-card',
-    label: '微信卡片',
-    desc: '圆角卡片，图文并茂',
-    platform: 'wechat',
-    tags: ['卡片', '图文'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '640', bgColor: '#f5f5f5', blockquoteBg: '#ffffff', codeBg: '#ffffff' ,
-    accentColor: '#576b95',
-    strongColor: '#2c2c2c',
-    markBg: '#e8f0fe',
-    hrColor: '#d0d7de',},
-  },
-
-  // ═══ 知乎 ═══
-  {
-    id: 'zhihu-default',
-    label: '知乎默认',
-    desc: '蓝链风格，阅读舒适',
-    platform: 'zhihu',
-    tags: ['默认', '蓝色'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', fontSize: '15', lineHeight: 1.7, maxWidth: '768', linkColor: '#056de8', blockquoteBorder: '#056de8', blockquoteBg: '#f0f7ff' },
-  },
-  {
-    id: 'zhihu-essay',
-    label: '知乎专栏',
-    desc: '大留白，适合深度文章',
-    platform: 'zhihu',
-    tags: ['留白', '深度'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', fontSize: '16', lineHeight: 1.8, paragraphGap: '1.5', maxWidth: '720', linkColor: '#056de8' },
-  },
-  {
-    id: 'zhihu-dark',
-    label: '知乎暗色',
-    desc: '深色版知乎风格',
-    platform: 'zhihu',
-    tags: ['暗色', '护眼'],
-    vars: { ...BASE_VARS, bgColor: '#1e1e1e', textColor: '#d0d0d0', headingColor: '#ffffff', linkColor: '#58a6ff', codeBg: '#2d2d2d', codeText: '#d0d0d0', blockquoteBorder: '#58a6ff', blockquoteBg: '#1a2332' },
-  },
-
-  // ═══ 今日头条 ═══
-  {
-    id: 'toutiao-default',
-    label: '头条默认',
-    desc: '大标题短段落，强对比',
-    platform: 'toutiao',
-    tags: ['醒目', '强对比'],
-    vars: { ...BASE_VARS, fontSize: '18', lineHeight: 1.6, paragraphGap: '1.0', maxWidth: '720', headingColor: '#cc0000', linkColor: '#cc0000', blockquoteBorder: '#cc0000', blockquoteBg: '#fff5f5' },
-  },
-  {
-    id: 'toutiao-hot',
-    label: '头条热文',
-    desc: '红色强调，突出爆点',
-    platform: 'toutiao',
-    tags: ['热文', '红色'],
-    vars: { ...BASE_VARS, fontSize: '18', lineHeight: 1.65, maxWidth: '720', headingColor: '#e60012', linkColor: '#e60012', blockquoteBorder: '#e60012', blockquoteBg: '#fff0f0', textColor: '#1a1a1a' },
-  },
-
-  // ═══ Medium ═══
-  {
-    id: 'medium-default',
-    label: 'Medium 经典',
-    desc: '衬线字体，极简阅读',
-    platform: 'medium',
-    tags: ['衬线', '极简'],
-    vars: { ...BASE_VARS, fontFamily: '"Georgia", "Noto Serif SC", serif', fontSize: '18', lineHeight: 1.8, paragraphGap: '1.5', maxWidth: '740', linkColor: '#1a8917', codeBg: '#f4f4f4', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f9f9f9' },
-  },
-  {
-    id: 'medium-sans',
-    label: 'Medium 无衬线',
-    desc: '无衬线版 Medium 风格',
-    platform: 'medium',
-    tags: ['无衬线', '现代'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: '17', lineHeight: 1.75, maxWidth: '740', linkColor: '#1a8917', codeBg: '#f4f4f4' },
-  },
-
-  // ═══ 简书 ═══
-  {
-    id: 'jianshu-default',
-    label: '简书默认',
-    desc: '暖灰底色，舒适阅读',
-    platform: 'jianshu',
-    tags: ['暖色', '舒适'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '760', bgColor: '#f7f7f7', textColor: '#404040', linkColor: '#3194d0', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f0f0f0' },
-  },
-
-  // ═══ CSDN ═══
-  {
-    id: 'csdn-default',
-    label: 'CSDN 默认',
-    desc: '技术博客风格，代码友好',
-    platform: 'csdn',
-    tags: ['技术', '代码'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '15', lineHeight: 1.65, maxWidth: '860', linkColor: '#c00000', codeBg: '#f5f5f5', codeText: '#c7254e', blockquoteBorder: '#c00000', blockquoteBg: '#fff5f5' },
-  },
-  {
-    id: 'csdn-dark',
-    label: 'CSDN 暗色',
-    desc: '深色技术博客风格',
-    platform: 'csdn',
-    tags: ['暗色', '技术'],
-    vars: { ...BASE_VARS, bgColor: '#1d1d1d', textColor: '#cccccc', headingColor: '#e0e0e0', linkColor: '#ff6b6b', codeBg: '#2b2b2b', codeText: '#ff6b6b', blockquoteBorder: '#ff6b6b', blockquoteBg: '#2a1a1a', maxWidth: '860' },
-  },
-  // ═══ 今日头条 ═══
-  {
-    id: 'toutiao-dark',
-    label: '头条暗色',
-    desc: '深色版今日头条风格',
-    platform: 'toutiao',
-    tags: ['暗色', '醒目'],
-    vars: { ...BASE_VARS, bgColor: '#1a1a1a', textColor: '#d4d4d4', headingColor: '#ff4444', linkColor: '#ff4444', fontSize: '18', lineHeight: 1.6, maxWidth: '720', codeBg: '#2a2a2a', codeText: '#ff6b6b', blockquoteBorder: '#ff4444', blockquoteBg: '#221111' },
-  },
-
-  // ═══ Medium ═══
   {
     id: 'medium-dark',
     label: 'Medium 暗色',
     desc: '深色版 Medium 阅读体验',
-    platform: 'medium',
     tags: ['暗色', '衬线'],
     vars: { ...BASE_VARS, fontFamily: '"Georgia", "Noto Serif SC", serif', fontSize: '18', lineHeight: 1.8, paragraphGap: '1.5', maxWidth: '740', bgColor: '#121212', textColor: '#d4d4d4', headingColor: '#ffffff', linkColor: '#3ea660', codeBg: '#1e1e1e', codeText: '#d4d4d4', blockquoteBorder: '#333333', blockquoteBg: '#1a1a1a' },
   },
-
-  // ═══ 简书 ═══
+  // ═══ 衬线 / 优雅 ═══
   {
-    id: 'jianshu-dark',
-    label: '简书暗色',
-    desc: '深色版简书风格',
-    platform: 'jianshu',
-    tags: ['暗色', '舒适'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '760', bgColor: '#1c1c1c', textColor: '#cfcfcf', headingColor: '#f0f0f0', linkColor: '#58a6ff', codeBg: '#2a2a2a', codeText: '#e0e0e0', blockquoteBorder: '#444444', blockquoteBg: '#252525' },
+    id: 'elegant',
+    label: '典雅',
+    desc: '衬线字体，传统排版',
+    tags: ['衬线', '正式'],
+    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif', fontSize: '17', lineHeight: 1.9, accentColor: '#b08968', strongColor: '#8a5a36', markBg: '#f6e6cf', hrColor: '#d7c19a' },
   },
+  // ═══ 无衬线 / 现代 ═══
   {
-    id: 'jianshu-minimal',
-    label: '简书极简',
-    desc: '纯白底色，干净清爽',
-    platform: 'jianshu',
-    tags: ['简约', '干净'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", sans-serif', fontSize: '16', lineHeight: 1.8, maxWidth: '740', bgColor: '#ffffff', textColor: '#333333', linkColor: '#3194d0', codeBg: '#f8f8f8', blockquoteBorder: '#e0e0e0', blockquoteBg: '#fafafa' },
+    id: 'modern',
+    label: '现代',
+    desc: '无衬线字体，干净利落',
+    tags: ['无衬线', '商务'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif', maxWidth: '800', accentColor: '#2d8cf0', strongColor: '#1a1a1a', markBg: '#dcedff', hrColor: '#d0d7de' },
+    platformOverrides: [
+      { id: 'medium-sans', platform: 'medium', labelSuffix: '', descSuffix: 'Medium 无衬线风格',
+        vars: { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: '17', lineHeight: 1.75,
+                maxWidth: '740', linkColor: '#1a8917' } },
+      { id: 'jianshu-minimal', platform: 'jianshu', labelSuffix: '极简', descSuffix: '简书极简风格',
+        vars: { bgColor: '#ffffff', textColor: '#333333', lineHeight: 1.8, linkColor: '#3194d0', codeBg: '#f8f8f8', blockquoteBorder: '#e0e0e0', blockquoteBg: '#fafafa',
+                fontSize: '16', maxWidth: '740', fontFamily: '-apple-system, "PingFang SC", sans-serif' } },
+    ],
   },
-
-  // ═══ 微信 ═══
-  {
-    id: 'wechat-grace',
-    label: '微信优雅',
-    desc: '精致微信排版，带阴影圆角',
-    platform: 'wechat',
-    tags: ['精致', '优雅'],
-    vars: { ...BASE_VARS, fontFamily: '"Optima-Regular", "PingFang SC", "Noto Serif SC", serif', fontSize: '16', lineHeight: 1.85, paragraphGap: '1.3', maxWidth: '660', textColor: '#3a3a3a', linkColor: '#8b7cff', codeBg: '#f3eefb', codeText: '#6b4fa0', blockquoteBorder: '#8b7cff', blockquoteBg: '#f8f6ff' },
-  },
-  {
-    id: 'wechat-simple',
-    label: '微信简洁',
-    desc: '极简微信排版，清爽干净',
-    platform: 'wechat',
-    tags: ['简约', '干净'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", sans-serif', fontSize: '16', lineHeight: 1.75, paragraphGap: '1.2', maxWidth: '660', textColor: '#2c2c2c', linkColor: '#4a90d9', codeBg: '#f5f5f5', codeText: '#555555', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f9fafb' },
-  },
-
-
-  // ═══ 新增（受外部 WechatTheme 启发）═══
+  // ═══ 暖陶 ═══
   {
     id: 'warm-clay',
-    label: '暖陶米白',
-    desc: '暖色调，陶土红强调，仿 Claude 风格',
-    platform: 'general',
+    label: '暖陶',
+    desc: '暖色调，陶土质感',
     tags: ['暖色', '温和'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif', textColor: '#3d3929', headingColor: '#181815', linkColor: '#d97757', bgColor: '#faf9f5', codeBg: '#f5f4ef', blockquoteBorder: '#d97757', blockquoteBg: '#faf9f5', accentColor: '#d97757', strongColor: '#c2613f', markBg: '#f9e8e0', hrColor: '#e8e6dc' },
+    vars: { ...BASE_VARS, bgColor: '#fcf6f0', textColor: '#4a4a4a', headingColor: '#6b3a2a', linkColor: '#c0755a', accentColor: '#c0755a', strongColor: '#6b3a2a', blockquoteBg: '#f5ede4', blockquoteBorder: '#d4a88c', codeBg: '#f0e8e0', markBg: '#f0daca', hrColor: '#d4c4b4' },
   },
-  {
-    id: 'indigo-pink',
-    label: '靛粉渐变',
-    desc: '靛蓝标题粉红强调，渐变背景带网格',
-    platform: 'general',
-    tags: ['渐变', '现代', '醒目'],
-    vars: { ...BASE_VARS, fontFamily: 'Inter,"PingFang SC","Microsoft YaHei",sans-serif', textColor: '#334155', headingColor: '#312e81', linkColor: '#6366f1', headingVariant: 'ribbon', headingBg: 'linear-gradient(135deg,#6366f1,#ec4899)', headingText: '#ffffff', headingLine: '#6366f1', bgColor: '#ffffff', codeBg: '#eef2ff', codeText: '#4338ca', strongColor: '#ec4899', markBg: '#fce7f3', hrColor: '#e0e7ff', blockquoteBorder: '#ec4899', blockquoteBg: '#f8f7ff', pageBg: 'linear-gradient(rgba(99,102,241,0.045) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.045) 1px,transparent 1px),radial-gradient(circle at 92% 8%,rgba(236,72,153,0.16) 0 120px,transparent 122px),radial-gradient(circle at 6% 88%,rgba(99,102,241,0.16) 0 140px,transparent 142px),#ffffff', pageBgSize: '40px 40px,40px 40px,auto,auto,auto' },
-  },
+  // ═══ 杂志风格 ═══
   {
     id: 'magazine',
-    label: '杂志红',
-    desc: '深红标题，浓烈编辑风',
-    platform: 'general',
+    label: '杂志',
+    desc: '正式浓烈，杂志风格',
     tags: ['正式', '浓烈'],
-    vars: { ...BASE_VARS, fontFamily: '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif', textColor: '#2f2f33', headingColor: '#7a1f1f', linkColor: '#c23a3a', bgColor: '#fffcfc', codeBg: '#ffeef0', codeText: '#9c2f3a', strongColor: '#992d2d', markBg: '#ffe0de', hrColor: '#e8c2c2', blockquoteBorder: '#c23a3a', blockquoteBg: '#fff3f2' },
+    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", Georgia, serif', fontSize: '17', lineHeight: 1.85, maxWidth: '800', headingColor: '#8b0000', linkColor: '#8b0000', accentColor: '#8b0000', strongColor: '#5a0000', codeBg: '#faf0f0', blockquoteBg: '#fef5f5', blockquoteBorder: '#8b0000', markBg: '#fce8e8', hrColor: '#d0a0a0' },
   },
+  // ═══ 复古 ═══
   {
     id: 'retro',
-    label: '复古纸',
-    desc: 'Georgia 衬线字体，暖黄纸质感',
-    platform: 'general',
+    label: '复古',
+    desc: '复古风格，纸质质感',
     tags: ['复古', '衬线', '纸质'],
-    vars: { ...BASE_VARS, fontFamily: 'Georgia,"Times New Roman","PingFang SC",serif', textColor: '#2f261b', headingColor: '#4a3215', linkColor: '#8b6a35', bgColor: '#fcf8f0', codeBg: '#f2e7d4', codeText: '#704a1a', strongColor: '#7a4e14', markBg: '#f0e3cc', hrColor: '#d7c19a', blockquoteBorder: '#8b6a35', blockquoteBg: '#f8f2e8', fontSize: '17', lineHeight: 1.9, paragraphGap: '1.4' },
+    vars: { ...BASE_VARS, fontFamily: '"Noto Serif SC", "Source Han Serif SC", serif', fontSize: '17', lineHeight: 1.9, paragraphGap: '1.4', maxWidth: '720', bgColor: '#f5f0e8', textColor: '#5c4a3a', headingColor: '#3a2a1a', linkColor: '#8b6b4b', accentColor: '#8b6b4b', strongColor: '#5a3a2a', codeBg: '#ece4d8', codeText: '#5a4a3a', blockquoteBg: '#f0e8dc', blockquoteBorder: '#b8a088', markBg: '#e8dcc8', hrColor: '#c8b8a8' },
   },
+  // ═══ 海洋 ═══
   {
     id: 'ocean',
-    label: '海盐青',
-    desc: '青绿主调，清爽海洋感',
-    platform: 'general',
+    label: '海洋',
+    desc: '清爽蓝色系，自然',
     tags: ['清爽', '自然'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif', textColor: '#1f3a3d', headingColor: '#0b4f55', linkColor: '#0e9594', bgColor: '#f4fbfa', codeBg: '#e8f6f5', codeText: '#0b6b6a', strongColor: '#0a7e7d', markBg: '#d6f3f1', hrColor: '#cdeae8', blockquoteBorder: '#0e9594', blockquoteBg: '#effbfa' },
+    vars: { ...BASE_VARS, bgColor: '#f7fbfe', textColor: '#2c3e50', headingColor: '#1a4a6e', linkColor: '#2980b9', accentColor: '#2980b9', strongColor: '#1a4a6e', codeBg: '#eef5fa', blockquoteBg: '#f0f8ff', blockquoteBorder: '#5b9bd5', markBg: '#d4eaf7', hrColor: '#a8c8dd' },
   },
+  // ═══ 琥珀 ═══
   {
     id: 'amber',
-    label: '琥珀橙',
-    desc: '温暖橙色调，沉稳琥珀感',
-    platform: 'general',
+    label: '琥珀',
+    desc: '暖色沉稳，琥珀色调',
     tags: ['暖色', '沉稳'],
-    vars: { ...BASE_VARS, textColor: '#2c2c2c', headingColor: '#c8722a', linkColor: '#c8722a', bgColor: '#fffcf7', codeBg: '#faebd7', codeText: '#a05a20', strongColor: '#c8722a', markBg: '#fdf0e0', hrColor: '#f0d5b0', blockquoteBorder: '#c8722a', blockquoteBg: '#fdf5ec' },
+    vars: { ...BASE_VARS, bgColor: '#fdf8f0', textColor: '#4a3a2a', headingColor: '#8b6b3a', linkColor: '#c09040', accentColor: '#c09040', strongColor: '#7a5a2a', codeBg: '#f5f0e0', blockquoteBg: '#faf0e0', blockquoteBorder: '#d4a850', markBg: '#f0e0c0', hrColor: '#d0c0a0' },
   },
+  // ═══ 健康 ═══
   {
     id: 'health',
-    label: '健康绿',
-    desc: '自然绿色调，网格背景护眼',
-    platform: 'general',
+    label: '健康',
+    desc: '自然护眼绿色调',
     tags: ['自然', '护眼'],
-    vars: { ...BASE_VARS, fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif', textColor: '#183d34', headingColor: '#123f34', linkColor: '#0f8f67', bgColor: '#f4faf7', codeBg: '#edf7f2', codeText: '#0f3129', strongColor: '#087857', markBg: '#e5f5ee', hrColor: '#dcebe3', blockquoteBorder: '#5a8f75', blockquoteBg: '#f7fcf9', pageBg: 'linear-gradient(rgba(18,63,52,0.045) 1px,transparent 1px),linear-gradient(90deg,rgba(18,63,52,0.045) 1px,transparent 1px),#f4faf7', pageBgSize: '48px 48px,48px 48px,auto' },
+    vars: { ...BASE_VARS, bgColor: '#f4faf0', textColor: '#3a4a3a', headingColor: '#2a5a3a', linkColor: '#4a8a5a', accentColor: '#4a8a5a', strongColor: '#2a5a3a', codeBg: '#eaf5e8', blockquoteBg: '#f0f8ee', blockquoteBorder: '#6aaa6a', markBg: '#d8eed8', hrColor: '#aac8aa' },
+  },
+  // ═══ 靛蓝粉红 ═══
+  {
+    id: 'indigo-pink',
+    label: '靛粉',
+    desc: '现代渐变风格，醒目',
+    tags: ['渐变', '现代', '醒目'],
+    vars: { ...BASE_VARS, fontFamily: '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '780', bgColor: '#fafafe', textColor: '#2a2a3a', headingColor: '#3a2a6a', linkColor: '#6a3a9a', accentColor: '#8a3a8a', strongColor: '#5a2a7a', codeBg: '#f4f0fa', codeText: '#5a3a8a', blockquoteBg: '#f8f4fe', blockquoteBorder: '#8a6aba', markBg: '#e8e0f8', hrColor: '#ccc0dd' },
   },
 ];
 
-/* ─── 自定义主题存储 ─── */
+/** 获取平台默认覆写：各平台的基础差异化配置 */
+export function getPlatformDefaults(platform: string): Partial<ArticleThemeVars> {
+  const defaults: Record<string, Partial<ArticleThemeVars>> = {
+    wechat:  { fontSize: '17', maxWidth: '660', fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif', linkColor: '#576b95' },
+    zhihu:   { fontSize: '15', maxWidth: '768', fontFamily: '"PingFang SC", "Microsoft YaHei", Arial, sans-serif', linkColor: '#056de8' },
+    toutiao: { fontSize: '18', maxWidth: '720', linkColor: '#cc0000' },
+    medium:  { fontSize: '18', maxWidth: '740', fontFamily: '"Georgia", "Noto Serif SC", serif', linkColor: '#1a8917' },
+    jianshu: { fontSize: '16', maxWidth: '760', fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', linkColor: '#3194d0', bgColor: '#f7f7f7', textColor: '#404040' },
+    csdn:    { fontSize: '15', maxWidth: '860', linkColor: '#c00000' },
+  };
+  return defaults[platform] || {};
+}
+
+/**
+ * 将核心主题 + 平台覆写展开为完整的 ArticleTheme[]。
+ * 每个核心主题生成一个 general 版本 + 每个平台覆写版本。
+ */
+export function generateFullThemes(coreThemes: CoreTheme[]): ArticleTheme[] {
+  const results: ArticleTheme[] = [];
+  for (const ct of coreThemes) {
+    // general 版本
+    results.push({
+      id: ct.id,
+      label: ct.label,
+      desc: ct.desc,
+      platform: 'general',
+      tags: [...ct.tags],
+      vars: { ...ct.vars },
+    });
+    // 平台覆写版本
+    if (ct.platformOverrides) {
+      for (const ov of ct.platformOverrides) {
+        results.push({
+          id: ov.id || ct.id + '-' + ov.platform,
+          label: ct.label + (ov.labelSuffix ? ' ' + ov.labelSuffix : ''),
+          desc: ct.desc + (ov.descSuffix ? '（' + ov.descSuffix + '）' : ''),
+          platform: ov.platform,
+          tags: [...new Set([...ct.tags, ...(ov.tags || [])])],
+          vars: { ...ct.vars, ...getPlatformDefaults(ov.platform), ...ov.vars },
+        });
+      }
+    }
+  }
+  return results;
+}
+
+/** 预生成完整主题列表，保持向后兼容。运行时展开 CORE_THEMES + 追加独特主题。 */
+export const ARTICLE_THEMES: ArticleTheme[] = (() => {
+  const themes = generateFullThemes(CORE_THEMES);
+
+  // ─── 额外独特主题（无法通过覆写生成，有独立视觉风格） ───
+  const extras: ArticleTheme[] = [
+    {
+      id: 'wechat-card', label: '微信卡片', desc: '圆角卡片，图文并茂',
+      platform: 'wechat', tags: ['卡片', '图文'],
+      vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '640', bgColor: '#f5f5f5', blockquoteBg: '#ffffff', codeBg: '#ffffff',
+        accentColor: '#576b95', strongColor: '#2c2c2c', markBg: '#e8f0fe', hrColor: '#d0d7de' },
+    },
+    {
+      id: 'wechat-grace', label: '微信优雅', desc: '精致优雅风格',
+      platform: 'wechat', tags: ['精致', '优雅'],
+      vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Noto Serif SC", sans-serif', fontSize: '16', lineHeight: 1.85, paragraphGap: '1.4', maxWidth: '660', textColor: '#3a3a3a', linkColor: '#8a6a4a',
+        accentColor: '#8a6a4a', strongColor: '#5a4a3a', markBg: '#f0e6d8', hrColor: '#d0c0b0' },
+    },
+    {
+      id: 'wechat-simple', label: '微信简约', desc: '简约干净风格',
+      platform: 'wechat', tags: ['简约', '干净'],
+      vars: { ...BASE_VARS, fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif', fontSize: '16', lineHeight: 1.75, maxWidth: '640', bgColor: '#ffffff', textColor: '#333333', linkColor: '#576b95', codeBg: '#f5f5f5',
+        accentColor: '#576b95', strongColor: '#333333', markBg: '#e8f0fe', hrColor: '#d0d7de' },
+    },
+    {
+      id: 'toutiao-hot', label: '头条热文', desc: '红色强调，突出爆点',
+      platform: 'toutiao', tags: ['热文', '红色'],
+      vars: { ...BASE_VARS, fontSize: '18', lineHeight: 1.65, maxWidth: '720', headingColor: '#e60012', linkColor: '#e60012', blockquoteBorder: '#e60012', blockquoteBg: '#fff0f0', textColor: '#1a1a1a' },
+    },
+    {
+      id: 'medium-default', label: 'Medium 经典', desc: '衬线字体，极简阅读',
+      platform: 'medium', tags: ['衬线', '极简'],
+      vars: { ...BASE_VARS, fontFamily: '"Georgia", "Noto Serif SC", serif', fontSize: '18', lineHeight: 1.8, paragraphGap: '1.5', maxWidth: '740', linkColor: '#1a8917', codeBg: '#f4f4f4', blockquoteBorder: '#d0d0d0', blockquoteBg: '#f9f9f9' },
+    },
+  ];
+
+  extras.forEach(t => themes.push(t));
+  return themes;
+})();
+
+// ─── 主题选择器与自定义主题管理 ───
+
 const CUSTOM_THEMES_KEY = 'inkwise-custom-article-themes';
 const SELECTED_THEME_KEY = 'inkwise-selected-article-theme';
 
