@@ -29,6 +29,10 @@ export interface ArticleBlueprint {
   tags: string[];
   outline: OutlineSection[];
   skillId?: string;
+  /** 写作风格 ID（v2.0.0 新增，替代 skillId） */
+  styleId?: string;
+  /** 写作动作 ID（v2.0.0 新增） */
+  actionId?: string;
   updatedAt: number;
 }
 
@@ -40,6 +44,7 @@ export function createDefaultBlueprint(title: string): ArticleBlueprint {
     description: "",
     phase: "planning",
     tags: [],
+    styleId: "general",
     outline: [
       { id: genOutlineId(), title: "引言", level: 1, status: "pending" },
       { id: genOutlineId(), title: "正文", level: 1, status: "pending" },

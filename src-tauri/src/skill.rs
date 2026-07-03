@@ -18,6 +18,78 @@ pub enum RunAs {
     Subagent,
 }
 
+/// 写作动作类型（替代字符串 skill name，类型安全）
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum WritingActionKind {
+    ContinueWriting,
+    Rewrite,
+    Polish,
+    Translate,
+    Academic,
+    Creative,
+    Summary,
+    Outline,
+    Expand,
+    Paraphrase,
+    Proofread,
+    Blog,
+    Novel,
+    Headline,
+    Email,
+    KeywordExtract,
+    Readability,
+    Citation,
+}
+
+impl WritingActionKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::ContinueWriting => "continue-writing",
+            Self::Rewrite => "rewrite",
+            Self::Polish => "polish",
+            Self::Translate => "translate",
+            Self::Academic => "academic",
+            Self::Creative => "creative",
+            Self::Summary => "summary",
+            Self::Outline => "outline",
+            Self::Expand => "expand",
+            Self::Paraphrase => "paraphrase",
+            Self::Proofread => "proofread",
+            Self::Blog => "blog",
+            Self::Novel => "novel",
+            Self::Headline => "headline",
+            Self::Email => "email",
+            Self::KeywordExtract => "keyword-extract",
+            Self::Readability => "readability",
+            Self::Citation => "citation",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "continue-writing" => Some(Self::ContinueWriting),
+            "rewrite" => Some(Self::Rewrite),
+            "polish" => Some(Self::Polish),
+            "translate" => Some(Self::Translate),
+            "academic" => Some(Self::Academic),
+            "creative" => Some(Self::Creative),
+            "summary" => Some(Self::Summary),
+            "outline" => Some(Self::Outline),
+            "expand" => Some(Self::Expand),
+            "paraphrase" => Some(Self::Paraphrase),
+            "proofread" => Some(Self::Proofread),
+            "blog" => Some(Self::Blog),
+            "novel" => Some(Self::Novel),
+            "headline" => Some(Self::Headline),
+            "email" => Some(Self::Email),
+            "keyword-extract" => Some(Self::KeywordExtract),
+            "readability" => Some(Self::Readability),
+            "citation" => Some(Self::Citation),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Skill {
     pub name: String,
