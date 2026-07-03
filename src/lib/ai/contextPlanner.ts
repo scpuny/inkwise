@@ -216,10 +216,10 @@ function matchKeywords(input: string, keywords: string[]): boolean {
  * @param skillName  当前技能名称（可选，用于降级匹配）
  * @returns ContextPlan
  */
-export function planContext(
+export async function planContext(
   userInput: string,
   skillName?: string,
-): ContextPlan {
+): Promise<ContextPlan> {
   // 第1层: 关键词规则匹配
   for (const pattern of INTENT_PATTERNS) {
     if (matchKeywords(userInput, pattern.keywords)) {
@@ -227,8 +227,14 @@ export function planContext(
     }
   }
 
-  // 第2层: 向量语义降级（占位 — 依赖 vectorSearchService 就绪）
-  // TODO: planContextWithVector(userInput, projectCtx) when embedder ready
+  // 第2层: 向量语义降级
+  // 当关键词规则无法匹配时，用语义搜索理解用户意图，返回动态 ContextPlan
+  try {
+    const vectorPlan = await planContextWithVector(userInput);
+    if (vectorPlan) return vectorPlan;
+  } catch (err) {
+    console.warn("[contextPlanner] Layer 2 (vector) fallback failed:", err);
+  }
 
   // 第3层: 小模型预检（占位 — 未来扩展）
   // TODO: planContextWithLLM(userInput, projectCtx)
@@ -269,6 +275,93 @@ export function planContext(
  * 将 ContextPlan 序列化为 Rust 后端 API 接受的 JSON 结构
  * （供 Tauri IPC 使用）
  */
+
+
+// ─── 第2层：向量语义降级 ───
+
+/**
+ * 意图-查询映射表：定义每个意图的语义查询描述。
+ * 当用户输入与这些描述语义相近时，返回对应意图的 ContextPlan。
+ */
+const INTENT_VECTOR_MAP: Array<{
+  query: string;
+  plan: ContextPlan;
+}> = [
+  {
+    query: "查看项目的变更记录、更新日志、最近的修改和提交历史",
+    plan: {
+      intent: 'project_changelog',
+      requiredContexts: [
+        { source: 'vector_search', scope: 'full_project', maxTokens: 2000, priority: 5 },
+        { source: 'project_structure', scope: 'changed_files', maxTokens: 500, priority: 3 },
+      ],
+      suggestedTools: ['read_document', 'vector_search'],
+      priorityFiles: [],
+      skipSections: ['selected_text', 'article_series'],
+    },
+  },
+  {
+    query: "了解项目架构、设计模式、模块划分和目录结构",
+    plan: {
+      intent: 'architecture_review',
+      requiredContexts: [
+        { source: 'project_structure', scope: 'full_project', maxTokens: 2000, priority: 5 },
+        { source: 'vector_search', scope: 'full_project', maxTokens: 1000, priority: 4 },
+      ],
+      suggestedTools: ['read_document', 'list_project_files'],
+      priorityFiles: ['README.md', 'package.json', 'Cargo.toml'],
+      skipSections: ['selected_text', 'article_series'],
+    },
+  },
+  {
+    query: "写文章、创作内容、编辑文档、润色文字",
+    plan: {
+      intent: 'article_writing',
+      requiredContexts: [
+        { source: 'document_content', scope: 'full_project', maxTokens: 4000, priority: 5 },
+        { source: 'vector_search', scope: 'related_only', maxTokens: 1000, priority: 3 },
+      ],
+      suggestedTools: ['read_document', 'write_document', 'search_document'],
+      priorityFiles: [],
+      skipSections: ['git_diff', 'project_structure'],
+    },
+  },
+];
+
+/**
+ * 第2层：向量语义降级
+ * 当关键词规则无法匹配时，用语义搜索理解用户意图。
+ *
+ * 策略：
+ * 1. 用 INTENT_VECTOR_MAP 的 query 字段做语义搜索匹配
+ * 2. 找到最匹配的意图返回对应 ContextPlan
+ * 3. 如果语义搜索也未找到有力匹配，返回 null 降级到下一层
+ */
+async function planContextWithVector(userInput: string): Promise<ContextPlan | null> {
+  let semanticSearchFn: typeof import('./vectorSearch').semanticSearch;
+  try {
+    semanticSearchFn = (await import('./vectorSearch')).semanticSearch;
+  } catch {
+    return null; // vectorSearch 模块不可用
+  }
+
+  // 用用户输入做语义搜索，看是否能匹配到项目相关内容
+  const results = await semanticSearchFn(userInput, 5, 0.35);
+
+  if (!results || results.length === 0) return null;
+
+  // 对每个意图的 query 做匹配度判断
+  for (const entry of INTENT_VECTOR_MAP) {
+    const intentResults = await semanticSearchFn(entry.query + " " + userInput, 3, 0.5);
+    if (intentResults && intentResults.length > 0 && intentResults[0].score >= 0.5) {
+      return { ...entry.plan, requiredContexts: [...entry.plan.requiredContexts] };
+    }
+  }
+
+  return null; // 无匹配意图
+}
+
+
 export function contextPlanToRpc(plan: ContextPlan): Record<string, unknown> {
   return {
     intent: plan.intent,

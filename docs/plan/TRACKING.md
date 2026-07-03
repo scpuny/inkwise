@@ -168,7 +168,7 @@
 | 4.1.1 | 定义 `ContextPlan` 和 `IntentPattern` 类型 | `contextPlanner.ts`, `agent/types.rs`, `agent/prompt.rs` | 🟢 | — | 2026-07-03 | Rust+前端双向类型；prompt.rs 增强全字段利用 |
 | 4.1.2 | 实现关键词规则引擎（~10 个 intent pattern） | `contextPlanner.ts` | 🟢 | — | 2026-07-03 | 9 个内置 pattern + 技能名降级 |
 | 4.1.3 | 改造 `build_agent_prompt` 接受 `ContextPlan` | `agent/prompt.rs` | 🟢 | — | 2026-07-03 | 全字段利用：intent/required_contexts/suggested_tools/priority_files/skip_sections |
-| 4.1.4 | 向量检索就绪后接入第 2 层（语义降级） | `contextPlanner.ts` | 🔴 | — | — | 规则未命中 → 向量检索 |
+| 4.1.4 | 向量检索就绪后接入第 2 层（语义降级） | `contextPlanner.ts` | 🟢 | — | 2026-07-03 | 规则未命中 → 向量检索 |
 | 4.1.5 | 小模型预检第 3 层（预留，暂不实现） | `contextPlanner.ts` | ⏸ | — | — | 未来扩展 |
 
 ### 4.2 新技能注册（doc 07）
@@ -230,9 +230,9 @@
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
-| S4: 体验优化 | 16 | 6 | 0 | 9 | 1 | 38% |
+| S4: 体验优化 | 16 | 7 | 0 | 8 | 1 | 44% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **80** | 0 | 11 | 1 | 88% |
+| **总计** | **91** | **81** | 0 | 10 | 1 | 89% |
 ---
 
 ## 里程碑记录
