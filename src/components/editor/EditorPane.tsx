@@ -2,6 +2,7 @@ import { FileText, FolderInput } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
+import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/writingStyle";
 import {
   ArticleBlueprint,
   buildBlueprintContext,
@@ -74,6 +75,8 @@ export function EditorPane({
     tags: string[];
     tone: string;
     skillId?: string;
+    styleId?: string;
+    actionId?: string;
     targetAudience: string;
     targetWordCount: number;
   }, collectionId: string) => Promise<{ articleId: string; collectionId: string } | null>;
@@ -106,7 +109,7 @@ export function EditorPane({
   const [sending, setSending] = useState(false);
   const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "writing" | "article-review">("idle");
   const [planStep, setPlanStep] = useState<PlanStep>("idle");
-  const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+  const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
   const [planError, setPlanError] = useState<string | null>(null);
   const [lastPlanInput, setLastPlanInput] = useState<PlanInput | null>(null);
   const [editorContent, setEditorContent] = useState<string>("");
@@ -508,7 +511,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       // Reset plan state so StartupSplash is fresh
       setPlanState("idle");
       setPlanStep("idle");
-      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
       setLastPlanInput(null);
       setPlanError(null);
       // Reset folder context refs for fresh load
@@ -790,6 +793,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       bp.description = partialPlan.description || "";
       bp.tone = lastPlanInput?.tone || partialPlan.tone || undefined;
       bp.skillId = lastPlanInput?.skillId || undefined;
+      bp.styleId = lastPlanInput?.styleId || migrateSkillIdToStyleId(bp.skillId);
+      bp.actionId = lastPlanInput?.actionId || "action-write";
       bp.targetAudience = lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined;
       bp.targetWordCount = lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0;
       bp.tags = partialPlan.tags || [];
@@ -1015,7 +1020,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       onEnterEditor(pending.articleId, pending.collectionId);
     }
     setPlanState("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setPlanError(null);
     pendingArticleRef.current = null;
     writtenContentRef.current = null;
@@ -1028,7 +1033,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
   const handlePlanCancel = useCallback(() => {
     if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
     setPlanState("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setPlanError(null);
   }, []);
 
@@ -1157,7 +1162,7 @@ ${seriesCtx}`;
       linkedFolder: _linkedFolder,
     };
     setLastPlanInput(enrichedInput);
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined, styleId: input.styleId || "general", actionId: input.actionId || "action-write" });
     setPlanError(null);
     setToolEvents([]);
     setPlanState("planning");
@@ -1167,7 +1172,7 @@ ${seriesCtx}`;
         // Check if cancelled
         if (abortController.signal.aborted) {
           setPlanState("idle");
-          setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+          setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
           return;
         }
         if (result.step === "title" && result.data) {
@@ -1202,7 +1207,7 @@ ${seriesCtx}`;
     }
     setPlanState("idle");
     setPlanStep("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setLastPlanInput(null);
     setPlanError(null);
   }, []);
@@ -1250,7 +1255,7 @@ ${seriesCtx}`;
     if (!activeArticleId) {
       setPlanState("idle");
       setPlanStep("idle");
-      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
       setLastPlanInput(null);
       setPlanError(null);
     }

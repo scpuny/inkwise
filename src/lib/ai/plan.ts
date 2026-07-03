@@ -20,6 +20,8 @@ export interface PartialPlan {
   skillId?: string;
   /** Project structure insights from planning-phase exploration (tool-based) */
   projectInsights?: string;
+  styleId?: string;
+  actionId?: string;
 }
 
 export interface PlanInput {
@@ -38,6 +40,8 @@ export interface PlanInput {
   prefilledTitle?: string;
   /** Pre-filled description (from series plan) — skips AI description generation */
   prefilledDescription?: string;
+  styleId?: string;
+  actionId?: string;
 }
 
 export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";

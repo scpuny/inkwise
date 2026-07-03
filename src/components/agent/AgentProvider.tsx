@@ -17,6 +17,7 @@ import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { resolveModel } from "../../lib/config/globalAIConfig";
 import { getProvidersSync } from "../../lib/storage/providerModels";
 import { saveSessions, loadSessions } from "../../lib/ai/articleSessions";
+import { getStyle, getAction } from "../../lib/ai/writingStyle";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AgentState>(() => ({ ...DEFAULT_AGENT_STATE }));
@@ -116,11 +117,22 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           }
         }
         const agentInput = conversationCtx ? input + conversationCtx : input;
+        // Resolve style/action from blueprint and inject context
+        const bp = options?.blueprint;
+        const currentStyle = bp?.styleId ? getStyle(bp.styleId) : undefined;
+        const currentAction = bp?.actionId ? getAction(bp.actionId) : undefined;
+        let styleContext = "";
+        if (currentStyle || currentAction) {
+          styleContext = "\n\n## 风格与动作设定\n";
+          if (currentStyle) styleContext += "写作风格：" + currentStyle.name + " - " + currentStyle.description + "\n";
+          if (currentAction) styleContext += "当前动作：" + currentAction.name + "（阶段：" + currentAction.phase + "）\n";
+        }
+        const enrichedInput = styleContext ? agentInput + styleContext : agentInput;
         // Use streaming skill execution for real-time feedback
         const streamSessionId = sessionId;
         result = await runSkillStream(
           intent.skill,
-          agentInput,
+          enrichedInput,
           (accumulated) => {
             // Update session content progressively (streaming)
             setState((prev) => ({
