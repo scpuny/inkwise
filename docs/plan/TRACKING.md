@@ -91,7 +91,7 @@
 | 2.2.2 | `agent.rs` → `agent/` 模块拆分（engine/prompt） | `agent/` | 🟢 | — | 2026-07-03 | engine/prompt/tools/types 4 文件拆分 |
 | 2.2.3 | `project_indexer.rs` → `project_indexer/` 模块拆分 | `project_indexer/` | 🟢 | — | 2026-07-03 | types/scanner/watcher 3 文件拆分 |
 | 2.2.4 | `editorStyles.ts` 拆分（1585 行 → 3 文件） | `editorStyles.ts` | 🟢 | — | 2026-07-03 | editorTemplates.ts + editorStyles.ts 精简 |
-| 2.2.5 | `storage/collections/` 整合（7 文件精简） | `collections/` | 🔴 | — | — | — |
+| 2.2.5 | `storage/collections/` 整合（7 文件精简） | `collections/` | 🟢 | — | 2026-07-03 | 7→4 文件精简（internal+search+series → crud） |
 | 2.2.6 | `lib/ai/` 扁平化 → 按领域分包（skill/agent/article/project） | `lib/` | 🔴 | — | — | — |
 | 2.2.7 | 注释规范统一（文件头/模块线/复杂函数 JSDoc） | 全库 | 🔴 | — | — | — |
 
@@ -228,11 +228,11 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 10 | 0 | 19 | 0 | 34% |
+| S2: 架构+UX | 29 | 11 | 0 | 18 | 0 | 38% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **33** | **0** | **58** | **1** | **36%** |
+| **总计** | **92** | **34** | **0** | **57** | **1** | **37%** |
 
 ---
 

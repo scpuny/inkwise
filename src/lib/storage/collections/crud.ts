@@ -4,8 +4,7 @@ import { initTheme, normalizeThemePreference, normalizeThemeStyle, THEME_KEY, ST
 import { initTextSize, isTextSize, TEXT_SIZE_KEY } from "../../theme/textSize";
 import { initFontFamily, isFontFamily, FONT_FAMILY_KEY } from "../../theme/fontFamily";
 import { useThemeStore } from "../../../store/themeStore";
-import type { Article, Collection, TrashItem } from "./types";
-import { genId, browserLoad, browserSave } from "./internal";
+import type { Article, Collection, TrashItem, SeriesPlan, SearchResult } from "./types";
 
 const COLLECTIONS_KEY = "inkwise-collections";
 const TRASH_KEY = "inkwise-trash";
@@ -391,4 +390,156 @@ export async function getCollectionFolderContext(collectionId: string): Promise<
     } catch { console.warn("[getCollectionFolderContext] BuildFolderIndex failed"); return ""; }
   }
   return "";
+}
+
+
+// ─── Internal utilities ───
+export function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+export function browserLoad<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+export function browserSave<T>(key: string, data: T): void {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+
+
+// ─── Series plan management ───
+// series.ts — 系列文章计划管理
+
+export function generateSeriesId(): string {
+  return genId();
+}
+
+const OLD_SERIES_KEY = (id: string) => `series_plan:${id}`;
+const NEW_SERIES_KEY = (id: string) => `series_plans:${id}`;
+
+export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
+  // Legacy format
+  localStorage.setItem(OLD_SERIES_KEY(collectionId), JSON.stringify(plan));
+  // New multi-format
+  const all = await loadAllSeriesPlans(collectionId);
+  const idx = all.findIndex((p) => p.id === plan.id);
+  if (idx >= 0) all[idx] = plan;
+  else all.push(plan);
+  browserSave(NEW_SERIES_KEY(collectionId), all);
+}
+
+export async function loadAllSeriesPlans(collectionId: string): Promise<SeriesPlan[]> {
+  // Check new multi-format
+  const all = browserLoad<SeriesPlan[]>(NEW_SERIES_KEY(collectionId), []);
+  if (all.length > 0) return all;
+
+  // Migrate legacy
+  const legacy = browserLoad<SeriesPlan | null>(OLD_SERIES_KEY(collectionId), null);
+  if (legacy) {
+    legacy.id = legacy.id || genId();
+    browserSave(NEW_SERIES_KEY(collectionId), [legacy]);
+    localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+    return [legacy];
+  }
+  return [];
+}
+
+export async function loadSeriesPlan(collectionId: string, seriesId: string): Promise<SeriesPlan | null> {
+  const all = await loadAllSeriesPlans(collectionId);
+  return all.find((p) => p.id === seriesId) ?? null;
+}
+
+export async function deleteSeriesPlan(collectionId: string, seriesId: string): Promise<void> {
+  const all = await loadAllSeriesPlans(collectionId);
+  const filtered = all.filter((p) => p.id !== seriesId);
+  if (filtered.length > 0) {
+    browserSave(NEW_SERIES_KEY(collectionId), filtered);
+  } else {
+    localStorage.removeItem(NEW_SERIES_KEY(collectionId));
+    localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+  }
+  // Tauri 后端清理
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteSeriesPlan, { collectionId, seriesId });
+    }
+  } catch { console.warn("[deleteSeriesPlan] backend cleanup failed (non-critical)"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteCollectionChunks("series:" + seriesId); } catch { /* ignore */ }
+}
+
+
+// ─── Article search ───
+// search.ts — 文章搜索（标题 + 全文）
+
+/**
+ * 按标题搜索文章（同步，内存搜索）
+ */
+export function searchArticleTitles(collections: Collection[], query: string): SearchResult[] {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  const results: SearchResult[] = [];
+
+  for (const col of collections) {
+    for (const article of col.articles) {
+      const titleLower = article.title.toLowerCase();
+      let score = 0;
+      if (titleLower === q) score = 100;
+      else if (titleLower.startsWith(q)) score = 80;
+      else if (titleLower.includes(q)) score = 50;
+      else if (q.length >= 2 && titleLower.split(/[\s\u4e00-\u9fff]+/).some(
+        (w) => w.startsWith(q) || q.startsWith(w),
+      )) score = 30;
+      else continue;
+
+      results.push({
+        articleId: article.id, collectionId: col.id,
+        collectionTitle: col.title, title: article.title,
+        matchType: "title", score,
+      });
+    }
+  }
+  results.sort((a, b) => b.score - a.score);
+  return results;
+}
+
+/**
+ * 全文搜索文章内容（异步，读取文章内容）
+ */
+export async function searchArticleContent(
+  collections: Collection[],
+  query: string,
+  excludeIds: Set<string> = new Set(),
+): Promise<SearchResult[]> {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  const results: SearchResult[] = [];
+
+  for (const col of collections) {
+    for (const article of col.articles) {
+      if (excludeIds.has(article.id)) continue;
+      try {
+        const { loadArticleContent } = await import("../articles");
+        const content = await loadArticleContent(article.id);
+        if (!content) continue;
+        const contentLower = content.toLowerCase();
+        const idx = contentLower.indexOf(q);
+        if (idx === -1) continue;
+        const start = Math.max(0, idx - 30);
+        const end = Math.min(content.length, idx + q.length + 40);
+        let snippet = content.slice(start, end);
+        if (start > 0) snippet = "…" + snippet;
+        if (end < content.length) snippet = snippet + "…";
+        results.push({
+          articleId: article.id, collectionId: col.id,
+          collectionTitle: col.title, title: article.title,
+          matchType: "content", snippet, score: 20,
+        });
+      } catch {}
+    }
+  }
+  return results;
 }

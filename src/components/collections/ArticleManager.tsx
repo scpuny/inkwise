@@ -22,7 +22,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { saveArticleContent } from "../../lib/storage/articles";
 import { on, emit } from "../../lib/events/eventBus";
-import { searchArticleContent } from "../../lib/storage/collections/search";
+import { searchArticleContent } from "../../lib/storage/collections/index";
 import type { SearchResult } from "../../lib/storage/collections/types";
 
 type SortField = "title" | "wordCount" | "updatedAt";
