@@ -1,3 +1,4 @@
+// agent/engine.rs — Agent 核心执行引擎（tool calling + ContextPlan）
 use crate::ai::{self, ChatMessage, ChatRequest, ProviderConfig, TokenCallback};
 use crate::agent::{AgentContext, AgentResult, ContextPlan};
 use crate::agent::prompt::{build_agent_prompt, build_user_prompt};

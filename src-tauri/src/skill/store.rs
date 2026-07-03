@@ -1,3 +1,4 @@
+// skill/store.rs — SkillStore：技能文件发现、加载、安装
 use super::types::*;
 use super::frontmatter::{parse_frontmatter, parse_tool_capabilities};
 use std::collections::HashMap;

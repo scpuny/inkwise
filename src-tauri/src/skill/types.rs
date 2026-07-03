@@ -1,3 +1,4 @@
+// skill/types.rs — Skill 模块类型定义（Skill / UnifiedSkill / 枚举）
 use serde::{Deserialize, Serialize};
 
 

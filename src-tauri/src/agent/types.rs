@@ -1,3 +1,4 @@
+// agent/types.rs — Agent 类型定义（AgentResult / ContextPlan / AgentContext）
 use crate::store::ArticleBlueprint;
 use serde::{Deserialize, Serialize};
 

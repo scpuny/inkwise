@@ -1,3 +1,4 @@
+// project_indexer/watcher.rs — 文件夹监听 + 上下文文本构建
 use crate::project_indexer::*;
 use crate::project_indexer::scanner::{should_ignore, compute_file_hash};
 use std::path::Path;

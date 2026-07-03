@@ -1,3 +1,4 @@
+// agent/prompt.rs — Agent 提示词构建器
 use crate::agent::{AgentContext, ContextPlan};
 use crate::skill::{Skill, ToolCapability};
 

@@ -1,3 +1,4 @@
+// skill/builtins.rs — 内置技能（旧版 v1.x 兼容 + v2.0.0 UnifiedSkill）
 use super::types::*;
 
 // ─── Old Built-in Skills (v1.x compatibility) ───

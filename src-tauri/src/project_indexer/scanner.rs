@@ -1,3 +1,4 @@
+// project_indexer/scanner.rs — 项目扫描 / tree-sitter 解析 / hash 缓存
 use sha2::{Sha256, Digest};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

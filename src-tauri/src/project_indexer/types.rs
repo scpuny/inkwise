@@ -1,3 +1,4 @@
+// project_indexer/types.rs — 项目索引类型定义
 use serde::{Deserialize, Serialize};
 
 // ─── 输出类型 ───

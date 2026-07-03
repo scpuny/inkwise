@@ -1,3 +1,4 @@
+// skill/frontmatter.rs — Markdown Frontmatter 解析
 use super::types::ToolCapability;
 
 // ─── Frontmatter parser (minimal, no deps) ───

@@ -1,3 +1,4 @@
+// agent/tools.rs — AI 工具定义与调度（9 种 ToolCapability）
 use crate::ai;
 use crate::agent::AgentContext;
 use crate::skill::ToolCapability;
