@@ -11,7 +11,7 @@
 use crate::project_indexer::scanner::{compute_file_hash, should_ignore};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::SystemTime;
 
 /// 单个文件的快照条目
@@ -45,6 +45,7 @@ pub struct IndexSnapshot {
 
 /// 启动时检测到的变更集
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct StartupDiff {
     /// 新增的文件
     pub added: Vec<String>,
@@ -178,6 +179,7 @@ fn is_text_file(path: &Path) -> bool {
 // ─── Git 快速检测 ───
 
 /// 尝试用 git diff-tree 检测变更（最快）
+#[allow(dead_code)]
 pub fn detect_git_changes(project_dir: &Path) -> Result<StartupDiff, String> {
     use std::process::Command;
 
@@ -259,6 +261,7 @@ pub fn save_snapshot(snapshot: &IndexSnapshot, path: &Path) -> Result<(), String
 }
 
 /// 从 JSON 文件加载快照
+#[allow(dead_code)]
 pub fn load_snapshot(path: &Path) -> Result<Option<IndexSnapshot>, String> {
     if !path.exists() {
         return Ok(None);
@@ -280,6 +283,7 @@ pub fn load_snapshot(path: &Path) -> Result<Option<IndexSnapshot>, String> {
 ///   1. git diff-tree (最快)
 ///   2. mtime 对比 (中等)
 ///   3. content hash 对比 (最慢但最准)
+#[allow(dead_code)]
 pub fn detect_startup_changes(
     project_dir: &Path,
     snapshot: &IndexSnapshot,

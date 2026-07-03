@@ -56,6 +56,7 @@ pub struct ArticleImageRow {
 /// 文章搜索索引行（articles_search 表，只存 FTS 所需最小字段）
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ArticleSearchRow {
     pub id: String,
     pub title: String,
@@ -100,6 +101,7 @@ fn lock_conn(
 const SCHEMA_VERSION: i64 = 2;
 
 /** 截取内容前 N 字用于搜索索引 */
+#[allow(dead_code)]
 fn content_snippet(content: &str, max_len: usize) -> String {
     if content.chars().count() > max_len {
         content.chars().take(max_len).collect()
@@ -634,7 +636,8 @@ impl Database {
 
     // ─── Settings KV ───
 
-    pub fn get_setting(&self, key: &str) -> SqlResult<Option<String>> {
+    #[allow(dead_code)]
+pub fn get_setting(&self, key: &str) -> SqlResult<Option<String>> {
         let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1")?;
         let mut rows = stmt.query_map(params![key], |row| row.get::<_, String>(0))?;
@@ -688,7 +691,8 @@ impl Database {
     }
 
     /// 获取搜索索引行（供外部读取 articles_search 内容）
-    pub fn get_article_search(&self, id: &str) -> SqlResult<Option<ArticleSearchRow>> {
+    #[allow(dead_code)]
+pub fn get_article_search(&self, id: &str) -> SqlResult<Option<ArticleSearchRow>> {
         let conn = lock_conn(&self.conn)?;
         let mut stmt = conn.prepare(
             "SELECT id, title, description, content_snippet, tags, collection_id, created_at, updated_at
@@ -713,7 +717,8 @@ impl Database {
     }
 
     /// 获取 schema 版本号
-    pub fn schema_version(&self) -> i64 {
+    #[allow(dead_code)]
+pub fn schema_version(&self) -> i64 {
         let conn = match lock_conn(&self.conn) {
             Ok(c) => c,
             Err(_) => return 0,

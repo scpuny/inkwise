@@ -18,6 +18,7 @@ export interface PanelState {
   docPickerOpen: boolean;
   stylePanelOpen: boolean;
   seriesPlannerOpen: boolean;
+  trashOpen: boolean;
 
   // Layout
   sidebarWidth: number;
@@ -39,13 +40,14 @@ export interface PanelActions {
   setDocPickerOpen: (open: boolean) => void;
   setStylePanelOpen: (open: boolean) => void;
   setSeriesPlannerOpen: (open: boolean) => void;
+  setTrashOpen: (open: boolean) => void;
   setSidebarWidth: (w: number) => void;
   setResizing: (r: "sidebar" | null) => void;
   setProjectPanelOpen: (open: boolean) => void;
   setProjectPanelColId: (id: string | null) => void;
 }
 
-const DEFAULT_SETTINGS_TAB = "appearance";
+const DEFAULT_SETTINGS_TAB = "general";
 
 export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   themePickerOpen: false,
@@ -58,6 +60,7 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   docPickerOpen: false,
   stylePanelOpen: false,
   seriesPlannerOpen: false,
+  trashOpen: false,
   sidebarWidth: 264,
   resizing: null,
   projectPanelOpen: false,
@@ -73,6 +76,7 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   setDocPickerOpen: (docPickerOpen) => set({ docPickerOpen }),
   setStylePanelOpen: (stylePanelOpen) => set({ stylePanelOpen }),
   setSeriesPlannerOpen: (seriesPlannerOpen) => set({ seriesPlannerOpen }),
+  setTrashOpen: (trashOpen) => set({ trashOpen }),
   setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
   setResizing: (resizing) => set({ resizing }),
   setProjectPanelOpen: (projectPanelOpen) => set({ projectPanelOpen }),

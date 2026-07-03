@@ -1258,7 +1258,7 @@ pub fn rescan_project_incremental(
     // CodeGraph 数据
     let cg_db_path = dir.join(".codegraph").join("codegraph.db");
     let codegraph_available = cg_db_path.exists();
-    let (cg_symbols, cg_imports, cg_file_hashes) = if codegraph_available {
+    let (cg_symbols, cg_imports, _cg_file_hashes) = if codegraph_available {
         read_codegraph_data(&cg_db_path)
     } else {
         (vec![], vec![], HashMap::new())

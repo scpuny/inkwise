@@ -12,6 +12,8 @@ import { ArticleManager } from "../components/collections/ArticleManager";
 import { DocPicker } from "../components/collections/DocPicker";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { CommandPalette } from "../components/common/CommandPalette";
+import { TrashDialog } from "../components/common/TrashDialog";
+import { UpdateDialog } from "../components/common/UpdateDialog";
 import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { genId, loadCollections, addCollection, addArticle,
@@ -71,6 +73,7 @@ export default function MainEditorPage() {
   const projectPanelOpen = usePanelStore((s) => s.projectPanelOpen);
   const stylePanelOpen = usePanelStore((s) => s.stylePanelOpen);
   const seriesPlannerOpen = usePanelStore((s) => s.seriesPlannerOpen);
+  const trashOpen = usePanelStore((s) => s.trashOpen);
   const setThemePickerOpen = usePanelStore((s) => s.setThemePickerOpen);
   const setSettingsOpen = usePanelStore((s) => s.setSettingsOpen);
   const setSidebarOpen = usePanelStore((s) => s.setSidebarOpen);
@@ -80,6 +83,7 @@ export default function MainEditorPage() {
   const setDocPickerOpen = usePanelStore((s) => s.setDocPickerOpen);
   const setStylePanelOpen = usePanelStore((s) => s.setStylePanelOpen);
   const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setTrashOpen = usePanelStore((s) => s.setTrashOpen);
   const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
 
   // ── Article store (reads) ──
@@ -182,6 +186,7 @@ export default function MainEditorPage() {
             emit('reset-plan');
           }}
           onManageArticles={() => setManageOpen(true)}
+          onOpenTrash={() => setTrashOpen(true)}
           onOpenProject={() => setProjectPanelOpen(true)}          outlineItems={outlineItems}
           activeOutlineId={activeOutlineId ?? undefined}
           onOutlineSelect={handleOutlineSelect}
@@ -316,6 +321,11 @@ export default function MainEditorPage() {
         open={manageOpen}
         onClose={() => setManageOpen(false)}
         onOpenArticle={handleOpenArticle}
+      />
+      <UpdateDialog />
+      <TrashDialog
+        open={trashOpen}
+        onClose={() => setTrashOpen(false)}
       />
       <SeriesPlanner
         open={seriesPlannerOpen}

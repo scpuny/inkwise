@@ -14,7 +14,7 @@ import {
 } from "../../lib/ai/agent";
 import { runSkill, runSkillStream } from "../../lib/storage/skill";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
-import { resolveModel } from "../../lib/config/globalAIConfig";
+import { resolveModel, getEnabledModels } from "../../lib/config/globalAIConfig";
 import { getProvidersSync } from "../../lib/storage/providerModels";
 import { saveSessions, loadSessions } from "../../lib/ai/articleSessions";
 import { getStyle, getAction } from "../../lib/ai/writingStyle";
@@ -69,7 +69,12 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
 
     const sessionId = generateSessionId();
-    const model = resolveModel() ?? enabled.models[0]?.id ?? '';
+    // Resolve user's selected model: read from localStorage first, fall back to resolveModel()
+    const savedModel = typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-model") : null;
+    const enabledModelIds = getEnabledModels();
+    const model = (savedModel && enabledModelIds.includes(savedModel))
+      ? savedModel
+      : (resolveModel() ?? enabled.models[0]?.id ?? '');
 
     // Create initial session
     const session: AgentSession = {
@@ -146,6 +151,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           selection ? beforeContent.slice(selection.from, selection.to) : "",
           options?.blueprint,
           options?.currentSectionId,
+          undefined, // projectPath
+          model,
         );
       } else {
         // Fallback to direct chat with conversation context
@@ -184,8 +191,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           }
         }
         messages.push({ role: "user", content: userContent });
+        // Find the provider that has the resolved model
+        const modelProvider = providers.find(p => p.enabled && p.models.some(m => m.id === model));
         result = await sendChat({
-          providerId: enabled.id,
+          providerId: modelProvider?.id ?? enabled.id,
           model,
           messages,
           temperature: 0.7,

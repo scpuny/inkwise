@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { FileText, FolderClosed, FolderOpen, Plus, Trash2, Pencil, RefreshCw, RotateCcw, X, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft, FolderInput, BookOpen, Loader2 } from "lucide-react";
+import { FileText, FolderClosed, FolderOpen, Plus, Pencil, RefreshCw, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft, FolderInput, BookOpen, Loader2, Trash2 } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
 import type { Collection, TrashItem } from "../../lib/storage/collections";
@@ -24,10 +24,9 @@ import { getWordCount } from "../../lib/utils/text";
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [trash, setTrash] = useState<TrashItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+    const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [showTrash, setShowTrash] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ items: ContextMenuItem[]; x: number; y: number } | null>(null);
@@ -181,10 +180,21 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setFolderScanning((prev) => ({ ...prev, [colId]: true }));
     try {
       await rescanProjectFolder(col.linkedFolder);
+      emit("collections-changed");
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes("不是有效的文件夹")) {
+        if (confirm(`目录不存在或已被移动：${col.linkedFolder}\n是否取消关联？`)) {
+          await unlinkCollectionFolder(colId);
+          await refresh();
+        }
+      } else {
+        alert(`扫描失败：${msg}`);
+      }
     } finally {
       setFolderScanning((prev) => ({ ...prev, [colId]: false }));
     }
-  }, [collections, refresh]);
+  }, [collections, refresh, unlinkCollectionFolder]);
 
   // ── Series planning ──
 
@@ -500,28 +510,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
         })}
       </div>
 
-      {/* Trash */}
-      <div className="collection-tree__trash-section">
-        <button className="collection-tree__trash-toggle" onClick={() => setShowTrash(!showTrash)}>
-          <ChevronRight size={11} className={showTrash ? "collection-tree__chevron--open" : ""} />
-          <Trash2 size={12} /><span>回收站</span>
-          {trash.length > 0 && <span className="collection-tree__trash-count">{trash.length}</span>}
-        </button>
-        {showTrash && (
-          <div className="collection-tree__trash-list">
-            {trash.length === 0 ? <div className="collection-tree__empty collection-tree__empty--trash">回收站为空</div> : trash.map((item) => (
-              <div key={item.id} className="collection-tree__trash-item">
-                <FileText size={11} className={"collection-tree__leaf-icon" + (phaseCache[item.id] ? " series-status-icon--" + phaseCache[item.id] : "")} />
-                <span className="collection-tree__trash-label">{item.title}</span>
-                <span className="collection-tree__trash-source">{item.collectionTitle}</span>
-                <button className="collection-tree__trash-action" title="恢复" onClick={() => handleRestore(item.id)}><RotateCcw size={10} /></button>
-                <button className="collection-tree__trash-action collection-tree__trash-action--danger" title="永久删除" onClick={() => handlePermanentDelete(item.id)}><X size={10} /></button>
-              </div>
-            ))}
-            {trash.length > 0 && <button className="collection-tree__trash-empty-all" onClick={async () => { await emptyTrash(); await refresh(); }}>清空回收站</button>}
-          </div>
-        )}
-      </div>
+
 
       {ctxMenu && <ContextMenu items={ctxMenu.items} position={{ x: ctxMenu.x, y: ctxMenu.y }} onClose={() => setCtxMenu(null)} />}
       {confirmDelete && (

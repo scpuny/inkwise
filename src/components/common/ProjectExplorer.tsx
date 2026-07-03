@@ -123,6 +123,27 @@ export function ProjectExplorer() {
     });
   }, [colId]);
 
+  // 监听 rescanned 事件 → 清缓存 + 重新加载文件树
+  useEffect(() => {
+    if (!colId) return;
+    const unsub = on("collections-changed", () => {
+      clearProjectFileTree(colId);
+      if (col?.linkedFolder) {
+        setLoading(true);
+        getProjectContext(col.linkedFolder)
+          .then((ctx) => {
+            if (ctx.structure && ctx.structure.length > 0) {
+              storeProjectFileTree(colId, ctx.structure);
+              setTree(ctx.structure);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setLoading(false));
+      }
+    });
+    return unsub;
+  }, [colId, col?.linkedFolder]);
+
   // Load file tree
   useEffect(() => {
     if (!colId || !col?.linkedFolder) return;

@@ -531,7 +531,18 @@ function ChatPanel({
         {lastError && (
           <div className="agent-chat__message agent-chat__message--error">
             <div className="agent-chat__error-text">
-              {lastError?.length > 200 ? lastError.slice(0, 200) + "…" : lastError}
+              {lastError?.includes("429") || lastError?.includes("Too Many") || lastError?.includes("Rate limit") || lastError?.includes("FreeUsageLimitError")
+                ? "请求过于频繁，请稍后再试。免费 API 通常有每分钟请求数限制。"
+                : lastError?.includes("409") || lastError?.includes("Conflict")
+                ? "请求冲突，请等待当前处理完成后再试。"
+                : lastError?.includes("401") || lastError?.includes("Unauthorized")
+                ? "API Key 无效或已过期，请到设置中检查。"
+                : lastError?.includes("402") || lastError?.includes("quota") || lastError?.includes("insufficient_quota")
+                ? "账户额度不足，请检查账户余额。"
+                : lastError?.includes("timeout") || lastError?.includes("timed out")
+                ? "请求超时，请重试。"
+                : lastError?.length > 200 ? lastError.slice(0, 200) + "…"
+                : lastError}
             </div>
           </div>
         )}

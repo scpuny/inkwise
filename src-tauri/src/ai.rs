@@ -25,6 +25,7 @@ impl ChatMessage {
     pub fn user(content: impl Into<String>) -> Self {
         Self { role: "user".into(), content: Some(content.into()), tool_calls: None, tool_call_id: None, name: None }
     }
+    #[allow(dead_code)]
     pub fn assistant(content: impl Into<String>) -> Self {
         Self { role: "assistant".into(), content: Some(content.into()), tool_calls: None, tool_call_id: None, name: None }
     }

@@ -2676,6 +2676,25 @@ body {
   background: var(--sidebar-hover);
   color: var(--fg)
 }
+.sidebar__action-btn {
+  position: relative;
+}
+.sidebar__trash-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--err);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
 
 /* Sidebar Project Panel */
 .sidebar-project {
@@ -6832,6 +6851,60 @@ body {
   color: var(--fg-dim)
 }
 
+.about-card__links {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.about-card__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.about-card__links a:hover {
+  text-decoration: underline;
+}
+.about-update {
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.about-update__checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+.about-update__spinner {
+  animation: about-spin 1s linear infinite;
+}
+@keyframes about-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.about-update__latest {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+}
+.about-update__available {
+  font-size: 13px;
+  color: var(--fg);
+}
+.about-update__error {
+  font-size: 12px;
+  color: var(--err);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 /* ── Theme card grid (Reasonix pattern) ── */
 .theme-card-grid {
   display: grid;
@@ -8321,8 +8394,9 @@ body {
   position: fixed;
   z-index: var(--z-popover);
   min-width: 180px;
-  max-height: min(400px, 60vh);
+  max-height: min(420px, 50vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 7px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -13155,8 +13229,9 @@ body {
   bottom: calc(100% + 6px);
   left: 0;
   min-width: 150px;
-  max-height: 300px;
+  max-height: min(40vh, 320px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bg-elev);
   border: 1px solid var(--border-2);
   border-radius: 8px;
@@ -24375,6 +24450,85 @@ body {
 }
 
 /* ─── Publish Dialog ─── */
+
+
+/* ── Trash Dialog Items ── */
+.trash-dialog-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: default;
+}
+.trash-dialog-item:hover {
+  background: var(--sidebar-hover);
+}
+.trash-dialog-item__icon {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+}
+.trash-dialog-item__label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+.trash-dialog-item__source {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--fg-faint);
+  background: var(--bg-soft);
+  padding: 0 5px;
+  border-radius: 3px;
+  margin-right: auto;
+}
+.trash-dialog-item__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-faint);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.trash-dialog-item__action:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.trash-dialog-item__action--danger:hover {
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 12%, transparent);
+}
+.dialog__badge {
+  margin-left: 8px;
+  background: var(--bg-soft);
+  color: var(--fg-faint);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 6px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 16px;
+}
+.dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-soft);
+}
 
 .dialog-backdrop {
   position: fixed;

@@ -6,7 +6,6 @@ export { ThemePicker } from './ThemePicker';
 export { ModelsSection } from './ModelsSection';
 export { PlatformsSection } from './PlatformsSection';
 export { SettingsPage, SettingsSection, SettingsField } from './SettingsPageLayout';
-export { AppearanceSection } from './AppearanceSection';
 export { EditorSection } from './EditorSection';
 export { ShortcutsSection } from './ShortcutsSection';
 export { SkillsSection } from './SkillsSection';

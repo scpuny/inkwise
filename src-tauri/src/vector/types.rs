@@ -38,17 +38,3 @@ pub struct VectorSearchResult {
     pub score: f32,
 }
 
-/// Embedding 请求（发往 Node.js 子进程）
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EmbedRequest {
-    pub texts: Vec<String>,
-}
-
-/// Embedding 响应（从 Node.js 子进程接收）
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EmbedResponse {
-    pub embeddings: Vec<Vec<f32>>,
-    pub error: Option<String>,
-}

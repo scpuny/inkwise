@@ -10,10 +10,10 @@ mod vector;
 use platform::Platform;
 use platform::wechat::WeChat;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
-use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill};
+use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
-use vector::{VectorSearchResult, IndexResult, ChunkStrategy};
+use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, semantic_search};
 use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -25,6 +25,8 @@ struct AppState {
     watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// 当前活跃的项目路径（用于退出时保存快照）
     current_project_path: Mutex<Option<String>>,
+    /// 全局嵌入器（Node.js Transformers.js 子进程），未就绪时为 None
+    embedder: Mutex<Option<Embedder>>,
 }
 
 #[allow(dead_code)]
@@ -463,6 +465,7 @@ async fn run_skill(
     blueprint: Option<ArticleBlueprint>,
     current_section_id: Option<String>,
     project_path: Option<String>,
+    model: Option<String>,
 ) -> Result<agent::AgentResult, String> {
     let skill = {
         let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -478,7 +481,8 @@ async fn run_skill(
         skill_store.find(&name).ok_or_else(|| format!("未找到 skill: {}", name))?
     };
 
-    let config = resolve_provider(&state.store, None, skill.model.as_deref())?;
+    let effective_model = model.as_deref().or(skill.model.as_deref());
+    let config = resolve_provider(&state.store, None, effective_model)?;
 
     // Set up streaming callback
     let app_clone = app.clone();
@@ -724,7 +728,7 @@ fn list_collections_db(state: tauri::State<AppState>) -> Result<Vec<db::Collecti
 
 /// Create a collection
 #[tauri::command]
-fn create_collection_db(state: tauri::State<AppState>, title: String, linked_folder: Option<String>) -> Result<db::CollectionRow, String> {
+fn create_collection_db(state: tauri::State<AppState>, title: String, _linked_folder: Option<String>) -> Result<db::CollectionRow, String> {
     let db_opt = state.db.lock().map_err(|e| e.to_string())?;
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     let id = format!("col_{}", chrono_now());
@@ -1255,7 +1259,7 @@ async fn build_folder_index(path: String) -> Result<String, String> {
 
 
 #[tauri::command]
-async fn link_collection_folder(state: tauri::State<'_, AppState>, collection_id: String, path: String) -> Result<ProjectContext, String> {
+async fn link_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: String, path: String) -> Result<ProjectContext, String> {
     // Validate path
     let dir = std::path::Path::new(&path);
     if !dir.is_dir() {
@@ -1494,7 +1498,7 @@ fn get_publish_history(state: tauri::State<AppState>, article_id: String) -> Res
 async fn publish_to_platform(
     styled_html: String,
     state: tauri::State<'_, AppState>,
-    article_id: String,
+    _article_id: String,
     platform: String,
     markdown: String,
     options: platform::PublishOptions,
@@ -1630,23 +1634,69 @@ fn vector_search(
 ) -> Result<Vec<VectorSearchResult>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("数据库未初始化")?;
-    // 暂时返回空（需要 embedder 模块初始化后才能工作）
-    // TODO: 将来通过全局 embedder 实例调用真正的语义搜索
-    let _ = (query, article_id, k, threshold, db);
-    Ok(Vec::new())
+    let embedder = state.embedder.lock().map_err(|e| e.to_string())?;
+
+    match embedder.as_ref() {
+        Some(emb) => {
+            let k_val = k.unwrap_or(5);
+            let thr = threshold.unwrap_or(0.6);
+            semantic_search(db, emb, &query, article_id.as_deref(), k_val, thr)
+        }
+        None => {
+            eprintln!("[向量] 语义搜索请求被拒绝：嵌入器未就绪");
+            Ok(Vec::new())
+        }
+    }
 }
 
 #[tauri::command]
 fn index_article_vector(
     state: tauri::State<'_, AppState>,
     article_id: String,
-    _strategy: Option<String>,
+    strategy: Option<String>,
 ) -> Result<IndexResult, String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("数据库未初始化")?;
-    // 暂时返回空结果（需要 embedder 初始化）
-    let _ = (article_id, db);
-    Ok(IndexResult { total: 0, indexed: 0, skipped: 0, errors: 0 })
+    let embedder = state.embedder.lock().map_err(|e| e.to_string())?;
+
+    let content = store.load_article_content(&article_id)
+        .ok_or_else(|| format!("文章内容未找到: {}", article_id))?;
+
+    let chunk_strategy = match strategy.as_deref() {
+        Some("function") => ChunkStrategy::Function,
+        Some("hybrid") => ChunkStrategy::Hybrid,
+        _ => ChunkStrategy::Paragraph,
+    };
+
+    match embedder.as_ref() {
+        Some(emb) => {
+            vector::index_article(db, emb, &article_id, &content, chunk_strategy)
+        }
+        None => {
+            // 嵌入器未就绪：纯文本索引（embedding = None）
+            let chunks = vector::chunk_content(&content, chunk_strategy);
+            let mut indexed = 0;
+            for chunk in &chunks {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as i64;
+                let row = vector::VectorChunkRow {
+                    id: format!("{}_{}", article_id, chunk.index),
+                    article_id: article_id.to_string(),
+                    chunk_index: chunk.index as i64,
+                    content: chunk.content.clone(),
+                    content_hash: chunk.content_hash.clone(),
+                    embedding: None,
+                    created_at: now,
+                };
+                let _ = db.upsert_vector_chunk(&row);
+                indexed += 1;
+            }
+            Ok(IndexResult { total: chunks.len(), indexed, skipped: 0, errors: 0 })
+        }
+    }
 }
 
 #[tauri::command]
@@ -1664,6 +1714,55 @@ fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("数据库未初始化")?;
     db.vector_chunk_count().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn check_vector_model(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let app_dir = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.data_dir().parent().unwrap().to_path_buf()
+    };
+    let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+    let exists = Embedder::model_exists(&model_dir);
+    let enabled = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.load_settings().vector_model_enabled
+    };
+
+    // If enabled but model missing, count files to check partial download
+    let status = if !enabled {
+        "disabled"
+    } else if exists {
+        "ready"
+    } else {
+        "missing"
+    };
+
+    Ok(serde_json::json!({
+        "enabled": enabled,
+        "exists": exists,
+        "status": status,
+        "modelDir": model_dir.to_string_lossy(),
+    }))
+}
+
+#[tauri::command]
+async fn download_vector_model(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let app_dir = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.data_dir().parent().unwrap().to_path_buf()
+    };
+    let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+
+    if Embedder::model_exists(&model_dir) {
+        return Ok("already_downloaded".to_string());
+    }
+
+    println!("[向量] 开始下载 bge-small-zh-v1.5 模型...");
+    vector::download_model(&model_dir).await?;
+    println!("[向量] 模型下载完成");
+
+    Ok("downloaded".to_string())
 }
 
 
@@ -1710,16 +1809,21 @@ fn index_all_vectors(
 
         let store = store::DataStore::new(app_dir.clone());
 
-        // Try to start embedder; degrade gracefully if Node.js unavailable
-        let script_path = app_dir.join("embedding").join("embed.mjs");
-        let model_dir = app_dir.join("models");
-        let embedder = match vector::Embedder::start(&model_dir, &script_path) {
-            Ok(e) => Some(e),
-            Err(e) => {
-                let _ = app_clone.emit("vector:index-warn",
-                    serde_json::json!({"warning": format!("嵌入器未就绪，仅建立文本索引: {}", e)}));
-                None
+        // 尝试初始化嵌入器（ONNX Runtime）
+        let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+        let embedder = if vector::Embedder::model_exists(&model_dir) {
+            match vector::Embedder::new(&model_dir) {
+                Ok(e) => Some(e),
+                Err(e) => {
+                    let _ = app_clone.emit("vector:index-warn",
+                        serde_json::json!({"warning": format!("嵌入器初始化失败: {}", e)}));
+                    None
+                }
             }
+        } else {
+            let _ = app_clone.emit("vector:index-warn",
+                serde_json::json!({"warning": "模型文件未找到，仅建立文本索引"}));
+            None
         };
 
         let mut indexed_total = 0;
@@ -1824,11 +1928,42 @@ pub fn run() {
                 }
             }
             let database = db::Database::open(&app_dir).ok();
+
+            // 尝试初始化嵌入器（ONNX Runtime）
+            let embedder = {
+                let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+                let settings = DataStore::new(app_dir.clone()).load_settings();
+                if settings.vector_model_enabled {
+                    // 确保 ONNX Runtime dylib 可用（加载动态库平台的 dylib 路径）
+                    let _ = vector::ensure_onnxruntime_dylib(&model_dir);
+
+                    if Embedder::model_exists(&model_dir) {
+                        match Embedder::new(&model_dir) {
+                            Ok(e) => {
+                                println!("[向量] 嵌入器就绪 (bge-small-zh-v1.5, {}d)", e.hidden_size);
+                                Some(e)
+                            }
+                            Err(e) => {
+                                eprintln!("[向量] 嵌入器初始化失败: {}", e);
+                                None
+                            }
+                        }
+                    } else {
+                        eprintln!("[向量] 模型文件未找到，请到设置中下载");
+                        None
+                    }
+                } else {
+                    eprintln!("[向量] 用户未启用，跳过");
+                    None
+                }
+            };
+
             app.manage(AppState {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
                 db: Mutex::new(database),
                 watcher_handle: Mutex::new(None),
                 current_project_path: Mutex::new(None),
+                embedder: Mutex::new(embedder),
             });
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -1943,7 +2078,9 @@ pub fn run() {
             index_article_vector,
             delete_article_vector,
             get_vector_stats,
-            index_all_vectors,])
+            index_all_vectors,
+            check_vector_model,
+            download_vector_model,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

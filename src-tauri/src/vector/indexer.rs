@@ -1,9 +1,10 @@
-// vector/indexer.rs — 向量增量索引
+// vector/indexer.rs — 向量增量索引（批量嵌入）
 //
-// 流程: 内容变化检测 → re-chunk → re-embed → upsert SQLite
+// 流程: 内容变化检测 → 收集需更新的 chunk → 批量嵌入 → 批量 upsert
 
 use crate::db::Database;
-use crate::vector::chunk::{chunk_content, ChunkResult};
+use crate::vector::ChunkResult;
+use crate::vector::chunk::chunk_content;
 use crate::vector::embedder::Embedder;
 use crate::vector::types::{ChunkStrategy, VectorChunkRow};
 
@@ -11,8 +12,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 对单篇文章进行增量索引
 ///
-/// 对比 content_hash 跳过未变化的分块，仅对有变化的分块重新嵌入。
-/// article_id 可能为 ""（表示该内容不属于某篇文章，如项目文件）。
+/// 先 chunk，对比 content_hash 跳过未变化的块，
+/// 然后将所有需更新的块**批量**送入嵌入器，最后批量 upsert。
 pub fn index_article(
     db: &Database,
     embedder: &Embedder,
@@ -32,51 +33,66 @@ pub fn index_article(
         .map(|c| (c.chunk_index.to_string(), c.content_hash.clone()))
         .collect();
 
-    for chunk in &chunks {
-        let key = chunk.index.to_string();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
 
-        // hash 未变化 → 跳过
+    // ── 收集需更新的 chunk ──
+    let mut changed_chunks: Vec<&ChunkResult> = Vec::new();
+    let mut changed_indices: Vec<usize> = Vec::new();
+
+    for (i, chunk) in chunks.iter().enumerate() {
+        let key = chunk.index.to_string();
         if let Some(existing_hash) = existing_map.get(&key) {
             if existing_hash == &chunk.content_hash {
                 skipped += 1;
                 continue;
             }
         }
+        changed_chunks.push(chunk);
+        changed_indices.push(i);
+    }
 
-        // 重新嵌入
-        let embedding = embedder
-            .embed(vec![chunk.content.clone()])
-            .map_err(|e| format!("嵌入 chunk {} 失败: {}", chunk.index, e))?;
-
-        let emb_vec = embedding
-            .into_iter()
-            .next()
-            .ok_or("嵌入返回空结果")?;
-
-        // Base64 编码
-        let emb_bytes: Vec<u8> = emb_vec
-            .iter()
-            .flat_map(|f| f.to_le_bytes())
+    // ── 批量嵌入 ──
+    if !changed_chunks.is_empty() {
+        let texts: Vec<String> = changed_chunks.iter()
+            .map(|c| c.content.clone())
             .collect();
-        let emb_b64 = base64::encode(&emb_bytes);
 
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64;
+        let embeddings = embedder.embed(texts).map_err(|e| format!("批量嵌入失败: {}", e))?;
 
-        let row = VectorChunkRow {
-            id: format!("{}_{}", article_id, chunk.index),
-            article_id: article_id.to_string(),
-            chunk_index: chunk.index as i64,
-            content: chunk.content.clone(),
-            content_hash: chunk.content_hash.clone(),
-            embedding: Some(emb_b64),
-            created_at: now,
-        };
+        if embeddings.len() != changed_chunks.len() {
+            return Err(format!("批量嵌入返回数量不匹配: {} vs {}", embeddings.len(), changed_chunks.len()));
+        }
 
-        db.upsert_vector_chunk(&row).map_err(|e| e.to_string())?;
-        indexed += 1;
+        // ── 批量 upsert ──
+        for (i, chunk) in changed_chunks.iter().enumerate() {
+            let emb_vec = &embeddings[i];
+
+            let emb_bytes: Vec<u8> = emb_vec
+                .iter()
+                .flat_map(|f| f.to_le_bytes())
+                .collect();
+            let emb_b64 = base64::encode(&emb_bytes);
+
+            let row = VectorChunkRow {
+                id: format!("{}_{}", article_id, chunk.index),
+                article_id: article_id.to_string(),
+                chunk_index: chunk.index as i64,
+                content: chunk.content.clone(),
+                content_hash: chunk.content_hash.clone(),
+                embedding: Some(emb_b64),
+                created_at: now,
+            };
+
+            if let Err(e) = db.upsert_vector_chunk(&row) {
+                errors += 1;
+                eprintln!("[向量] upsert chunk {} 失败: {}", chunk.index, e);
+            } else {
+                indexed += 1;
+            }
+        }
     }
 
     Ok(IndexResult {

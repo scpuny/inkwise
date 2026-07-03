@@ -14,7 +14,7 @@ pub(crate) mod types;
 pub use types::*;
 pub use scanner::scan_project;
 pub use scanner::rescan_project_incremental;
-pub use snapshot::{IndexSnapshot, StartupDiff, save_snapshot, load_snapshot, snapshot_dir_files, detect_startup_changes, detect_git_changes};
+pub use snapshot::{IndexSnapshot, save_snapshot, snapshot_dir_files};
 pub use watcher::{build_context_text, spawn_folder_watcher};
 
 /// 所有支持索引/监听/快照的文本文件扩展名（不含点号）

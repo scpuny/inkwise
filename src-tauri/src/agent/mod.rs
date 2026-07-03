@@ -12,5 +12,5 @@ pub(crate) mod tools;
 pub(crate) mod types;
 
 // Re-export public types and functions for backward compatibility
-pub use types::{AgentContext, AgentResult, ContextPlan, ContextItem, ContextSourceKind};
+pub use types::{AgentContext, AgentResult, ContextPlan, ContextSourceKind};
 pub use engine::execute_agent;

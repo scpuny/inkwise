@@ -1,7 +1,8 @@
 import { FolderInput, PanelRightOpen, Loader2 } from "lucide-react";
 import { usePanelStore } from "../../store/panelStore";
 import { getStoredProjectInsights } from "../../lib/storage/collections/projectContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { on } from "../../lib/events/eventBus";
 import { loadCollections } from "../../lib/storage/collections";
 import type { Collection } from "../../lib/storage/collections";
 
@@ -20,13 +21,20 @@ export function ProjectPanel({
   const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
   const [col, setCol] = useState<Collection | null>(null);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const unsub = on("collections-changed", () => setRefreshKey((k) => k + 1));
+    return unsub;
+  }, []);
+
   useEffect(() => {
     if (!colId) return;
     loadCollections().then((cols) => {
       const found = cols.find((c) => c.id === colId) || null;
       setCol(found);
     });
-  }, [colId]);
+  }, [colId, refreshKey]);
 
   const handleOpenFull = () => {
     setProjectPanelOpen(true);

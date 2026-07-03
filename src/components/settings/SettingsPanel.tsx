@@ -1,29 +1,27 @@
 // SettingsPanel.tsx — 设置面板主容器：标签导航 + 按需渲染各设置页面
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { X, Palette, FileText, Cpu, Keyboard, Globe, Info, Sparkles, FolderOpen } from "lucide-react";
+import { X, Settings, FileText, Cpu, Keyboard, Globe, Info, Sparkles } from "lucide-react";
 import type { SettingsTab } from "./settingsHelpers";
 import { SettingsPage, SettingsSection, SettingsField } from "./SettingsPageLayout";
 import { ModelsSection } from "./ModelsSection";
 import { PlatformsSection } from "./PlatformsSection";
-import { AppearanceSection } from "./AppearanceSection";
+import { GeneralSection } from "./GeneralSection";
 import { EditorSection } from "./EditorSection";
 import { ShortcutsSection } from "./ShortcutsSection";
 import { SkillsSection } from "./SkillsSection";
 import { ThemesSection } from "./ThemesSection";
 import { WritingStylesSection } from "./WritingStylesSection";
 import { AboutSection } from "./AboutSection";
-import { StorageSection } from "./StorageSection";
 
 const TABS: { id: SettingsTab; icon: ReactNode; label: string }[] = [
-  { id: "appearance", icon: <Palette size={14} />, label: "外观" },
+  { id: "general", icon: <Settings size={14} />, label: "通用" },
   { id: "editor",    icon: <FileText size={14} />,      label: "编辑器" },
   { id: "models",    icon: <Cpu size={14} />,      label: "模型" },
   { id: "shortcuts", icon: <Keyboard size={14} />, label: "快捷键" },
   { id: "themes",    icon: <FileText size={14} />,      label: "文章主题" },
   { id: "platforms", icon: <Globe size={14} />,     label: "发布平台" },
   { id: "styles",    icon: <Sparkles size={14} />,   label: "写作风格" },
-  { id: "storage",   icon: <FolderOpen size={14} />, label: "存储" },
   { id: "about",     icon: <Info size={14} />,      label: "关于" },
 ];
 
@@ -59,7 +57,7 @@ export function SettingsPanel({
   onSetEditorFormat,
   onSetEditorLineHeight: onSetLineHeight,
 }: SettingsProps) {
-  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "appearance");
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? "general");
 
   useEffect(() => {
     if (initialTab) setTab(initialTab);
@@ -87,8 +85,8 @@ export function SettingsPanel({
           </nav>
 
           <main className="settings-content">
-            {tab === "appearance" && (
-              <AppearanceSection
+            {tab === "general" && (
+              <GeneralSection
                 currentStyle={currentStyle} currentTheme={currentTheme}
                 currentTextSize={currentTextSize} currentFontFamily={currentFontFamily}
                 onSelectStyle={onSelectStyle} onSelectTheme={onSelectTheme}
@@ -108,7 +106,6 @@ export function SettingsPanel({
             {tab === "styles" && <WritingStylesSection />}
             {tab === "themes" && <ThemesSection />}
             {tab === "platforms" && <PlatformsSection />}
-            {tab === "storage" && <StorageSection />}
             {tab === "about" && <AboutSection />}
           </main>
         </div>

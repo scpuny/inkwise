@@ -10,7 +10,7 @@ import type { TextSize } from "../../lib/theme/textSize";
 import type { FontFamily } from "../../lib/theme/fontFamily";
 
 /* ─── Tab definitions ─── */
-export type SettingsTab = "appearance" | "editor" | "models" | "shortcuts" | "styles" | "themes" | "platforms" | "storage" | "about";
+export type SettingsTab = "general" | "editor" | "models" | "shortcuts" | "styles" | "themes" | "platforms" | "about";
 
 /* ─── Skill icons & labels ─── */
 export const SKILL_ICONS: Record<string, ReactNode> = {

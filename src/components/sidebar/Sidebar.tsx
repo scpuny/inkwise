@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { List, Settings, SquarePen, Library, FolderInput } from "lucide-react";
+import { useState, useEffect } from "react";
+import { List, Settings, SquarePen, FolderTree, FolderInput, Trash2, GalleryThumbnails } from "lucide-react";
 import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
 import { ProjectPanel } from "./ProjectPanel";
+import { loadTrash } from "../../lib/storage/collections";
+import { on } from "../../lib/events/eventBus";
 
 type SidebarTab = "collections" | "outline" | "project";
 
@@ -19,6 +21,7 @@ export function Sidebar({
   onOutlineSelect,
   onManageArticles,
   onProjectArticleSelect,
+  onOpenTrash,
   seriesRefreshKey,
 }: {
   onOpenSettings: () => void;
@@ -32,11 +35,23 @@ export function Sidebar({
   onOutlineSelect?: (id: string) => void;
   onManageArticles?: () => void;
   onProjectArticleSelect?: (articleId: string) => void;
+  onOpenTrash?: () => void;
   seriesRefreshKey?: number | undefined;
 }) {
   const [internalTab, setInternalTab] = useState<SidebarTab>("collections");
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [trashCount, setTrashCount] = useState(0);
+
+  // 回收站计数（挂载时 + collections-changed 事件触发时更新）
+  useEffect(() => {
+    loadTrash().then((items) => setTrashCount(items.length)).catch(() => {});
+    const unsub = on("collections-changed", () => {
+      loadTrash().then((items) => setTrashCount(items.length)).catch(() => {});
+    });
+    return unsub;
+  }, []);
+
 
   return (
     <aside className="sidebar" aria-label="导航">
@@ -67,7 +82,7 @@ export function Sidebar({
       {/* Tab bar: 目录 / 大纲 / 项目 */}
       <div className="sidebar__tabs">
         <button className={"sidebar__tab" + (internalTab === "collections" ? " sidebar__tab--active" : "")} onClick={() => setInternalTab("collections")}>
-          <Library size={13} /><span>目录</span>
+          <FolderTree size={13} /><span>目录</span>
         </button>
         <button className={"sidebar__tab" + (internalTab === "outline" ? " sidebar__tab--active" : "")} onClick={() => setInternalTab("outline")}>
           <List size={13} /><span>大纲</span>
@@ -92,12 +107,17 @@ export function Sidebar({
       {/* Bottom actions */}
       <div className="sidebar__actions">
         <button className="sidebar__action-btn" onClick={() => onManageArticles?.()} title="管理合集">
-          <Library size={14} />
+          <GalleryThumbnails size={14} />
+        </button>
+        <button className="sidebar__action-btn" onClick={() => onOpenTrash?.()} title="回收站">
+          <Trash2 size={14} />
+          {trashCount > 0 && <span className="sidebar__trash-badge">{trashCount}</span>}
         </button>
         <button className="sidebar__action-btn" onClick={onOpenSettings} title="设置">
           <Settings size={14} />
         </button>
       </div>
+
     </aside>
   );
 }

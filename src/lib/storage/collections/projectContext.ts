@@ -248,26 +248,9 @@ export async function getProjectContextText(path: string): Promise<string> {
 }
 
 export async function rescanProjectFolder(path: string): Promise<ProjectContext> {
-  try {
-    return await invokeOrFallback<ProjectContext>(
-      TauriCommands.RescanProjectFolder, { path },
-      () => ({
-        name: "", rootPath: path, primaryLanguage: null, files: [], structure: [],
-        codegraphAvailable: false,
-    configs: [],
-    symbols: [],
-    imports: [],
-        summary: { totalFiles: 0, totalDirs: 0, totalLines: 0, languages: [], topFiles: [] }, configFiles: [],
-      }),
-    );
-  } catch {
-    return { name: "", rootPath: path, primaryLanguage: null, files: [], structure: [],
-      codegraphAvailable: false,
-    configs: [],
-    symbols: [],
-    imports: [],
-      summary: { totalFiles: 0, totalDirs: 0, totalLines: 0, languages: [], topFiles: [] }, configFiles: [] };
-  }
+  return await tryInvoke<ProjectContext>(
+    TauriCommands.RescanProjectFolder, { path }
+  );
 }
 
 export async function readProjectFiles(path: string, files: string[]): Promise<FileContent[]> {

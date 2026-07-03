@@ -349,6 +349,20 @@ export function ModelsSection() {
           </div>
         </SettingsSection>
       )}
+
+      {/* ── 本地向量模型 ── */}
+      <SettingsSection
+        title="本地向量模型（语义搜索）"
+        desc="使用本地 ONNX 模型对文章内容进行语义搜索，提升检索精度。所有计算在本地完成，数据不外传。"
+      >
+        {isTauriEnv() ? (
+          <VectorModelControl />
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--fg-faint)", padding: "8px 0" }}>
+            向量搜索仅在桌面版可用。
+          </div>
+        )}
+      </SettingsSection>
     </SettingsPage>
   );
 }
@@ -717,6 +731,11 @@ function ProviderAccessCard({ group, busy, fetching, fetchResult, testing, testR
           <button className="btn btn--small" disabled={busy} aria-expanded={editingProvider} onClick={() => editingProvider ? onCancelEdit() : onEdit(group.id)}>{editingProvider ? "收起" : "配置"}</button>
           <button className="btn btn--small" disabled={busy || fetching || !group.baseUrl || !group.apiKeyEnv || !group.keySet} onClick={onRefresh}>{fetching ? "获取中…" : "获取模型"}</button>
           <button className="btn btn--small" disabled={busy || testing || !group.baseUrl || !group.keySet} onClick={onTestConnection}>{testing ? "测试中…" : "测试连接"}</button>
+          {testResult && !testing && (
+            <span className={`provider-card-status provider-card-status--${testResult.kind}`} style={{ fontSize: 12, marginLeft: 8 }}>
+              {testResult.text}
+            </span>
+          )}
           {provider && onDelete && !group.builtIn && (
             <InlineConfirmButton label="删除" confirmLabel="确认删除" cancelLabel="取消" danger onConfirm={() => onDelete(provider)} />
           )}
@@ -985,6 +1004,93 @@ function ProviderEditor({ provider, onSave, onSaveKey, onClearKey, group, onCanc
           });
         }}>保存</button>
       </div>
+    </div>
+  );
+}
+
+
+
+// ── 本地向量模型控制 ──
+function VectorModelControl() {
+  const [enabled, setEnabled] = useState(false);
+  const [status, setStatus] = useState<"disabled" | "ready" | "missing" | "downloading">("disabled");
+  const [downloading, setDownloading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState<"ok" | "err">("ok");
+
+  useEffect(() => {
+    checkStatus();
+  }, []);
+
+  const checkStatus = async () => {
+    try {
+      const res = await tryInvoke<any>("check_vector_model");
+      setEnabled(res.enabled);
+      setStatus(res.status);
+    } catch {}
+  };
+
+  const handleToggle = async () => {
+    const newVal = !enabled;
+    setEnabled(newVal);
+    try {
+      const current = await tryInvoke<any>(TauriCommands.GetSettings);
+      current.vector_model_enabled = newVal;
+      await tryInvoke(TauriCommands.SetSettings, { settings: current });
+    } catch {}
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setStatus("downloading");
+    try {
+      const result = await tryInvoke<string>("download_vector_model");
+      if (result === "downloaded" || result === "already_downloaded") {
+        setMsg("模型下载完成！");
+        setMsgType("ok");
+        setStatus("ready");
+      }
+    } catch (e) {
+      setMsg("下载失败: " + String(e));
+      setMsgType("err");
+      setStatus("missing");
+    }
+    setDownloading(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button className={`btn btn--small ${enabled ? "btn--primary" : ""}`}
+          onClick={handleToggle} style={{ minWidth: 60 }}
+        >
+          {enabled ? "已启用" : "已禁用"}
+        </button>
+        <span style={{ fontSize: 12, color: "var(--fg-faint)" }}>
+          {status === "ready" ? "✅ 模型就绪" :
+           status === "downloading" ? "⏳ 下载中…" :
+           enabled ? "⚠️ 模型未下载" : ""}
+        </span>
+      </div>
+      {enabled && status !== "ready" && status !== "downloading" && (
+        <div>
+          <button className="btn btn--primary" onClick={handleDownload} disabled={downloading}>
+            {downloading ? "下载中…" : "下载向量模型（23MB）"}
+          </button>
+          {msg && <div style={{ marginTop: 8, fontSize: 12, color: msgType === "ok" ? "var(--accent)" : "var(--err)" }}>{msg}</div>}
+        </div>
+      )}
+      {enabled && status === "ready" && (
+        <div style={{ fontSize: 12, color: "var(--fg-faint)", lineHeight: 1.6 }}>
+          模型: bge-small-zh-v1.5（512维中文嵌入）<br />
+          引擎: ONNX Runtime（进程内推理）
+        </div>
+      )}
+      {!enabled && (
+        <div style={{ fontSize: 12, color: "var(--fg-faint)" }}>
+          启用后自动加载本地向量模型，在搜索时进行语义匹配。
+        </div>
+      )}
     </div>
   );
 }

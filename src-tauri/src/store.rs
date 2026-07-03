@@ -144,6 +144,8 @@ pub struct AppSettings {
     pub draw_count: u32,
     #[serde(default)]
     pub draw_negative_prompt: String,
+    #[serde(default)]
+    pub vector_model_enabled: bool,
 }
 
 // ─── AI Config ───
@@ -386,6 +388,7 @@ impl DataStore {
             draw_size: "1024x1024".into(),
             draw_count: 3,
             draw_negative_prompt: String::new(),
+            vector_model_enabled: false,
         })
     }
 

@@ -20,6 +20,7 @@ pub enum RunAs {
 
 /// 写作动作类型（替代字符串 skill name，类型安全）
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum WritingActionKind {
     ContinueWriting,
     Rewrite,
