@@ -206,11 +206,22 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
     const { deleteAllVersions } = await import("../../storage/articleVersions");
     await deleteAllVersions(articleId);
   } catch { console.warn("[trashArticle] deleteAllVersions failed (non-critical cleanup)"); }
+  // SQLite + 图片清理（FTS5 通过触发器自动清理）
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
+    }
+  } catch { console.warn("[trashArticle] DeleteArticleDb failed (non-critical cleanup)"); }
+  // 后端文件清理（content/meta JSON）
   try {
     if (isTauriEnv()) {
       await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
     }
   } catch { console.warn("[trashArticle] DeleteArticle failed (non-critical cleanup)"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try {
+  //   await vectorIndexer.deleteChunks(articleId);
+  // } catch { console.warn("[trashArticle] vector chunk cleanup failed (non-critical)"); }
   try {
     localStorage.removeItem('plan-draft-' + articleId);
   } catch { console.warn('[trashArticle] remove plan-draft failed (non-critical cleanup)'); }
