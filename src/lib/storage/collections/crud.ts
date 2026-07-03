@@ -286,7 +286,32 @@ export async function restoreArticle(trashId: string): Promise<void> {
 
 export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
   const trash = await loadTrash();
+  const item = trash.find((t) => t.id === trashId);
+  if (!item) return;
   await saveTrash(trash.filter((t) => t.id !== trashId));
+
+  // 物理删除：清理所有关联数据
+  const articleId = item.id;
+  try {
+    const { deleteArticleContent } = await import("../../storage/articles");
+    await deleteArticleContent(articleId);
+  } catch { console.warn("[permanentlyDeleteArticle] deleteArticleContent failed"); }
+  try {
+    const { deleteAllVersions } = await import("../../storage/articleVersions");
+    await deleteAllVersions(articleId);
+  } catch { console.warn("[permanentlyDeleteArticle] deleteAllVersions failed"); }
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
+    }
+  } catch { console.warn("[permanentlyDeleteArticle] DeleteArticleDb failed"); }
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
+    }
+  } catch { console.warn("[permanentlyDeleteArticle] DeleteArticle failed"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
 }
 
 export async function emptyTrash(): Promise<void> {
