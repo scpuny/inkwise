@@ -67,8 +67,12 @@ impl Embedder {
             .map_err(|e| format!("shape: {}", e))?.into();
         let mask_t: Tensor = Array2::from_shape_vec((1, seq_len), mask)
             .map_err(|e| format!("shape: {}", e))?.into();
+        // token_type_ids: all zeros (single sentence input)
+        let token_type: Vec<i64> = vec![0i64; seq_len];
+        let token_type_t: Tensor = Array2::from_shape_vec((1, seq_len), token_type)
+            .map_err(|e| format!("shape: {}", e))?.into();
 
-        let outputs = model.clone().run(tvec!(ids_t.into(), mask_t.into()))
+        let outputs = model.clone().run(tvec!(ids_t.into(), mask_t.into(), token_type_t.into()))
             .map_err(|e| format!("dummy 推理: {}", e))?;
 
         let t = outputs.into_iter().next().ok_or("无输出")?.into_tensor();
@@ -101,12 +105,15 @@ impl Embedder {
 
         let mut padded_ids = Vec::with_capacity(batch_size * max_len);
         let mut padded_masks = Vec::with_capacity(batch_size * max_len);
+        let mut padded_token_types = Vec::with_capacity(batch_size * max_len);
         for i in 0..batch_size {
             let len = all_ids[i].len();
             padded_ids.extend_from_slice(&all_ids[i]);
             padded_ids.extend(std::iter::repeat(0i64).take(max_len - len));
             padded_masks.extend_from_slice(&all_masks[i]);
             padded_masks.extend(std::iter::repeat(0i64).take(max_len - len));
+            // token_type_ids: all zeros for single input
+            padded_token_types.extend(std::iter::repeat(0i64).take(max_len));
         }
 
         // 2. tract-onnx 推理（细粒度锁）
@@ -117,8 +124,10 @@ impl Embedder {
                 .map_err(|e| format!("shape input_ids: {}", e))?.into();
             let mask_a: Tensor = Array2::from_shape_vec((batch_size, max_len), padded_masks)
                 .map_err(|e| format!("shape attention_mask: {}", e))?.into();
+            let token_type_a: Tensor = Array2::from_shape_vec((batch_size, max_len), padded_token_types)
+                .map_err(|e| format!("shape token_type_ids: {}", e))?.into();
 
-            let outputs = model.run(tvec!(ids_a.into(), mask_a.into()))
+            let outputs = model.run(tvec!(ids_a.into(), mask_a.into(), token_type_a.into()))
                 .map_err(|e| format!("ONNX 推理: {}", e))?;
 
             let t = outputs.into_iter().next().ok_or("无输出")?.into_tensor();
