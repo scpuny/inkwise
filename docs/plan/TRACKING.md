@@ -63,7 +63,7 @@
 | 1.4.2 | `ArticleBlueprint` 新增 `styleId` + `actionId` | `articleBlueprint.ts` | 🟢 | — | 2026-07-03 | 新增 styleId/actionId 字段，向后兼容 skillId |
 | 1.4.3 | 迁移前端 WritingSkill → Style（名称不变，结构重构） | `writingStyle.ts` | 🟢 | — | 2026-07-03 | 从 WritingSkill 提取风格部分，getBuiltinStyles/getStyle 函数 |
 | 1.4.4 | 迁移 Rust builtin_skills 中的动作 → Action 枚举 | `skill.rs` | 🟢 | — | 2026-07-03 | 新增 WritingActionKind 枚举（18 个）+ as_str/from_str |
-| 1.4.5 | 改造 `agent.ts` execute：Action + 当前 Style 上下文拼接 | `agent.ts` | 🔴 | — | — | 风格传递链 |
+| 1.4.5 | 改造 `agent.ts` execute：Action + 当前 Style 上下文拼接 | `agent.ts` | 🟢 | 2026-07-03 | 风格传递链 |
 | 1.4.6 | 改造 `agent.rs` execute_action：接受 Style 参数 | `agent.rs` | 🔴 | — | — | Rust 端配合 |
 | 1.4.7 | 改造 `articleReview.ts`：动态维度 + 风格感知 | `articleReview.ts` | 🔴 | — | — | 不再硬编码 5 维 |
 | 1.4.8 | 改造 `applyOptimization`：逐段修复而非全量重写 | `articleReview.ts` | 🔴 | — | — | 可接受/拒绝 |
@@ -228,12 +228,12 @@
 
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
-| S1: 核心修复 | 23 | 18 | 0 | 5 | 0 | 78% |
+| S1: 核心修复 | 23 | 19 | 0 | 4 | 0 | 83% |
 | S2: 架构+UX | 29 | 0 | 0 | 29 | 0 | 0% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **18** | **0** | **73** | **1** | **20%** |
+| **总计** | **92** | **19** | **0** | **72** | **1** | **21%** |
 
 ---
 
