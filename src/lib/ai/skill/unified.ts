@@ -176,6 +176,29 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
   u({ name: "keyword-extract", description: "关键词提取", icon: "🔑", body: "分析文档内容，提取核心关键词和标签。", allowedTools: ["read_document"] }),
   u({ name: "readability", description: "可读性优化", icon: "📊", body: "分析文本的可读性，提供具体改进建议。\n\n## 评估维度\n- 句子长度、段落长度、词汇难度", allowedTools: ["read_document"] }),
   u({ name: "citation", description: "引用格式", icon: "📚", body: "根据文献信息，生成规范的引用格式。\n\n## 支持的格式\n- APA、MLA、GB/T 7714", allowedTools: ["read_document"] }),
+
+  // ── 项目感知型技能（Project-Aware Skills） ──
+  u({
+    name: "project-changelog", description: "项目变动报告", icon: "📋",
+    body: "根据项目 Git 变更 / 文件变更生成清晰的项目变动报告。\n\n## 报告结构\n1. 变更概览（修改文件数、增删行数、涉及模块）\n2. 关键变更详解（每个文件/函数的具体改动）\n3. 影响分析（变更波及了哪些上下游模块）\n4. 风险提示（高复杂度区域变更）\n5. 建议下一步",
+    runAs: "subagent", effort: "high",
+    allowedTools: ["read_document", "write_document", "git_diff", "read_project_files", "list_project_files"],
+    contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+  }),
+  u({
+    name: "project-intro", description: "项目导读", icon: "🗺️",
+    body: "根据项目结构生成项目导读，适合新人快速了解项目。\n\n## 内容\n1. 一句话概括项目定位\n2. 技术栈一览（语言、框架、数据库、构建工具）\n3. 核心模块与目录职责（每个一级目录一句话说明）\n4. 关键入口文件说明\n5. 常见开发流程\n6. 代码组织规范",
+    runAs: "subagent", effort: "medium",
+    allowedTools: ["read_document", "write_document", "read_project_files", "list_project_files"],
+    contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+  }),
+  u({
+    name: "impact-analysis", description: "变更影响评估", icon: "🔍",
+    body: "分析代码变更的影响范围，识别可能受影响的模块。\n\n## 输出\n1. 变更核心（改了哪里、改了什么）\n2. 直接影响（同一模块内依赖它的函数/类）\n3. 间接影响（其他模块调用受影响函数的地方）\n4. 风险评分（低/中/高）+ 原因\n5. 测试建议",
+    runAs: "subagent", effort: "high",
+    allowedTools: ["read_document", "write_document", "git_diff", "read_project_files", "list_project_files", "search_project_files"],
+    contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+  }),
 ];
 
 /* ─── 运行时获取统一技能列表 ─── */
