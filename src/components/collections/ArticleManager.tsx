@@ -343,7 +343,7 @@ export function ArticleManager({
       collections.splice(idx, 1);
       await saveCollections(collections);
       // Tauri: SQLite FTS
-        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteCollectionDb, { id: colId }); } catch {} }
+        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteCollectionCascade, { id: colId }); } catch {} }
       if (filterCollection === colId) setFilterCollection("all");
     }
     emit("collections-changed");

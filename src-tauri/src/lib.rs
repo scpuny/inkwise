@@ -658,6 +658,60 @@ fn delete_collection_db(state: tauri::State<AppState>, id: String) -> Result<(),
     db.delete_collection(&id).map_err(|e| e.to_string())
 }
 
+/// 级联删除合集及其所有子文章的关联数据（图片/SQLite/assets）
+#[tauri::command]
+fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Result<(), String> {
+    // 1. 获取合集中所有文章
+    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
+    let articles = db.list_articles(Some(&id), None, 0, 10000).map_err(|e| e.to_string())?;
+
+    // 2. 逐文章清理（复用 delete_article_db 逻辑）
+    for article in &articles {
+        // Clean up associated images
+        let images = db.get_article_images(&article.id).unwrap_or_default();
+        for img in &images {
+            let path = std::path::Path::new(&img.local_path);
+            if path.exists() {
+                let _ = std::fs::remove_file(path);
+            }
+            // Also check absolute path in articles dir
+            let store = state.store.lock().map_err(|e| e.to_string())?;
+            let abs_path = store.articles_dir().join("_assets").join(&article.id).join(
+                path.file_name().unwrap_or_default()
+            );
+            if abs_path.exists() {
+                let _ = std::fs::remove_file(&abs_path);
+            }
+            // Check project-linked path
+            let project_path = std::path::PathBuf::from(".inkwise_assets").join(&article.id).join(
+                path.file_name().unwrap_or_default()
+            );
+            if project_path.exists() {
+                let _ = std::fs::remove_file(&project_path);
+            }
+            drop(store);
+        }
+        // Remove image records
+        let _ = db.delete_article_images(&article.id);
+        // Remove assets directory
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let assets_dir = store.articles_dir().join("_assets").join(&article.id);
+        if assets_dir.exists() {
+            let _ = std::fs::remove_dir_all(&assets_dir);
+        }
+        drop(store);
+        // Delete article content/meta JSON
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let _ = store.delete_article_content(&article.id);
+        let _ = store.delete_article_meta(&article.id);
+        drop(store);
+    }
+
+    // 3. SQLite 级联删除（articles + collection，FTS 通过触发器自动清理）
+    db.delete_collection(&id).map_err(|e| e.to_string())
+}
+
 /// List articles from DB, optionally filtered by collection
 #[tauri::command]
 fn list_articles_db(state: tauri::State<AppState>, collection_id: Option<String>) -> Result<Vec<db::ArticleRow>, String> {
@@ -1550,6 +1604,7 @@ pub fn run() {
             create_collection_db,
             rename_collection_db,
             delete_collection_db,
+            delete_collection_cascade,
             list_articles_db,
             get_article_db,
             save_article_db,

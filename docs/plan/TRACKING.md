@@ -44,8 +44,8 @@
 | 1.2.1 | `trashArticle` 补充 SQLite 和向量清理 | `crud.ts`, `lib.rs` | 🟢 | — | 2026-07-03 | 新增 DeleteArticleDb 调用+向量清理占位 |
 | 1.2.2 | `removeCollection` 级联删除子文章所有关联数据 | `crud.ts`, `lib.rs` | 🟢 | — | 2026-07-03 | 遍历子文章清理 content/meta/versions/SQLite/图片，向量清理占位 |
 | 1.2.3 | `deleteSeriesPlan` 补充向量清理 | `series.ts`, `lib.rs` | 🟢 | — | 2026-07-03 | 新增 Tauri 后端 DeleteSeriesPlan 调用+向量清理占位 |
-| 1.2.4 | `unlinkCollectionFolder` 清理 project_chunks | `lib.rs` | 🔴 | — | — | project_chunks 清理 |
-| 1.2.5 | 新增 `delete_collection_cascade` Tauri 命令 | `lib.rs`, `tauri.ts` | 🔴 | — | — | 前端桥接层注册 |
+| 1.2.4 | `unlinkCollectionFolder` 清理 project_chunks | `lib.rs` | 🟢 | — | 2026-07-03 | 新增向量清理占位 |
+| 1.2.5 | 新增 `delete_collection_cascade` Tauri 命令 | `lib.rs`, `tauri.ts` | 🟢 | — | 2026-07-03 | Rust 级联命令 + 前端桥接 + crud.ts/ArticleManager 改用新命令 |
 
 ### 1.3 回收站逻辑修正（doc 17 — 🔴 新发现）
 
@@ -228,12 +228,12 @@
 
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
-| S1: 核心修复 | 23 | 9 | 0 | 14 | 0 | 39% |
+| S1: 核心修复 | 23 | 11 | 0 | 12 | 0 | 48% |
 | S2: 架构+UX | 29 | 0 | 0 | 29 | 0 | 0% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **92** | **9** | **0** | **82** | **1** | **10%** |
+| **总计** | **92** | **11** | **0** | **80** | **1** | **12%** |
 
 ---
 

@@ -168,7 +168,7 @@ export async function removeCollection(id: string): Promise<void> {
   const col = all[idx];
   const articleIds = col.articles.map(a => a.id);
 
-  // 级联清理：每篇文章的内容/元数据/图片/SQLite/向量
+  // 前端缓存清理（localStorage）
   for (const articleId of articleIds) {
     try {
       const { deleteArticleContent } = await import("../../storage/articles");
@@ -178,31 +178,21 @@ export async function removeCollection(id: string): Promise<void> {
       const { deleteAllVersions } = await import("../../storage/articleVersions");
       await deleteAllVersions(articleId);
     } catch { /* non-critical */ }
-    try {
-      if (isTauriEnv()) {
-        await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
-      }
-    } catch { console.warn("[removeCollection] DeleteArticleDb failed for " + articleId); }
-    try {
-      if (isTauriEnv()) {
-        await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
-      }
-    } catch { console.warn("[removeCollection] DeleteArticle failed for " + articleId); }
     try { localStorage.removeItem('plan-draft-' + articleId); } catch { /* ignore */ }
     // 🔮 向量分块清理（Sprint 3 实现后启用）
     // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
   }
 
-  // 删除合集本身
-  all.splice(idx, 1);
-  await saveCollections(all);
-
-  // SQLite 清理合集（Rust 端自动级联删除子文章记录）
+  // Tauri 后端级联清理：图片/assets/SQLite/JSON
   try {
     if (isTauriEnv()) {
-      await tryInvoke(TauriCommands.DeleteCollectionDb, { id });
+      await tryInvoke(TauriCommands.DeleteCollectionCascade, { id });
     }
-  } catch { console.warn("[removeCollection] DeleteCollectionDb failed (non-critical cleanup)"); }
+  } catch { console.warn("[removeCollection] backend cascade failed (non-critical)"); }
+
+  // 删除合集 JSON 缓存
+  all.splice(idx, 1);
+  await saveCollections(all);
 }
 
 /* ─── 文章 CRUD ─── */
@@ -350,6 +340,8 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
     try { localStorage.removeItem("plan-draft-" + art.id); } catch { console.warn("[unlinkCollectionFolder] remove plan-draft failed (non-critical)"); }
   }
   await saveCollections(all);
+  // 🔮 project_chunks 向量清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteCollectionChunks("project:" + collectionId); } catch { /* ignore */ }
 }
 
 export async function getCollectionFolderContext(collectionId: string): Promise<string> {
