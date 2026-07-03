@@ -1580,6 +1580,131 @@ fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
     db.vector_chunk_count().map_err(|e| e.to_string())
 }
 
+
+#[tauri::command]
+fn index_all_vectors(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    // Fast: grab data while holding lock, then release
+    let (app_dir, article_ids) = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let app_dir = store.data_dir().parent().unwrap().to_path_buf();
+        let collections = store.load_collections();
+        let ids: Vec<String> = collections
+            .iter()
+            .flat_map(|c| c.articles.iter().map(|a| a.id.clone()))
+            .collect();
+        (app_dir, ids)
+    };
+
+    let total = article_ids.len();
+    if total == 0 {
+        let _ = app_handle.emit("vector:index-done", serde_json::json!({
+            "total": 0, "indexed": 0, "skipped": 0, "errors": 0,
+        }));
+        return Ok(());
+    }
+
+    let _ = app_handle.emit("vector:index-start", serde_json::json!({
+        "total": total,
+    }));
+
+    let app_clone = app_handle.clone();
+    std::thread::spawn(move || {
+        // Open own DB connection (avoid holding main thread lock)
+        let db = match db::Database::open(&app_dir) {
+            Ok(d) => d,
+            Err(e) => {
+                let _ = app_clone.emit("vector:index-error",
+                    serde_json::json!({"error": format!("数据库打开失败: {}", e)}));
+                return;
+            }
+        };
+
+        let store = store::DataStore::new(app_dir.clone());
+
+        // Try to start embedder; degrade gracefully if Node.js unavailable
+        let script_path = app_dir.join("embedding").join("embed.mjs");
+        let model_dir = app_dir.join("models");
+        let embedder = match vector::Embedder::start(&model_dir, &script_path) {
+            Ok(e) => Some(e),
+            Err(e) => {
+                let _ = app_clone.emit("vector:index-warn",
+                    serde_json::json!({"warning": format!("嵌入器未就绪，仅建立文本索引: {}", e)}));
+                None
+            }
+        };
+
+        let mut indexed_total = 0;
+        let mut skipped_total = 0;
+        let mut errors_total = 0;
+
+        for (i, article_id) in article_ids.iter().enumerate() {
+            let content = match store.load_article_content(article_id) {
+                Some(c) => c,
+                None => {
+                    errors_total += 1;
+                    continue;
+                }
+            };
+
+            if let Some(ref emb) = embedder {
+                match vector::index_article(&db, emb, article_id, &content, vector::ChunkStrategy::Paragraph) {
+                    Ok(result) => {
+                        indexed_total += result.indexed;
+                        skipped_total += result.skipped;
+                    }
+                    Err(e) => {
+                        errors_total += 1;
+                        let _ = app_clone.emit("vector:index-error",
+                            serde_json::json!({"articleId": article_id, "error": e}));
+                    }
+                }
+            } else {
+                // No embedder: chunk only, store text index (embedding=null)
+                let chunks = vector::chunk_content(&content, vector::ChunkStrategy::Paragraph);
+                for chunk in &chunks {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as i64;
+                    let row = vector::VectorChunkRow {
+                        id: format!("{}_{}", article_id, chunk.index),
+                        article_id: article_id.to_string(),
+                        chunk_index: chunk.index as i64,
+                        content: chunk.content.clone(),
+                        content_hash: chunk.content_hash.clone(),
+                        embedding: None,
+                        created_at: now,
+                    };
+                    let _ = db.upsert_vector_chunk(&row);
+                    indexed_total += 1;
+                }
+            }
+
+            // Progress per article
+            let _ = app_clone.emit("vector:index-progress", serde_json::json!({
+                "current": i + 1,
+                "total": total,
+                "articleId": article_id,
+                "indexed": indexed_total,
+                "skipped": skipped_total,
+                "errors": errors_total,
+            }));
+        }
+
+        let _ = app_clone.emit("vector:index-done", serde_json::json!({
+            "total": total,
+            "indexed": indexed_total,
+            "skipped": skipped_total,
+            "errors": errors_total,
+        }));
+    });
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1713,7 +1838,12 @@ pub fn run() {
             stop_watching_project,
             generate_image,
             save_article_images,
-            get_article_images,])
+            get_article_images,
+            vector_search,
+            index_article_vector,
+            delete_article_vector,
+            get_vector_stats,
+            index_all_vectors,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

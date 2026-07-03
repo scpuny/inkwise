@@ -94,7 +94,7 @@ pub fn delete_article_index(db: &Database, article_id: &str) -> Result<(), Strin
 }
 
 /// 索引结果
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IndexResult {
     pub total: usize,
     pub indexed: usize,
