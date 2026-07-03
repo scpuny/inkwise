@@ -128,7 +128,7 @@
 | 3.1.2 | 写入 code-snippet 层：`typescript.scm`, `rust.scm` | `.scm` 文件 | 🟢 | — | 2026-07-03 | Kiro 结构对齐 |
 | 3.1.3 | 写入 import 层：`typescript.scm`, `rust.scm` | `.scm` 文件 | 🟢 | — | 2026-07-03 | Kiro 结构对齐 |
 | 3.1.4 | 写入 root-context 层 | `.scm` 文件 | 🟢 | — | 2026-07-03 | Kiro 结构对齐 |
-| 3.1.5 | 实现 `query_symbols()` 通用执行函数 | `project_indexer/scanner.rs` | 🔴 | — | — | 替换 ~150 行手写遍历 |
+| 3.1.5 | 实现 `query_symbols()` 通用执行函数 | `project_indexer/scanner.rs` | 🟢 | — | 2026-07-03 | 替换 ~150 行手写遍历 |
 | 3.1.6 | 替换 `extract_symbols_treesitter()` 调用 | `project_indexer/scanner.rs` | 🟢 | — | 2026-07-03 | 改为 query_execute(code-snippet) + symbols_from_query |
 | 3.1.7 | 替换 `extract_imports_treesitter()` 调用 | `project_indexer/scanner.rs` | 🟢 | — | 2026-07-03 | 改为 query_execute(import) + imports_from_query |
 | 3.1.8 | 添加 `python.scm`, `go.scm`, `java.scm` 等扩展 | `.scm` 文件 | 🟢 | — | 2026-07-03 | Kiro 结构对齐 |
@@ -228,11 +228,11 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 28 | 0 | 1 | 0 | 97% |
-| S3: 智能增强 | 22 | 8 | 0 | 14 | 0 | 36% |
+| S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
+| S3: 智能增强 | 22 | 9 | 0 | 13 | 0 | 41% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **56** | 0 | 35 | 1 | 62% |
+| **总计** | **91** | **61** | 0 | 30 | 1 | 67% |
 ---
 
 ## 里程碑记录
