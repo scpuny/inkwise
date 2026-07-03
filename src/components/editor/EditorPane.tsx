@@ -30,7 +30,7 @@ import { InlineToolbar } from "./InlineToolbar";
 import { Toolbar } from "./Toolbar";
 import { AICommandBar } from "../agent/AICommandBar";
 
-import { extractImageKeywords, insertImagesIntoArticle } from "../../lib/ai/draw";
+import { extractImageKeywords, insertImagesIntoArticle, getCachedImages, cacheImages } from "../../lib/ai/draw";
 import { tryInvoke } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { getProvidersSync } from "../../lib/storage/providerModels";
@@ -325,6 +325,17 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     // explicitly chose to illustrate. The "自动配图" checkbox only controls automatic
     // (unprompted) illustration.
 
+    // Check cache first (内容哈希缓存)
+    const cacheConfig = { model: drawCfg.model, style: drawCfg.style, size: drawCfg.size || "1024x1024", count: drawCfg.count ?? 1 };
+    const cached = getCachedImages(content, cacheConfig);
+    if (cached && cached.length > 0) {
+      const newContent = insertImagesIntoArticle(content, cached.map(c => ({ path: c.path, altText: c.altText, targetSectionTitle: c.sectionTitle })));
+      await saveArticleContent(articleId, newContent);
+      contentRef.current = newContent;
+      setEditorContent(newContent);
+      return;
+    }
+
     emit("image-gen-start", { articleId, total: drawCfg.count ?? 1 });
 
     // 1. LLM 提取配图计划
@@ -399,6 +410,9 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       emit("image-gen-complete", { articleId, count: 0 });
       return;
     }
+
+    // Cache the generated images
+    cacheImages(content, cacheConfig, validImages.map(v => ({ path: v.path, altText: v.altText, sectionTitle: v.targetSectionTitle })));
 
     // 5. 插入图片到文章
     const newContent = insertImagesIntoArticle(content, validImages);

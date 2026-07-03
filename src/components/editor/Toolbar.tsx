@@ -187,6 +187,145 @@ function HeadingDropdown({ onClose }: { onClose: () => void }) {
   );
 }
 
+
+// ── AI 配图 Popover ──
+function DrawPopover({ onClose }: { onClose: () => void }) {
+  const [count, setCount] = useState(3);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleGenerate = async () => {
+    const editor = (window as any).editorInstance?.editor;
+    if (!editor) return;
+    setGenerating(true);
+    setError("");
+    try {
+      const articleId = (window as any).__currentArticleId || "";
+      const docText = editor.state.doc.textContent;
+      if (!docText.trim()) {
+        setError("文章为空，无法配图");
+        setGenerating(false);
+        return;
+      }
+      const { useDrawConfig } = await import("../../lib/stores/drawConfig");
+      useDrawConfig.getState().setConfig({ count });
+      const { emit } = await import("../../lib/events/eventBus");
+      const { extractImageKeywords, insertImagesIntoArticle, getCachedImages, cacheImages } = await import("../../lib/ai/draw");
+      const drawCfg = useDrawConfig.getState().config;
+      
+      // Check cache first (内容哈希缓存)
+      const cacheConfig = { model: drawCfg.model, style: drawCfg.style, size: drawCfg.size || "1024x1024", count };
+      const cached = getCachedImages(docText, cacheConfig);
+      if (cached && cached.length > 0) {
+        const newContent = insertImagesIntoArticle(docText, cached.map((c: any) => ({ path: c.path, altText: c.altText, targetSectionTitle: c.sectionTitle })));
+        const { saveArticleContent } = await import("../../lib/storage/articles");
+        await saveArticleContent(articleId, newContent);
+        if ((window as any).__setEditorContent) {
+          (window as any).__setEditorContent(newContent);
+        }
+        emit("image-gen-complete", { articleId, count: cached.length });
+        setGenerating(false);
+        onClose();
+        return;
+      }
+      
+      emit("image-gen-start", { articleId, total: count });
+      
+      const { tryInvoke } = await import("../../lib/bridge/tauri");
+      const { getProvidersSync } = await import("../../lib/storage/providerModels");
+      const { saveArticleContent } = await import("../../lib/storage/articles");
+
+      const imagePlans = await extractImageKeywords(docText, count);
+      if (imagePlans.length === 0) {
+        emit("image-gen-complete", { articleId, count: 0 });
+        setGenerating(false);
+        onClose();
+        return;
+      }
+
+      let providerId = "";
+      for (const p of getProvidersSync()) {
+        if (!p.enabled) continue;
+        if (p.models.some((m: any) => m.id === drawCfg.model)) {
+          providerId = p.id;
+          break;
+        }
+      }
+      if (!providerId) {
+        setError("请先在设置中配置图片生成模型");
+        setGenerating(false);
+        return;
+      }
+
+      const savedImages = [];
+      for (let i = 0; i < imagePlans.length; i++) {
+        emit("image-gen-progress", { articleId, index: i, total: imagePlans.length, path: "" });
+        try {
+          const prompt = imagePlans[i].keywords + (drawCfg.style ? ", " + drawCfg.style : "");
+          const res = await tryInvoke<any[]>("generate_image", {
+            providerId,
+            model: drawCfg.model,
+            prompt,
+            negativePrompt: drawCfg.negativePrompt || null,
+            size: drawCfg.size || null,
+            quality: null,
+            style: null,
+            n: 1,
+            articleId,
+            projectFolder: null,
+          });
+          if (res && res.length > 0) {
+            savedImages.push({ path: res[0].localPath, altText: imagePlans[i].alt_text, targetSectionTitle: imagePlans[i].section_title });
+          }
+        } catch (e) {
+          console.warn("生成图片失败:", e);
+        }
+      }
+
+      if (savedImages.length > 0) {
+        cacheImages(docText, cacheConfig, savedImages.map((v: any) => ({ path: v.path, altText: v.altText, sectionTitle: v.targetSectionTitle })));
+        const newContent = insertImagesIntoArticle(docText, savedImages);
+        await saveArticleContent(articleId, newContent);
+        if ((window as any).__setEditorContent) {
+          (window as any).__setEditorContent(newContent);
+        }
+        emit("image-gen-complete", { articleId, count: savedImages.length });
+      } else {
+        emit("image-gen-complete", { articleId, count: 0 });
+      }
+    } catch (e: any) {
+      setError(e?.message || "配图失败");
+    }
+    setGenerating(false);
+    onClose();
+  };
+
+  return (
+    <div className="toolbar-popover" style={{ width: 280, padding: 14 }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>🎨 AI 配图</div>
+      <div className="toolbar-popover__row">
+        <label className="set-label" style={{ flex: 1 }}>配图数量</label>
+        <input
+          className="mem-input"
+          type="number"
+          min={1}
+          max={6}
+          style={{ width: 64 }}
+          value={count}
+          onChange={e => setCount(Math.min(6, Math.max(1, parseInt(e.target.value) || 1)))}
+        />
+      </div>
+      {error && <div style={{ color: '#e53935', fontSize: 12, margin: '6px 0' }}>{error}</div>}
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        <button className="btn btn--small" onClick={onClose}>取消</button>
+        <button className="btn btn--small btn--primary" onClick={handleGenerate} disabled={generating}>
+          {generating ? "生成中…" : "✨ 生成配图"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Toolbar ──
 export function Toolbar({
   onModeSwitch,
@@ -207,6 +346,7 @@ export function Toolbar({
   onToggleSidebar?: () => void;}) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
+  const [drawOpen, setDrawOpen] = useState(false);
   const [highlightOpen, setHighlightOpen] = useState(false);
   const [headingOpen, setHeadingOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -221,7 +361,7 @@ export function Toolbar({
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest(".toolbar-popover") && !target.closest(".toolbar-dropdown-btn")) {
-        setLinkOpen(false); setImageOpen(false); setHighlightOpen(false);
+        setLinkOpen(false); setImageOpen(false); setHighlightOpen(false); setDrawOpen(false);
         setHeadingOpen(false); setMoreOpen(false);
       }
     };
@@ -237,6 +377,7 @@ export function Toolbar({
     switch (name) {
       case "link": setLinkOpen((o) => !o); break;
       case "image": setImageOpen((o) => !o); break;
+      case "draw": setDrawOpen((o) => !o); break;
       case "highlight": setHighlightOpen((o) => !o); break;
       case "heading": setHeadingOpen((o) => !o); break;
       case "more": setMoreOpen((o) => !o); break;
