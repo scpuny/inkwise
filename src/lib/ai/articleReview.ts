@@ -20,6 +20,8 @@ export interface ArticleReview {
   summary: string;
   modelUsed: string;
   styleId?: string;
+  /** Content hash for cache validation */
+  contentHash?: string;
 }
 
 export interface DimensionMeta {
@@ -114,6 +116,36 @@ function buildDimensionOutputHint(dimensions: DimensionMeta[]): string {
 
 /* ─── 段落工具 ─── */
 
+
+/* ─── 缓存工具 ─── */
+
+/** Simple string hash for content comparison */
+export function contentHash(text: string): string {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return "h" + Math.abs(hash).toString(36);
+}
+
+/**
+ * 如果文章内容未变，返回缓存的审阅结果
+ */
+export async function getCachedReviewIfUnchanged(
+  articleId: string,
+  content: string,
+): Promise<ArticleReview | null> {
+  const cached = await loadArticleReview(articleId);
+  if (!cached) return null;
+  const current = contentHash(content);
+  if (cached.contentHash === current) {
+    return cached;
+  }
+  return null;
+}
+
 export function splitIntoParagraphs(content: string): { index: number; text: string; start: number; end: number }[] {
   const paragraphs: { index: number; text: string; start: number; end: number }[] = [];
   const parts = content.split(/\n{2,}/);
@@ -138,11 +170,19 @@ export async function generateArticleReview(
     title?: string;
     description?: string;
     styleId?: string;
+    /** Skip cache, force re-evaluation */
+    forceRefresh?: boolean;
   },
 ): Promise<ArticleReview> {
   const providers = getProvidersSync();
   const provider = providers.find((p) => p.enabled && p.models.length > 0);
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
+  // Check cache unless forceRefresh
+  if (!options?.forceRefresh) {
+    const cached = await getCachedReviewIfUnchanged(articleId, content);
+    if (cached) return cached;
+  }
 
   const model = provider.models[0]?.id ?? '';
   const style = options?.styleId ? getStyle(options.styleId) : undefined;
@@ -217,6 +257,7 @@ ${outputHint}${styleContext}`;
     summary: data.summary || "",
     modelUsed: model,
     styleId: options?.styleId,
+    contentHash: contentHash(content),
   };
 }
 
