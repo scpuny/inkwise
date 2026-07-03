@@ -12800,6 +12800,15 @@ body {
   min-height: 0;
 }
 
+.agent-panel__tab--flash {
+  animation: tab-flash .6s ease-in-out 3
+}
+
+@keyframes tab-flash {
+  0%, 100% { background: transparent; }
+  50% { background: var(--sidebar-active); }
+}
+
 .agent-panel__body::-webkit-scrollbar {
   width: 6px;
 }

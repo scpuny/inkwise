@@ -70,6 +70,13 @@ export interface ProjectExploringDoneDetail {
   message?: string;
 }
 
+// ── Review Complete Event ──
+
+export interface ReviewCompleteDetail {
+  articleId: string;
+  summary?: string;
+}
+
 // ── Image Generation Events ──
 
 export interface ImageGenStartDetail {
@@ -113,7 +120,8 @@ export type EventBusKey =
   | "image-gen-complete"
   | "image-gen-error"
   | "writing-skill-changed"
-  | "project-exploring";
+  | "project-exploring"
+  | "review-complete";
 
 export interface EventBusMap {
   "article-theme-changed": void;
@@ -136,4 +144,5 @@ export interface EventBusMap {
   "image-gen-error": ImageGenErrorDetail;
   "writing-skill-changed": string;
   "project-exploring": ProjectExploringStartDetail | ProjectExploringProgressDetail | ProjectExploringDoneDetail;
+  "review-complete": ReviewCompleteDetail;
 }

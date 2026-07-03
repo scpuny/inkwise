@@ -26,6 +26,7 @@ import type { AgentSession } from "../../lib/ai/agent";
 import { getSkillDisplayLabel, useAgent } from "../../lib/ai/agent";
 import { HistoryPanel } from "./HistoryPanel";
 import { ReviewPanel } from "./ReviewPanel";
+import { on } from "../../lib/events/eventBus";
 
 /* ─── Tab 定义 ─── */
 type TabId = "chat" | "history" | "review";
@@ -48,10 +49,22 @@ export function AgentPanel() {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [flashReview, setFlashReview] = useState(false);
+
   // Auto-scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions]);
+
+  // Auto-switch to review tab when review completes
+  useEffect(() => {
+    const unsub = on("review-complete", () => {
+      setPanelTab("review");
+      setFlashReview(true);
+      setTimeout(() => setFlashReview(false), 2000);
+    });
+    return () => unsub();
+  }, [setPanelTab]);
 
   if (!panelOpen) return null;
 
@@ -75,8 +88,11 @@ export function AgentPanel() {
             key={tab.id}
             role="tab"
             aria-selected={panelTab === tab.id}
-            className={`agent-panel__tab${panelTab === tab.id ? " agent-panel__tab--active" : ""}`}
-            onClick={() => setPanelTab(tab.id)}
+            className={`agent-panel__tab${panelTab === tab.id ? " agent-panel__tab--active" : ""}${tab.id === "review" && flashReview ? " agent-panel__tab--flash" : ""}`}
+            onClick={() => {
+              setPanelTab(tab.id);
+              if (tab.id === "review") setFlashReview(false);
+            }}
           >
             {tab.icon}
             <span>{tab.label}</span>

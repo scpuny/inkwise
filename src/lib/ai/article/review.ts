@@ -4,6 +4,7 @@
 import { getProvidersSync } from "../../storage/providerModels";
 import { sendChat } from "../ai";
 import { getStyle } from "../skill/styles";
+import { emit } from "../../events/eventBus";
 
 /* ─── 类型 ─── */
 
@@ -249,6 +250,11 @@ ${outputHint}${styleContext}`;
   for (const d of dimensions) {
     dims[d.id] = data[d.id] || { rating: "良" as const, comment: "无法评估", suggestion: "" };
   }
+
+  // Notify that review is complete (for auto-switch to review tab, etc.)
+  try {
+    emit("review-complete", { articleId, summary: data.summary || undefined });
+  } catch { /* inline event not critical */ }
 
   return {
     articleId,

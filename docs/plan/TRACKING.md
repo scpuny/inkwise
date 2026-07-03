@@ -107,7 +107,7 @@
 | 2.3.6 | Sidebar 增加 tab 切换（目录/大纲/项目） | `Sidebar.tsx`, `styles.css`, `ProjectPanel.tsx` | 🟢 | — | 2026-07-03 | 三 tab（目录/大纲/项目）+ ProjectPanel 卡片 + 底部图标按钮 |
 | 2.3.7 | 阶段切换引导对话框 | `PhaseGuideDialog.tsx`, `BlueprintEditor.tsx` | 🟢 | — | 2026-07-03 | 首次切换阶段弹出 PhaseGuideDialog 说明四阶段作用 |
 | 2.3.8 | Toolbar hover 显示键盘快捷键 | `Toolbar.tsx` | 🟢 | — | 2026-07-03 | ToolBtn 新增 shortcut prop, 显示 ⌘B/⌘I/⌘U/⌘Z 等 10+ 快捷键 |
-| 2.3.9 | 审阅完成后自动切换到评估 tab | `AgentPanel.tsx` | 🔴 | — | — | 可在浮动层闪烁提示 |
+| 2.3.9 | 审阅完成后自动切换到评估 tab | `AgentPanel.tsx`, `events.ts`, `review.ts` | 🟢 | — | 2026-07-03 | 新增 review-complete 事件, auto-switch + tab-flash 动画 |
 | 2.3.10 | StartupSplash 增加引导步骤 | `StartupSplash.tsx` | 🔴 | — | — | 示例文章/快捷键 |
 | 2.3.11 | 状态栏精简（默认只显示字数+保存+模型） | `StatusBar.tsx` | 🔴 | — | — | — |
 | 2.3.12 | InlineToolbar 增加 AI 快捷动作（润色/改写/翻译） | `InlineToolbar.tsx` | 🔴 | — | — | 选中文字后弹出 |
@@ -228,7 +228,7 @@
 | Sprint | 总功能点 | 🟢 完成 | 🟡 进行中 | 🔴 未开始 | ⏸ 暂停 | 完成率 |
 |--------|---------|---------|-----------|-----------|--------|--------|
 | S1: 核心修复 | 23 | 23 | 0 | 0 | 0 | 100% |
-| S2: 架构+UX | 29 | 25 | 0 | 8 | 0 | 72% |
+| S2: 架构+UX | 29 | 26 | 0 | 7 | 0 | 76% |
 | S3: 智能增强 | 18 | 0 | 0 | 18 | 0 | 0% |
 | S4: 体验优化 | 16 | 0 | 0 | 15 | 1 | 0% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
