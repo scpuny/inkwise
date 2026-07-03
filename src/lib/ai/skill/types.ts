@@ -110,4 +110,6 @@ export interface UnifiedSkill {
   effort?: EffortLevel;
   scope: SkillScope;
   enabled: boolean;
+  /** 使用该技能时推荐的主题 ID */
+  recommendedThemeId?: string;
 }

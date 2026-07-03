@@ -16,6 +16,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "rewrite".into(),
@@ -28,6 +29,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("high".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "polish".into(),
@@ -40,6 +42,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("low".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "translate".into(),
@@ -52,6 +55,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("high".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "academic".into(),
@@ -64,6 +68,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("high".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "creative".into(),
@@ -76,6 +81,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "summary".into(),
@@ -88,6 +94,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("low".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "outline".into(),
@@ -100,6 +107,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "novel".into(),
@@ -112,6 +120,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("high".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "headline".into(),
@@ -124,6 +133,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "email".into(),
@@ -136,6 +146,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "keyword-extract".into(),
@@ -148,6 +159,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("low".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "readability".into(),
@@ -160,6 +172,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
         Skill {
             name: "citation".into(),
@@ -172,6 +185,7 @@ pub fn builtin_skills() -> Vec<Skill> {
             model: None,
             effort: Some("medium".into()),
             enabled: true,
+            recommended_theme_id: None,
         },
     ]
 }
@@ -189,6 +203,7 @@ pub struct UnifiedSkillBuilder {
     context_sources: Vec<SkillContextSource>,
     model: Option<String>,
     effort: Option<EffortLevel>,
+    recommended_theme_id: Option<String>,
 }
 
 impl UnifiedSkillBuilder {
@@ -204,6 +219,7 @@ impl UnifiedSkillBuilder {
             context_sources: Vec::new(),
             model: None,
             effort: None,
+            recommended_theme_id: None,
         }
     }
 
@@ -247,6 +263,11 @@ impl UnifiedSkillBuilder {
         self
     }
 
+    pub fn recommended_theme(mut self, tid: &str) -> Self {
+        self.recommended_theme_id = Some(tid.to_string());
+        self
+    }
+
     pub fn build(&self) -> UnifiedSkill {
         UnifiedSkill {
             name: self.name.clone(),
@@ -259,6 +280,7 @@ impl UnifiedSkillBuilder {
             context_sources: self.context_sources.clone(),
             model: self.model.clone(),
             effort: self.effort.clone(),
+            recommended_theme_id: self.recommended_theme_id.clone(),
             scope: SkillScope::Builtin,
             enabled: true,
         }
@@ -273,67 +295,78 @@ pub fn unified_builtin_skills() -> Vec<UnifiedSkill> {
             .body("平衡得体的通用写作风格，适合大多数场景。要求语言流畅、逻辑清晰。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("clean")
+.build(),
         UnifiedSkillBuilder::new("academic", "学术严谨")
             .icon("🎓")
             .body("严谨的学术写作风格。要求逻辑严密、论证充分、使用规范的学术用语。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("elegant")
+.build(),
         UnifiedSkillBuilder::new("blog", "博客随笔")
             .icon("📝")
             .body("轻松自然的博客风格。娓娓道来，有个性有态度，注重可读性和互动感。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("modern")
+.build(),
         UnifiedSkillBuilder::new("creative", "创意文学")
             .icon("🎨")
             .body("富有文学性和想象力的创意写作。注重修辞、节奏感和感染力。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("warm-clay")
+.build(),
         UnifiedSkillBuilder::new("media-viral", "爆款新媒体")
             .icon("🔥")
             .body("吸引眼球的新媒体风格。短句、强节奏、高信息密度，适合社交媒体传播。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("toutiao-hot")
+.build(),
         UnifiedSkillBuilder::new("tech-tutorial", "技术教程")
             .icon("💻")
             .body("清晰易懂的技术教程风格。注重实操、代码示例和逐步讲解，兼顾专业性与易读性。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("clean")
+.build(),
         UnifiedSkillBuilder::new("business", "商务专业")
             .icon("💼")
             .body("专业得体的商务写作风格。简洁、高效、目标导向，适合商业沟通和报告。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("modern")
+.build(),
         UnifiedSkillBuilder::new("news", "新闻资讯")
             .icon("📰")
             .body("客观中立的新闻写作风格。倒金字塔结构，事实先行，信息准确。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("toutiao-default")
+.build(),
         UnifiedSkillBuilder::new("marketing", "营销文案")
             .icon("📢")
             .body("有说服力的营销文案风格。强调卖点、转化率和行动号召。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("magazine")
+.build(),
         UnifiedSkillBuilder::new("product-doc", "产品文档")
             .icon("📋")
             .body("清晰准确的产品文档风格。结构清晰、术语统一、用户导向。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("modern")
+.build(),
         UnifiedSkillBuilder::new("review", "评论测评")
             .icon("⭐")
             .body("公正有见地的评论风格。分析优缺点，给出明确结论和建议。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("paper")
+.build(),
 
         // ─── 动作类（Action Skills）───
         UnifiedSkillBuilder::new("continue-writing", "续写")
@@ -377,7 +410,8 @@ pub fn unified_builtin_skills() -> Vec<UnifiedSkill> {
             .body("为文章撰写有信息量的标题。控制在 15-25 字，突出核心卖点。")
             .run_as(RunAs::Inline)
             .tools(vec![ToolCapability::ReadDocument])
-            .build(),
+                        .recommended_theme("toutiao-hot")
+.build(),
         UnifiedSkillBuilder::new("email", "邮件")
             .icon("📧")
             .body("撰写正式邮件。格式完整规范，语气恰当，内容清晰有条理。")
@@ -395,7 +429,8 @@ pub fn unified_builtin_skills() -> Vec<UnifiedSkill> {
             .body("优化文章可读性：拆解长句、简化词汇、增加过渡、优化分段。")
             .run_as(RunAs::Subagent)
             .tools(vec![ToolCapability::ReadDocument, ToolCapability::WriteDocument])
-            .build(),
+                        .recommended_theme("clean")
+.build(),
 
         // ─── 项目感知型技能（Project-Aware Skills）───
         UnifiedSkillBuilder::new("project-changelog", "项目变动报告")

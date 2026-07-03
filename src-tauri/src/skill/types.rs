@@ -102,6 +102,7 @@ pub struct Skill {
     pub model: Option<String>,
     pub effort: Option<String>,
     pub enabled: bool,
+    pub recommended_theme_id: Option<String>,
 }
 
 // ─── Unified Skill Types (v2.0.0) ───
@@ -231,4 +232,5 @@ pub struct UnifiedSkill {
     pub effort: Option<EffortLevel>,
     pub scope: SkillScope,
     pub enabled: bool,
+    pub recommended_theme_id: Option<String>,
 }

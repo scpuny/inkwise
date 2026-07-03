@@ -47,6 +47,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "你是一位标题专家。生成简洁有力的标题。\n\n## 规则\n- 标题直接反映内容核心\n- 控制在 8-20 字\n- 直接输出，不要前缀和引号", temperature: 0.7 },
       { phase: "writing", systemPrompt: "以通用写作风格撰写内容。\n\n## 要求\n- 段落 3-5 行\n- 句式多样\n- 语气自然得体\n- 遵循 Markdown 格式", temperature: 0.7, maxTokens: 4096 },
     ],
+    recommendedThemeId: "clean",
   }),
 
   u({
@@ -58,6 +59,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为研究论文生成严谨、准确的标题。\n\n## 规则\n- 标题直接反映研究内容\n- 使用规范学术术语\n- 10-25 字", temperature: 0.4 },
       { phase: "writing", systemPrompt: "撰写严谨、客观的学术内容。\n\n## 语言\n- 客观第三人称\n- 句子控制在 40 字以内\n\n## 格式\n- 标题从 ## 开始", temperature: 0.5, maxTokens: 4096 },
     ],
+    recommendedThemeId: "elegant",
   }),
 
   u({
@@ -69,6 +71,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为博客生成有「钩子」的标题。\n\n## 规则\n- 设问、反差、数字、具体收益\n- 10-22 字", temperature: 0.85 },
       { phase: "writing", systemPrompt: "以博客风格撰写。\n\n## 开篇\n- 用具体场景或个人经历切入\n\n## 语气\n- 用「你」拉近距离\n\n## 结构\n- 段落 3-5 行\n- 长短段交替", temperature: 0.8, maxTokens: 4096 },
     ],
+    recommendedThemeId: "modern",
   }),
 
   u({
@@ -80,6 +83,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为文学作品生成诗意标题。\n\n## 规则\n- 有意境、有画面感\n- 4-15 字", temperature: 0.9 },
       { phase: "writing", systemPrompt: "以创意文学风格撰写。\n\n## 开篇\n- 从具体意象或场景切入\n\n## 语言\n- 注重节奏感\n- 善用比喻、拟人\n\n## 叙事\n- Show, don't tell", temperature: 0.9, maxTokens: 4096 },
     ],
+    recommendedThemeId: "warm-clay",
   }),
 
   u({
@@ -91,6 +95,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "生成高传播标题。\n\n## 规则\n- 制造好奇缺口\n- 可使用数字、对比、反转\n- 10-26 字", temperature: 0.9 },
       { phase: "writing", systemPrompt: "以社交传播风格撰写。\n\n## 开头\n- 冲击性事实或反常识观点\n\n## 结构\n- 段落 2-4 行\n- 结尾引发评论或转发", temperature: 0.85, maxTokens: 4096 },
     ],
+    recommendedThemeId: "toutiao-hot",
   }),
 
   u({
@@ -103,6 +108,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为技术教程生成清晰标题。\n\n## 规则\n- 包含核心技术点\n- 8-22 字", temperature: 0.5 },
       { phase: "writing", systemPrompt: "以技术教程风格撰写。\n\n## 结构\n- 步骤式推进\n- 指出常见坑点\n\n## 代码\n- 代码块标注语言\n- 核心逻辑加注释", temperature: 0.6, maxTokens: 4096 },
     ],
+    recommendedThemeId: "clean",
   }),
 
   u({
@@ -114,6 +120,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为商业内容生成有说服力的标题。\n\n## 规则\n- 突出价值主张\n- 10-22 字", temperature: 0.8 },
       { phase: "writing", systemPrompt: "以商业文案风格撰写。\n\n## 结构\n- 吸引→建立信任→说服→转化\n\n## 语言\n- 用数据、案例支撑\n\n## 结尾\n- 明确 CTA", temperature: 0.75, maxTokens: 4096 },
     ],
+    recommendedThemeId: "modern",
   }),
 
   u({
@@ -125,6 +132,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为新闻报道生成客观准确标题。\n\n## 规则\n- 主语+谓语+宾语直述结构\n- 10-22 字", temperature: 0.4 },
       { phase: "writing", systemPrompt: "以新闻报道风格撰写。\n\n## 结构\n- 倒金字塔结构\n- 最重要信息在最前面\n\n## 语言\n- 客观中立\n- 引用标明来源", temperature: 0.5, maxTokens: 4096 },
     ],
+    recommendedThemeId: "toutiao-default",
   }),
 
   u({
@@ -136,6 +144,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为营销内容生成高转化标题。\n\n## 规则\n- 突出核心卖点和用户利益\n- 8-18 字", temperature: 0.85 },
       { phase: "writing", systemPrompt: "以营销文案风格撰写。\n\n## 结构\n- 吸引注意→激发兴趣→建立信任→促成行动\n\n## 语言\n- 用「你」拉近距离\n\n## 结尾\n- 明确 CTA", temperature: 0.75, maxTokens: 4096 },
     ],
+    recommendedThemeId: "magazine",
   }),
 
   u({
@@ -148,6 +157,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为产品文档生成清晰标题。\n\n## 规则\n- 直接反映文档内容\n- 6-18 字", temperature: 0.3 },
       { phase: "writing", systemPrompt: "以产品文档风格撰写。\n\n## 语气\n- 客观、准确、中立\n\n## 结构\n- 概述→快速开始→核心概念→操作指南\n\n## 格式\n- 代码块标注语言\n- 表格用于参数说明", temperature: 0.3, maxTokens: 4096 },
     ],
+    recommendedThemeId: "modern",
   }),
 
   u({
@@ -159,6 +169,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
       { phase: "title", systemPrompt: "为评论文章生成有态度的标题。\n\n## 规则\n- 体现核心观点或评价立场\n- 8-20 字", temperature: 0.8 },
       { phase: "writing", systemPrompt: "以评论风格撰写。\n\n## 开篇\n- 给出总体评价\n\n## 结构\n- 多维度分析\n- 具体例证支撑\n\n## 语言\n- 精准的鉴赏术语", temperature: 0.75, maxTokens: 4096 },
     ],
+    recommendedThemeId: "paper",
   }),
 
   // ── 动作型（源自 Rust builtin_skills） ──
@@ -184,6 +195,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
     runAs: "subagent", effort: "high",
     allowedTools: ["read_document", "write_document", "git_diff", "read_project_files", "list_project_files"],
     contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+    recommendedThemeId: "clean",
   }),
   u({
     name: "project-intro", description: "项目导读", icon: "🗺️",
@@ -191,6 +203,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
     runAs: "subagent", effort: "medium",
     allowedTools: ["read_document", "write_document", "read_project_files", "list_project_files"],
     contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+    recommendedThemeId: "clean",
   }),
   u({
     name: "impact-analysis", description: "变更影响评估", icon: "🔍",
@@ -198,6 +211,7 @@ const BUILTIN_UNIFIED_SKILLS: UnifiedSkill[] = [
     runAs: "subagent", effort: "high",
     allowedTools: ["read_document", "write_document", "git_diff", "read_project_files", "list_project_files", "search_project_files"],
     contextSources: [{ sourceType: "project", label: "关联项目目录", required: true, maxTokens: 4000 }],
+    recommendedThemeId: "clean",
   }),
 ];
 

@@ -112,7 +112,7 @@ impl SkillStore {
             model: fm.model,
             effort: fm.effort,
             enabled: true,
-        })
+            recommended_theme_id: None,        })
     }
 
     pub fn find(&self, name: &str) -> Option<Skill> {
