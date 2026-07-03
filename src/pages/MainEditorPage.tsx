@@ -182,7 +182,7 @@ export default function MainEditorPage() {
             emit('reset-plan');
           }}
           onManageArticles={() => setManageOpen(true)}
-          outlineItems={outlineItems}
+          onOpenProject={() => setProjectPanelOpen(true)}          outlineItems={outlineItems}
           activeOutlineId={activeOutlineId ?? undefined}
           onOutlineSelect={handleOutlineSelect}
         />
