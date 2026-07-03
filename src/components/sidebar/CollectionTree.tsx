@@ -11,7 +11,6 @@ import {
   loadAllSeriesPlans, deleteSeriesPlan,
   type SeriesPlan,
 } from "../../lib/storage/collections";
-import { browserLoad } from "../../lib/storage/collections";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { usePanelStore } from "../../store/panelStore";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -196,9 +195,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // 监听外部变更（改名只写 localStorage，从 localStorage 读，不从 Tauri 拿旧数据）
   useEffect(() => {
     const handler = () => {
-      const cols = browserLoad<Collection[]>('inkwise-collections', []);
-      setCollections(cols);
-      refresh();
+      loadCollections().then(cols => {
+        setCollections(cols);
+        refresh();
+      });
     };
     return on("collections-changed", handler);
   }, [refresh]);

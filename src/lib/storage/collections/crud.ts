@@ -7,10 +7,6 @@ import { useThemeStore } from "../../../store/themeStore";
 import type { Article, Collection, TrashItem } from "./types";
 import { genId, browserLoad, browserSave } from "./internal";
 
-// localStorage 精确读写（不走 Tauri GetCollections/SetCollections）
-const loadFromStorage = <T>(key: string, fallback: T): T => browserLoad(key, fallback);
-const saveToStorage = <T>(key: string, data: T): void => { browserSave(key, data); };
-
 const COLLECTIONS_KEY = "inkwise-collections";
 const TRASH_KEY = "inkwise-trash";
 const SEEDED_KEY = "inkwise-seeded-v1";
@@ -146,7 +142,7 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
-  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
+  const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (c) { c.title = title; await saveCollections(all); }
 }
@@ -156,14 +152,13 @@ export async function updateCollection(
   data: { title?: string; description?: string; coverImage?: string; linkedFolder?: string }
 ): Promise<void> {
   // 精确更新合集信息，不触及其他集合和文章
-  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
+  const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (!c) return;
   if (data.title !== undefined) c.title = data.title;
   if (data.description !== undefined) c.description = data.description || undefined;
   if (data.coverImage !== undefined) c.coverImage = data.coverImage || undefined;
   if (data.linkedFolder !== undefined) c.linkedFolder = data.linkedFolder || undefined;
-  saveToStorage('inkwise-collections', all);
   await saveCollections(all);
 }
 

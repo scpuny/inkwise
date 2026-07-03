@@ -14,7 +14,7 @@ import {
   FileSearch,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, browserLoad, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -101,7 +101,7 @@ export function ArticleManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const cols = browserLoad<Collection[]>('inkwise-collections', []);
+      const cols = await loadCollections();
       console.log('[loadData] cols=%o', cols.map(c => ({id: c.id, title: c.title})));
       setCollections(cols);
 
@@ -201,13 +201,14 @@ export function ArticleManager({
   useEffect(() => {
     const unsub = on("collections-changed", () => {
       if (open) {
-        const cols = browserLoad<Collection[]>('inkwise-collections', []);
-        setCollections(cols);
-        // 同步 article 条目中的 collectionTitle
-        setArticles(prev => prev.map(a => {
-          const c = cols.find(x => x.id === a.collectionId);
-          return c ? { ...a, collectionTitle: c.title } : a;
-        }));
+        loadCollections().then(cols => {
+          setCollections(cols);
+          // 同步 article 条目中的 collectionTitle
+          setArticles(prev => prev.map(a => {
+            const c = cols.find(x => x.id === a.collectionId);
+            return c ? { ...a, collectionTitle: c.title } : a;
+          }));
+        });
       }
     });
     return unsub;

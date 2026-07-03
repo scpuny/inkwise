@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import {
   loadCollections, saveCollections, addCollection,
   renameCollection, removeCollection, updateCollection,
-  browserLoad, genId, type Collection
+  genId, type Collection
 } from "../../lib/storage/collections";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { emit } from "../../lib/events/eventBus";
@@ -18,11 +18,6 @@ export function useCollectionCrud() {
     return cols;
   }, []);
 
-  const reloadFromStorage = useCallback(() => {
-    const cols = browserLoad<Collection[]>("inkwise-collections", []);
-    setCollections(cols);
-    return cols;
-  }, []);
 
   const handleAddCollection = useCallback(async (title: string): Promise<Collection | null> => {
     if (!title.trim()) return null;
@@ -79,7 +74,7 @@ export function useCollectionCrud() {
 
   return {
     collections, setCollections,
-    loadCols, reloadFromStorage,
+    loadCols,
     handleAddCollection, handleRenameCollection,
     handleDeleteCollection, handleSaveCollection,
   };
