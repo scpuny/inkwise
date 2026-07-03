@@ -164,7 +164,45 @@ export async function updateCollection(
 export async function removeCollection(id: string): Promise<void> {
   const all = await loadCollections();
   const idx = all.findIndex((x) => x.id === id);
-  if (idx >= 0) { all.splice(idx, 1); await saveCollections(all); }
+  if (idx < 0) return;
+  const col = all[idx];
+  const articleIds = col.articles.map(a => a.id);
+
+  // 级联清理：每篇文章的内容/元数据/图片/SQLite/向量
+  for (const articleId of articleIds) {
+    try {
+      const { deleteArticleContent } = await import("../../storage/articles");
+      await deleteArticleContent(articleId);
+    } catch { /* non-critical */ }
+    try {
+      const { deleteAllVersions } = await import("../../storage/articleVersions");
+      await deleteAllVersions(articleId);
+    } catch { /* non-critical */ }
+    try {
+      if (isTauriEnv()) {
+        await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
+      }
+    } catch { console.warn("[removeCollection] DeleteArticleDb failed for " + articleId); }
+    try {
+      if (isTauriEnv()) {
+        await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
+      }
+    } catch { console.warn("[removeCollection] DeleteArticle failed for " + articleId); }
+    try { localStorage.removeItem('plan-draft-' + articleId); } catch { /* ignore */ }
+    // 🔮 向量分块清理（Sprint 3 实现后启用）
+    // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
+  }
+
+  // 删除合集本身
+  all.splice(idx, 1);
+  await saveCollections(all);
+
+  // SQLite 清理合集（Rust 端自动级联删除子文章记录）
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteCollectionDb, { id });
+    }
+  } catch { console.warn("[removeCollection] DeleteCollectionDb failed (non-critical cleanup)"); }
 }
 
 /* ─── 文章 CRUD ─── */

@@ -39,22 +39,17 @@ export function useCollectionCrud() {
 
   const handleDeleteCollection = useCallback(async (id: string) => {
     const addToast = useToastStore.getState().addToast;
-    const idx = collections.findIndex(c => c.id === id);
-    if (idx < 0) return;
-    const updated = [...collections];
-    updated.splice(idx, 1);
     try {
-      await saveCollections(updated);
+      await removeCollection(id);
+      // 重新加载合集列表
+      const updated = await loadCollections();
       setCollections(updated);
-      if (isTauriEnv()) {
-        await tryInvoke(TauriCommands.DeleteCollectionDb, { id });
-      }
       emit("collections-changed");
-      addToast({ type: "success", message: "合集已删除" });
+      addToast({ type: "success", message: "合集已删除（含所有子文章）" });
     } catch (e) {
       addToast({ type: "error", message: "删除合集失败：" + (e as Error).message });
     }
-  }, [collections]);
+  }, []);
 
   const handleSaveCollection = useCallback(async (
     title: string, description: string, coverImage: string, linkedFolder?: string,
