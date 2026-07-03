@@ -220,6 +220,7 @@ export default function MainEditorPage() {
           onEnterEditor={handleEnterEditor}
           onToggleFocus={() => setFocusMode(!focusMode)}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          saveState={saveState}
           onSaveStateChange={setSaveState}
           onPhaseChange={handlePhaseChange}
           editorMode={editorFormat}

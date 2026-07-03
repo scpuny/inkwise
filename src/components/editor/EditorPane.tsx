@@ -63,8 +63,10 @@ export function EditorPane({
   onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
+  saveState: saveStateProp,
   onToggleSidebar,}: {
   hasActiveArticle: boolean;
+  saveState?: "idle" | "saving" | "saved" | "error";
   activeArticleId?: string | null;
   activeCollectionId?: string | null;
   onNewDoc?: (collectionId?: string) => Promise<void>;
@@ -1398,7 +1400,25 @@ ${seriesCtx}`;
             showHeadingNumber={showHeadingNumber}
           />
           <InlineToolbar />
-          <AICommandBar />        </div>
+          <AICommandBar />
+          {/* Save state indicator: green dot / spinning icon */}
+          {saveStateProp && saveStateProp !== "idle" && (
+            <div className="editor-save-indicator" title={saveStateProp === "saving" ? "保存中…" : saveStateProp === "saved" ? "已保存" : saveStateProp === "error" ? "保存失败" : ""}>
+              {saveStateProp === "saving" ? (
+                <svg className="editor-save-indicator__spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 11-6.219-8.56" />
+                </svg>
+              ) : saveStateProp === "saved" ? (
+                <span className="editor-save-indicator__dot editor-save-indicator__dot--saved" />
+              ) : (
+                <span className="editor-save-indicator__dot editor-save-indicator__dot--error" />
+              )}
+              <span className="editor-save-indicator__label">
+                {saveStateProp === "saving" ? "保存中" : saveStateProp === "saved" ? "已保存" : "保存失败"}
+              </span>
+            </div>
+          )}
+        </div>
       ) : folderProjectName ? (
         <div className="editor-pane__startup-split">
           <div className="editor-pane__project-panel">
