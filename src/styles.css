@@ -4659,6 +4659,48 @@ body {
 }
 
 @keyframes statusbar-pulse {
+
+.statusbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.statusbar__toggle:hover {
+  background: var(--bg-hover, rgba(128,128,128,0.08));
+  border-color: var(--border-soft);
+}
+
+.stat__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.stat__progress-bar {
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-soft);
+  overflow: hidden;
+  display: inline-block;
+}
+.stat__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.85); }
 }
