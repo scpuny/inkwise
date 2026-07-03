@@ -6,12 +6,14 @@ mod db;
 mod project_indexer;
 mod platform;
 mod image_gen;
+mod vector;
 use platform::Platform;
 use platform::wechat::WeChat;
 
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
 use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
+use vector::{VectorSearchResult, IndexResult, ChunkStrategy};
 use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -1528,6 +1530,54 @@ fn stop_watching_project(state: tauri::State<'_, AppState>) -> Result<(), String
     let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
     *handle = None;
     Ok(())
+}
+
+// ─── Vector Embedding & Search ───
+
+#[tauri::command]
+fn vector_search(
+    state: tauri::State<'_, AppState>,
+    query: String,
+    article_id: Option<String>,
+    k: Option<usize>,
+    threshold: Option<f32>,
+) -> Result<Vec<VectorSearchResult>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    // 暂时返回空（需要 embedder 模块初始化后才能工作）
+    // TODO: 将来通过全局 embedder 实例调用真正的语义搜索
+    let _ = (query, article_id, k, threshold, db);
+    Ok(Vec::new())
+}
+
+#[tauri::command]
+fn index_article_vector(
+    state: tauri::State<'_, AppState>,
+    article_id: String,
+    _strategy: Option<String>,
+) -> Result<IndexResult, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    // 暂时返回空结果（需要 embedder 初始化）
+    let _ = (article_id, db);
+    Ok(IndexResult { total: 0, indexed: 0, skipped: 0, errors: 0 })
+}
+
+#[tauri::command]
+fn delete_article_vector(
+    state: tauri::State<'_, AppState>,
+    article_id: String,
+) -> Result<(), String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    crate::vector::delete_article_index(db, &article_id)
+}
+
+#[tauri::command]
+fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    db.vector_chunk_count().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

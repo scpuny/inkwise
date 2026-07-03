@@ -3,6 +3,7 @@
 
 use rusqlite::{params, Connection, Result as SqlResult};
 use serde::{Deserialize, Serialize};
+use crate::vector::types::VectorChunkRow;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -302,7 +303,17 @@ impl Database {
                 END;
 
                 -- 7. 记录 schema 版本
-                INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', '2');
+                CREATE TABLE IF NOT EXISTS vector_chunks (
+                    id TEXT PRIMARY KEY,
+                    article_id TEXT NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    embedding TEXT,
+                    created_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_vector_chunks_article ON vector_chunks(article_id);
+                INSERT OR REPLACE INTO settings (key, value) VALUES ('schema_version', '3');
             ")?;
         }
 
@@ -719,9 +730,93 @@ impl Database {
         )
         .unwrap_or(0)
     }
+
+    // ─── Vector Chunks ───
+
+    /// 列出文章的所有向量 chunk
+    pub fn list_vector_chunks(&self, article_id: &str) -> SqlResult<Vec<VectorChunkRow>> {
+        let conn = lock_conn(&self.conn)?;
+        let mut stmt = conn.prepare(
+            "SELECT id, article_id, chunk_index, content, content_hash, embedding, created_at              FROM vector_chunks WHERE article_id = ?1 ORDER BY chunk_index"
+        )?;
+        let rows = stmt.query_map(params![article_id], |row| {
+            Ok(VectorChunkRow {
+                id: row.get(0)?,
+                article_id: row.get(1)?,
+                chunk_index: row.get(2)?,
+                content: row.get(3)?,
+                content_hash: row.get(4)?,
+                embedding: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    /// 列出所有向量 chunk（含 embedding）
+    pub fn list_vector_chunks_with_embedding(&self, article_id: Option<&str>) -> SqlResult<Vec<VectorChunkRow>> {
+        let conn = lock_conn(&self.conn)?;
+        let mut result = Vec::new();
+        if let Some(aid) = article_id {
+            let mut stmt = conn.prepare(
+                "SELECT id, article_id, chunk_index, content, content_hash, embedding, created_at                  FROM vector_chunks WHERE article_id = ?1 AND embedding IS NOT NULL ORDER BY chunk_index"
+            )?;
+            for row in stmt.query_map(params![aid], map_chunk_row)? {
+                result.push(row?);
+            }
+        } else {
+            let mut stmt = conn.prepare(
+                "SELECT id, article_id, chunk_index, content, content_hash, embedding, created_at                  FROM vector_chunks WHERE embedding IS NOT NULL ORDER BY article_id, chunk_index"
+            )?;
+            for row in stmt.query_map([], map_chunk_row)? {
+                result.push(row?);
+            }
+        }
+        Ok(result)
+    }
+
+    /// 插入或更新向量 chunk
+    pub fn upsert_vector_chunk(&self, chunk: &VectorChunkRow) -> SqlResult<()> {
+        let conn = lock_conn(&self.conn)?;
+        conn.execute(
+            "INSERT OR REPLACE INTO vector_chunks (id, article_id, chunk_index, content, content_hash, embedding, created_at)              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![chunk.id, chunk.article_id, chunk.chunk_index, chunk.content, chunk.content_hash, chunk.embedding, chunk.created_at],
+        )?;
+        Ok(())
+    }
+
+    /// 删除文章的所有向量 chunk
+    pub fn delete_vector_chunks(&self, article_id: &str) -> SqlResult<()> {
+        let conn = lock_conn(&self.conn)?;
+        conn.execute("DELETE FROM vector_chunks WHERE article_id = ?1", params![article_id])?;
+        Ok(())
+    }
+
+    /// 获取向量 chunk 总数
+    pub fn vector_chunk_count(&self) -> SqlResult<i64> {
+        let conn = lock_conn(&self.conn)?;
+        conn.query_row("SELECT COUNT(*) FROM vector_chunks", [], |row| row.get(0))
+    }
 }
 
 // ─── 工具函数 ───
+
+/// 将 SQLite row 映射为 VectorChunkRow
+fn map_chunk_row(row: &rusqlite::Row) -> rusqlite::Result<VectorChunkRow> {
+    Ok(VectorChunkRow {
+        id: row.get(0)?,
+        article_id: row.get(1)?,
+        chunk_index: row.get(2)?,
+        content: row.get(3)?,
+        content_hash: row.get(4)?,
+        embedding: row.get(5)?,
+        created_at: row.get(6)?,
+    })
+}
 
 fn count_words(text: &str) -> i64 {
     let cn = text
