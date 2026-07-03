@@ -2755,7 +2755,10 @@ body {
   color: var(--fg-faint);
   margin-top: 4px;
   line-height: 1.5
-}\.sidebar__section {
+}
+
+/* Section */
+.sidebar__section {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -14589,6 +14592,162 @@ body {
   border-color: var(--border-2);
 }
 
+/* Phase Guide Dialog */
+.phase-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000
+}
+
+.phase-guide {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,.25);
+  animation: float-in .2s ease-out
+}
+
+.phase-guide__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--fg)
+}
+
+.phase-guide__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center
+}
+
+.phase-guide__close:hover {
+  background: var(--bg-hover);
+  color: var(--fg)
+}
+
+.phase-guide__body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1
+}
+
+.phase-guide__intro {
+  font-size: var(--text-sm);
+  color: var(--fg-dim);
+  margin: 0 0 16px;
+  line-height: 1.5
+}
+
+.phase-guide__phases {
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.phase-guide__phase {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  position: relative
+}
+
+.phase-guide__phase--current {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-soft)
+}
+
+.phase-guide__phase--next {
+  background: var(--sidebar-active);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent)
+}
+
+.phase-guide__phase--done {
+  opacity: .55
+}
+
+.phase-guide__phase-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--accent);
+  border: 1px solid var(--border-soft)
+}
+
+.phase-guide__phase-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.phase-guide__phase-label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 6px
+}
+
+.phase-guide__phase-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--sidebar-active);
+  padding: 1px 6px;
+  border-radius: 4px
+}
+
+.phase-guide__phase-tip {
+  font-size: var(--text-xs);
+  color: var(--fg-dim);
+  line-height: 1.4
+}
+
+.phase-guide__arrow {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  margin: 0 4px
+}
+
+.phase-guide__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-soft)
+}
 /* Blueprint Form (basic tab) */
 .blueprint-form {
   display: flex;
