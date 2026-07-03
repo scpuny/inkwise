@@ -1,4 +1,6 @@
 // articleThemes.ts — 文章渲染主题系统
+import { isTauriEnv, tryInvoke, TauriCommands } from '../bridge/tauri';
+
 // 定义文章在导出/分享到各平台时的视觉风格
 // 每个平台有多套主题可选，通用主题适用于任何平台
 
@@ -470,10 +472,33 @@ export function loadCustomThemes(): ArticleTheme[] {
   }
 }
 
+/** Tauri 模式下从 Rust 后端加载自定义主题（异步，覆盖 localStorage） */
+export async function loadCustomThemesFromBackend(): Promise<void> {
+  if (!isTauriEnv()) return;
+  try {
+    const themes = await tryInvoke<ArticleTheme[]>(TauriCommands.ListCustomThemes);
+    if (Array.isArray(themes)) {
+      localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(themes));
+    }
+  } catch { /* ignore */ }
+}
+
+/** Tauri 模式下同步到 Rust 后端 */
+export async function saveCustomThemesToBackend(themes: ArticleTheme[]): Promise<void> {
+  if (!isTauriEnv()) return;
+  try {
+    await tryInvoke(TauriCommands.SaveCustomThemes, { themes });
+  } catch { /* ignore */ }
+}
+
 export function saveCustomThemes(themes: ArticleTheme[]): void {
   try {
     localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(themes));
   } catch {}
+  // Also persist to Rust backend (best effort, non-blocking)
+  if (isTauriEnv()) {
+    tryInvoke(TauriCommands.SaveCustomThemes, { themes }).catch(() => {});
+  }
 }
 
 export function getThemesByPlatform(platformId: string): ArticleTheme[] {

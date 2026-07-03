@@ -1,12 +1,13 @@
 // ThemesSection.tsx — 文章主题管理：预设/自定义/导入/编辑
 import { Check, FileText, Plus, X } from "lucide-react";
-import { useCallback, useState } from "react";
-import { isTauriEnv, tryInvoke } from "../../lib/bridge/tauri";
+import { useCallback, useEffect, useState } from "react";
+import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import {
   getAllThemes,
   isPresetTheme,
   loadCustomThemes,
   saveCustomThemes,
+  loadCustomThemesFromBackend,
   type ArticleTheme, type ArticleThemeVars
 } from "../../lib/theme/articleThemes";
 import { SettingsPage } from "./SettingsPageLayout";
@@ -16,6 +17,13 @@ export function ThemesSection() {
   const [customs, setCustoms] = useState<ArticleTheme[]>(loadCustomThemes());
   const [showEditor, setShowEditor] = useState(false);
   const [editTheme, setEditTheme] = useState<ArticleTheme | null>(null);
+
+  // 挂载时从 Rust 后端同步自定义主题
+  useEffect(() => {
+    loadCustomThemesFromBackend().then(() => {
+      setCustoms(loadCustomThemes());
+    });
+  }, []);
 
   const refresh = useCallback(() => {
     setCustoms(loadCustomThemes());
@@ -134,6 +142,7 @@ export function ThemesSection() {
                       const updated = customs.filter(c => c.id !== t.id);
                       saveCustomThemes(updated);
                       refresh();
+                      tryInvoke(TauriCommands.DeleteCustomTheme, { themeId: t.id }).catch(() => {});
                       window.location.reload();
                     }}>删除</button>
                   </>

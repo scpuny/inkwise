@@ -363,6 +363,29 @@ fn delete_writing_skill(state: tauri::State<AppState>, id: String) -> Result<(),
 }
 
 // ─── Skills ───
+#[tauri::command]
+fn list_custom_themes(state: tauri::State<AppState>) -> Result<Vec<serde_json::Value>, String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    Ok(store.load_custom_themes())
+}
+
+#[tauri::command]
+fn save_custom_themes(state: tauri::State<AppState>, themes: Vec<serde_json::Value>) -> Result<(), String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    store.save_custom_themes(&themes)
+}
+
+#[tauri::command]
+fn delete_custom_theme(state: tauri::State<AppState>, theme_id: String) -> Result<(), String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let themes = store.load_custom_themes();
+    let filtered: Vec<serde_json::Value> = themes.into_iter()
+        .filter(|t| t.get("id").and_then(|v| v.as_str()) != Some(&theme_id))
+        .collect();
+    store.save_custom_themes(&filtered)
+}
+
+
 
 fn get_skill_store(state: &AppState) -> Result<SkillStore, String> {
     let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -1836,7 +1859,9 @@ pub fn run() {
         list_writing_skills,
         save_writing_skill,
         delete_writing_skill,
-            get_collections,
+        list_custom_themes,
+        save_custom_themes,
+        delete_custom_theme,            get_collections,
             set_collections,
             get_trash,
             set_trash,

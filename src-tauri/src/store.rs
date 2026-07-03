@@ -442,6 +442,15 @@ impl DataStore {
     pub fn save_writing_skills(&self, skills: &[WritingSkill]) -> Result<(), String> {
         self.write_json("writing_skills", skills)
     }
+    pub fn load_custom_themes(&self) -> Vec<serde_json::Value> {
+        self.read_json("custom_themes").unwrap_or_default()
+    }
+
+    pub fn save_custom_themes(&self, themes: &[serde_json::Value]) -> Result<(), String> {
+        self.write_json("custom_themes", themes)
+    }
+
+
 
     pub fn load_article_content(&self, id: &str) -> Option<String> {
         let path = self.articles_dir.join(format!("{}.md", id));
