@@ -11,6 +11,8 @@ pub struct ArticleMeta {
     pub title: String,
     pub created_at: u64,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -197,6 +199,8 @@ pub struct WritingSkill {
     pub builtin: bool,
     pub created_at: u64,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 // ─── DataStore ───
@@ -641,6 +645,8 @@ pub struct ArticleBlueprint {
     pub tags: Vec<String>,
     pub outline: Vec<OutlineSection>,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 impl DataStore {

@@ -106,6 +106,13 @@ fn build_agent_prompt(skill: &Skill, context: &AgentContext) -> String {
             }
         }
         prompt.push_str("\n");
+        // Inject style/action context
+        if let Some(ref style_id) = bp.style_id {
+            prompt.push_str(&format!("## 写作风格\n{}\n", style_id));
+        }
+        if let Some(ref action_id) = bp.action_id {
+            prompt.push_str(&format!("## 当前动作\n{}\n", action_id));
+        }
     }
 
     // Skill body
