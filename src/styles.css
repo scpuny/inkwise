@@ -11449,7 +11449,40 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: all 0.2s var(--ease-out);
+}
+
+.ai-command-bar--collapsed {
+  height: 36px;
+  cursor: pointer;
+  overflow: hidden;
   animation: cmd-bar-in 0.18s var(--ease-out);
+}
+
+.ai-command-bar--expanded {
+  animation: none;
+}
+
+.ai-command-bar__collapsed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 36px;
+  color: var(--fg-faint);
+  font-size: var(--text-sm);
+  user-select: none;
+}
+
+.ai-command-bar__collapsed svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.ai-command-bar__collapsed-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @keyframes cmd-bar-in {
