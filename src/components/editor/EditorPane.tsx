@@ -1170,9 +1170,22 @@ ${seriesCtx}`;
     const _linkedFolder = activeCollectionId
       ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId)?.linkedFolder || undefined
       : undefined;
+    // If folder context not yet loaded, try to load it directly (race condition fix)
+    let projectCtx = folderContextRef.current;
+    if (!projectCtx && _linkedFolder) {
+      try {
+        const { buildContextText } = await import("../../lib/utils/projectContext");
+        projectCtx = await buildContextText(_linkedFolder, undefined);
+      } catch {
+        try {
+          const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+          projectCtx = await getCollectionFolderContext(activeCollectionId!);
+        } catch {}
+      }
+    }
     const enrichedInput: PlanInput = {
       ...input,
-      projectContext: folderContextRef.current || undefined,
+      projectContext: projectCtx || undefined,
       projectName: folderProjectNameRef.current || undefined,
       collectionId: activeCollectionId || undefined,
       linkedFolder: _linkedFolder,

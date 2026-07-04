@@ -4173,7 +4173,8 @@ body {
 
 .toolbar-btn:hover .toolbar-btn__shortcut {
   display: block
-}\.toolbar-dropdown-btn {
+}
+.toolbar-dropdown-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -16682,7 +16683,8 @@ body {
   justify-content: flex-end;
   padding: 12px 16px;
   border-top: 1px solid var(--border-soft)
-}\.startup-splash__spinner {
+}
+.startup-splash__spinner {
   animation: splash-spin 0.6s linear infinite;
 }
 
@@ -16849,15 +16851,16 @@ body {
 
 .startup-splash__outline {
   margin: 4px 0 0;
-  padding-left: 18px;
+  padding-left: 28px;
   font-size: var(--text-sm);
   color: var(--fg);
   line-height: 1.8;
 }
 
 .startup-splash__outline-desc {
-  color: var(--fg-faint);
-  font-size: var(--text-2xs);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-style: italic;
 }
 
 .startup-splash__tags {

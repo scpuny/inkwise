@@ -16,7 +16,7 @@ pub mod types;
 pub use types::*;
 pub use chunk::chunk_content;
 pub use chunk::ChunkResult;
-pub use embedder::Embedder;
+pub use embedder::{Embedder, EmbedderState};
 pub use embedder::ensure_onnxruntime_dylib;
 pub use embedder::download_model;
 pub use indexer::index_article;

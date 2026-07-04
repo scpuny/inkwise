@@ -1,7 +1,8 @@
 import { AlertCircle, BookOpen, Check, FileText, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
-import { getAllBuiltinSkills } from "../../lib/ai/writingSkill";
+import { getAllSkills } from "../../lib/ai/writingSkill";
+import type { WritingSkill } from "../../lib/ai/writingSkill";
 import type { ProjectContext, SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
 import { generateSeriesId } from "../../lib/storage/collections";
 import { getProvidersSync } from "../../lib/storage/providerModels";
@@ -75,6 +76,7 @@ const [customAudience, setCustomAudience] = useState("");
   const [ctxText, setCtxText] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [genStatus, setGenStatus] = useState("AI 正在分析项目结构…");
+const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load project context on open
@@ -142,6 +144,11 @@ const [customAudience, setCustomAudience] = useState("");
     }, 3000);
     return () => clearInterval(timer);
   }, [step]);
+
+  // Load available skills on mount
+  useEffect(() => {
+    getAllSkills().then(setAllSkills);
+  }, []);
 
   // Focus input on open
   useEffect(() => {
@@ -384,7 +391,7 @@ const [customAudience, setCustomAudience] = useState("");
                 )}
                 <select className="series-planner__option-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
                   <option value="">写作技能</option>
-                  {getAllBuiltinSkills().map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+                  {allSkills.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
                 </select>
                 <select className="series-planner__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
                   <option value="">目标读者</option>

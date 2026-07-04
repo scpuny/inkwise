@@ -101,9 +101,12 @@ export function getDefaultProvider(): Provider | null {
 
 /** 根据配置选择一个模型（优先用用户选的，否则用第一个） */
 export function resolveModel(defaultModel?: string | null): string | null {
-  if (defaultModel) {
+  // 优先使用传入的模型，其次从已加载配置中读取默认模型
+  const config = loadGlobalAIConfig();
+  const effectiveDefault = defaultModel ?? config.defaultModel;
+  if (effectiveDefault) {
     const models = getEnabledModels();
-    if (models.includes(defaultModel)) return defaultModel;
+    if (models.includes(effectiveDefault)) return effectiveDefault;
   }
   const provider = getDefaultProvider();
   return provider?.models[0]?.id ?? null;

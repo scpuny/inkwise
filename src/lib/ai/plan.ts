@@ -586,26 +586,72 @@ function parseOutline(text: string): OutlineSection[] {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || /^\d+\.\d+/.test(trimmed)) continue;
+    if (!trimmed) continue;
+    // Skip sub-numbered items like "1.1" or "2.3.1"
+    if (/^\d+\.\d+/.test(trimmed)) continue;
 
-    // Try multiple patterns:
-    // 1. "N. title - desc" (standard numbered)
-    // 2. "## N. title" or "## title" (markdown heading)
-    // 3. "- title - desc" (bullet)
-    // 4. "N、title" (Chinese numbered)
-    let match = trimmed.match(/^(\d+)\.\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^##\s+(?:\d+\.)?\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^(\d+)[、\.\s]\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) continue;
+    let title = "";
+    let description = "";
+    let level: 1 | 2 | 3 = 1;
 
-    const title = (match[2] || match[1]).trim();
-    const description = match[3]?.trim();
+    // Pattern 1: "## title" or "### title" (markdown heading)
+    let match = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (match) {
+      level = (match[1].length >= 3 ? 3 : match[1].length >= 2 ? 2 : 1) as 1 | 2 | 3;
+      const rest = match[2].trim();
+      const descMatch = rest.match(/^(.+?)\s*[-—]\s*(.+)$/);
+      if (descMatch) {
+        title = descMatch[1].trim();
+        description = descMatch[2].trim();
+      } else {
+        title = rest;
+      }
+    }
+
+    // Pattern 2: "1. title - desc" or "1、title——desc" (numbered)
+    if (!match) {
+      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
+      if (match) {
+        title = match[2].trim();
+        description = (match[3]?.trim() || "");
+      }
+    }
+
+    // Pattern 3: "1) title - desc" (parenthetical number)
+    if (!match) {
+      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
+      if (match) {
+        title = match[2].trim();
+        description = (match[3]?.trim() || "");
+      }
+    }
+
+    // Pattern 4: "- title - desc" or "* title - desc" (bullet)
+    if (!match) {
+      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
+      if (match) {
+        title = match[1].trim();
+        description = (match[2]?.trim() || "");
+      }
+    }
+
+    // Pattern 5: Plain title line — only if short (likely a title, not paragraph)
+    if (!match && trimmed.length < 100 && !trimmed.endsWith("。") && !trimmed.endsWith(".") && !trimmed.endsWith("！") && !trimmed.endsWith("？")) {
+      const descMatch = trimmed.match(/^(.+?)\s*[-—]\s*(.+)$/);
+      if (descMatch) {
+        title = descMatch[1].trim();
+        description = descMatch[2].trim();
+      } else {
+        title = trimmed;
+      }
+    }
+
+    if (!title) continue;
 
     sections.push({
       id: "sec_plan_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
       title: title.replace(/^\*\*|\*\*$/g, "").trim(),
-      level: 1,
+      level,
       description: description || undefined,
       status: "pending",
     });

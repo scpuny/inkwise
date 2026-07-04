@@ -13,9 +13,9 @@ use platform::wechat::WeChat;
 use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill};
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
-use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, semantic_search};
+use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
 use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 
@@ -25,8 +25,8 @@ struct AppState {
     watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// 当前活跃的项目路径（用于退出时保存快照）
     current_project_path: Mutex<Option<String>>,
-    /// 全局嵌入器（Node.js Transformers.js 子进程），未就绪时为 None
-    embedder: Mutex<Option<Embedder>>,
+    /// 全局嵌入器（后台懒加载，避免启动时卡界面）
+    embedder: Arc<Mutex<EmbedderState>>,
 }
 
 #[allow(dead_code)]
@@ -1635,17 +1635,19 @@ fn vector_search(
 ) -> Result<Vec<VectorSearchResult>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("数据库未初始化")?;
-    let embedder = state.embedder.lock().map_err(|e| e.to_string())?;
+    let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
 
-    match embedder.as_ref() {
-        Some(emb) => {
+    match &*embedder_guard {
+        EmbedderState::Ready(emb) => {
             let k_val = k.unwrap_or(5);
             let thr = threshold.unwrap_or(0.6);
             semantic_search(db, emb, &query, article_id.as_deref(), k_val, thr)
         }
-        None => {
-            eprintln!("[向量] 语义搜索请求被拒绝：嵌入器未就绪");
-            Ok(Vec::new())
+        EmbedderState::Pending => {
+            Err("嵌入器正在后台加载中（约 1-3 秒），请稍后再试".to_string())
+        }
+        EmbedderState::Unavailable => {
+            Err("嵌入器不可用（未启用/模型未下载/加载失败）".to_string())
         }
     }
 }
@@ -1659,7 +1661,7 @@ fn index_article_vector(
     let store = state.store.lock().map_err(|e| e.to_string())?;
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let db = db.as_ref().ok_or("数据库未初始化")?;
-    let embedder = state.embedder.lock().map_err(|e| e.to_string())?;
+    let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
 
     let content = store.load_article_content(&article_id)
         .ok_or_else(|| format!("文章内容未找到: {}", article_id))?;
@@ -1670,12 +1672,12 @@ fn index_article_vector(
         _ => ChunkStrategy::Paragraph,
     };
 
-    match embedder.as_ref() {
-        Some(emb) => {
+    match &*embedder_guard {
+        EmbedderState::Ready(emb) => {
             vector::index_article(db, emb, &article_id, &content, chunk_strategy)
         }
-        None => {
-            // 嵌入器未就绪：纯文本索引（embedding = None）
+        EmbedderState::Pending | EmbedderState::Unavailable => {
+            // 嵌入器未就绪：降级为纯文本索引（embedding = None）
             let chunks = vector::chunk_content(&content, chunk_strategy);
             let mut indexed = 0;
             for chunk in &chunks {
@@ -1930,41 +1932,46 @@ pub fn run() {
             }
             let database = db::Database::open(&app_dir).ok();
 
-            // 尝试初始化嵌入器（ONNX Runtime）
-            let embedder = {
+            // 嵌入器：后台懒加载，避免启动时卡界面
+            let embedder_slot: Arc<Mutex<EmbedderState>> = Arc::new(Mutex::new(EmbedderState::Pending));
+            {
                 let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
                 let settings = DataStore::new(app_dir.clone()).load_settings();
                 if settings.vector_model_enabled {
-                    // 确保 ONNX Runtime dylib 可用（加载动态库平台的 dylib 路径）
                     let _ = vector::ensure_onnxruntime_dylib(&model_dir);
 
                     if Embedder::model_exists(&model_dir) {
-                        match Embedder::new(&model_dir) {
-                            Ok(e) => {
-                                println!("[向量] 嵌入器就绪 (bge-small-zh-v1.5, {}d)", e.hidden_size);
-                                Some(e)
+                        // 后台线程加载 ONNX 模型，不阻塞主线程
+                        let slot = embedder_slot.clone();
+                        let mdl = model_dir.clone();
+                        std::thread::spawn(move || {
+                            match Embedder::new(&mdl) {
+                                Ok(e) => {
+                                    println!("[向量] 嵌入器就绪 (bge-small-zh-v1.5, {}d)", e.hidden_size);
+                                    *slot.lock().unwrap() = EmbedderState::Ready(e);
+                                }
+                                Err(e) => {
+                                    eprintln!("[向量] 嵌入器初始化失败: {}", e);
+                                    *slot.lock().unwrap() = EmbedderState::Unavailable;
+                                }
                             }
-                            Err(e) => {
-                                eprintln!("[向量] 嵌入器初始化失败: {}", e);
-                                None
-                            }
-                        }
+                        });
                     } else {
                         eprintln!("[向量] 模型文件未找到，请到设置中下载");
-                        None
+                        *embedder_slot.lock().unwrap() = EmbedderState::Unavailable;
                     }
                 } else {
                     eprintln!("[向量] 用户未启用，跳过");
-                    None
+                    *embedder_slot.lock().unwrap() = EmbedderState::Unavailable;
                 }
-            };
+            }
 
             app.manage(AppState {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
                 db: Mutex::new(database),
                 watcher_handle: Mutex::new(None),
                 current_project_path: Mutex::new(None),
-                embedder: Mutex::new(embedder),
+                embedder: embedder_slot,
             });
             if cfg!(debug_assertions) {
                 app.handle().plugin(

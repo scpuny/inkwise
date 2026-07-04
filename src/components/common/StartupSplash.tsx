@@ -5,6 +5,7 @@ import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
 import type { OutlineSection } from "../../lib/ai/articleBlueprint";
 import type { ToolEvent } from "../../lib/ai/agentEngine";
+import { markdownToHtml } from "../../lib/markdown/renderer";
 
 const SUGGESTIONS = [
   "写一篇关于秋天午后的散文",
@@ -451,7 +452,7 @@ const [customTone, setCustomTone] = useState("");
                     实时生成内容
                   </div>
                   <div className="startup-splash__stream-content">
-                    {streamingContent}
+                    <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
                     <span className="startup-splash__stream-cursor">|</span>
                   </div>
                 </div>

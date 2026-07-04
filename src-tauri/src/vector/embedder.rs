@@ -6,9 +6,19 @@
 use tract_onnx::prelude::*;
 use tract_onnx::tract_core::model::typed::TypedRunnableModel;
 
-use ndarray::{Array2, Array3, Axis, s};
+use ndarray::{Array2, Axis};
 use std::path::PathBuf;
 use std::sync::Mutex;
+
+/// 嵌入器状态（支持后台懒加载，避免启动时卡界面）
+pub enum EmbedderState {
+    /// 后台加载中
+    Pending,
+    /// 加载成功
+    Ready(Embedder),
+    /// 已确认不可用（未启用/文件缺失/加载失败）
+    Unavailable,
+}
 
 /// 嵌入器实例
 pub struct Embedder {
