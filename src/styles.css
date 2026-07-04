@@ -17123,9 +17123,8 @@ body {
 /* Individual event items */
 .startup-splash__tool-event-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
+  flex-direction: column;
+  padding: 5px 8px;
   border-radius: 5px;
   font-size: 12px;
   line-height: 1.4;
@@ -17147,6 +17146,17 @@ body {
 
 .startup-splash__tool-event-item--error {
   background: color-mix(in srgb, var(--err) 8%, transparent);
+}
+
+.startup-splash__tool-event-item--thinking {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.startup-splash__tool-event-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
 }
 
 .startup-splash__tool-event-item-icon {
@@ -17174,14 +17184,21 @@ body {
   color: var(--err);
 }
 
-.startup-splash__tool-event-item-label {
+.startup-splash__tool-event-item-toolname {
+  font-weight: 600;
+  font-size: 11px;
   color: var(--fg);
+  flex-shrink: 0;
+}
+
+.startup-splash__tool-event-item-label {
+  color: var(--fg-dim);
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .startup-splash__tool-event-item--done .startup-splash__tool-event-item-label {
@@ -17192,6 +17209,69 @@ body {
   color: var(--fg);
   font-weight: 500;
 }
+
+/* File paths display */
+.startup-splash__tool-event-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+  padding-left: 22px;
+}
+
+.startup-splash__tool-event-file {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 10px;
+  background: var(--bg-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--fg);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Result snippet */
+.startup-splash__tool-event-result {
+  margin-top: 3px;
+  padding-left: 22px;
+}
+
+.startup-splash__tool-event-result pre {
+  margin: 0;
+  padding: 4px 6px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1.4;
+  max-height: 80px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.startup-splash__tool-event-result code {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  color: var(--fg-dim);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Thinking text */
+.startup-splash__tool-event-thinking-text {
+  margin-top: 3px;
+  padding: 4px 8px 4px 22px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  font-style: italic;
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
+  border-radius: 3px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
 
 /* Card status footer */
 .startup-splash__tool-events-card-status {

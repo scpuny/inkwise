@@ -105,6 +105,16 @@ const [customTone, setCustomTone] = useState("");
   const responseEndRef = useRef<HTMLDivElement>(null);
   const toolScrollRef = useRef<HTMLDivElement>(null);
 
+  // Refs for auto-scrolling
+  const streamContentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll streaming content
+  useEffect(() => {
+    if (streamContentRef.current) {
+      streamContentRef.current.scrollTop = streamContentRef.current.scrollHeight;
+    }
+  }, [streamingContent]);
+
   // Auto-expand and auto-scroll when new tool events arrive during writing
   useEffect(() => {
     if (planState === "writing" && toolEvents.length > 0) {
@@ -139,8 +149,9 @@ const [customTone, setCustomTone] = useState("");
   const isGenerating = planState === "planning" || planState === "writing";
   const showResponse = planState === "planning" || planState === "review" || planState === "writing" || planState === "article-review";
   // ─── Process tool events into displayable items ───
+  // ─── Process tool events into displayable items ───
   interface ToolEventItem {
-    type: "pending" | "done" | "error";
+    type: "pending" | "done" | "error" | "thinking" | "thinking_done";
     event: ToolEvent;
   }
 
@@ -150,7 +161,6 @@ const [customTone, setCustomTone] = useState("");
       if (ev.type === "tool_start") {
         items.push({ type: "pending", event: ev });
       } else if (ev.type === "tool_end") {
-        // Find and mark the corresponding start as done
         let found = false;
         for (let i = items.length - 1; i >= 0; i--) {
           if (items[i].type === "pending" && items[i].event.toolCallId === ev.toolCallId) {
@@ -159,11 +169,13 @@ const [customTone, setCustomTone] = useState("");
             break;
           }
         }
-        if (!found) {
-          items.push({ type: "done", event: ev });
-        }
+        if (!found) items.push({ type: "done", event: ev });
       } else if (ev.type === "error") {
         items.push({ type: "error", event: ev });
+      } else if (ev.type === "thinking") {
+        items.push({ type: "thinking", event: ev });
+      } else if (ev.type === "thinking_done") {
+        items.push({ type: "thinking_done", event: ev });
       }
     }
     return items;
@@ -171,22 +183,87 @@ const [customTone, setCustomTone] = useState("");
 
   const hasToolEvents = toolEventItems.length > 0;
   const pendingCount = toolEventItems.filter(i => i.type === "pending").length;
-  const doneCount = toolEventItems.length - pendingCount;
+  const doneCount = toolEventItems.filter(i => i.type === "done").length;
+
+  function parseToolArgs(args: string): Record<string, any> {
+    try { return JSON.parse(args); } catch { return {}; }
+  }
 
   function renderToolEventItem(item: ToolEventItem, idx: number) {
     const ev = item.event;
     const isPending = item.type === "pending";
     const isError = item.type === "error";
+    const isThinking = item.type === "thinking";
+
+    if (isThinking) {
+      return (
+        <div key={ev.toolCallId + "_" + idx} className="startup-splash__tool-event-item startup-splash__tool-event-item--thinking">
+          <div className="startup-splash__tool-event-item-header">
+            <span className="startup-splash__tool-event-item-icon"><Loader2 size={12} className="startup-splash__spinner" /></span>
+            <span className="startup-splash__tool-event-item-label">AI 分析中…</span>
+          </div>
+          {ev.arguments && (
+            <div className="startup-splash__tool-event-thinking-text">{ev.arguments.slice(0, 600)}</div>
+          )}
+        </div>
+      );
+    }
+
+    if (item.type === "thinking_done") {
+      return null; // Skip done thinking markers
+    }
+
+    let detailInfo = "";
+    let fileList: string[] = [];
+
+    if (ev.toolName === "read_project_files") {
+      const args = parseToolArgs(ev.arguments);
+      fileList = args.paths || [];
+      const filesStr = fileList.slice(0, 3).map((p: string) => {
+        const parts = p.split("/");
+        return parts.length > 3 ? ".../" + parts.slice(-3).join("/") : p;
+      }).join(", ");
+      detailInfo = filesStr || "(unknown)";
+    } else if (ev.toolName === "list_project_files") {
+      const args = parseToolArgs(ev.arguments);
+      detailInfo = args.path || "/";
+    } else if (ev.toolName === "search_project_files") {
+      const args = parseToolArgs(ev.arguments);
+      detailInfo = args.query || "";
+    }
+
     return (
       <div key={ev.toolCallId + "_" + idx} className={"startup-splash__tool-event-item startup-splash__tool-event-item--" + item.type}>
-        <span className="startup-splash__tool-event-item-icon">
-          {isPending ? <Loader2 size={13} className="startup-splash__spinner" /> :
-           isError ? <AlertCircle size={13} /> :
-           <Check size={13} />}
-        </span>
-        <span className="startup-splash__tool-event-item-label">
-          {ev.summary || (isPending ? "执行中…" : isError ? (ev.summary || "错误") : "完成")}
-        </span>
+        <div className="startup-splash__tool-event-item-header">
+          <span className="startup-splash__tool-event-item-icon">
+            {isPending ? <Loader2 size={13} className="startup-splash__spinner" /> :
+             isError ? <AlertCircle size={13} /> :
+             <Check size={13} />}
+          </span>
+          <span className="startup-splash__tool-event-item-toolname">
+            {ev.toolName === "read_project_files" ? "📖 读取文件" :
+             ev.toolName === "list_project_files" ? "📂 列出目录" :
+             ev.toolName === "search_project_files" ? "🔍 搜索文件" :
+             ev.toolName}
+          </span>
+          <span className="startup-splash__tool-event-item-label">
+            {ev.summary || (isPending ? "执行中…" : isError ? (ev.summary || "错误") : "完成")}
+          </span>
+        </div>
+        {/* Show file paths for read operations */}
+        {fileList.length > 0 && (
+          <div className="startup-splash__tool-event-files">
+            {fileList.map((f: string, fi: number) => (
+              <code key={fi} className="startup-splash__tool-event-file">{f}</code>
+            ))}
+          </div>
+        )}
+        {/* Show result snippet for completed reads */}
+        {!isPending && ev.result && ev.result.length > 0 && (
+          <div className="startup-splash__tool-event-result">
+            <pre><code>{ev.result.slice(0, 300)}</code></pre>
+          </div>
+        )}
       </div>
     );
   }
@@ -451,7 +528,7 @@ const [customTone, setCustomTone] = useState("");
                     <FileText size={12} />
                     实时生成内容
                   </div>
-                  <div className="startup-splash__stream-content">
+                  <div className="startup-splash__stream-content" ref={streamContentRef}>
                     <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
                     <span className="startup-splash__stream-cursor">|</span>
                   </div>

@@ -243,14 +243,19 @@
 | F2 | SeriesPlanner 只加载 builtin skills，缺少自定义 skills | `SeriesPlanner.tsx` | 🟢 | 2026-07-04 |
 | F3 | 系列文章触发 auto-plan-article 时 folderContextRef 竞态未加载 | `EditorPane.tsx` | 🟢 | 2026-07-04 |
 | F4 | 大纲 padding-left 太小 + parseOutline 解析脆弱、match 组错位 | `styles.css`, `plan.ts` | 🟢 | 2026-07-04 |
+| F2 | SeriesPlanner 只加载 builtin skills，缺少自定义 skills | `SeriesPlanner.tsx` | 🟢 | 2026-07-04 |
+| F3 | 系列文章触发 auto-plan-article 时 folderContextRef 竞态未加载 | `EditorPane.tsx` | 🟢 | 2026-07-04 |
+| F4 | 大纲 padding-left 太小 + parseOutline 解析脆弱、match 组错位 | `styles.css`, `plan.ts` | 🟢 | 2026-07-04 |
 | F5 | 实时生成内容流式显示无 Markdown 渲染 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-04 |
+| F6 | resolveSkill 不搜索 IPC unified skills，自定义技能永远找不到 | `plan.ts` | 🟢 | 2026-07-04 |
+| F7 | 工具调用事件显示简陋，缺乏文件路径/结果预览/thinking显示 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-04 |
 
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 5 | 5 | 100% |
+| 热修复 | 7 | 7 | 100% |
 
 ## 里程碑记录
 

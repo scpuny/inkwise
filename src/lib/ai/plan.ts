@@ -3,7 +3,8 @@
 import { sendChatStream, type ChatMessage } from "./ai";
 import { resolveModel } from "../config/globalAIConfig";
 import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agentEngine";
-import { findSkill, getEffectivePhaseConfig, loadCustomSkills, type WritingSkill } from "../ai/writingSkill";
+import { isTauriEnv } from "../bridge/tauri";
+import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
 import { getProvidersSync } from "../storage/providerModels";
 import type { OutlineSection } from "../ai/articleBlueprint";
 
@@ -80,26 +81,58 @@ export interface SectionWriteInput {
 
 // ─── Skill helpers ───
 
-let _customCache: WritingSkill[] | null = null;
+let _allSkillsCache: WritingSkill[] | null = null;
 
-export async function ensureSkillCache(): Promise<void> {
-  if (_customCache === null) {
-    try { _customCache = await loadCustomSkills(); }
-    catch { _customCache = []; }
+async function ensureAllSkillsCache(): Promise<void> {
+  if (_allSkillsCache !== null) return;
+  const all = new Map<string, WritingSkill>();
+  // Builtin skills
+  getBuiltinSkills().forEach(s => all.set(s.id, s));
+  // Custom skills from localStorage
+  try {
+    const customs = await loadCustomSkills();
+    customs.forEach(s => all.set(s.id, s));
+  } catch {}
+  // Unified skills via IPC (Rust backend)
+  if (isTauriEnv()) {
+    try {
+      const { getUnifiedSkills } = await import("../ai/unifiedSkills");
+      const unified = await getUnifiedSkills();
+      const ids = ["general","academic","blog","creative","viral","tutorial","business","news","marketing","product-doc","review"];
+      unified.filter(s => s.phaseConfigs.length > 0).forEach((s, i) => {
+        const legacy: WritingSkill = {
+          id: ids[i] || s.name,
+          name: s.name,
+          description: s.description,
+          icon: s.icon,
+          scope: "full" as const,
+          configs: Object.fromEntries(s.phaseConfigs.map(pc => [pc.phase, {
+            systemPrompt: pc.systemPrompt,
+            temperature: pc.temperature,
+            model: pc.model,
+            maxTokens: pc.maxTokens,
+          }])),
+          contextSources: [],
+          dimensions: [],
+          builtin: true,
+          createdAt: 0,
+          updatedAt: 0,
+        };
+        all.set(legacy.id, legacy);
+      });
+    } catch {}
   }
+  _allSkillsCache = Array.from(all.values());
 }
 
 export function clearSkillCache(): void {
-  _customCache = null;
+  _allSkillsCache = null;
 }
 
-function resolveSkill(skillId?: string): WritingSkill | undefined {
+async function resolveSkill(skillId?: string): Promise<WritingSkill | undefined> {
   if (!skillId) return undefined;
-  if (_customCache) {
-    const c = _customCache.find(s => s.id === skillId);
-    if (c) return c;
-  }
-  return findSkill(skillId);
+  await ensureAllSkillsCache();
+  return _allSkillsCache?.find(s => s.id === skillId);
 }
 
 // ─── Provider ───
@@ -111,8 +144,7 @@ function getProvider() {
 
 // ─── Prompt builders ───
 
-function buildSystemPrompt(phase: string, skillId?: string, tone?: string): string {
-  const skill = resolveSkill(skillId);
+function buildSystemPrompt(phase: string, skill: WritingSkill | undefined, tone?: string): string {
   const config = getEffectivePhaseConfig(skill, phase as any);
   let prompt = config.systemPrompt;
 
@@ -231,7 +263,7 @@ export async function generateFullArticleStream(
     throw new Error("请先在设置中配置 AI 提供商");
   }
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
@@ -361,7 +393,7 @@ async function exploreProjectStructure(folderPath: string): Promise<string> {
 // ─── Individual plan steps ───
 
 export async function generateTitle(input: PlanInput): Promise<string> {
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "title");
   let sysPrompt = config.systemPrompt;
 
@@ -384,7 +416,7 @@ export async function generateTitle(input: PlanInput): Promise<string> {
 }
 
 export async function generateDescription(input: PlanInput, title: string): Promise<string> {
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "description");
   let sysPrompt = config.systemPrompt;
 
@@ -408,7 +440,8 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 }
 
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
-  const sysPrompt = buildSystemPrompt("outline", input.skillId, input.tone);
+  const outlineSkill = await resolveSkill(input.skillId);
+  const sysPrompt = buildSystemPrompt("outline", outlineSkill, input.tone);
   const userPrompt = [
     "请根据以下信息生成文章大纲：",
     "",
@@ -426,7 +459,8 @@ export async function generateOutline(input: PlanInput, title: string, descripti
 }
 
 export async function generateTags(input: PlanInput, title: string, description: string): Promise<string[]> {
-  const sysPrompt = buildSystemPrompt("tags", input.skillId, input.tone);
+  const tagsSkill = await resolveSkill(input.skillId);
+  const sysPrompt = buildSystemPrompt("tags", tagsSkill, input.tone);
   const userPrompt = [
     "灵感：" + input.inspiration,
     "标题：" + title,
@@ -453,7 +487,7 @@ export async function writeArticleSection(
   const provider = getProvider();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
@@ -505,7 +539,7 @@ async function writeArticleSectionLegacy(
   const provider = getProvider();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
