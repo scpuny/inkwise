@@ -149,7 +149,6 @@ const [customTone, setCustomTone] = useState("");
   const isGenerating = planState === "planning" || planState === "writing";
   const showResponse = planState === "planning" || planState === "review" || planState === "writing" || planState === "article-review";
   // ─── Process tool events into displayable items ───
-  // ─── Process tool events into displayable items ───
   interface ToolEventItem {
     type: "pending" | "done" | "error" | "thinking" | "thinking_done";
     event: ToolEvent;
@@ -351,12 +350,31 @@ const [customTone, setCustomTone] = useState("");
                     大纲
                   </div>
                   <ol className="startup-splash__outline">
-                    {safePlan.outline.map((sec, i) => (
-                      <li key={sec.id || i} style={{ marginLeft: `${(sec.level - 1) * 16}px` }}>
-                        {sec.title}
-                        {sec.description && <span className="startup-splash__outline-desc"> — {sec.description}</span>}
-                      </li>
-                    ))}
+                    {(() => {
+                      const counters: number[] = [0, 0, 0];
+                      let lastLevel = 1;
+                      return safePlan.outline.map((sec, i) => {
+                        const lvl = sec.level;
+                        // Reset lower counters
+                        if (lvl < lastLevel) {
+                          for (let j = lvl; j < counters.length; j++) counters[j] = 0;
+                        }
+                        counters[lvl - 1]++;
+                        lastLevel = lvl;
+                        // Build prefix like "1." or "1.1" or "1.1.1"
+                        const prefix = counters.slice(0, lvl).join(".");
+                        return (
+                          <li key={sec.id || i} style={{ marginLeft: `${(lvl - 1) * 20}px` }}
+                              className="startup-splash__outline-item">
+                            <span className="startup-splash__outline-item-title">
+                              <span className="startup-splash__outline-num">{prefix}.</span>
+                              {sec.title}
+                            </span>
+                            {sec.description && <span className="startup-splash__outline-desc">{sec.description}</span>}
+                          </li>
+                        );
+                      });
+                    })()}
                   </ol>
                 </div>
               )}
@@ -508,29 +526,30 @@ const [customTone, setCustomTone] = useState("");
                 </div>
               )}
 
-              {/* AI 写内容阶段指示卡 */}
-              {planState === "writing" && streamingContent && (
-                <div className="startup-splash__writing-card">
-                  <span className="startup-splash__writing-card-icon">
-                    <PenLine size={14} />
-                  </span>
-                  <div className="startup-splash__writing-card-content">
-                    <div className="startup-splash__writing-card-title">AI 正在写内容…</div>
-                    <div className="startup-splash__writing-card-subtitle">基于已读取的项目文件，生成文章正文</div>
-                  </div>
-                </div>
-              )}
-
               {/* Live streaming content preview */}
-              {streamingContent && (
-                <div className="startup-splash__section">
+              {(planState === "writing" || streamingContent) && (
+                <div className="startup-splash__section startup-splash__section--writing">
                   <div className="startup-splash__section-label">
-                    <FileText size={12} />
-                    实时生成内容
+                    <PenLine size={12} className={planState === "writing" ? "startup-splash__spinner" : ""} />
+                    {planState === "writing" ? "AI 正在生成文章…" : "生成内容预览"}
+                    {planState === "writing" && writingOutline.length > 0 && (
+                      <span className="startup-splash__writing-progress">
+                        {writingOutline.filter(s => s.status === "complete").length}/{writingOutline.length} 节
+                      </span>
+                    )}
                   </div>
                   <div className="startup-splash__stream-content" ref={streamContentRef}>
-                    <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
-                    <span className="startup-splash__stream-cursor">|</span>
+                    {streamingContent ? (
+                      <>
+                        <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
+                        <span className="startup-splash__stream-cursor">|</span>
+                      </>
+                    ) : (
+                      <div className="startup-splash__stream-placeholder">
+                        <Loader2 size={14} className="startup-splash__spinner" />
+                        <span>正在准备生成内容…</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

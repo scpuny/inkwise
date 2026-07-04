@@ -225,8 +225,15 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
           : article.title;
 
         setTimeout(() => {
+          const seriesTitle = seriesPlan?.title || "";
+          const seriesDescription = seriesPlan?.articles?.map((a, i) =>
+            `${i+1}. ${a.title}${a.description ? " — " + a.description : ""}`
+          ).join("\n");
           emit("auto-plan-article", {
             collectionId,
+            seriesId: eventSeriesId || "",
+            seriesTitle,
+            seriesDescription,
             title: finalTitle,
             description: article.description || "",
             tone: seriesTone,

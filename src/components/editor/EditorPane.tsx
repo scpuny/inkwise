@@ -1255,10 +1255,15 @@ ${seriesCtx}`;
   useEffect(() => {
     return on("auto-plan-article", (detail) => {
       if (!detail?.title) return;
-      const { title, description, tone: articleTone, targetAudience, skillId, targetWordCount } = detail;
+      const { title, description, tone: articleTone, targetAudience,
+              skillId, targetWordCount, seriesId, seriesTitle, seriesDescription } = detail;
       const inspiration = description 
         ? `写一篇关于「${title}」的文章：${description}`
         : `写一篇关于「${title}」的文章`;
+      const seriesCtx = seriesTitle
+        ? `系列「${seriesTitle}」
+${seriesDescription || ""}`
+        : undefined;
       handleStartPlan({
         inspiration,
         tone: articleTone || undefined,
@@ -1267,6 +1272,8 @@ ${seriesCtx}`;
         skillId: skillId || undefined,
         prefilledTitle: title || undefined,
         prefilledDescription: description || undefined,
+        seriesContext: seriesCtx,
+        seriesId: seriesId || undefined,
       });
     });
   }, [handleStartPlan]);

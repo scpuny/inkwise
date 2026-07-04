@@ -10,6 +10,9 @@ export interface AutoPlanArticleDetail {
   collectionId: string;
   title: string;
   description: string;
+  seriesId?: string;
+  seriesTitle?: string;
+  seriesDescription?: string;
   tone?: string;
   targetAudience?: string;
   skillId?: string;

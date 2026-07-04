@@ -243,12 +243,13 @@
 | F2 | SeriesPlanner 只加载 builtin skills，缺少自定义 skills | `SeriesPlanner.tsx` | 🟢 | 2026-07-04 |
 | F3 | 系列文章触发 auto-plan-article 时 folderContextRef 竞态未加载 | `EditorPane.tsx` | 🟢 | 2026-07-04 |
 | F4 | 大纲 padding-left 太小 + parseOutline 解析脆弱、match 组错位 | `styles.css`, `plan.ts` | 🟢 | 2026-07-04 |
-| F2 | SeriesPlanner 只加载 builtin skills，缺少自定义 skills | `SeriesPlanner.tsx` | 🟢 | 2026-07-04 |
-| F3 | 系列文章触发 auto-plan-article 时 folderContextRef 竞态未加载 | `EditorPane.tsx` | 🟢 | 2026-07-04 |
-| F4 | 大纲 padding-left 太小 + parseOutline 解析脆弱、match 组错位 | `styles.css`, `plan.ts` | 🟢 | 2026-07-04 |
 | F5 | 实时生成内容流式显示无 Markdown 渲染 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-04 |
 | F6 | resolveSkill 不搜索 IPC unified skills，自定义技能永远找不到 | `plan.ts` | 🟢 | 2026-07-04 |
 | F7 | 工具调用事件显示简陋，缺乏文件路径/结果预览/thinking显示 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-04 |
+| F8 | 系列文章的系列上下文（标题/描述）未传递给规划阶段 | `appHooks.ts`, `EditorPane.tsx`, `events.ts` | 🟢 | 2026-07-05 |
+| F9 | 大纲 prompt 不明确导致输出格式混乱，parseOutline 忽略 "1.1" 编号项 | `plan.ts` | 🟢 | 2026-07-05 |
+| F10 | 大纲渲染缺少嵌套结构/序号前缀/描述样式 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
+| F11 | 写作阶段 UI 简陋，流式内容无占位提示/版式/样式 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
 
 ### 统计看板（含热修复）
 

@@ -43,6 +43,9 @@ export interface PlanInput {
   prefilledDescription?: string;
   styleId?: string;
   actionId?: string;
+  /** Series context — passed through from series plan */
+  seriesContext?: string;
+  seriesId?: string;
 }
 
 export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
@@ -409,6 +412,7 @@ export async function generateTitle(input: PlanInput): Promise<string> {
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
     ctxBlock,
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 256);
@@ -433,6 +437,7 @@ export async function generateDescription(input: PlanInput, title: string): Prom
     "标题：" + title,
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
     ctxBlock,
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
@@ -443,7 +448,20 @@ export async function generateOutline(input: PlanInput, title: string, descripti
   const outlineSkill = await resolveSkill(input.skillId);
   const sysPrompt = buildSystemPrompt("outline", outlineSkill, input.tone);
   const userPrompt = [
-    "请根据以下信息生成文章大纲：",
+    "请根据以下信息生成文章大纲。每条大纲必须包含**序号、标题和描述**，格式如下：",
+    "",
+    "## 1. 标题 —— 描述",
+    "### 1.1 子标题 —— 子标题描述",
+    "### 1.2 子标题 —— 子标题描述",
+    "## 2. 标题 —— 描述",
+    "### 2.1 子标题 —— 子标题描述",
+    "",
+    "要求：",
+    "- 一级章节用 ## 开头，二级子章节用 ### 开头",
+    "- 每个大纲项必须包含序号（1. 2. 3. 或 1.1 2.1 等）",
+    "- 用中文破折号 —— 分隔标题和描述",
+    "- 至少 3-5 个一级章节，每个一级章节下至少 2-3 个子章节",
+    "- 描述简明扼要（10-20 字）",
     "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
@@ -452,9 +470,10 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     input.tone ? "风格：" + input.tone : "",
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
-  const result = await askAI(sysPrompt, userPrompt, 2048);
+  const result = await askAI(sysPrompt, userPrompt, 3072);
   return parseOutline(result);
 }
 
@@ -466,6 +485,7 @@ export async function generateTags(input: PlanInput, title: string, description:
     "标题：" + title,
     "简介：" + description,
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
@@ -621,19 +641,20 @@ function parseOutline(text: string): OutlineSection[] {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    // Skip sub-numbered items like "1.1" or "2.3.1"
-    if (/^\d+\.\d+/.test(trimmed)) continue;
 
     let title = "";
     let description = "";
     let level: 1 | 2 | 3 = 1;
+    let match = null;
 
-    // Pattern 1: "## title" or "### title" (markdown heading)
-    let match = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    // Pattern 1: "## 1. Title —— Desc" or "### 1.1 Title —— Desc" (markdown heading with number)
+    match = trimmed.match(/^(#{1,6})\s+(.+)$/);
     if (match) {
       level = (match[1].length >= 3 ? 3 : match[1].length >= 2 ? 2 : 1) as 1 | 2 | 3;
-      const rest = match[2].trim();
-      const descMatch = rest.match(/^(.+?)\s*[-—]\s*(.+)$/);
+      let rest = match[2].trim();
+      // Strip leading number like "1. ", "1.1 ", "1.1.1 "
+      rest = rest.replace(/^\d+(\.\d+)*\s*[.、]?\s*/, "");
+      const descMatch = rest.match(/^(.+?)\s*[-—]{1,2}\s*(.+)$/);
       if (descMatch) {
         title = descMatch[1].trim();
         description = descMatch[2].trim();
@@ -642,36 +663,47 @@ function parseOutline(text: string): OutlineSection[] {
       }
     }
 
-    // Pattern 2: "1. title - desc" or "1、title——desc" (numbered)
+    // Pattern 2: "1.1.1 Title — Desc" (numbered with dots, level inferred from dot count)
     if (!match) {
-      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
+      match = trimmed.match(/^(\d+)\.(\d+)(?:\.(\d+))?\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      if (match) {
+        // 2-part number (1.1) => level 2, 3-part number (1.1.1) => level 3
+        level = match[3] ? 3 : 2;
+        title = match[4].trim();
+        description = (match[5]?.trim() || "");
+      }
+    }
+
+    // Pattern 3: "1. Title —— Desc" or "1、Title——Desc" (single numbered)
+    if (!match) {
+      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
       if (match) {
         title = match[2].trim();
         description = (match[3]?.trim() || "");
       }
     }
 
-    // Pattern 3: "1) title - desc" (parenthetical number)
+    // Pattern 4: "1) Title —— Desc" (parenthetical number)
     if (!match) {
-      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
+      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
       if (match) {
         title = match[2].trim();
         description = (match[3]?.trim() || "");
       }
     }
 
-    // Pattern 4: "- title - desc" or "* title - desc" (bullet)
+    // Pattern 5: "- Title —— Desc" or "* Title —— Desc" (bullet)
     if (!match) {
-      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
+      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
       if (match) {
         title = match[1].trim();
         description = (match[2]?.trim() || "");
       }
     }
 
-    // Pattern 5: Plain title line — only if short (likely a title, not paragraph)
+    // Pattern 6: Plain title line — only if short (likely a title, not paragraph)
     if (!match && trimmed.length < 100 && !trimmed.endsWith("。") && !trimmed.endsWith(".") && !trimmed.endsWith("！") && !trimmed.endsWith("？")) {
-      const descMatch = trimmed.match(/^(.+?)\s*[-—]\s*(.+)$/);
+      const descMatch = trimmed.match(/^(.+?)\s*[-—]{1,2}\s*(.+)$/);
       if (descMatch) {
         title = descMatch[1].trim();
         description = descMatch[2].trim();
