@@ -19,6 +19,7 @@ import { type EditorStyleTemplate } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import type { OutlineNavigateDetail } from "../../lib/events/events";
 import { collectPublishCss } from "../../lib/styles/collector";
+import { getSelectedArticleThemeId, getThemeById, buildEditorThemeCss } from "../../lib/theme/articleThemes";
 import { InlineGhostText } from "./InlineGhostText";
 
 export type EditorMode = "rich" | "markdown";
@@ -372,7 +373,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     }
   }, [editor, mode]);
 
-  // ─── 统一样式管线：使用 collectPublishCss 与导出保持一致 ───
+  // ─── 统一样式管线：使用 collectPublishCss + buildEditorThemeCss 与导出保持一致 ───
   const editorStyleTagRef = useRef<HTMLStyleElement | null>(null);
   const [styleRevision, setStyleRevision] = useState(0);
 
@@ -387,8 +388,14 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       document.head.appendChild(editorStyleTagRef.current);
     }
     const cssText = collectPublishCss(".editor-container .tiptap");
+    // Apply theme CSS variables for editor (colors, bg, headings, etc.)
+    // This ensures theme changes take effect in real-time in the editor
+
+    const themeId = getSelectedArticleThemeId();
+    const theme = getThemeById(themeId);
+    const themeCss = theme ? buildEditorThemeCss(theme.vars) : "";
     // Editor safety overrides for code blocks (TipTap compatibility)
-    editorStyleTagRef.current.textContent = cssText + `
+    editorStyleTagRef.current.textContent = cssText + themeCss + `
 .editor-container .tiptap pre { overflow: visible !important; }
 .editor-container .tiptap pre code { overflow: visible !important; white-space: inherit !important; min-height: 1.5em !important; }`;
   }, [styleTemplate, codeThemeId, styleRevision]);
@@ -429,7 +436,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       .editor-container .tiptap h4:before { counter-increment: h4-counter; content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) "." counter(h4-counter) " "; color: var(--accent); }\n`;
     }
     tag.textContent = cssText;
-  }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber]);
+  }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber, styleRevision]);
 
   // Font family !important override (from StylePanel)
   useEffect(() => {

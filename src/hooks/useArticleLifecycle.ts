@@ -1,5 +1,5 @@
 // useArticleLifecycle.ts — 文章 CRUD、阶段切换、规划完成（从 MainEditorPage 抽出）
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { loadCollections, addCollection, addArticle,
   saveSeriesPlan, loadSeriesPlan } from "../lib/storage/collections";
 import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
@@ -72,6 +72,9 @@ export function useArticleLifecycle() {
 
   const { closePanel, setActiveArticleId: setCtxArticleId } = useAgent();
 
+  // ── 追踪新建文章：跳过持久化第一轮脏闭包值 ──
+  const freshArticleRef = useRef<string | null>(null);
+
   // ── Wrapper: sync agent context + store ──
   const setActiveArticleId = useCallback((id: string | null) => {
     setActiveArticleIdApp(id);
@@ -90,11 +93,29 @@ export function useArticleLifecycle() {
         setEditorParagraphGap(config.editorParagraphGap);
         setEditorFontFamily(config.editorFontFamily);
         setCodeThemeId(config.codeThemeId);
+        freshArticleRef.current = null;
       } else {
-        setEditorStyleTemplate('default'); setEditorLineHeight(1.75);
-        setEditorFontSize(15); setEditorMaxWidth(820);
-        setEditorParagraphGap(1.25); setEditorFontFamily('');
+        // 新文章：标记 + 立即写入整份默认配置（含 articleThemeId 等），
+        // 防止后续持久化闭包使用旧文章的值
+        freshArticleRef.current = activeArticleId;
+        setEditorStyleTemplate('default');
+        setEditorLineHeight(1.75);
+        setEditorFontSize(15);
+        setEditorMaxWidth(820);
+        setEditorParagraphGap(1.25);
+        setEditorFontFamily('');
         setCodeThemeId('atom-one-light');
+        new ArticleContext(activeArticleId).updateStyle({
+          editorStyleTemplateId: 'default', lineHeight: 1.75,
+          editorFontSize: 15, editorMaxWidth: 820,
+          editorParagraphGap: 1.25, editorFontFamily: '',
+          codeThemeId: 'atom-one-light',
+          articleThemeId: 'clean',
+          macosCodeBlock: false, firstLineIndent: false,
+          justifyAlign: false, headingConfig: {},
+          bgPattern: '', accentColor: '',
+          captionFormat: '', customCSS: '',
+        });
       }
     }
     prevArticleRef.current = activeArticleId;
@@ -104,6 +125,11 @@ export function useArticleLifecycle() {
   // ── Style persistence (on every change) ──
   useEffect(() => {
     if (!activeArticleId) return;
+    // 新建文章首次抵达时，闭包值可能仍为旧文章的，跳过此轮写入
+    if (freshArticleRef.current === activeArticleId) {
+      freshArticleRef.current = null;
+      return;
+    }
     localStorage.setItem('editor-style-template', editorStyleTemplate);
     localStorage.setItem('editor-line-height', String(editorLineHeight));
     localStorage.setItem('editor-font-size', String(editorFontSize));

@@ -17358,6 +17358,7 @@ body {
     border: 1px solid var(--border-soft);
     border-radius: 8px;
     margin-top: 10px;
+    margin-bottom: 16px;
   }
 
   .startup-splash__writing-progress-track {
