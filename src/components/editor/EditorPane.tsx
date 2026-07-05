@@ -1,4 +1,3 @@
-import { FileText, FolderInput } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
@@ -18,9 +17,7 @@ import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
 import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
-import type { FileNode } from "../../lib/storage/collections";
 import { loadCollections } from "../../lib/storage/collections";
-import { ProjectFileTree } from "../common/ProjectFileTree";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
 import { ArticleHeader } from "./ArticleHeader";
@@ -119,11 +116,7 @@ export function EditorPane({
   const writtenContentRef = useRef<string | null>(null); // written content from plan flow
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
-  const folderProjectNameRef = useRef<string>("");
   const seriesCtxRef = useRef<string>("");
-  const [folderProjectName, setFolderProjectName] = useState("");
-  const [projectFiles, setProjectFiles] = useState<string[]>([]);
-const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
   const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agentEngine").ToolEvent[]>([]);
   const abortPlanRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<any>(undefined);
@@ -540,10 +533,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
       setLastPlanInput(null);
       setPlanError(null);
-      // Reset folder context refs for fresh load
+      // Reset folder context ref for fresh load
       folderContextRef.current = "";
-      folderProjectNameRef.current = "";
-      setFolderProjectName("");
       return;
     }
 
@@ -725,7 +716,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
           skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
           projectContext: folderContextRef.current || undefined,
-          projectName: folderProjectNameRef.current || undefined,
+          projectName: "",
           seriesContext: seriesCtxRef.current || undefined,
           linkedFolder: (await (async () => {
             if (activeCollectionId) {
@@ -954,7 +945,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
         skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
         projectContext: folderContextRef.current || undefined,
-        projectName: folderProjectNameRef.current || undefined,
+        projectName: "",
         seriesContext: seriesCtx || undefined,
         linkedFolder: projectLinkedFolder || undefined,
       };
@@ -1050,7 +1041,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       setPlanError(typeof e === "string" ? e : e?.message || "写作过程出错");
       setPlanState("article-review");
     }
-  }, [partialPlan, lastPlanInput, activeCollectionId, onPlanComplete, folderContextRef, folderProjectNameRef]);
+  }, [partialPlan, lastPlanInput, activeCollectionId, onPlanComplete, folderContextRef]);
 
   const handleEnterEditor = useCallback(() => {
     const pending = pendingArticleRef.current;
@@ -1233,7 +1224,7 @@ ${seriesCtx}`;
     const enrichedInput: PlanInput = {
       ...input,
       projectContext: targetFolderContext || projectCtx || undefined,
-      projectName: folderProjectNameRef.current || undefined,
+      projectName: "",
       collectionId: targetCollectionId || undefined,
       linkedFolder: _linkedFolder,
     };
@@ -1365,10 +1356,6 @@ ${seriesDescription || ""}`
   useEffect(() => {
     // Always clear first
     folderContextRef.current = "";
-    folderProjectNameRef.current = "";
-    setFolderProjectName("");
-
-    setProjectFiles([]);
     // Reset plan state when switching collections on startup splash
     if (!activeArticleId) {
       setPlanState("idle");
@@ -1383,8 +1370,6 @@ ${seriesDescription || ""}`
     loadCollections().then(cols => {
       const col = cols.find(c => c.id === activeCollectionId);
       if (col?.linkedFolder) {
-        folderProjectNameRef.current = col.title;
-        setFolderProjectName(col.title);
         import("../../lib/utils/projectContext").then(({ buildContextText }) => {
           buildContextText(col.linkedFolder!, undefined).then(ctx => {
             if (ctx) folderContextRef.current = ctx;
@@ -1394,26 +1379,6 @@ ${seriesDescription || ""}`
             getCollectionFolderContext(activeCollectionId!).then(ctx => {
               if (ctx) folderContextRef.current = ctx;
             });
-          });
-        });
-        // Load project context data for left panel
-        import("../../lib/storage/collections").then(({ getProjectContext }) => {
-          getProjectContext(col.linkedFolder!).then(ctx => {
-            // Store tree structure and extract top-level files for flat list fallback
-            setProjectTree(ctx.structure);
-            const topFiles = ctx.summary.topFiles
-              .filter(f => f.language)
-              .slice(0, 15)
-              .map(f => f.path.replace(ctx.rootPath + "/", ""));
-            const topSymbols = ctx.symbols
-              .filter(s => s.kind === "function" || s.kind === "class")
-              .slice(0, 10)
-              .map(s => s.name);
-            setProjectFiles([...topFiles, ...topSymbols]);
-          }).catch(() => {
-            // getProjectContext 失败时（浏览器模式或 IPC 错误），
-            // 用 collection 的基本信息作为 fallback
-            setProjectFiles([]);
           });
         });
       }
@@ -1582,69 +1547,6 @@ ${seriesDescription || ""}`
           projectFiles={[]}
           toolEvents={toolEvents}
         />
-      ) : folderProjectName ? (
-        <div className="editor-pane__startup-split">
-          <div className="editor-pane__project-panel">
-            <div className="editor-pane__project-header">
-              <FolderInput size={13} />
-              <span>项目灵感</span>
-            </div>
-            <div className="editor-pane__project-name">{folderProjectName}</div>
-            {projectFiles.length > 0 ? (
-              <>
-              <p className="editor-pane__project-hint">浏览项目文件获取灵感，点击「AI 规划」开始写作</p>
-              <div className="editor-pane__project-files">
-                {projectTree ? (
-                  <ProjectFileTree
-                    nodes={projectTree}
-                    maxDepth={3}
-                    onSelect={(_path) => {
-                      // 项目灵感树仅作浏览，不触发生成
-                    }}
-                  />
-                ) : (
-                  projectFiles.map((f, i) => (
-                    <button key={i} className="editor-pane__file-chip"
-                      onClick={() => {
-                        // 项目灵感文件仅作浏览，不触发生成
-                      }}
-                    >
-                      <FileText size={10} />
-                      <span>{f}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              </>
-            ) : (
-              <p className="editor-pane__project-hint">关联了目录「{folderProjectName}」，点击下方 AI 规划开始写作</p>
-            )}
-          </div>
-          <StartupSplash
-            onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
-            onAIPlan={handleStartPlan}
-            planState={planState}
-            planStep={planStep}
-            partialPlan={partialPlan}
-            planError={planError}
-            lastPlanInput={lastPlanInput}
-            writingOutline={blueprint?.outline || partialPlan.outline}
-            writingSectionId={writingSection}
-            onConfirm={handlePlanConfirm}
-            onCancel={handlePlanCancel}
-            onCancelPlan={cancelPlan}
-            onEditTitle={handleEditTitle}
-            onEditDescription={handleEditDescription}
-            onEditOutline={handleEditOutline}
-            onRetry={handlePlanRetry}
-            onEnterEditor={handleEnterEditor}
-            streamingContent={streamingContent}
-            projectName={folderProjectName || undefined}
-            projectReady={!!folderProjectName}
-            projectFiles={projectFiles}
-            toolEvents={toolEvents}
-          />
-        </div>
       ) : (
         <StartupSplash
           onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
@@ -1665,9 +1567,9 @@ ${seriesDescription || ""}`
           onEditOutline={handleEditOutline}
           onRetry={handlePlanRetry}
           onEnterEditor={handleEnterEditor}
-          projectName={folderProjectName || undefined}
-          projectReady={!!folderProjectName}
-          projectFiles={projectFiles}
+          projectName={undefined}
+          projectReady={false}
+          projectFiles={[]}
           toolEvents={toolEvents}
         />
       )}
