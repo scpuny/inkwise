@@ -51,6 +51,10 @@ export interface SeriesArticleReviewDetail {
   seriesId?: string;
 }
 
+export interface BlueprintChangedDetail {
+  articleId: string;
+}
+
 export interface ContentSavedDetail {
   articleId: string;
   content: string;
@@ -115,6 +119,7 @@ export type EventBusKey =
   | "edit-series-plan"
   | "plan-series-article"
   | "series-article-review"
+  | "blueprint-changed"
   | "content-saved"
   | "editor-ready"
   | "providers-changed"
@@ -138,6 +143,7 @@ export interface EventBusMap {
   "edit-series-plan": EditSeriesPlanDetail;
   "plan-series-article": PlanSeriesArticleDetail;
   "series-article-review": SeriesArticleReviewDetail;
+  "blueprint-changed": BlueprintChangedDetail;
   "content-saved": ContentSavedDetail;
   "editor-ready": void;
   "providers-changed": void;

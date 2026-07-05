@@ -2,6 +2,7 @@
 // 存储：Tauri 后端 → {id}.blueprint.json | 浏览器 → localStorage
 
 import { isTauriEnv, TauriCommands, tryInvoke } from "../../bridge/tauri";
+import { emit } from "../../events/eventBus";
 
 /* ─── 类型定义 ─── */
 
@@ -70,6 +71,7 @@ export async function saveBlueprint(id: string, blueprint: ArticleBlueprint): Pr
   if (isTauriEnv()) {
     try {
       await tryInvoke(TauriCommands.SaveArticleBlueprint, { id, blueprint });
+      emit("blueprint-changed", { articleId: id });
       return;
     } catch { /* fallback to localStorage */ }
   }
@@ -78,6 +80,7 @@ export async function saveBlueprint(id: string, blueprint: ArticleBlueprint): Pr
   try {
     localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(blueprint));
   } catch { /* ignore */ }
+  emit("blueprint-changed", { articleId: id });
 }
 
 export async function loadBlueprint(id: string): Promise<ArticleBlueprint | null> {

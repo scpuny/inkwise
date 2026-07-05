@@ -154,6 +154,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
 
   // Blueprint state
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
+  const [blueprintLoaded, setBlueprintLoaded] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [blueprintEditorOpen, setBlueprintEditorOpen] = useState(false);
 
@@ -443,8 +444,12 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     emit("image-gen-complete", { articleId, count: validImages.length });
   }
 
-  // Style template
-  const [styleTemplate, setStyleTemplate] = useState(() => getTemplate(editorStyleTemplateId || getSelectedTemplateId()));
+  // Style template - prefer localStorage values (set by ArticleContext constructor) over props
+  const [styleTemplate, setStyleTemplate] = useState(() => {
+    const storedId = getSelectedTemplateId();
+    const effectiveId = editorStyleTemplateId || storedId;
+    return getTemplate(storedId) || getTemplate(effectiveId) || getTemplate('default');
+  });
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [pendingImageArticleId, setPendingImageArticleId] = useState<string | null>(null);
   const [pendingImageContent, setPendingImageContent] = useState<string>("");
@@ -470,11 +475,15 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
 
   // Sync styleTemplate when parent changes editorStyleTemplateId (e.g. from StylePanel)
   useEffect(() => {
-    const t = getTemplate(editorStyleTemplateId || getSelectedTemplateId());
-    if (t && t.id !== styleTemplate?.id) {
-      setStyleTemplate(t);
+    // Compare localStorage vs prop - localStorage takes priority if it has a real value
+    const storedId = getSelectedTemplateId();
+    const propT = getTemplate(editorStyleTemplateId || storedId);
+    const storedT = getTemplate(storedId);
+    const effectiveT = storedT || propT;
+    if (effectiveT && effectiveT.id !== styleTemplate?.id) {
+      setStyleTemplate(effectiveT);
     }
-  }, [editorStyleTemplateId]);
+  }, [editorStyleTemplateId, activeArticleId]);
 
   const handleSelectStyleTemplate = useCallback((id: string) => {
     const t = getTemplate(id);
@@ -519,6 +528,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     if (!activeArticleId) {
       setEditorContent("");
       setBlueprint(null);
+      setBlueprintLoaded(false);
       onOutlineChange?.([]);
       writtenContentRef.current = null;
       contentInjectedFromPlanRef.current = false;
@@ -578,6 +588,24 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     loadBlueprint(activeArticleId).then((bp) => {
       if (bp) {
         setBlueprint(bp);
+        setBlueprintLoaded(true);
+        if (bp.phase === "planning") {
+          // 规划中文章 → 预填现有规划，显示 StartupSplash 审阅模式
+          setPartialPlan({
+            title: bp.workingTitle,
+            description: bp.description,
+            outline: bp.outline,
+            tags: bp.tags || [],
+            tone: bp.tone || "",
+            targetAudience: bp.targetAudience || "",
+            targetWordCount: bp.targetWordCount || 0,
+            skillId: bp.skillId,
+            styleId: bp.styleId || "general",
+            actionId: bp.actionId,
+          });
+          setPlanState("review");
+          setPlanStep("outline");
+        }
         updateOutline(contentRef.current, bp.outline);
         onPhaseChange?.(bp.phase);
       } else {
@@ -589,6 +617,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           updateOutline(contentRef.current, defaultBp.outline);
           onPhaseChange?.(defaultBp.phase);
           saveBlueprint(activeArticleId, defaultBp);
+          setBlueprintLoaded(true);
         });
       }
     });
@@ -1259,7 +1288,39 @@ ${seriesCtx}`;
     setPlanError(null);
   }, []);
 
-  // Cleanup plan on unmount
+  // Listen for external blueprint changes (e.g. from sidebar, ArticleManager)
+  useEffect(() => {
+    return on("blueprint-changed", (detail) => {
+      if (!detail?.articleId || detail.articleId !== activeArticleId) return;
+      // Re-read blueprint from storage to pick up external changes
+      loadBlueprint(detail.articleId).then((bp) => {
+        if (bp) {
+          setBlueprint(bp);
+          setBlueprintLoaded(true);
+          if (bp.phase === "planning") {
+            setPartialPlan({
+              title: bp.workingTitle,
+              description: bp.description,
+              outline: bp.outline,
+              tags: bp.tags || [],
+              tone: bp.tone || "",
+              targetAudience: bp.targetAudience || "",
+              targetWordCount: bp.targetWordCount || 0,
+              skillId: bp.skillId,
+              styleId: bp.styleId || "general",
+              actionId: bp.actionId,
+            });
+            setPlanState("review");
+            setPlanStep("outline");
+          }
+          updateOutline(contentRef.current, bp.outline);
+          onPhaseChange?.(bp.phase);
+        }
+      });
+    });
+  }, [activeArticleId]);
+
+// Cleanup plan on unmount
   useEffect(() => {
     return () => {
       if (abortPlanRef.current) {
@@ -1407,7 +1468,7 @@ ${seriesDescription || ""}`
 
   return (
     <section className="editor-pane">
-      {(hasActiveArticle && activeArticleId) ? (
+      {(hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase !== "planning") ? (
         <Toolbar
           onModeSwitch={onSetEditorFormat}
           editorMode={parentEditorMode}
@@ -1418,7 +1479,7 @@ ${seriesDescription || ""}`
           onToggleFocus={onToggleFocus}
           onToggleSidebar={onToggleSidebar}        />
       ) : null}
-      {hasActiveArticle && activeArticleId ? (
+      {hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase !== "planning" ? (
         <div className="editor-content-area">
           {/* Article Blueprint Header */}
           {blueprint && (
@@ -1474,6 +1535,53 @@ ${seriesDescription || ""}`
             </div>
           )}
         </div>
+      ) : hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase === "planning" ? (
+        <StartupSplash
+          onQuickStart={() => {
+            // 规划中文章：快速开始 → 转为写作阶段
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+            }
+          }}
+          onAIPlan={handleStartPlan}
+          planState={planState}
+          planStep={planStep}
+          partialPlan={partialPlan}
+          planError={planError}
+          lastPlanInput={lastPlanInput}
+          writingOutline={blueprint?.outline || partialPlan.outline}
+          writingSectionId={writingSection}
+          onConfirm={handlePlanConfirm}
+          onCancel={() => { setPlanState("idle"); setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined }); }}
+          onCancelPlan={cancelPlan}
+          onEditTitle={handleEditTitle}
+          onEditDescription={handleEditDescription}
+          onEditOutline={handleEditOutline}
+          onRetry={handlePlanRetry}
+          onEnterEditor={() => {
+            // 跳过规划直接进入编辑
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+              writtenContentRef.current = contentRef.current || "";
+              contentInjectedFromPlanRef.current = true;
+              onEnterEditor?.(activeArticleId, activeCollectionId || "");
+              setPlanState("idle");
+            }
+          }}
+          streamingContent={streamingContent}
+          projectName={undefined}
+          projectReady={false}
+          projectFiles={[]}
+          toolEvents={toolEvents}
+        />
       ) : folderProjectName ? (
         <div className="editor-pane__startup-split">
           <div className="editor-pane__project-panel">
