@@ -448,7 +448,7 @@ export async function generateOutline(input: PlanInput, title: string, descripti
   const outlineSkill = await resolveSkill(input.skillId);
   const sysPrompt = buildSystemPrompt("outline", outlineSkill, input.tone);
   const userPrompt = [
-    "请根据以下信息生成文章大纲。每条大纲必须包含**序号、标题和描述**，格式如下：",
+    "请根据以下信息生成文章大纲。每条大纲必须包含**序号、标题和描述**，严格按此格式：",
     "",
     "## 1. 标题 —— 描述",
     "### 1.1 子标题 —— 子标题描述",
@@ -457,11 +457,11 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     "### 2.1 子标题 —— 子标题描述",
     "",
     "要求：",
-    "- 一级章节用 ## 开头，二级子章节用 ### 开头",
-    "- 每个大纲项必须包含序号（1. 2. 3. 或 1.1 2.1 等）",
-    "- 用中文破折号 —— 分隔标题和描述",
+    "- 一级章节必须用 ## 开头；二级子章节必须用 ### 开头",
+    "- 每个大纲项必须包含序号（1. 2. 3. 或 1.1 2.1 等），序号后跟标题",
+    "- 必须用中文破折号 —— 分隔标题和描述",
     "- 至少 3-5 个一级章节，每个一级章节下至少 2-3 个子章节",
-    "- 描述简明扼要（10-20 字）",
+    "- 每项描述必须给出（10-20 字），不能省略",
     "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
@@ -650,7 +650,7 @@ function parseOutline(text: string): OutlineSection[] {
     // Pattern 1: "## 1. Title —— Desc" or "### 1.1 Title —— Desc" (markdown heading with number)
     match = trimmed.match(/^(#{1,6})\s+(.+)$/);
     if (match) {
-      level = (match[1].length >= 3 ? 3 : match[1].length >= 2 ? 2 : 1) as 1 | 2 | 3;
+      level = (match[1].length <= 2 ? 1 : match[1].length === 3 ? 2 : 3) as 1 | 2 | 3;
       let rest = match[2].trim();
       // Strip leading number like "1. ", "1.1 ", "1.1.1 "
       rest = rest.replace(/^\d+(\.\d+)*\s*[.、]?\s*/, "");

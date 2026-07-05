@@ -245,7 +245,7 @@ export function ProjectExplorer() {
       {/* ── Toolbar ── */}
       <div className="project-explorer__toolbar">
         <button className="project-explorer__toolbar-btn" onClick={handleRescan} disabled={exploring} title="重新扫描">
-          <RotateCw size={12} className={exploring ? "" : ""} />
+          <RotateCw size={12} className={exploring ? "project-explorer__spinner" : ""} />
           重新扫描
         </button>
         <button className="project-explorer__toolbar-btn project-explorer__toolbar-btn--stop" onClick={handleStop} disabled={!exploring} title="停止扫描">
