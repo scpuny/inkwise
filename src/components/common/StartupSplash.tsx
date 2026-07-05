@@ -127,8 +127,8 @@ const [customTone, setCustomTone] = useState("");
 
   useEffect(() => { ensureSkills(); }, []);
 
-  // Use a stable scroll key derived from plan data (safe if partialPlan is undefined)
-  const scrollKey = planStep + (partialPlan?.title || '') + (partialPlan?.description || '') + (partialPlan?.outline?.length || 0) + (partialPlan?.tags?.length || 0);
+  // Use a stable scroll key derived from plan data + streaming content + tool events
+  const scrollKey = planStep + (partialPlan?.title || '') + (partialPlan?.description || '') + (partialPlan?.outline?.length || 0) + (partialPlan?.tags?.length || 0) + (streamingContent ? streamingContent.length : 0) + toolEvents.length;
   useEffect(() => {
     responseEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [scrollKey]);
