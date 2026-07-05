@@ -2188,67 +2188,53 @@ body {
 }
 
 /* ═══════════════════════════════════════════════
-   Floating Overlay — AgentPanel / StylePanel
+   Side Panel — AgentPanel / StylePanel (squeezes editor via flex)
    ═══════════════════════════════════════════════ */
 
-.floating-layer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 200;
-  pointer-events: none;
+.app__body {
+  flex: 1;
   display: flex;
-  justify-content: flex-end;
-}
-
-.floating-layer__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.08);
-  pointer-events: auto;
-  animation: backdrop-in 0.2s ease-out;
-}
-
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.floating-layer__panel {
-  position: relative;
-  width: clamp(360px, 35vw, 480px);
-  max-width: 100vw;
-  height: 100%;
-  pointer-events: auto;
-  background: var(--bg-soft);
-  border-left: 1px solid var(--border);
-  box-shadow: -6px 0 32px rgba(0, 0, 0, 0.1);
-  animation: float-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
-@keyframes float-in {
+.app__body > .layout {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-panel {
+  flex: 0 0 clamp(360px, 35vw, 420px);
+  min-width: 0;
+  background: var(--bg-soft);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: panel-slide-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panel-slide-in {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* 小屏幕：浮动层占满全宽 */
+/* 小屏幕：面板占满全宽 */
 @media (max-width: 640px) {
-  .floating-layer__panel {
-    width: 100vw;
-    max-width: 100vw;
-    border-left: none;
+  .app__body {
+    flex-direction: column;
   }
-  .floating-layer__backdrop {
-    background: rgba(0, 0, 0, 0.04);
+  .side-panel {
+    flex: 1;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
   }
 }
 
-.app--focus .floating-layer {
+.app--focus .side-panel {
   display: none;
 }
 
@@ -20738,7 +20724,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -20778,7 +20764,7 @@ body {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 12px 14px 24px;
+  padding: 0 14px 24px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -21894,7 +21880,7 @@ body {
 
 .style-panel__divider {
   height: 1px;
-  background: var(--border-soft);
+  background: var(--border-color);
   margin: 4px 0 8px;
   opacity: 0.5;
 }
@@ -25819,6 +25805,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
+  min-width: 0;
 }
 .style-panel__theme-card {
   display: flex;
@@ -25833,6 +25820,8 @@ body {
   text-align: left;
   font-family: inherit;
   color: inherit;
+  min-width: 0;
+  overflow: hidden;
 }
 .style-panel__theme-card:hover {
   border-color: var(--accent-dim);
@@ -25848,6 +25837,9 @@ body {
   font-weight: 600;
   color: var(--fg);
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .style-panel__theme-card-desc {
   font-size: 10px;

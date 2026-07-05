@@ -136,6 +136,7 @@ export default function MainEditorPage() {
     focusMode ? "layout--focus" : "",
   ].filter(Boolean).join(" ");
 
+
   const articleCtx = useMemo(
     () => (activeArticleId ? new ArticleContext(activeArticleId) : null),
     [activeArticleId],
@@ -144,6 +145,7 @@ export default function MainEditorPage() {
   return (
     <ErrorBoundary name="app">
     <div className={"app" + (focusMode ? " app--focus" : "")}>
+      <div className="app__body">
       <div ref={layoutRef} className={layoutClass}
         style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
@@ -246,19 +248,18 @@ export default function MainEditorPage() {
           onCloseStylePanel={() => setStylePanelOpen(false)}
         />
         )}
-        {panelOpen && (
-          <div className="floating-layer">
-            <div className="floating-layer__backdrop" onClick={closePanel} />
-            <div className="floating-layer__panel">
-              <AgentPanel />
-            </div>
+
+
+      </ArticleCtx.Provider>
+      </div>
+      {panelOpen && (
+          <div className="side-panel">
+            <AgentPanel />
           </div>
         )}
         {stylePanelOpen && (
-          <div className="floating-layer">
-            <div className="floating-layer__backdrop" onClick={() => setStylePanelOpen(false)} />
-            <div className="floating-layer__panel">
-              <StylePanel
+          <div className="side-panel">
+            <StylePanel
                 key={activeArticleId}
                 open={stylePanelOpen}
                 onClose={() => setStylePanelOpen(false)}
@@ -276,10 +277,8 @@ export default function MainEditorPage() {
                 onSetCodeTheme={setCodeThemeId}
                 onApplyHeadingNumbers={handleApplyHeadingNumbers}
               />
-            </div>
           </div>
         )}
-      </ArticleCtx.Provider>
       </div>
 
       {focusMode && (
