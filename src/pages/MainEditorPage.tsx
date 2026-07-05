@@ -198,7 +198,9 @@ export default function MainEditorPage() {
           onPointerDown={startResize("sidebar")}
           role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度"
         />
-        {showFinalPage && activeArticleId ? (
+        {projectPanelOpen ? (
+          <ProjectExplorer />
+        ) : showFinalPage && activeArticleId ? (
           <ArticleFinalPage
             articleId={activeArticleId}
             collectionId={activeCollectionId ?? ""}
@@ -246,9 +248,6 @@ export default function MainEditorPage() {
           onCloseStylePanel={() => setStylePanelOpen(false)}
         />
         )}
-
-        {/* ProjectExplorer overlay — covers main content when open */}
-        {projectPanelOpen && <ProjectExplorer />}
 
 
       </div>
