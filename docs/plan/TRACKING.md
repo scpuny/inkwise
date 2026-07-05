@@ -250,13 +250,16 @@
 | F9 | 大纲 prompt 不明确导致输出格式混乱，parseOutline 忽略 "1.1" 编号项 | `plan.ts` | 🟢 | 2026-07-05 |
 | F10 | 大纲渲染缺少嵌套结构/序号前缀/描述样式 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
 | F11 | 写作阶段 UI 简陋，流式内容无占位提示/版式/样式 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
+| F12 | 大纲系统 prompt 与用户 prompt 格式冲突，AI 输出混乱导致 fallback | `defaults.ts` | 🟢 | 2026-07-05 |
+| F13 | generateOutline 无错误日志/空结果检查，静默 fallback 到引言/正文/结语 | `plan.ts` | 🟢 | 2026-07-05 |
+| F14 | 系列文章 auto-plan-article 事件未传递 collectionId，项目上下文竞态丢失 | `EditorPane.tsx`, `plan.ts` | 🟢 | 2026-07-05 |
 
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 7 | 7 | 100% |
+| 热修复 | 14 | 14 | 100% |
 
 ## 里程碑记录
 

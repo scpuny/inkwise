@@ -1167,8 +1167,24 @@ ${seriesCtx}`;
     abortPlanRef.current = abortController;
     
     // Load linked folder path for tool-based file reading
-    const _linkedFolder = activeCollectionId
-      ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId)?.linkedFolder || undefined
+    // Use planCollectionId from input if provided (avoids race condition with activeCollectionId store)
+    const targetCollectionId = input.planCollectionId || activeCollectionId;
+    const _linkedFolder = targetCollectionId
+      ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === targetCollectionId)?.linkedFolder || undefined
+      : undefined;
+    // Also update project context if we got an explicit collectionId from event
+    const targetFolderContext = (input.planCollectionId && _linkedFolder && !folderContextRef.current)
+      ? await (async () => {
+          try {
+            const { buildContextText } = await import("../../lib/utils/projectContext");
+            return await buildContextText(_linkedFolder, undefined);
+          } catch {
+            try {
+              const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+              return await getCollectionFolderContext(input.planCollectionId!);
+            } catch { return undefined; }
+          }
+        })()
       : undefined;
     // If folder context not yet loaded, try to load it directly (race condition fix)
     let projectCtx = folderContextRef.current;
@@ -1185,9 +1201,9 @@ ${seriesCtx}`;
     }
     const enrichedInput: PlanInput = {
       ...input,
-      projectContext: projectCtx || undefined,
+      projectContext: targetFolderContext || projectCtx || undefined,
       projectName: folderProjectNameRef.current || undefined,
-      collectionId: activeCollectionId || undefined,
+      collectionId: targetCollectionId || undefined,
       linkedFolder: _linkedFolder,
     };
     setLastPlanInput(enrichedInput);
@@ -1274,6 +1290,7 @@ ${seriesDescription || ""}`
         prefilledDescription: description || undefined,
         seriesContext: seriesCtx,
         seriesId: seriesId || undefined,
+        planCollectionId: detail.collectionId || undefined,
       });
     });
   }, [handleStartPlan]);

@@ -46,6 +46,8 @@ export interface PlanInput {
   /** Series context — passed through from series plan */
   seriesContext?: string;
   seriesId?: string;
+  /** Explicit collectionId to avoid race condition with activeCollectionId store */
+  planCollectionId?: string;
 }
 
 export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
@@ -474,7 +476,24 @@ export async function generateOutline(input: PlanInput, title: string, descripti
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 3072);
-  return parseOutline(result);
+  if (!result || !result.trim()) {
+    console.warn("[generateOutline] AI returned empty result, using fallback");
+    return [
+      { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "引出文章主题和背景，制造认知落差", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_2", title: "核心内容", level: 1, description: "深入讲解文章核心内容，包含关键概念和案例分析", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_3", title: "结语", level: 1, description: "总结全文核心观点，展望未来方向", status: "pending" },
+    ];
+  }
+  console.log("[generateOutline] AI raw result first 500:", result.slice(0, 500));
+  const parsed = parseOutline(result);
+  if (parsed.length === 0) {
+    console.warn("[generateOutline] parseOutline returned 0 sections, raw:", result.slice(0, 300));
+  }
+  return parsed.length > 0 ? parsed : [
+    { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "引出文章主题和背景，制造认知落差", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_2", title: "核心内容", level: 1, description: "深入讲解文章核心内容", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_3", title: "结语", level: 1, description: "总结全文核心观点", status: "pending" },
+  ];
 }
 
 export async function generateTags(input: PlanInput, title: string, description: string): Promise<string[]> {
