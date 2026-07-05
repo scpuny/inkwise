@@ -253,13 +253,14 @@
 | F12 | 大纲系统 prompt 与用户 prompt 格式冲突，AI 输出混乱导致 fallback | `defaults.ts` | 🟢 | 2026-07-05 |
 | F13 | generateOutline 无错误日志/空结果检查，静默 fallback 到引言/正文/结语 | `plan.ts` | 🟢 | 2026-07-05 |
 | F14 | 系列文章 auto-plan-article 事件未传递 collectionId，项目上下文竞态丢失 | `EditorPane.tsx`, `plan.ts` | 🟢 | 2026-07-05 |
+| F15 | 项目文件读取工具调用事件太啰嗦，改为紧凑进度条 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
 
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 14 | 14 | 100% |
+| 热修复 | 15 | 15 | 100% |
 
 ## 里程碑记录
 
