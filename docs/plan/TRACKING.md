@@ -254,13 +254,18 @@
 | F13 | generateOutline 无错误日志/空结果检查，静默 fallback 到引言/正文/结语 | `plan.ts` | 🟢 | 2026-07-05 |
 | F14 | 系列文章 auto-plan-article 事件未传递 collectionId，项目上下文竞态丢失 | `EditorPane.tsx`, `plan.ts` | 🟢 | 2026-07-05 |
 | F15 | 项目文件读取工具调用事件太啰嗦，改为紧凑进度条 | `StartupSplash.tsx`, `styles.css` | 🟢 | 2026-07-05 |
-
+| F16 | 系列文章 styleId/actionId 未传递，规划阶段丢失完整参数 | `appHooks.ts`, `events.ts`, `types.ts` | 🟢 | 2026-07-05 |
+| F17 | 新建文章继承旧样式，未重置为默认值 | `editorStore.ts` | 🟢 | 2026-07-05 |
+| F18 | outline fallback 文本"正文/结语"过于简单，缺少描述 | `plan.ts` | 🟢 | 2026-07-05 |
+| F19 | 生成文章 AI 系统 prompt 缺少"必须基于真实项目"的强约束 | `plan.ts` | 🟢 | 2026-07-05 |
+| F20 | CSS 文件 89 处重复 @keyframes 定义 | `styles.css` | 🟢 | 2026-07-05 |
+| F21 | appHooks.ts TypeScript 错误：await 在非 async setTimeout 中 | `appHooks.ts` | 🟢 | 2026-07-05 |
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 15 | 15 | 100% |
+| 热修复 | 21 | 21 | 100% |
 
 ## 里程碑记录
 

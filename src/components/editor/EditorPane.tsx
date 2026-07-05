@@ -1199,6 +1199,8 @@ ${seriesCtx}`;
         } catch {}
       }
     }
+    // CRITICAL: Save loaded context back to ref so it persists for confirm/writing phase
+    folderContextRef.current = targetFolderContext || projectCtx || folderContextRef.current;
     const enrichedInput: PlanInput = {
       ...input,
       projectContext: targetFolderContext || projectCtx || undefined,
@@ -1272,7 +1274,7 @@ ${seriesCtx}`;
     return on("auto-plan-article", (detail) => {
       if (!detail?.title) return;
       const { title, description, tone: articleTone, targetAudience,
-              skillId, targetWordCount, seriesId, seriesTitle, seriesDescription } = detail;
+              skillId, styleId, actionId, targetWordCount, seriesId, seriesTitle, seriesDescription } = detail;
       const inspiration = description 
         ? `写一篇关于「${title}」的文章：${description}`
         : `写一篇关于「${title}」的文章`;
@@ -1286,6 +1288,8 @@ ${seriesDescription || ""}`
         targetAudience: targetAudience || undefined,
         targetWordCount: targetWordCount || undefined,
         skillId: skillId || undefined,
+        styleId: styleId || undefined,
+        actionId: actionId || undefined,
         prefilledTitle: title || undefined,
         prefilledDescription: description || undefined,
         seriesContext: seriesCtx,

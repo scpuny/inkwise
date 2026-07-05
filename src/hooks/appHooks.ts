@@ -214,6 +214,8 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
         const seriesTone = seriesPlan?.tone;
         const seriesAudience = seriesPlan?.targetAudience;
         const seriesSkillId = seriesPlan?.skillId;
+        const seriesStyleId = seriesPlan?.styleId;
+        const seriesActionId = seriesPlan?.actionId;
 
         // 计算文章在系列中的序号，追加到标题
         const articleIndex = seriesPlan?.articles?.findIndex(a => a.id === article.id) ?? -1;
@@ -224,7 +226,7 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
           ? articleIndex + 1 + '. ' + numberedTitle
           : article.title;
 
-        setTimeout(() => {
+        setTimeout(async () => {
           const seriesTitle = seriesPlan?.title || "";
           const seriesDescription = seriesPlan?.articles?.map((a, i) =>
             `${i+1}. ${a.title}${a.description ? " — " + a.description : ""}`
@@ -239,6 +241,8 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
             tone: seriesTone,
             targetAudience: seriesAudience,
             skillId: seriesSkillId,
+            styleId: seriesStyleId || undefined,
+            actionId: seriesActionId || undefined,
             targetWordCount: article.targetWordCount,
           });
         }, 100);

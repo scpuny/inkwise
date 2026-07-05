@@ -135,9 +135,20 @@ export function clearSkillCache(): void {
 }
 
 async function resolveSkill(skillId?: string): Promise<WritingSkill | undefined> {
-  if (!skillId) return undefined;
   await ensureAllSkillsCache();
-  return _allSkillsCache?.find(s => s.id === skillId);
+  if (!skillId) {
+    // Return the default "general" skill when no skill is selected
+    // This ensures the system prompt contains correct writing instructions
+    const general = _allSkillsCache?.find(s => s.id === "general");
+    if (general) return general;
+    // Fallback: first available builtin skill
+    const builtins = getBuiltinSkills();
+    return builtins.find(s => s.id === "general") || builtins[0];
+  }
+  const found = _allSkillsCache?.find(s => s.id === skillId);
+  if (found) return found;
+  // If specific skill not found, fall back to general
+  return _allSkillsCache?.find(s => s.id === "general");
 }
 
 // ─── Provider ───
@@ -168,6 +179,37 @@ const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。
  * 使用 AgentEngine（tool calling）生成完整文章。
  * AI 主动通过工具读取项目文件，确保代码真实性。
  */
+
+
+// Tool execution instructions appended to skill-based system prompts
+const TOOL_INSTRUCTIONS = `
+
+## 核心原则（重要）
+1. **本文必须围绕关联的真实项目展开** — 项目结构和上下文信息已在用户消息中提供，所有内容必须基于真实项目
+2. **在写作前必须先读取项目的关键文件**，了解项目的真实功能和架构
+3. **禁止编造不存在的能力或功能特性** — 所有描述的功能、API、特性必须能在项目代码中找到真实依据
+4. **禁止编造 API 路径、接口名称、配置项等** — 必须从项目代码中读取真实的命名和结构
+
+## 可用工具
+你必须使用以下工具来获取项目真实文件内容：
+- \`read_project_files\`: 读取项目源代码文件，获取真实的代码示例
+- \`list_project_files\`: 查看项目目录结构
+- \`search_project_files\`: 搜索文件名匹配的文件
+
+## 写作原则
+1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造
+2. 文章中的代码块应是项目中实际存在的文件内容
+3. 在引用代码前，先用 \`read_project_files\` 读取对应文件
+4. 如果需要了解项目结构，用 \`list_project_files\` 查看目录
+5. 如果不确定某个功能在哪个文件中，用 \`search_project_files\` 搜索
+
+## 输出要求
+- 直接输出 Markdown 格式的完整文章
+- 文章标题已为 #（一级），标题后可以根据需要接一段简短的前置描述或引言
+- 所有二级标题（##）按出现顺序标号：\`## 1. 标题\`、\`## 2. 标题\`
+- 三级标题（###）在其父级下按顺序标号：\`### 1.1 子标题\`、\`### 1.2 子标题\`
+- 使用流畅自然的中文`;
+
 export async function generateFullArticleWithTools(
   input: ArticleGenInput,
   onToken?: (token: string) => void,
@@ -191,11 +233,13 @@ export async function generateFullArticleWithTools(
   // Include project structure context so AI doesn't need to re-explore
   if (input.projectContext) {
     parts.push("");
-    parts.push("## 项目结构");
-    parts.push("以下是你已经知道的当前项目结构和关键文件。**不要重新探索目录**，直接读具体文件取代码示例。");
+    parts.push("## 关联项目结构（重要）");
+    parts.push("以上文章必须基于以下真实项目来撰写。这是项目的目录结构和关键文件索引，**不要写不属于此项目的内容**。");
     parts.push("```");
     parts.push(String(input.projectContext || "").slice(0, 8000));
     parts.push("```");
+    parts.push("");
+    parts.push("在开始写作前，请先使用 list_project_files 或 read_project_files 工具了解此项目的真实功能。");
   }
 
   parts.push("");
@@ -222,9 +266,15 @@ export async function generateFullArticleWithTools(
     return generateFullArticleStream(input, onToken);
   }
 
+  // Resolve skill and build system prompt from skill's writing phase config
+  const writingSkill = input.skillId ? await resolveSkill(input.skillId) : await resolveSkill(undefined);
+  const baseSystemPrompt = buildSystemPrompt("writing", writingSkill, input.tone);
+  // Merge skill-specific instructions with tool-based writing instructions  
+  const mergedSystemPrompt = baseSystemPrompt + TOOL_INSTRUCTIONS;
+
   try {
     const result = await runAgentLoop({
-      systemPrompt: ARTICLE_WRITER_SYSTEM_PROMPT,
+      systemPrompt: mergedSystemPrompt,
       userMessage,
       tools: PROJECT_TOOLS,
       toolContext,
@@ -479,9 +529,10 @@ export async function generateOutline(input: PlanInput, title: string, descripti
   if (!result || !result.trim()) {
     console.warn("[generateOutline] AI returned empty result, using fallback");
     return [
-      { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "引出文章主题和背景，制造认知落差", status: "pending" },
-      { id: "sec_fallback_" + Date.now() + "_2", title: "核心内容", level: 1, description: "深入讲解文章核心内容，包含关键概念和案例分析", status: "pending" },
-      { id: "sec_fallback_" + Date.now() + "_3", title: "结语", level: 1, description: "总结全文核心观点，展望未来方向", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "用真实场景或问题切入，引出文章主题，制造认知落差，让读者产生好奇心", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解文章涉及的核心概念、工作原理和关键机制，建立完整知识框架", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过实际案例或代码示例展示如何应用所学知识，提供可操作的方法", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_4", title: "总结与对比", level: 1, description: "总结全文核心观点，与市面方案做对比分析，突出差异化价值和展望", status: "pending" },
     ];
   }
   console.log("[generateOutline] AI raw result first 500:", result.slice(0, 500));
@@ -490,9 +541,10 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     console.warn("[generateOutline] parseOutline returned 0 sections, raw:", result.slice(0, 300));
   }
   return parsed.length > 0 ? parsed : [
-    { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "引出文章主题和背景，制造认知落差", status: "pending" },
-    { id: "sec_fallback_" + Date.now() + "_2", title: "核心内容", level: 1, description: "深入讲解文章核心内容", status: "pending" },
-    { id: "sec_fallback_" + Date.now() + "_3", title: "结语", level: 1, description: "总结全文核心观点", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "用真实场景或问题切入，引出文章主题，制造认知落差", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解核心概念、工作原理和关键机制", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过案例或代码示例展示如何应用所学知识", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_4", title: "总结与对比", level: 1, description: "总结全文，与市面方案对比分析，突出差异化价值", status: "pending" },
   ];
 }
 
@@ -743,9 +795,10 @@ function parseOutline(text: string): OutlineSection[] {
   }
 
   return sections.length > 0 ? sections : [
-    { id: "sec_plan_" + Date.now() + "_1", title: "引言", level: 1, status: "pending" },
-    { id: "sec_plan_" + Date.now() + "_2", title: "正文", level: 1, status: "pending" },
-    { id: "sec_plan_" + Date.now() + "_3", title: "结语", level: 1, status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_1", title: "引言", level: 1, description: "从具体场景或问题切入，引出主题，制造认知落差，让读者产生好奇", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解核心概念和工作原理，建立完整的知识框架", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过案例或代码示例展示如何应用，提供可操作的方法", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_4", title: "总结与展望", level: 1, description: "总结全文要点，对比市面方案，突出差异化并展望未来", status: "pending" },
   ];
 }
 

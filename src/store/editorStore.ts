@@ -69,6 +69,17 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
         fontFamily: config.editorFontFamily ?? "",
         codeThemeId: config.codeThemeId ?? "atom-one-light",
       });
+    } else {
+      // No saved config for this article — reset to defaults
+      set({
+        lineHeight: 1.75,
+        styleTemplate: "default",
+        fontSize: 15,
+        maxWidth: 820,
+        paragraphGap: 1.25,
+        fontFamily: "",
+        codeThemeId: "atom-one-light",
+      });
     }
   },
 

@@ -16,6 +16,8 @@ export interface AutoPlanArticleDetail {
   tone?: string;
   targetAudience?: string;
   skillId?: string;
+  styleId?: string;
+  actionId?: string;
   targetWordCount?: number;
 }
 

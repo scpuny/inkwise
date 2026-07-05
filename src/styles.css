@@ -359,17 +359,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -392,11 +382,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -828,17 +814,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -861,11 +837,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -1191,17 +1163,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -1224,11 +1186,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -2346,17 +2304,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -2379,11 +2327,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -3686,17 +3630,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -3719,11 +3653,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -3936,17 +3866,7 @@ body {
   animation: save-indicator-in 0.2s var(--ease-out) forwards;
 }
 
-@keyframes save-indicator-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .editor-save-indicator__dot {
   width: 7px;
@@ -3969,11 +3889,7 @@ body {
   color: var(--accent);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 
 .editor-save-indicator__label {
   white-space: nowrap;
@@ -5048,11 +4964,7 @@ body {
     animation: spin .6s linear infinite;
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg)
-    }
-  }
+  
 
   /* ── Composer meta toolbar row ── */
   .composer-meta {
@@ -5407,17 +5319,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -5440,11 +5342,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -5766,17 +5664,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -5799,11 +5687,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -8796,17 +8680,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -8829,11 +8703,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -9152,17 +9022,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -9185,11 +9045,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -9439,17 +9295,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -9472,11 +9318,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -9723,17 +9565,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -9756,11 +9588,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -9963,17 +9791,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -9996,11 +9814,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -10188,17 +10002,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -10221,11 +10025,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -10400,17 +10200,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -10433,11 +10223,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -10620,17 +10406,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -10653,11 +10429,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -10853,17 +10625,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -10886,11 +10648,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -11214,17 +10972,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -11247,11 +10995,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -11487,11 +11231,7 @@ body {
     animation: spin 0.8s linear infinite;
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .search-panel__list {
     display: flex;
@@ -11601,17 +11341,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -11634,11 +11364,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -11852,17 +11578,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -11885,11 +11601,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -12287,17 +11999,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -12320,11 +12022,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -12555,17 +12253,7 @@ body {
     animation: pulse-dot 1.2s ease-in-out infinite;
   }
 
-  @keyframes pulse-dot {
-
-    0%,
-    100% {
-      opacity: 0.4;
-    }
-
-    50% {
-      opacity: 1;
-    }
-  }
+  
 
 
 
@@ -12592,17 +12280,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -12625,11 +12303,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -12932,17 +12606,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -12965,11 +12629,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -13405,11 +13065,7 @@ body {
     font-variant-numeric: tabular-nums;
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .agent-chat__error-text {
     font-size: var(--text-sm);
@@ -14011,17 +13667,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -14044,11 +13690,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -14234,17 +13876,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -14267,11 +13899,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -14750,17 +14378,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -14783,11 +14401,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -15505,17 +15119,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -15538,11 +15142,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -16104,17 +15704,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -16137,11 +15727,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -16387,17 +15973,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -16420,11 +15996,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -17981,17 +17553,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -18014,11 +17576,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -18335,17 +17893,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -18368,11 +17916,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -18708,17 +18252,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -18741,11 +18275,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -19707,17 +19237,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -19740,11 +19260,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -20314,17 +19830,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -20347,11 +19853,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -20839,17 +20341,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -20872,11 +20364,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -21799,17 +21287,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -21832,11 +21310,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -22014,17 +21488,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -22047,11 +21511,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -22255,17 +21715,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -22288,11 +21738,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -22542,17 +21988,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -22575,11 +22011,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -22789,17 +22221,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -22822,11 +22244,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -22997,17 +22415,7 @@ body {
     animation: save-indicator-in 0.2s var(--ease-out) forwards;
   }
 
-  @keyframes save-indicator-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  
 
   .editor-save-indicator__dot {
     width: 7px;
@@ -23030,11 +22438,7 @@ body {
     color: var(--accent);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .editor-save-indicator__label {
     white-space: nowrap;
@@ -23477,15 +22881,7 @@ body {
     animation: spin 1s linear infinite;
   }
 
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .collection-form__scan-retry {
     margin-left: auto;
@@ -23667,15 +23063,7 @@ body {
     animation: spin 1s linear infinite;
   }
 
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .collection-form__scan-retry {
     margin-left: auto;
@@ -26974,11 +26362,7 @@ body {
     transform: rotate(90deg);
   }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  
 
   .spin {
     animation: spin 1s linear infinite;

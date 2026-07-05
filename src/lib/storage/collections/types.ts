@@ -30,6 +30,8 @@ export type SeriesPlan = {
   tone?: string;
   targetAudience?: string;
   skillId?: string;
+  styleId?: string;
+  actionId?: string;
   articles: SeriesArticle[];
   description?: string;
   totalArticles?: number;
