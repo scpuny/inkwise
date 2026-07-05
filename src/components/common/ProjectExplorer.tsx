@@ -86,8 +86,7 @@ function toolEventToLogEntries(ev: AgentToolEvent): LogEntry[] {
 
 export function ProjectExplorer() {
   const colId = usePanelStore((s) => s.projectPanelColId);
-  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<any[] | null>(null);
@@ -218,9 +217,9 @@ export function ProjectExplorer() {
   const handlePlanSeries = useCallback(() => {
     if (colId) {
       emit("plan-series", { collectionId: colId });
-      setSeriesPlannerOpen(true);
+      setMainRoute("series-plan");
     }
-  }, [colId, setSeriesPlannerOpen]);
+  }, [colId, setMainRoute]);
 
   const getToolIcon = (icon: string) => {
     switch (icon) {
@@ -240,7 +239,7 @@ export function ProjectExplorer() {
           <span className="project-explorer__title">{col?.title || "项目"}</span>
           {col?.linkedFolder && <span className="project-explorer__subtitle">{col.linkedFolder.split("/").pop()}</span>}
         </div>
-        <button className="project-explorer__close" onClick={() => setProjectPanelOpen(false)} title="关闭"><X size={12} /></button>
+        <button className="project-explorer__close" onClick={() => setMainRoute("editor")} title="关闭"><X size={12} /></button>
       </div>
       {/* ── Toolbar ── */}
       <div className="project-explorer__toolbar">

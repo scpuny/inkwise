@@ -23636,6 +23636,70 @@ body {
     white-space: nowrap;
   }
 
+
+  /* ─── Series Planner: tree toggle + project sidebar ─── */
+
+  .series-planner__tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: auto;
+  }
+
+  .series-planner__tree-toggle:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .series-planner-page__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .series-planner-page__header .series-planner__close {
+    margin-left: auto;
+  }
+
+  .series-planner__project-sidebar {
+    width: 240px;
+    border-right: 1px solid var(--border-soft);
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .series-planner__project-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .series-planner__project-sidebar-tree {
+    flex: 1;
+    overflow: auto;
+    padding: 4px 0;
+  }
   /* ─── Series Overview (in sidebar) ─── */
 
   .series-overview {

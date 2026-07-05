@@ -18,7 +18,7 @@ export function ProjectPanel({
   onSelectArticle?: (articleId: string) => void;
 }) {
   const colId = usePanelStore((s) => s.projectPanelColId);
-  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
   const [col, setCol] = useState<Collection | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -37,7 +37,7 @@ export function ProjectPanel({
   }, [colId, refreshKey]);
 
   const handleOpenFull = () => {
-    setProjectPanelOpen(true);
+    setMainRoute("scan");
     onOpenProject?.();
   };
 

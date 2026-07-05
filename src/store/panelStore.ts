@@ -6,6 +6,8 @@ import type { SettingsTab } from "../components/settings";
 
 /* ───────────── Panel Store ───────────── */
 
+export type MainRoute = 'editor' | 'manage' | 'trash' | 'scan' | 'series-plan' | 'settings';
+
 export interface PanelState {
   // Panels
   themePickerOpen: boolean;
@@ -27,6 +29,9 @@ export interface PanelState {
   // Project panel
   projectPanelOpen: boolean;
   projectPanelColId: string | null;
+
+  // 主内容区域路由
+  mainRoute: MainRoute;
 }
 
 export interface PanelActions {
@@ -45,6 +50,7 @@ export interface PanelActions {
   setResizing: (r: "sidebar" | null) => void;
   setProjectPanelOpen: (open: boolean) => void;
   setProjectPanelColId: (id: string | null) => void;
+  setMainRoute: (route: MainRoute) => void;
 }
 
 const DEFAULT_SETTINGS_TAB = "general";
@@ -65,6 +71,7 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   resizing: null,
   projectPanelOpen: false,
   projectPanelColId: null,
+  mainRoute: 'editor',
 
   setThemePickerOpen: (themePickerOpen) => set({ themePickerOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
@@ -81,4 +88,5 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   setResizing: (resizing) => set({ resizing }),
   setProjectPanelOpen: (projectPanelOpen) => set({ projectPanelOpen }),
   setProjectPanelColId: (projectPanelColId) => set({ projectPanelColId }),
+  setMainRoute: (mainRoute) => set({ mainRoute }),
 }));

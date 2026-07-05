@@ -421,7 +421,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                     <span className="collection-tree__label">
                           {col.title}
                           {col.linkedFolder && <span className="collection-tree__folder-badge" title={folderScanning[col.id] ? "正在扫描项目结构…" : col.linkedFolder}
-                            onClick={(e) => { e.stopPropagation(); usePanelStore.getState().setProjectPanelColId(col.id); usePanelStore.getState().setProjectPanelOpen(true); }}
+                            onClick={(e) => { e.stopPropagation(); usePanelStore.getState().setProjectPanelColId(col.id); usePanelStore.getState().setMainRoute("scan"); }}
                             style={{cursor: "pointer"}}>
                             {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
                           </span>}

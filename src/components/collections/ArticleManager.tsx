@@ -14,7 +14,7 @@ import {
   FileSearch,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, trashArticle, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -264,13 +264,17 @@ export function ArticleManager({
 
   const handleDeleteArticles = async () => {
     for (const id of selectedIds) {
-      for (const col of collections) {
-        col.articles = col.articles.filter((a) => a.id !== id);
-      }
-      // Tauri: SQLite FTS
+      const article = articles.find((a) => a.id === id);
+      if (article) {
+        await trashArticle(article.collectionId, id);
+      } else {
+        // Fallback — article not found in cached list
+        for (const col of collections) {
+          col.articles = col.articles.filter((a) => a.id !== id);
+        }
         if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteArticleDb, { id }); } catch {} }
+      }
     }
-    await saveCollections(collections);
     setShowDeleteConfirm(false);
     setSelectedIds(new Set());
     emit("collections-changed");

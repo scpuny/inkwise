@@ -136,7 +136,7 @@ export function usePlanSeriesListener() {
   const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   useEffect(() => {
     const handler = (detail?: EventBusMap["plan-series"]) => {
@@ -149,7 +149,7 @@ export function usePlanSeriesListener() {
             setSeriesPlannerColId(col.id);
             setSeriesPlannerColTitle(col.title);
             setSeriesPlannerFolder(col.linkedFolder || "");
-            setSeriesPlannerOpen(true);
+            setMainRoute('series-plan');
           } else {
             console.warn("plan-series: 未找到合集", collectionId);
           }
@@ -168,7 +168,7 @@ export function useEditSeriesPlanListener() {
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
   const setSeriesPlannerExistingPlan = useArticleStore((s) => s.setSeriesPlannerExistingPlan);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   useEffect(() => {
     const handler = async (detail?: EventBusMap["edit-series-plan"]) => {
@@ -185,7 +185,7 @@ export function useEditSeriesPlanListener() {
         setSeriesPlannerColTitle(col.title);
         setSeriesPlannerFolder(col.linkedFolder || "");
         setSeriesPlannerExistingPlan(plan || null);
-        setSeriesPlannerOpen(true);
+        setMainRoute('series-plan');
       }
     };
     return on("edit-series-plan", handler);
