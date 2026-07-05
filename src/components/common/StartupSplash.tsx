@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, Clock, AlertCircle, FolderInput, ChevronDown, ChevronRight } from "lucide-react";
+import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, CheckCircle2, AlertCircle, FolderInput, ChevronDown, ChevronRight } from "lucide-react";
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
@@ -347,72 +347,12 @@ const [customTone, setCustomTone] = useState("");
                 </div>
               )}
 
-              {/* Writing progress */}
-              {planState === "writing" && writingOutline.length > 0 && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Loader2 size={12} className="startup-splash__spinner" />
-                    正在生成文章…{writingOutline.filter(s => s.status === "complete").length}/{writingOutline.length} 节完成
-                  </div>
-                  <div className="startup-splash__writing-list">
-                    {writingOutline.map((s) => {
-                      const isCurrent = s.id === writingSectionId;
-                      const isDone = s.status === "complete";
-                      const isWriting = s.status === "writing" && isCurrent;
-                      return (
-                        <div
-                          key={s.id}
-                          className={`startup-splash__writing-item${isCurrent ? " startup-splash__writing-item--current" : ""}${isDone ? " startup-splash__writing-item--done" : ""}`}
-                        >
-                          {isDone ? (
-                            <CheckCircle2 size={14} className="startup-splash__writing-icon-done" />
-                          ) : isWriting ? (
-                            <Loader2 size={14} className="startup-splash__spinner" />
-                          ) : (
-                            <Clock size={14} className="startup-splash__writing-icon-pending" />
-                          )}
-                          <span className="startup-splash__writing-title">{s.title}</span>
-                          {s.description && (
-                            <span className="startup-splash__writing-desc">{s.description}</span>
-                          )}
-                          {isWriting && <span className="startup-splash__writing-badge">写作中…</span>}
-                          {isDone && <span className="startup-splash__writing-badge startup-splash__writing-badge--done">已完成</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* AI 工作进度指示（写作阶段） */}
-              {planState === "writing" && (
-                <div className="startup-splash__writing-progress-bar">
-                  <div className="startup-splash__writing-progress-track">
-                    <div className="startup-splash__writing-progress-fill" style={{ width: writingOutline.length > 0 ? Math.round(writingOutline.filter(s => s.status === "complete").length / writingOutline.length * 100) + "%" : "30%" }} />
-                  </div>
-                  <div className="startup-splash__writing-progress-info">
-                    <Loader2 size={11} className="startup-splash__spinner" />
-                    <span>AI 正在写作中</span>
-                    {writingOutline.length > 0 && (
-                      <span className="startup-splash__writing-progress-count">
-                        {writingOutline.filter(s => s.status === "complete").length}/{writingOutline.length} 节
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Live streaming content preview */}              {/* Live streaming content preview */}
+              {/* Live streaming content preview */}
               {(planState === "writing" || streamingContent) && (
                 <div className="startup-splash__section startup-splash__section--writing">
                   <div className="startup-splash__section-label">
                     <PenLine size={12} className={planState === "writing" ? "startup-splash__spinner" : ""} />
                     {planState === "writing" ? "AI 正在生成文章…" : "生成内容预览"}
-                    {planState === "writing" && writingOutline.length > 0 && (
-                      <span className="startup-splash__writing-progress">
-                        {writingOutline.filter(s => s.status === "complete").length}/{writingOutline.length} 节
-                      </span>
-                    )}
                   </div>
                   <div className="startup-splash__stream-content" ref={streamContentRef}>
                     {streamingContent ? (
