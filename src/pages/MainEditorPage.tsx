@@ -18,7 +18,7 @@ import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { genId, loadCollections, addCollection, addArticle,
   saveSeriesPlan, type SeriesPlan } from "../lib/storage/collections";
-import { loadBlueprint, saveBlueprint, createDefaultBlueprint } from "../lib/ai/articleBlueprint";
+import { loadBlueprint } from "../lib/ai/articleBlueprint";
 import { useAgent } from "../lib/ai/agent";
 import { useThemeHandlers, useSeriesEventListeners } from "../hooks/appHooks";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -174,32 +174,18 @@ export default function MainEditorPage() {
             setStylePanelOpen(false);
             setShowFinalPage(false);
             setProjectPanelOpen(false);
-            const cols = await loadCollections();
-            const targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
-            const article = await addArticle(targetId, "无标题");
-            if (article) {
-              const bp = createDefaultBlueprint(article.id);
-              bp.phase = "writing";
-              await saveBlueprint(article.id, bp);
-              setActiveArticleId(article.id);
-              setActiveCollectionId(targetId);
-              setHasActiveArticle(true);
-            }
+            setActiveArticleId(null);
+            setActiveCollectionId(null);
+            setHasActiveArticle(false);
           }}
           onNewArticleInCollection={async (collectionId: string) => {
             closePanel();
             setStylePanelOpen(false);
             setShowFinalPage(false);
             setProjectPanelOpen(false);
-            const article = await addArticle(collectionId, "新文章");
-            if (article) {
-              const bp = createDefaultBlueprint(article.id);
-              bp.phase = "writing";
-              await saveBlueprint(article.id, bp);
-              setActiveArticleId(article.id);
-              setActiveCollectionId(collectionId);
-              setHasActiveArticle(true);
-            }
+            setActiveArticleId(null);
+            setActiveCollectionId(collectionId);
+            setHasActiveArticle(false);
             emit('reset-plan');
           }}
           onManageArticles={() => setManageOpen(true)}
@@ -212,9 +198,7 @@ export default function MainEditorPage() {
           onPointerDown={startResize("sidebar")}
           role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度"
         />
-        {projectPanelOpen ? (
-          <ProjectExplorer />
-        ) : showFinalPage && activeArticleId ? (
+        {showFinalPage && activeArticleId ? (
           <ArticleFinalPage
             articleId={activeArticleId}
             collectionId={activeCollectionId ?? ""}
@@ -262,6 +246,9 @@ export default function MainEditorPage() {
           onCloseStylePanel={() => setStylePanelOpen(false)}
         />
         )}
+
+        {/* ProjectExplorer overlay — covers main content when open */}
+        {projectPanelOpen && <ProjectExplorer />}
 
 
       </div>

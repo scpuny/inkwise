@@ -1433,6 +1433,7 @@ ${seriesDescription || ""}`
 
   return (
     <section className="editor-pane">
+      {/* ── TOOLBAR: only when actively editing ── */}
       {(hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase !== "planning") ? (
         <Toolbar
           onModeSwitch={onSetEditorFormat}
@@ -1444,7 +1445,92 @@ ${seriesDescription || ""}`
           onToggleFocus={onToggleFocus}
           onToggleSidebar={onToggleSidebar}        />
       ) : null}
-      {hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase !== "planning" ? (
+
+      {/* ── MAIN CONTENT ── */}
+      {!hasActiveArticle || !activeArticleId ? (
+        /* Welcome page — no active article */
+        <StartupSplash
+          onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
+          onAIPlan={handleStartPlan}
+          planState={planState}
+          planStep={planStep}
+          streamingContent={streamingContent}
+          partialPlan={partialPlan}
+          planError={planError}
+          lastPlanInput={lastPlanInput}
+          writingOutline={blueprint?.outline || partialPlan.outline}
+          writingSectionId={writingSection}
+          onConfirm={handlePlanConfirm}
+          onCancel={handlePlanCancel}
+          onCancelPlan={cancelPlan}
+          onEditTitle={handleEditTitle}
+          onEditDescription={handleEditDescription}
+          onEditOutline={handleEditOutline}
+          onRetry={handlePlanRetry}
+          onEnterEditor={handleEnterEditor}
+          projectName={undefined}
+          projectReady={false}
+          projectFiles={[]}
+          toolEvents={toolEvents}
+        />
+      ) : !blueprintLoaded ? (
+        /* Loading — blueprint is loading in background */
+        <div className="editor-pane__loading">
+          <svg className="editor-pane__loading-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+          <span>加载中…</span>
+        </div>
+      ) : blueprint && blueprint.phase === "planning" ? (
+        /* Planning review — article is in planning phase */
+        <StartupSplash
+          onQuickStart={() => {
+            // 规划中文章：快速开始 → 转为写作阶段
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+            }
+          }}
+          onAIPlan={handleStartPlan}
+          planState={planState}
+          planStep={planStep}
+          partialPlan={partialPlan}
+          planError={planError}
+          lastPlanInput={lastPlanInput}
+          writingOutline={blueprint?.outline || partialPlan.outline}
+          writingSectionId={writingSection}
+          onConfirm={handlePlanConfirm}
+          onCancel={() => { setPlanState("idle"); setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined }); }}
+          onCancelPlan={cancelPlan}
+          onEditTitle={handleEditTitle}
+          onEditDescription={handleEditDescription}
+          onEditOutline={handleEditOutline}
+          onRetry={handlePlanRetry}
+          onEnterEditor={() => {
+            // 跳过规划直接进入编辑
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+              writtenContentRef.current = contentRef.current || "";
+              contentInjectedFromPlanRef.current = true;
+              onEnterEditor?.(activeArticleId, activeCollectionId || "");
+              setPlanState("idle");
+            }
+          }}
+          streamingContent={streamingContent}
+          projectName={undefined}
+          projectReady={false}
+          projectFiles={[]}
+          toolEvents={toolEvents}
+        />
+      ) : (
+        /* Full editor */
         <div className="editor-content-area">
           {/* Article Blueprint Header */}
           {blueprint && (
@@ -1500,78 +1586,6 @@ ${seriesDescription || ""}`
             </div>
           )}
         </div>
-      ) : hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase === "planning" ? (
-        <StartupSplash
-          onQuickStart={() => {
-            // 规划中文章：快速开始 → 转为写作阶段
-            if (activeArticleId && blueprint) {
-              const updatedBp = { ...blueprint, phase: "writing" as const };
-              setBlueprint(updatedBp);
-              saveBlueprint(activeArticleId, updatedBp);
-              onPhaseChange?.("writing");
-              setPlanState("idle");
-            }
-          }}
-          onAIPlan={handleStartPlan}
-          planState={planState}
-          planStep={planStep}
-          partialPlan={partialPlan}
-          planError={planError}
-          lastPlanInput={lastPlanInput}
-          writingOutline={blueprint?.outline || partialPlan.outline}
-          writingSectionId={writingSection}
-          onConfirm={handlePlanConfirm}
-          onCancel={() => { setPlanState("idle"); setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined }); }}
-          onCancelPlan={cancelPlan}
-          onEditTitle={handleEditTitle}
-          onEditDescription={handleEditDescription}
-          onEditOutline={handleEditOutline}
-          onRetry={handlePlanRetry}
-          onEnterEditor={() => {
-            // 跳过规划直接进入编辑
-            if (activeArticleId && blueprint) {
-              const updatedBp = { ...blueprint, phase: "writing" as const };
-              setBlueprint(updatedBp);
-              saveBlueprint(activeArticleId, updatedBp);
-              onPhaseChange?.("writing");
-              setPlanState("idle");
-              writtenContentRef.current = contentRef.current || "";
-              contentInjectedFromPlanRef.current = true;
-              onEnterEditor?.(activeArticleId, activeCollectionId || "");
-              setPlanState("idle");
-            }
-          }}
-          streamingContent={streamingContent}
-          projectName={undefined}
-          projectReady={false}
-          projectFiles={[]}
-          toolEvents={toolEvents}
-        />
-      ) : (
-        <StartupSplash
-          onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
-          onAIPlan={handleStartPlan}
-          planState={planState}
-          planStep={planStep}
-          streamingContent={streamingContent}
-          partialPlan={partialPlan}
-          planError={planError}
-          lastPlanInput={lastPlanInput}
-          writingOutline={blueprint?.outline || partialPlan.outline}
-          writingSectionId={writingSection}
-          onConfirm={handlePlanConfirm}
-          onCancel={handlePlanCancel}
-          onCancelPlan={cancelPlan}
-          onEditTitle={handleEditTitle}
-          onEditDescription={handleEditDescription}
-          onEditOutline={handleEditOutline}
-          onRetry={handlePlanRetry}
-          onEnterEditor={handleEnterEditor}
-          projectName={undefined}
-          projectReady={false}
-          projectFiles={[]}
-          toolEvents={toolEvents}
-        />
       )}
 
       {/* Blueprint Editor Modal */}
