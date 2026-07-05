@@ -46,9 +46,10 @@ export function createDefaultBlueprint(title: string): ArticleBlueprint {
     tags: [],
     styleId: "general",
     outline: [
-      { id: genOutlineId(), title: "引言", level: 1, status: "pending" },
-      { id: genOutlineId(), title: "正文", level: 1, status: "pending" },
-      { id: genOutlineId(), title: "结语", level: 1, status: "pending" },
+      { id: genOutlineId(), title: "引言", level: 1, description: "用真实场景或问题切入主题", status: "pending" },
+      { id: genOutlineId(), title: "核心概念与原理", level: 1, description: "深入讲解核心概念和工作原理", status: "pending" },
+      { id: genOutlineId(), title: "实践与应用", level: 1, description: "通过案例展示如何应用所学知识", status: "pending" },
+      { id: genOutlineId(), title: "总结与对比", level: 1, description: "总结要点，与市面方案对比分析", status: "pending" },
     ],
     updatedAt: Date.now(),
   };

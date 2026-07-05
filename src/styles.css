@@ -16912,6 +16912,45 @@ body {
     background: color-mix(in srgb, var(--accent) 3%, transparent);
   }
 
+  /* Compact tool progress bar during writing phase */
+  .startup-splash__tool-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 2px;
+    margin-bottom: 4px;
+  }
+
+  .startup-splash__tool-progress-bar {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border-soft);
+    overflow: hidden;
+    min-width: 40px;
+  }
+
+  .startup-splash__tool-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+
+  .startup-splash__tool-progress-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    color: var(--fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    flex-shrink: 0;
+  }
+
   /* Stream placeholder before first token */
   .startup-splash__stream-placeholder {
     display: flex;

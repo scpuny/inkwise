@@ -439,7 +439,9 @@ function ChatPanel({
     if (!chatInput.trim() || isProcessing) return;
     const editor = (window as any).editorInstance?.editor;
     const docContent = editor ? editor.getText() || "" : "";
-    execute(chatInput, { intent: "chat", beforeContent: docContent });
+    // Pass selection so insertion point is preserved
+    const storedSel = (window as any).__lastEditorSelection;
+    execute(chatInput, { beforeContent: docContent, selection: storedSel || undefined });
     onChatInputChange("");
   }, [chatInput, isProcessing, execute, onChatInputChange]);
 

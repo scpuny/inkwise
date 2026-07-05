@@ -174,6 +174,29 @@ const [customTone, setCustomTone] = useState("");
 
   const doneCount = toolEventItems.filter(i => i.type === "done").length;
 
+  // Current operation description for writing phase
+  const currentToolOp = (() => {
+    // Find the most recent pending (in-progress) tool event
+    const pending = toolEventItems.filter(i => i.type === "pending");
+    if (pending.length > 0) {
+      const last = pending[pending.length - 1];
+      const s = last.event.summary || "";
+      // Shorten verbose summaries
+      return s.length > 60 ? s.slice(0, 57) + "…" : s;
+    }
+    // Or show the latest thinking
+    const thinking = toolEventItems.filter(i => i.type === "thinking");
+    if (thinking.length > 0) {
+      const last = thinking[thinking.length - 1];
+      if (last.event.summary && last.event.summary !== "AI 分析完成") {
+        return last.event.summary;
+      }
+    }
+    return "";
+  })();
+
+  const pendingCount = toolEventItems.filter(i => i.type === "pending").length;
+
   /* parseToolArgs removed */
 
   /* renderToolEventItem removed */
@@ -354,6 +377,24 @@ const [customTone, setCustomTone] = useState("");
                     <PenLine size={12} className={planState === "writing" ? "startup-splash__spinner" : ""} />
                     {planState === "writing" ? "AI 正在生成文章…" : "生成内容预览"}
                   </div>
+                  {/* Compact tool progress during writing */}
+                  {planState === "writing" && toolEventItems.length > 0 && (
+                    <div className="startup-splash__tool-progress">
+                      <div className="startup-splash__tool-progress-bar">
+                        <div
+                          className="startup-splash__tool-progress-fill"
+                          style={{ width: Math.min(100, (toolEventItems.length > 0 ? (doneCount / toolEventItems.length) * 100 : 0)) + "%" }}
+                        />
+                      </div>
+                      <span className="startup-splash__tool-progress-label">
+                        {pendingCount > 0 && currentToolOp ? (
+                          <><Loader2 size={10} className="startup-splash__spinner" /> {currentToolOp}</>
+                        ) : (
+                          <><Check size={10} style={{color:'var(--accent)'}} /> 已完成 {doneCount} 项操作</>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   <div className="startup-splash__stream-content" ref={streamContentRef}>
                     {streamingContent ? (
                       <>

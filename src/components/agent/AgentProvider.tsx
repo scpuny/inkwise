@@ -49,7 +49,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     input: string,
     options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string },
   ) => {
-    if (!input.trim()) return;
+    // Allow empty input only for continue-writing (ghost text mode)
+    if (!input.trim() && options?.intent !== "continue-writing") return;
     cancelledRef.current = false;
 
     const selection = options?.selection;
@@ -250,6 +251,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     // Insert via window.__insertGhostContent (provided by EditorContent)
     const editor = (window as any).editorInstance?.editor;
     if (editor && editor.commands) {
+      editor.commands.focus();
       editor.commands.insertContent(ghost);
     }
 

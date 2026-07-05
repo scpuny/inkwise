@@ -268,7 +268,8 @@ export function EditorContent({
         if (ghostTextRef.current || isProcessingRef.current) return;
         const { from } = editor.state.selection;
         if (from < text.length - 20) return; // cursor not near end
-        execute("", { intent: "continue-writing", beforeContent: text });
+        
+        execute("", { intent: "continue-writing", beforeContent: text, selection: { from, to: from } });
       }, 2000);
     },
   });

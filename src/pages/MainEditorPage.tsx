@@ -146,6 +146,7 @@ export default function MainEditorPage() {
     <ErrorBoundary name="app">
     <div className={"app" + (focusMode ? " app--focus" : "")}>
       <div className="app__body">
+      <ArticleCtx.Provider value={articleCtx}>
       <div ref={layoutRef} className={layoutClass}
         style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
@@ -197,7 +198,6 @@ export default function MainEditorPage() {
           onPointerDown={startResize("sidebar")}
           role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度"
         />
-        <ArticleCtx.Provider value={articleCtx}>
         {projectPanelOpen && !hasActiveArticle ? (
           <ProjectExplorer />
         ) : showFinalPage && activeArticleId ? (
@@ -250,7 +250,6 @@ export default function MainEditorPage() {
         )}
 
 
-      </ArticleCtx.Provider>
       </div>
       {panelOpen && (
           <div className="side-panel">
@@ -279,6 +278,7 @@ export default function MainEditorPage() {
               />
           </div>
         )}
+      </ArticleCtx.Provider>
       </div>
 
       {focusMode && (
