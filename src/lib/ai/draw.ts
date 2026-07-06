@@ -66,8 +66,7 @@ export function cacheImages(content: string, config: { model: string; style: str
 // 关键词提取（LLM）+ 图片插入文章
 
 import { sendChatStream, type ChatMessage } from "./ai";
-import { resolveModel } from "../config/globalAIConfig";
-import { getProvidersSync } from "../storage/providerModels";
+import { resolveProviderForModel } from "../config/globalAIConfig";
 
 const IMAGE_EXTRACT_PROMPT = `你是一个配图策划助手。根据下面这篇文章，提取绘画关键词。
 
@@ -93,9 +92,8 @@ export async function extractImageKeywords(
   articleContent: string,
   count: number,
 ): Promise<{ section_title: string; keywords: string; alt_text: string }[]> {
-  const providers = getProvidersSync();
-  const provider = providers.find(p => p.enabled && p.models.length > 0) || null;
-  if (!provider) throw new Error("请先配置 AI 提供商");
+  const { provider, model } = resolveProviderForModel();
+  if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const prompt = IMAGE_EXTRACT_PROMPT.replace("{{count}}", String(count));
   const messages: ChatMessage[] = [
@@ -106,7 +104,7 @@ export async function extractImageKeywords(
   try {
     const text = await sendChatStream({
       providerId: provider.id,
-      model: resolveModel() || provider.models[0].id,
+      model,
       messages,
       temperature: 0.3,
       maxTokens: 2000,

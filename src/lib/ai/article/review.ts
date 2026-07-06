@@ -1,10 +1,10 @@
 // articleReview.ts — AI 文章质量评估（风格感知·动态维度·逐段修复）
 // 根据写作风格动态调整评估维度，支持逐段优化与接受/拒绝
 
-import { getProvidersSync } from "../../storage/providerModels";
 import { sendChat } from "../ai";
 import { getStyle } from "../skill/styles";
 import { emit } from "../../events/eventBus";
+import { resolveProviderForModel } from "../../config/globalAIConfig";
 
 /* ─── 类型 ─── */
 
@@ -175,17 +175,8 @@ export async function generateArticleReview(
     forceRefresh?: boolean;
   },
 ): Promise<ArticleReview> {
-  const providers = getProvidersSync();
-  const provider = providers.find((p) => p.enabled && p.models.length > 0);
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
-
-  // Check cache unless forceRefresh
-  if (!options?.forceRefresh) {
-    const cached = await getCachedReviewIfUnchanged(articleId, content);
-    if (cached) return cached;
-  }
-
-  const model = provider.models[0]?.id ?? '';
   const style = options?.styleId ? getStyle(options.styleId) : undefined;
   const { dimensions, promptAddendum } = getDimensionsForStyle(options?.styleId);
 
@@ -291,19 +282,17 @@ export async function generateParagraphFix(
   suggestion: string,
   options?: { title?: string },
 ): Promise<ParagraphFix> {
-  const providers = getProvidersSync();
-  const provider = providers.find((p) => p.enabled && p.models.length > 0);
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
 
   const paragraphs = splitIntoParagraphs(content);
   const para = paragraphs[paragraphIndex];
   if (!para) throw new Error(`段落 ${paragraphIndex} 不存在`);
-
+  
   const contextBefore = paragraphIndex > 0 ? paragraphs[paragraphIndex - 1].text : "";
   const contextAfter = paragraphIndex < paragraphs.length - 1 ? paragraphs[paragraphIndex + 1].text : "";
-
-  const model = provider.models[0]?.id ?? "";
-
+  
   const sysPrompt = "你是一位资深编辑，负责逐段优化文章。\n"
     + "请只优化指定的段落，保持上下文连贯性。\n"
     + "直接输出优化后的段落内容，不要额外说明。";
@@ -471,9 +460,9 @@ export async function applyOptimization(
     title?: string;
   },
 ): Promise<string> {
-  const providers = getProvidersSync();
-  const provider = providers.find((p) => p.enabled && p.models.length > 0);
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
+
 
   const dimensionLabels = getDimensionMetas(review);
   const suggestions = dimensionLabels
@@ -485,9 +474,6 @@ export async function applyOptimization(
       const d = review.dimensions[meta.id]!;
       return "- " + meta.label + "（当前评级：" + d.rating + "）: " + d.suggestion;
     });
-
-  const model = provider.models[0]?.id ?? '';
-
   const sysPrompt = "你是一位资深写作者，根据编辑的优化建议重写文章。\n\n"
     + "## 原则\n"
     + "- 保留原文的核心观点、事实和案例，不编造新内容\n"

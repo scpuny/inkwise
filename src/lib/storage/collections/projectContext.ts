@@ -2,6 +2,7 @@
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../bridge/tauri";
 import type { ProjectContext, FileNode, FileContent } from "./types";
 
+import { resolveProviderForModel } from "../../config/globalAIConfig";
 export async function linkCollectionFolder(collectionId: string, path: string): Promise<ProjectContext & { insights?: string }> {
   const ctx = await getProjectContext(path);
   const { loadCollections, saveCollections } = await import("./crud");
@@ -28,9 +29,7 @@ export async function exploreProjectForCollection(collectionId: string, path: st
   _exploringSet.add(collectionId);
   const { emit } = await import("../../events/eventBus");
   const { sendChat } = await import("../../ai/ai");
-  const { getProvidersSync } = await import("../../storage/providerModels");
-  const { resolveModel } = await import("../../config/globalAIConfig");
-  try {
+    try {
     emit("project-exploring" as any, { collectionId, status: "start" });
     emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "thinking", toolName: "", toolCallId: "think_0", arguments: "", summary: "\u{1F50D} 正在读取项目目录\u2026" } });
 
@@ -53,16 +52,7 @@ export async function exploreProjectForCollection(collectionId: string, path: st
     const contextStr = buildProjectContextPrompt(ctx, fileContents);
 
     // 5. Single AI call (no tools, one round only!)
-    const providers = getProvidersSync();
-    const resolvedModel = resolveModel() || '';
-    let provider = resolvedModel
-      ? providers.find((p: any) => p.enabled && p.models.some((m: any) => m.id === resolvedModel))
-      : undefined;
-    let model = resolvedModel || '';
-    if (!provider) {
-      provider = providers.find(function(p: any) { return p.enabled && p.models && p.models.length > 0; });
-      if (!model) model = provider?.models[0]?.id || '';
-    }
+    const { provider, model } = resolveProviderForModel();
     if (!provider) throw new Error("请先在设置中配置 AI 提供商");
     const providerId: string = provider.id;
 

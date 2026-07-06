@@ -1,8 +1,7 @@
 // agentEngine.ts — 支持 tool calling 的 Agent 执行引擎
 // 前端主动循环：AI 请求 → 工具调用 → 工具执行 → AI 请求 → 最终回复
 import { sendChatWithTools, type ChatMessage, type ToolDefinition, type ToolCall, type ChatToolOptions } from "../ai";
-import { getProvidersSync } from "../../storage/providerModels";
-import { resolveModel } from "../../config/globalAIConfig";
+import { resolveProviderForModel } from "../../config/globalAIConfig";
 import { TauriCommands, tryInvoke } from "../../bridge/tauri";
 
 // ─── Tool progress events ───
@@ -184,16 +183,7 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
     onToken,
   } = options;
 
-  const providers = getProvidersSync();
-  const resolvedModel = resolveModel() ?? '';
-  let provider = resolvedModel
-    ? providers.find(p => p.enabled && p.models.some(m => m.id === resolvedModel))
-    : undefined;
-  let model = resolvedModel || '';
-  if (!provider) {
-    provider = providers.find(function(p) { return p.enabled && p.models.length > 0; });
-    if (!model) model = provider?.models[0]?.id ?? '';
-  }
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },

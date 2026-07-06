@@ -1,11 +1,10 @@
 // plan.ts — AI 文章规划与生成
 // 使用 agentEngine 的 tool calling 模式获取项目文件上下文
 import { sendChatStream, type ChatMessage } from "./ai";
-import { resolveModel } from "../config/globalAIConfig";
+import { resolveProviderForModel } from "../config/globalAIConfig";
 import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agentEngine";
 import { isTauriEnv } from "../bridge/tauri";
 import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
-import { getProvidersSync } from "../storage/providerModels";
 import type { OutlineSection } from "../ai/articleBlueprint";
 
 // ─── Types ───
@@ -153,29 +152,11 @@ async function resolveSkill(skillId?: string): Promise<WritingSkill | undefined>
 
 // ─── Provider ───
 
-function getProviderForModel() {
-  const providers = getProvidersSync();
-  const resolvedModel = resolveModel() ?? '';
-  
-  if (resolvedModel) {
-    const matchingProvider = providers.find(p => 
-      p.enabled && p.models.some(m => m.id === resolvedModel)
-    );
-    if (matchingProvider) return { provider: matchingProvider, model: resolvedModel };
-  }
-  
-  // Fallback to first enabled provider
-  const fallback = providers.find(p => p.enabled && p.models.length > 0) ?? null;
-  return { 
-    provider: fallback, 
-    model: resolvedModel || (fallback?.models[0]?.id ?? '') 
-  };
+function getProvider() {
+  return resolveProviderForModel().provider;
 }
 
-function getProvider() {
-  const { provider } = getProviderForModel();
-  return provider;
-}
+
 
 // ─── Prompt builders ───
 
@@ -234,7 +215,7 @@ export async function generateFullArticleWithTools(
   onToken?: (token: string) => void,
   onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
 ): Promise<string> {
-  const { provider, model } = getProviderForModel();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
@@ -332,7 +313,7 @@ export async function generateFullArticleStream(
   onToken?: (token: string) => void,
   onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
 ): Promise<string> {
-  const { provider, model } = getProviderForModel();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
@@ -594,7 +575,7 @@ export async function writeArticleSection(
   }
 
   // For linked folders, use tool-based section writing
-  const { provider, model } = getProviderForModel();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const skill = await resolveSkill(input.skillId);
@@ -646,7 +627,7 @@ async function writeArticleSectionLegacy(
   onToken?: (token: string) => void,
   onDone?: (content: string) => void,
 ): Promise<string> {
-  const { provider, model } = getProviderForModel();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const skill = await resolveSkill(input.skillId);
@@ -705,7 +686,7 @@ function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
 }
 
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const { provider, model } = getProviderForModel();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const messages: ChatMessage[] = [

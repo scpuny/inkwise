@@ -124,3 +124,19 @@ export function buildModelList(): { id: string; label: string; provider: string 
   }
   return result;
 }
+
+/** 统一解析 provider + model：优先匹配用户保存的默认模型，回退到第一个启用的提供商 */
+export function resolveProviderForModel(): { provider: Provider | null; model: string } {
+  const providers = getProvidersSync();
+  const resolvedModel = resolveModel() ?? '';
+  
+  if (resolvedModel) {
+    const matching = providers.find(p => p.enabled && p.models.some(m => m.id === resolvedModel));
+    if (matching) return { provider: matching, model: resolvedModel };
+  }
+  
+  const fallback = providers.find(p => p.enabled && p.models.length > 0) ?? null;
+  const modelId = resolvedModel || (fallback?.models[0]?.id ?? '');
+  return { provider: fallback, model: modelId };
+}
+
