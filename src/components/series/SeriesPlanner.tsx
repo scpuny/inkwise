@@ -4,9 +4,9 @@ import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { getAllSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill";
 import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../lib/storage/collections";
-import { generateSeriesId } from "../../lib/storage/collections";
+import { generateSeriesId, getProjectContext } from "../../lib/storage/collections";
 import { ProjectFileTree } from "../common/ProjectFileTree";
-import { getProvidersSync } from "../../lib/storage/providerModels";
+import { resolveProviderForModel } from "../../lib/config/globalAIConfig";
 import { formatContextText } from "../../lib/utils/projectContext";
 
 /* ─── 类型 ─── */
@@ -30,13 +30,8 @@ const DEFAULT_ARTICLE_COUNT = 5;
 
 /* ─── AI 辅助 ─── */
 
-function getProvider() {
-  const providers = getProvidersSync();
-  return providers.find((p) => p.enabled && p.models.length > 0) || null;
-}
-
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 4096): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
@@ -44,7 +39,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 4096)
   ];
   return await sendChat({
     providerId: provider.id,
-    model: provider.models[0]?.id ?? '',
+    model: model || provider.models[0]?.id || '',
     messages,
     temperature: 0.7,
     maxTokens,
@@ -120,12 +115,10 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
     }
 
     if (linkedFolder) {
-      import("../../lib/storage/collections").then(({ getProjectContext }) => {
-        getProjectContext(linkedFolder).then((ctx) => {
-          setProjectCtx(ctx);
-          setCtxText(formatContextText(ctx));
-        }).catch(() => {});
-      });
+      getProjectContext(linkedFolder).then((ctx) => {
+        setProjectCtx(ctx);
+        setCtxText(formatContextText(ctx));
+      }).catch(() => {});
     }
   }, [open, linkedFolder]);
 

@@ -181,6 +181,7 @@ export default function MainEditorPage() {
       case 'series-plan':
         return (
           <SeriesPlanner
+            key={seriesPlannerColId || "series-planner"}
             open={true}
             collectionId={seriesPlannerColId || ""}
             collectionTitle={seriesPlannerColTitle}

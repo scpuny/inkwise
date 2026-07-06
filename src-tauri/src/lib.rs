@@ -40,8 +40,9 @@ fn now_ms() -> u64 {
 // ─── 项目快照保存 ───
 
 fn save_project_snapshot(app_state: &AppState, project_path: &str) {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::hash::{Hash, Hasher};
+    use std::fs;
     use crate::project_indexer::{snapshot_dir_files, save_snapshot};
 
     let app_dir = match app_state.store.lock() {
@@ -50,7 +51,7 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
     };
 
     let snapshots_dir = app_dir.join("data").join("index").join("snapshots");
-    let _ = std::fs::create_dir_all(&snapshots_dir);
+    let _ = fs::create_dir_all(&snapshots_dir);
 
     // 用项目路径的 hash 作文件名，避免路径字符问题
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -73,6 +74,38 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
         }
         Err(e) => {
             log::warn!("扫描项目文件（用于快照）失败: {}", e);
+        }
+    }
+
+    // 清理过期间拍：计算所有合集关联的项目路径 hash 集合，删除不在集合中的快照
+    if let Ok(store) = app_state.store.lock() {
+        let collections = store.load_collections();
+        let mut active_hashes: HashSet<u64> = HashSet::new();
+        for col in &collections {
+            if let Some(ref folder) = col.linked_folder {
+                if !folder.is_empty() {
+                    let mut h = std::collections::hash_map::DefaultHasher::new();
+                    folder.hash(&mut h);
+                    active_hashes.insert(h.finish());
+                }
+            }
+        }
+        if let Ok(entries) = fs::read_dir(&snapshots_dir) {
+            let current_hash = hash; // 当前项目一定是活跃的
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    if let Ok(file_hash) = stem.parse::<u64>() {
+                        if file_hash != current_hash && !active_hashes.contains(&file_hash) {
+                            let _ = fs::remove_file(&path);
+                            log::info!("清理过期快照: {:?}", path);
+                        }
+                    }
+                }
+            }
         }
     }
 }

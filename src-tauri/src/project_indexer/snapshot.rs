@@ -246,17 +246,16 @@ pub fn detect_git_changes(project_dir: &Path) -> Result<StartupDiff, String> {
 // ─── 持久化 ───
 
 /// 保存快照到 JSON 文件
-/// 三层策略：增量跳过 → 原子写入 → copy fallback → 直接写入兜底
+/// 策略：增量跳过 → 直接写入（跳过 tmp+rename，避免 macOS APFS rename ENOENT）
+/// 对外部增量更新的支持：caller 自行决定是否调用，save_snapshot 只负责持久化
 pub fn save_snapshot(snapshot: &IndexSnapshot, path: &Path) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("创建快照目录失败: {}", e))?;
     }
 
-    // 先序列化，后续多种写入方式复用此字符串
     let json = serde_json::to_string_pretty(snapshot).map_err(|e| format!("序列化快照失败: {}", e))?;
 
-    // ─── 第一层：增量检查 ───
-    // 若磁盘已有相同内容的快照，直接跳过写入
+    // 增量跳过：内容一致就不写
     if path.exists() {
         match std::fs::read_to_string(path) {
             Ok(existing) if existing == json => return Ok(()),
@@ -264,38 +263,8 @@ pub fn save_snapshot(snapshot: &IndexSnapshot, path: &Path) -> Result<(), String
         }
     }
 
-    // ─── 第二层：原子写入（tmp + rename）───
-    let tmp_path = path.with_extension("json.tmp");
-    let write_result = std::fs::write(&tmp_path, &json)
-        .and_then(|_| {
-            // sync_all 确保数据落盘
-            if let Ok(f) = std::fs::File::open(&tmp_path) {
-                let _ = f.sync_all();
-            }
-            std::fs::rename(&tmp_path, path)
-        });
-
-    match write_result {
-        Ok(_) => return Ok(()),
-        Err(e) => {
-            log::warn!("快照 rename 失败({})，尝试 copy fallback", e);
-        }
-    }
-
-    // ─── 第三层：copy fallback ───
-    if tmp_path.exists() {
-        match std::fs::copy(&tmp_path, path) {
-            Ok(_) => {
-                let _ = std::fs::remove_file(&tmp_path);
-                return Ok(());
-            }
-            Err(e) => {
-                log::warn!("快照 copy 也失败({})，直接写入目标文件", e);
-            }
-        }
-    }
-
-    // ─── 第四层：直接写入目标文件（终极兜底）───
+    // 直接写入目标文件（跳过 tmp+rename，macOS APFS rename 不可靠）
+    // 快照文件每次完整覆写，对 JSON 大小（通常 <10MB）无性能问题
     std::fs::write(path, &json).map_err(|e| format!("写入快照失败: {}", e))
 }
 

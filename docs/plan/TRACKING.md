@@ -271,12 +271,14 @@
 | F19 | 生成文章 AI 系统 prompt 缺少"必须基于真实项目"的强约束 | `plan.ts` | 🟢 | 2026-07-05 |
 | F20 | CSS 文件 89 处重复 @keyframes 定义 | `styles.css` | 🟢 | 2026-07-05 |
 | F21 | appHooks.ts TypeScript 错误：await 在非 async setTimeout 中 | `appHooks.ts` | 🟢 | 2026-07-05 |
+| F22 | SeriesPlanner getProvider() 未用 resolveProviderForModel，模型切换后服务商未切换 | `SeriesPlanner.tsx` | 🟢 | 2026-07-06 |
+| F23 | 快照 rename/copy ENOENT → 简化直接写入 + 过期快照自动清理 | `snapshot.rs`, `lib.rs` | 🟢 | 2026-07-06 |
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 21 | 21 | 100% |
+| 热修复 | 23 | 23 | 100% |
 
 ## 里程碑记录
 
