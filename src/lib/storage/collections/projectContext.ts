@@ -54,9 +54,16 @@ export async function exploreProjectForCollection(collectionId: string, path: st
 
     // 5. Single AI call (no tools, one round only!)
     const providers = getProvidersSync();
-    const provider = providers.find(function(p: any) { return p.enabled && p.models && p.models.length > 0; });
-    if (!provider) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u63D0\u4F9B\u5546");
-    const model: string = resolveModel() || provider.models[0]?.id || "";
+    const resolvedModel = resolveModel() || '';
+    let provider = resolvedModel
+      ? providers.find((p: any) => p.enabled && p.models.some((m: any) => m.id === resolvedModel))
+      : undefined;
+    let model = resolvedModel || '';
+    if (!provider) {
+      provider = providers.find(function(p: any) { return p.enabled && p.models && p.models.length > 0; });
+      if (!model) model = provider?.models[0]?.id || '';
+    }
+    if (!provider) throw new Error("请先在设置中配置 AI 提供商");
     const providerId: string = provider.id;
 
     const result = await sendChat({

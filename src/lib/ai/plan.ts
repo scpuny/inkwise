@@ -153,9 +153,28 @@ async function resolveSkill(skillId?: string): Promise<WritingSkill | undefined>
 
 // ─── Provider ───
 
-function getProvider() {
+function getProviderForModel() {
   const providers = getProvidersSync();
-  return providers.find((p) => p.enabled && p.models.length > 0) || null;
+  const resolvedModel = resolveModel() ?? '';
+  
+  if (resolvedModel) {
+    const matchingProvider = providers.find(p => 
+      p.enabled && p.models.some(m => m.id === resolvedModel)
+    );
+    if (matchingProvider) return { provider: matchingProvider, model: resolvedModel };
+  }
+  
+  // Fallback to first enabled provider
+  const fallback = providers.find(p => p.enabled && p.models.length > 0) ?? null;
+  return { 
+    provider: fallback, 
+    model: resolvedModel || (fallback?.models[0]?.id ?? '') 
+  };
+}
+
+function getProvider() {
+  const { provider } = getProviderForModel();
+  return provider;
 }
 
 // ─── Prompt builders ───
@@ -215,7 +234,7 @@ export async function generateFullArticleWithTools(
   onToken?: (token: string) => void,
   onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = getProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
@@ -313,7 +332,7 @@ export async function generateFullArticleStream(
   onToken?: (token: string) => void,
   onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = getProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
@@ -364,7 +383,7 @@ export async function generateFullArticleStream(
     fullContent = await sendChatStream(
       {
         providerId: provider.id,
-        model: resolveModel() ?? provider.models[0]?.id ?? '',
+        model,
         messages,
         temperature: 0.7,
         maxTokens: 8192,
@@ -575,7 +594,7 @@ export async function writeArticleSection(
   }
 
   // For linked folders, use tool-based section writing
-  const provider = getProvider();
+  const { provider, model } = getProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const skill = await resolveSkill(input.skillId);
@@ -627,7 +646,7 @@ async function writeArticleSectionLegacy(
   onToken?: (token: string) => void,
   onDone?: (content: string) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = getProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const skill = await resolveSkill(input.skillId);
@@ -661,7 +680,7 @@ async function writeArticleSectionLegacy(
   const content = await sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() ?? provider.models[0]?.id ?? '',
+      model,
       messages,
       temperature: 0.7,
       maxTokens: 4096,
@@ -686,7 +705,7 @@ function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
 }
 
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = getProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const messages: ChatMessage[] = [
@@ -697,7 +716,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number
   return sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() ?? provider.models[0]?.id ?? '',
+      model,
       messages,
       temperature: 0.7,
       maxTokens,

@@ -185,10 +185,16 @@ export async function runAgentLoop(options: AgentOptions): Promise<AgentResult> 
   } = options;
 
   const providers = getProvidersSync();
-  const provider = providers.find(function(p) { return p.enabled && p.models.length > 0; });
+  const resolvedModel = resolveModel() ?? '';
+  let provider = resolvedModel
+    ? providers.find(p => p.enabled && p.models.some(m => m.id === resolvedModel))
+    : undefined;
+  let model = resolvedModel || '';
+  if (!provider) {
+    provider = providers.find(function(p) { return p.enabled && p.models.length > 0; });
+    if (!model) model = provider?.models[0]?.id ?? '';
+  }
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
-
-  const model: string = resolveModel() ?? provider.models[0]?.id ?? '';
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userMessage },
