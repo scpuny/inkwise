@@ -62,7 +62,7 @@ export async function runSkill(
         currentSectionId: currentSectionId ?? null,
         projectPath: projectPath ?? null,
         model: model ?? null,
-        provider_id: providerId ?? null,
+        providerId: providerId ?? null,
       });
     } catch (e: any) {
       const msg = e?.message ?? String(e);
@@ -204,7 +204,7 @@ export async function runSkillStream(
           blueprint: blueprint ?? null,
           currentSectionId: currentSectionId ?? null,
           model: model ?? null,
-          provider_id: providerId ?? null,
+          providerId: providerId ?? null,
         }).catch((e: any) => {
           unlistenToken?.();
           unlistenDone?.();
