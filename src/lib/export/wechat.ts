@@ -155,7 +155,6 @@ export async function compileToWechatHtml(markdown: string): Promise<ExportResul
   const wechatCss = cssText
     // 隐藏默认列表符号
     + "\nsection.wechat-wrapper ul,section.wechat-wrapper ol{list-style:none!important}"
-    + "\nsection.wechat-wrapper li{margin:0!important}"
     + "\nsection.wechat-wrapper h1,section.wechat-wrapper h2,section.wechat-wrapper h3,section.wechat-wrapper h4,section.wechat-wrapper h5,section.wechat-wrapper h6{line-height:1.3!important;margin:1.2em 0 0.5em!important}"
     + "\nsection.wechat-wrapper .mermaid-export{text-align:center;margin:16px 0}"
     + "\nsection.wechat-wrapper .mermaid-export svg{max-width:100%;height:auto;display:inline-block}";
@@ -205,10 +204,10 @@ export async function compileToWechatHtml(markdown: string): Promise<ExportResul
       else if (!/white-space\s*:\s*pre\b/.test(s) && !/white-space\s*:\s*nowrap/.test(s)) s = 'white-space:pre;' + s;
       return pre + s + post;
     })
-    // 确保 <li> 是 block 显示
-    .replace(/(<li\b)((?![^>]*style=)[^>]*>)/gi, '$1 style="display:block;list-style:none;"$2')
-    // 修正已有 style 的 <li>：追加 list-style:none 和 display:block
-    .replace(/(<li\b[^>]*style=")([^"]*)(")/gi, (_m: string, pre: string, styles: string, post: string) => { if (!/display\s*:\s*block/.test(styles)) styles = 'display:block;' + styles; if (!/list-style\s*:\s*none/.test(styles)) styles += ';list-style:none'; return pre + styles + post; })
+    // 确保 <li> 无默认标记（list-style:none 足够，display:block 会导致微信插入空行）
+    .replace(/(<li\b)((?![^>]*style=)[^>]*>)/gi, '$1 style="list-style:none;"$2')
+    // 修正已有 style 的 <li>：追加 list-style:none
+    .replace(/(<li\b[^>]*style=")([^"]*)(")/gi, (_m: string, pre: string, styles: string, post: string) => { if (!/list-style\s*:\s*none/.test(styles)) styles += ';list-style:none'; return pre + styles + post; })
 
   // 7. 首行缩进后处理（juice 不处理 :not 伪类，需手动添加）
   //    排除 <li> 和 <blockquote> 内的 <p>
