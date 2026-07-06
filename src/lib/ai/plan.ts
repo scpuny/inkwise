@@ -173,7 +173,7 @@ function buildSystemPrompt(phase: string, skill: WritingSkill | undefined, tone?
 
 // ─── Tool-based article generation (via AgentEngine) ───
 
-const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **开头可以用一段简短的前置描述或引言**，交代文章背景和读者预期，自然引出正文\n- 前置描述后立即用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），标题后可以根据需要接一段简短的前置描述或引言\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
+const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **开头必须用一段简短的前置描述或引言（不要直接进入正题）**，交代文章背景和读者预期，自然引出正文\n- 前置描述后立即用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
 
 /**
  * 使用 AgentEngine（tool calling）生成完整文章。
@@ -205,7 +205,7 @@ const TOOL_INSTRUCTIONS = `
 
 ## 输出要求
 - 直接输出 Markdown 格式的完整文章
-- 文章标题已为 #（一级），标题后可以根据需要接一段简短的前置描述或引言
+- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）
 - 所有二级标题（##）按出现顺序标号：\`## 1. 标题\`、\`## 2. 标题\`
 - 三级标题（###）在其父级下按顺序标号：\`### 1.1 子标题\`、\`### 1.2 子标题\`
 - 使用流畅自然的中文`;
@@ -819,28 +819,32 @@ function ensureHeadingNumbers(markdown: string): string {
     }
     if (inCodeBlock) { out.push(line); continue; }
 
+    // h1 — article title, pass through without numbering (but reset lower counters)
+    const h1Match = line.match(/^(#{1})\s+(.+)$/);
+    if (h1Match) {
+      h2Counter = 0;
+      h3Counter = 0;
+      out.push(line);
+      continue;
+    }
+
     const h2Match = line.match(/^(#{2})\s+(.+)$/);
     if (h2Match) {
       h2Counter++;
       h3Counter = 0;
-      const text = h2Match[2].trim();
-      if (!/^\d+\.\s/.test(text)) {
-        out.push("## " + h2Counter + ". " + text);
-      } else {
-        out.push(line);
-      }
+      // 强制重编号：去掉AI生成的编号前缀，从1开始重新编号
+      const text = h2Match[2].trim().replace(/^\d+\.\s*/, '');
+      out.push('## ' + h2Counter + '. ' + text);
       continue;
     }
 
     const h3Match = line.match(/^(#{3})\s+(.+)$/);
     if (h3Match) {
       h3Counter++;
-      const text = h3Match[2].trim();
-      if (!/^\d+\.\d+\.\s/.test(text)) {
-        out.push("### " + h2Counter + "." + h3Counter + " " + text);
-      } else {
-        out.push(line);
-      }
+      // 强制重编号：去掉已有的 x.x. 前缀，重新编号
+      const text = h3Match[2].trim().replace(/^\d+\.\d+\.\s*/, '');
+      // 修复：如果前面没有 h2 父级，使用简单顺序编号（避免 0.x）
+      out.push('### ' + (h2Counter > 0 ? h2Counter + '.' + h3Counter : h3Counter) + ' ' + text);
       continue;
     }
 

@@ -81,7 +81,7 @@ const [customAudience, setCustomAudience] = useState("");
   const [genStatus, setGenStatus] = useState("AI 正在分析项目结构…");
 const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [showProjectTree, setShowProjectTree] = useState(false);
+  const [showProjectTree, setShowProjectTree] = useState(true);
 
   // Load project context on open
   useEffect(() => {
@@ -326,14 +326,21 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {linkedFolder && projectCtx && showProjectTree && (
+          {linkedFolder && showProjectTree && (
             <div className="series-planner__project-sidebar">
               <div className="series-planner__project-sidebar-header">
                 <FolderInput size={12} />
                 <span>项目结构</span>
               </div>
               <div className="series-planner__project-sidebar-tree">
-                <ProjectFileTree nodes={projectCtx.structure} maxDepth={5} onSelect={() => {}} />
+                {projectCtx ? (
+                  <ProjectFileTree nodes={projectCtx.structure} maxDepth={5} onSelect={() => {}} />
+                ) : (
+                  <div className="series-planner__loading-tree">
+                    <Loader2 size={12} className="spin" />
+                    <span>加载项目结构…</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -346,7 +353,7 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
                   {projectCtx.summary.totalFiles} 文件 · {projectCtx.primaryLanguage || ""}
                 </span>
               )}
-              {linkedFolder && projectCtx && (
+              {linkedFolder && (
                 <button
                   className="series-planner__tree-toggle"
                   onClick={() => setShowProjectTree(!showProjectTree)}
@@ -381,7 +388,7 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
               {projectCtx.summary.totalFiles} 文件 · {projectCtx.primaryLanguage || ""}
             </span>
           )}
-          {linkedFolder && projectCtx && (
+          {linkedFolder && (
             <button
               className="series-planner__tree-toggle"
               onClick={() => setShowProjectTree(!showProjectTree)}
@@ -395,10 +402,17 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
             <X size={14} />
           </button>
         </div>
-        {linkedFolder && projectCtx && showProjectTree && (
+        {linkedFolder && showProjectTree && (
           <div className="series-planner__project-sidebar" style={{ borderTop: "1px solid var(--border-soft)", maxHeight: 200, overflow: "auto" }}>
             <div className="series-planner__project-sidebar-tree">
-              <ProjectFileTree nodes={projectCtx.structure} maxDepth={3} onSelect={() => {}} />
+              {projectCtx ? (
+                <ProjectFileTree nodes={projectCtx.structure} maxDepth={3} onSelect={() => {}} />
+              ) : (
+                <div className="series-planner__loading-tree">
+                  <Loader2 size={12} className="spin" />
+                  <span>加载项目结构…</span>
+                </div>
+              )}
             </div>
           </div>
         )}

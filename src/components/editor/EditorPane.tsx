@@ -879,6 +879,9 @@ export function EditorPane({
             
             // 标记当前文章位置
             seriesCtx += `\n### 当前文章\n本文是系列「${seriesPlan.title}」的第 ${currentIdx + 1}/${allArticles.length} 篇。`;
+
+            // 要求开场白：系列文章不能在 # 标题后直接进入正文
+            seriesCtx += `\n请在文章标题（# 一级标题）之后、正文之前，写一段简短的开场白或引言，交代本篇在系列中的位置、串联前文并预告本篇核心内容。`;
             
             // 如果有上一篇，记录引用ID
             if (currentIdx > 0) {

@@ -155,6 +155,7 @@ export async function compileToWechatHtml(markdown: string): Promise<ExportResul
   const wechatCss = cssText
     // 隐藏默认列表符号
     + "\nsection.wechat-wrapper ul,section.wechat-wrapper ol{list-style:none!important}"
+    + "\nsection.wechat-wrapper li{margin:0!important}"
     + "\nsection.wechat-wrapper h1,section.wechat-wrapper h2,section.wechat-wrapper h3,section.wechat-wrapper h4,section.wechat-wrapper h5,section.wechat-wrapper h6{line-height:1.3!important;margin:1.2em 0 0.5em!important}"
     + "\nsection.wechat-wrapper .mermaid-export{text-align:center;margin:16px 0}"
     + "\nsection.wechat-wrapper .mermaid-export svg{max-width:100%;height:auto;display:inline-block}";

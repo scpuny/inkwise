@@ -23700,6 +23700,16 @@ body {
     overflow: auto;
     padding: 4px 0;
   }
+
+  .series-planner__loading-tree {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px 8px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
   /* ─── Series Overview (in sidebar) ─── */
 
   .series-overview {

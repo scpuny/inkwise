@@ -101,7 +101,12 @@ export function markdownToHtml(content: string): string {
     if (inCode) { codeBuf.push(raw); continue; }
 
     // ── Blank line ──
-    if (/^\s*$/.test(raw)) { closePara(); closeLists(); continue; }
+    if (/^\s*$/.test(raw)) {
+      // Don't close lists on blank lines between items (CommonMark behavior)
+      // Just close paragraph if open, skip the blank
+      closePara();
+      continue;
+    }
 
     // ── Close blockquote if line isn't continuation ──
     if (inBlockquote && !trimmed.startsWith(">")) closeBq();
