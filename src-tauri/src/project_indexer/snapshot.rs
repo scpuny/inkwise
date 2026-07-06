@@ -246,30 +246,57 @@ pub fn detect_git_changes(project_dir: &Path) -> Result<StartupDiff, String> {
 // ─── 持久化 ───
 
 /// 保存快照到 JSON 文件
+/// 三层策略：增量跳过 → 原子写入 → copy fallback → 直接写入兜底
 pub fn save_snapshot(snapshot: &IndexSnapshot, path: &Path) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("创建快照目录失败: {}", e))?;
     }
 
-    // 先写入临时文件再 rename，避免写一半崩溃
-    let tmp_path = path.with_extension("json.tmp");
+    // 先序列化，后续多种写入方式复用此字符串
     let json = serde_json::to_string_pretty(snapshot).map_err(|e| format!("序列化快照失败: {}", e))?;
-    std::fs::write(&tmp_path, &json).map_err(|e| format!("写入快照文件失败: {}", e))?;
 
-    // sync_all 确保数据落盘后再 rename，避免 macOS 文件系统延迟导致 ENOENT
-    if let Ok(f) = std::fs::File::open(&tmp_path) {
-        let _ = f.sync_all();
+    // ─── 第一层：增量检查 ───
+    // 若磁盘已有相同内容的快照，直接跳过写入
+    if path.exists() {
+        match std::fs::read_to_string(path) {
+            Ok(existing) if existing == json => return Ok(()),
+            _ => {}
+        }
     }
 
-    // 尝试原子 rename；若失败（跨设备/ENOENT 等）则 fallback 到 copy + 删除
-    if let Err(e) = std::fs::rename(&tmp_path, path) {
-        log::warn!("快照 rename 失败({})，使用 copy fallback", e);
-        std::fs::copy(&tmp_path, path)
-            .map_err(|e2| format!("重命名失败({})，拷贝也失败: {}", e, e2))?;
-        let _ = std::fs::remove_file(&tmp_path);
+    // ─── 第二层：原子写入（tmp + rename）───
+    let tmp_path = path.with_extension("json.tmp");
+    let write_result = std::fs::write(&tmp_path, &json)
+        .and_then(|_| {
+            // sync_all 确保数据落盘
+            if let Ok(f) = std::fs::File::open(&tmp_path) {
+                let _ = f.sync_all();
+            }
+            std::fs::rename(&tmp_path, path)
+        });
+
+    match write_result {
+        Ok(_) => return Ok(()),
+        Err(e) => {
+            log::warn!("快照 rename 失败({})，尝试 copy fallback", e);
+        }
     }
 
-    Ok(())
+    // ─── 第三层：copy fallback ───
+    if tmp_path.exists() {
+        match std::fs::copy(&tmp_path, path) {
+            Ok(_) => {
+                let _ = std::fs::remove_file(&tmp_path);
+                return Ok(());
+            }
+            Err(e) => {
+                log::warn!("快照 copy 也失败({})，直接写入目标文件", e);
+            }
+        }
+    }
+
+    // ─── 第四层：直接写入目标文件（终极兜底）───
+    std::fs::write(path, &json).map_err(|e| format!("写入快照失败: {}", e))
 }
 
 /// 从 JSON 文件加载快照
