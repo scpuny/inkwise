@@ -255,7 +255,19 @@ pub fn save_snapshot(snapshot: &IndexSnapshot, path: &Path) -> Result<(), String
     let tmp_path = path.with_extension("json.tmp");
     let json = serde_json::to_string_pretty(snapshot).map_err(|e| format!("序列化快照失败: {}", e))?;
     std::fs::write(&tmp_path, &json).map_err(|e| format!("写入快照文件失败: {}", e))?;
-    std::fs::rename(&tmp_path, path).map_err(|e| format!("重命名快照文件失败: {}", e))?;
+
+    // sync_all 确保数据落盘后再 rename，避免 macOS 文件系统延迟导致 ENOENT
+    if let Ok(f) = std::fs::File::open(&tmp_path) {
+        let _ = f.sync_all();
+    }
+
+    // 尝试原子 rename；若失败（跨设备/ENOENT 等）则 fallback 到 copy + 删除
+    if let Err(e) = std::fs::rename(&tmp_path, path) {
+        log::warn!("快照 rename 失败({})，使用 copy fallback", e);
+        std::fs::copy(&tmp_path, path)
+            .map_err(|e2| format!("重命名失败({})，拷贝也失败: {}", e, e2))?;
+        let _ = std::fs::remove_file(&tmp_path);
+    }
 
     Ok(())
 }
