@@ -2,10 +2,10 @@
 // 使用 agentEngine 的 tool calling 模式获取项目文件上下文
 import { sendChatStream, type ChatMessage } from "./ai";
 import { resolveProviderForModel } from "../config/globalAIConfig";
-import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agentEngine";
+import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agent/engine";
 import { isTauriEnv } from "../bridge/tauri";
 import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
-import type { OutlineSection } from "../ai/articleBlueprint";
+import type { OutlineSection } from "./article/blueprint";
 
 // ─── Types ───
 
@@ -100,7 +100,7 @@ async function ensureAllSkillsCache(): Promise<void> {
   // Unified skills via IPC (Rust backend)
   if (isTauriEnv()) {
     try {
-      const { getUnifiedSkills } = await import("../ai/unifiedSkills");
+      const { getUnifiedSkills } = await import("../ai/skill/unified");
       const unified = await getUnifiedSkills();
       const ids = ["general","academic","blog","creative","viral","tutorial","business","news","marketing","product-doc","review"];
       unified.filter(s => s.phaseConfigs.length > 0).forEach((s, i) => {
@@ -213,7 +213,7 @@ const TOOL_INSTRUCTIONS = `
 export async function generateFullArticleWithTools(
   input: ArticleGenInput,
   onToken?: (token: string) => void,
-  onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
+  onToolEvent?: (event: import("./agent/engine").ToolEvent) => void,
 ): Promise<string> {
   const { provider, model } = resolveProviderForModel();
   if (!provider) {
@@ -311,7 +311,7 @@ export async function generateFullArticleWithTools(
 export async function generateFullArticleStream(
   input: ArticleGenInput,
   onToken?: (token: string) => void,
-  onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
+  onToolEvent?: (event: import("./agent/engine").ToolEvent) => void,
 ): Promise<string> {
   const { provider, model } = resolveProviderForModel();
   if (!provider) {

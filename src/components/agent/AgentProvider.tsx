@@ -16,8 +16,8 @@ import { runSkill, runSkillStream } from "../../lib/storage/skill";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { resolveModel } from "../../lib/config/globalAIConfig";
 import { getProvidersSync } from "../../lib/storage/providerModels";
-import { saveSessions, loadSessions } from "../../lib/ai/articleSessions";
-import { getStyle, getAction } from "../../lib/ai/writingStyle";
+import { saveSessions, loadSessions } from "../../lib/ai/article/sessions";
+import { getStyle, getAction } from "../../lib/ai/skill/styles";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AgentState>(() => ({ ...DEFAULT_AGENT_STATE }));

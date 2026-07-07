@@ -18,7 +18,7 @@ import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { genId, loadCollections, addCollection, addArticle,
   saveSeriesPlan, type SeriesPlan } from "../lib/storage/collections";
-import { loadBlueprint } from "../lib/ai/articleBlueprint";
+import { loadBlueprint } from "../lib/ai/article/blueprint";
 import { useAgent } from "../lib/ai/agent";
 import { useThemeHandlers, useSeriesEventListeners } from "../hooks/appHooks";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -153,7 +153,8 @@ export default function MainEditorPage() {
 
   // 主内容区渲染 — 基于路由
   const renderMainContent = () => {
-    switch (mainRoute) {
+    const getContent = () => {
+      switch (mainRoute) {
       case 'scan':
         return <ProjectExplorer />;
 
@@ -279,6 +280,8 @@ export default function MainEditorPage() {
           </>
         );
     }
+    };
+    return <div className="app__main">{getContent()}</div>;
   };
 
   return (

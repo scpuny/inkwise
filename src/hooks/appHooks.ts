@@ -6,7 +6,7 @@ import { loadCollections, addCollection, addArticle, renameArticle, genId,
   linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan, loadAllSeriesPlans,
   type SeriesPlan,
 } from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
+import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
 import { usePanelStore } from "../store/panelStore";
@@ -87,7 +87,7 @@ export function useThemeHandlers() {
 /**
  * 文章生命周期处理器
  */
-export function useArticleLifecycle() {
+export function useArticleLifecycleRefs() {
   const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
   const setActiveCollectionId = useArticleStore((s) => s.setActiveCollectionId);
   const setHasActiveArticle = useArticleStore((s) => s.setHasActiveArticle);

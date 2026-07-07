@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
-import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/writingStyle";
+import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/skill/styles";
 import {
   ArticleBlueprint,
   buildBlueprintContext,
@@ -10,14 +10,14 @@ import {
   saveBlueprint,
   type ArticlePhase,
   type OutlineSection,
-} from "../../lib/ai/articleBlueprint";
+} from "../../lib/ai/article/blueprint";
 import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
 import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
-import { loadCollections } from "../../lib/storage/collections";
+import { loadCollections, getProjectContext } from "../../lib/storage/collections";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
 import { ArticleHeader } from "./ArticleHeader";
@@ -117,7 +117,11 @@ export function EditorPane({
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
   const seriesCtxRef = useRef<string>("");
-  const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agentEngine").ToolEvent[]>([]);
+  const [projectName, setProjectName] = useState<string>("");
+  const [projectFiles, setProjectFiles] = useState<string[]>([]);
+  const [projectStructure, setProjectStructure] = useState<any[]>([]);
+  const [projectReady, setProjectReady] = useState(false);
+  const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agent/engine").ToolEvent[]>([]);
   const abortPlanRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<any>(undefined);
   const outlineTimer = useRef<any>(undefined);
@@ -151,6 +155,47 @@ export function EditorPane({
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [blueprintEditorOpen, setBlueprintEditorOpen] = useState(false);
 
+  // Load project context for sidebar
+  useEffect(() => {
+    if (!activeCollectionId) {
+      setProjectName("");
+      setProjectFiles([]);
+      setProjectReady(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { loadCollections } = await import("../../lib/storage/collections");
+        const cols = await loadCollections();
+        const col = cols.find(c => c.id === activeCollectionId);
+        if (col?.linkedFolder) {
+          const ctx = await getProjectContext(col.linkedFolder);
+          setProjectName(ctx.name);
+          const files: string[] = [];
+          function collectNames(nodes: any[]) {
+            for (const n of nodes) {
+              if (!n.isDir) files.push(n.name);
+              if (n.children) collectNames(n.children);
+            }
+          }
+          if (ctx.structure) {
+            collectNames(ctx.structure);
+            setProjectStructure(ctx.structure);
+          }
+          setProjectFiles(files);
+          setProjectReady(files.length > 0);
+        } else {
+          setProjectName("");
+          setProjectFiles([]);
+          setProjectReady(false);
+        }
+      } catch {
+        setProjectName("");
+        setProjectFiles([]);
+        setProjectReady(false);
+      }
+    })();
+  }, [activeCollectionId]);
   // Sync target word count to window for StatusBar
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1065,7 +1110,7 @@ export function EditorPane({
     writtenContentRef.current = null;
   }, [onEnterEditor]);
 
-  const handleToolEvent = useCallback((event: import("../../lib/ai/agentEngine").ToolEvent) => {
+  const handleToolEvent = useCallback((event: import("../../lib/ai/agent/engine").ToolEvent) => {
     setToolEvents(prev => [...prev, event]);
   }, []);
 
@@ -1471,9 +1516,10 @@ ${seriesDescription || ""}`
           onEditOutline={handleEditOutline}
           onRetry={handlePlanRetry}
           onEnterEditor={handleEnterEditor}
-          projectName={undefined}
-          projectReady={false}
-          projectFiles={[]}
+          projectName={projectName}
+          projectReady={projectReady}
+          projectFiles={projectFiles}
+          projectStructure={projectStructure}
           toolEvents={toolEvents}
         />
       ) : !blueprintLoaded ? (
@@ -1527,9 +1573,9 @@ ${seriesDescription || ""}`
             }
           }}
           streamingContent={streamingContent}
-          projectName={undefined}
-          projectReady={false}
-          projectFiles={[]}
+          projectName={projectName}
+          projectReady={projectReady}
+          projectFiles={projectFiles}
           toolEvents={toolEvents}
         />
       ) : (

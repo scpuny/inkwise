@@ -13,7 +13,7 @@ import { loadCollections, type Collection } from "../../lib/storage/collections"
 import { on, emit } from "../../lib/events/eventBus";
 import type { EventBusMap } from "../../lib/events/events";
 import { marked } from "marked";
-import type { ToolEvent as AgentToolEvent } from "../../lib/ai/agentEngine";
+import type { ToolEvent as AgentToolEvent } from "../../lib/ai/agent/engine";
 
 // ─── 扫描进度日志条目 ───
 interface LogEntry {

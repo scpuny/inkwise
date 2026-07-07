@@ -14,6 +14,10 @@ use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, A
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
 use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+use std::fs;
+use crate::project_indexer::{snapshot_dir_files, save_snapshot};
 use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
@@ -29,7 +33,6 @@ struct AppState {
     embedder: Arc<Mutex<EmbedderState>>,
 }
 
-#[allow(dead_code)]
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -40,11 +43,6 @@ fn now_ms() -> u64 {
 // ─── 项目快照保存 ───
 
 fn save_project_snapshot(app_state: &AppState, project_path: &str) {
-    use std::collections::{HashMap, HashSet};
-    use std::hash::{Hash, Hasher};
-    use std::fs;
-    use crate::project_indexer::{snapshot_dir_files, save_snapshot};
-
     let app_dir = match app_state.store.lock() {
         Ok(store) => store.data_dir().parent().unwrap().to_path_buf(),
         Err(_) => return,

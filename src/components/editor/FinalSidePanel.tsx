@@ -1,5 +1,5 @@
 import type { PublishRecord } from "../../lib/storage/platforms";
-import type { OutlineSection } from "../../lib/ai/articleBlueprint";
+import type { OutlineSection } from "../../lib/ai/article/blueprint";
 import { ArticleInfoPanel } from "./ArticleInfoPanel";
 import { BlueprintProgress } from "./BlueprintProgress";
 import { PublishStatusPanel } from "./PublishStatusPanel";

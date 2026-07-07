@@ -1,6 +1,7 @@
 import { AlertCircle, BookOpen, Check, FileText, FolderInput, Loader2, Plus, Sparkles, X, ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
+import { usePanelStore } from "../../store/panelStore";
 import { getAllSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill";
 import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../lib/storage/collections";
@@ -77,6 +78,8 @@ const [customAudience, setCustomAudience] = useState("");
 const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [showProjectTree, setShowProjectTree] = useState(true);
+  const setProjectPanelColId = usePanelStore((s) => s.setProjectPanelColId);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   // Load project context on open
   useEffect(() => {
@@ -120,7 +123,7 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
         setCtxText(formatContextText(ctx));
       }).catch(() => {});
     }
-  }, [open, linkedFolder]);
+  }, [open, linkedFolder, existingPlan]);
 
   // Rotating status messages during generation
   useEffect(() => {
@@ -314,29 +317,89 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
 
   if (!open) return null;
 
-  // 页面路由模式：无遮罩，填满主区域（可展开项目结构）
+  // 页面路由模式：无遮罩，填满主区域（左侧始终显示关联项目信息）
   if (pageMode) {
+
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {linkedFolder && showProjectTree && (
-            <div className="series-planner__project-sidebar">
-              <div className="series-planner__project-sidebar-header">
-                <FolderInput size={12} />
-                <span>项目结构</span>
-              </div>
-              <div className="series-planner__project-sidebar-tree">
-                {projectCtx ? (
-                  <ProjectFileTree nodes={projectCtx.structure} maxDepth={5} onSelect={() => {}} />
-                ) : (
-                  <div className="series-planner__loading-tree">
-                    <Loader2 size={12} className="spin" />
-                    <span>加载项目结构…</span>
+          {/* 左侧：始终显示关联项目信息 */}
+          <aside className="series-planner__project-sidebar">
+            <div className="series-planner__project-sidebar-header">
+              <FolderInput size={12} />
+              <span>关联项目</span>
+            </div>
+
+            {projectCtx ? (
+              /* 已关联项目：显示项目概览 + 可选文件树 */
+              <div className="series-planner__project-info">
+                <div className="series-planner__project-name" title={projectCtx.rootPath}>
+                  {projectCtx.name}
+                </div>
+                <div className="series-planner__project-meta">
+                  <span>{projectCtx.summary.totalFiles} 文件</span>
+                  <span>·</span>
+                  <span>{projectCtx.primaryLanguage || "未知语言"}</span>
+                </div>
+                <div className="series-planner__project-path" title={projectCtx.rootPath}>
+                  {projectCtx.rootPath}
+                </div>
+
+                {showProjectTree ? (
+                  <div className="series-planner__project-tree-section">
+                    <div className="series-planner__project-tree-header">
+                      <FolderInput size={11} />
+                      <span>文件结构</span>
+                      <button
+                        className="series-planner__project-tree-toggle"
+                        onClick={() => setShowProjectTree(false)}
+                        title="隐藏文件结构"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                    <div className="series-planner__project-sidebar-tree">
+                      <ProjectFileTree nodes={projectCtx.structure} maxDepth={5} onSelect={() => {}} />
+                    </div>
                   </div>
+                ) : (
+                  <button
+                    className="series-planner__project-show-tree"
+                    onClick={() => setShowProjectTree(true)}
+                  >
+                    <FolderInput size={11} />
+                    显示文件结构
+                  </button>
                 )}
               </div>
-            </div>
-          )}
+            ) : linkedFolder && !projectCtx ? (
+              /* 正在加载项目 */
+              <div className="series-planner__loading-tree" style={{ flex: 1 }}>
+                <Loader2 size={14} className="spin" />
+                <span>加载项目结构…</span>
+              </div>
+            ) : (
+              /* 未关联项目：引导关联 */
+              <div className="series-planner__no-project">
+                <FolderInput size={28} className="series-planner__no-project-icon" />
+                <p className="series-planner__no-project-text">暂未关联项目目录</p>
+                <p className="series-planner__no-project-desc">
+                  关联本地项目目录后，AI 可以分析项目代码结构，生成更贴合项目的文章规划
+                </p>
+                <button
+                  className="btn btn--primary btn--small"
+                  onClick={() => {
+                    setProjectPanelColId(collectionId);
+                    setMainRoute('scan');
+                  }}
+                >
+                  <FolderInput size={13} />
+                  关联本地目录
+                </button>
+              </div>
+            )}
+          </aside>
+
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div className="series-planner-page__header">
               <BookOpen size={16} />

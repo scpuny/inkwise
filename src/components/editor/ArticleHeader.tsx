@@ -7,8 +7,8 @@ import {
   Clock, Edit3, Trash2, Plus, GripVertical, ChevronDown, ChevronRight,
   Save,
 } from "lucide-react";
-import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../lib/ai/articleBlueprint";
-import { getPhaseLabel } from "../../lib/ai/articleBlueprint";
+import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel } from "../../lib/ai/article/blueprint";
 
 interface ArticleHeaderProps {
   blueprint: ArticleBlueprint;

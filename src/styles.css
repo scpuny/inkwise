@@ -2474,7 +2474,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 12px 10px;
+  padding: 12px 10px 0;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-soft);
   user-select: none;
@@ -2537,8 +2537,9 @@ body {
 }
 
 .doc-new:active {
-  transform: translateY(0) scale(.98);
+  transform: translateY(0) scale(.97);
   box-shadow: 0 2px 8px -4px var(--accent);
+  filter: brightness(0.92);
 }
 
 /* ── Active collection ── */
@@ -2561,8 +2562,19 @@ body {
   gap: 7px;
   height: 32px;
   padding: 0 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.sidebar__search:focus-within {
+  border-color: var(--accent-dim, var(--border-2));
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.sidebar__search-icon {
+  flex-shrink: 0;
   border-radius: 8px;
   background: var(--bg-soft);
   color: var(--fg-faint)
@@ -2589,30 +2601,36 @@ body {
 .sidebar__tabs {
   display: flex;
   gap: 2px;
-  padding: 0 10px 4px;
+  padding: 0 6px 8px;
   flex: 0 0 auto
 }
 
 .sidebar__tab {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 10px;
+  flex: 1;
+  height: 30px;
+  padding: 0 6px;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--fg-dim);
   font: inherit;
   font-size: var(--text-xs);
   cursor: pointer;
-  transition: color var(--dur-fast), background var(--dur-fast);
+  transition: color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
   white-space: nowrap
 }
 
 .sidebar__tab:hover {
   background: var(--sidebar-hover);
   color: var(--fg)
+}
+
+.sidebar__tab:active {
+  transform: scale(0.96);
 }
 
 .sidebar__tab--active {
@@ -2630,12 +2648,12 @@ body {
   flex: 0 0 auto
 }
 
-/* Bottom actions */
+/* Bottom actions — labeled icon buttons */
 .sidebar__actions {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 10px;
+  padding: 6px 6px;
   border-top: 1px solid var(--border-soft);
   flex: 0 0 auto;
   margin-top: auto
@@ -2644,15 +2662,19 @@ body {
 .sidebar__action-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+  gap: 5px;
+  height: 30px;
+  padding: 0 8px;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: var(--fg-dim);
   cursor: pointer;
-  transition: color var(--dur-fast), background var(--dur-fast)
+  font: inherit;
+  font-size: var(--text-xs);
+  transition: color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast);
+  position: relative;
+  white-space: nowrap;
 }
 
 .sidebar__action-btn:hover {
@@ -2660,8 +2682,25 @@ body {
   color: var(--fg)
 }
 
-.sidebar__action-btn {
-  position: relative;
+.sidebar__action-btn:active {
+  transform: scale(0.95);
+}
+
+.sidebar__action-label {
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.sidebar__action-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-soft);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.sidebar__action-spacer {
+  flex: 1;
 }
 
 .sidebar__trash-badge {
@@ -4041,6 +4080,19 @@ body {
   height: 100%;
   background: var(--bg)
 }
+/* ─── Main content area (grid positioning for non-editor routes) ─── */
+
+.app__main {
+  grid-row: 2;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 .editor-pane__loading {
   position: absolute;
   inset: 0;
@@ -16158,6 +16210,143 @@ body {
 
   .startup-splash {
     display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .startup-splash__sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-soft);
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .startup-splash__sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .startup-splash__project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 10px;
+  }
+
+  .startup-splash__flex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .startup-splash__project-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .startup-splash__project-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .startup-splash__status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    opacity: 0.5;
+  }
+
+  .startup-splash__status-dot--ready {
+    background: var(--success, #22c55e);
+    opacity: 1;
+  }
+
+  .startup-splash__project-stats {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+
+  .startup-splash__project-tree {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .startup-splash__project-tree-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .startup-splash__project-tree-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2px 0;
+  }
+
+  .startup-splash__no-project {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    text-align: center;
+  }
+
+  .startup-splash__no-project-icon {
+    color: var(--text-faint);
+    opacity: 0.4;
+  }
+
+  .startup-splash__no-project-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  .startup-splash__no-project-desc {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin: 0;
+    line-height: 1.4;
+    max-width: 160px;
+  }
+
+  .startup-splash__main {
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -16168,6 +16357,7 @@ body {
     margin: 0 auto;
     flex: 1;
     width: 100%;
+    overflow-y: auto;
   }
 
   /* ── Brand ── */
@@ -23675,11 +23865,12 @@ body {
 
   .series-planner__project-sidebar {
     width: 240px;
+    flex-shrink: 0;
     border-right: 1px solid var(--border-soft);
     background: var(--bg-secondary);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
   }
 
   .series-planner__project-sidebar-header {
@@ -23709,6 +23900,131 @@ body {
     padding: 20px 8px;
     font-size: 11px;
     color: var(--text-faint);
+  }
+
+  /* ─── Series Planner: 关联项目侧栏（页模式） ─── */
+
+  .series-planner__project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 10px 6px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .series-planner__project-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .series-planner__project-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .series-planner__project-path {
+    font-size: 10px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 2px 0;
+    font-family: var(--font-mono, monospace);
+    opacity: 0.7;
+  }
+
+  .series-planner__project-tree-section {
+    border-top: 1px solid var(--border-soft);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .series-planner__project-tree-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .series-planner__project-tree-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    border-radius: 3px;
+  }
+
+  .series-planner__project-tree-toggle:hover {
+    color: var(--text);
+    background: var(--bg-tertiary);
+  }
+
+  .series-planner__project-show-tree {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 4px 10px;
+    transition: background var(--dur-fast);
+  }
+
+  .series-planner__project-show-tree:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .series-planner__no-project {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 16px;
+    text-align: center;
+  }
+
+  .series-planner__no-project-icon {
+    color: var(--text-faint);
+    opacity: 0.4;
+  }
+
+  .series-planner__no-project-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  .series-planner__no-project-desc {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin: 0;
+    line-height: 1.4;
+    max-width: 180px;
   }
   /* ─── Series Overview (in sidebar) ─── */
 

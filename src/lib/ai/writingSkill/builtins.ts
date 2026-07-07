@@ -2,8 +2,8 @@
 // @deprecated 请使用 ../unifiedSkills.ts 中的 unified_builtin_skills 或 IPC 获取。将在 v2.0.0 后移除。
 // 优先从 Rust 端通过 IPC 获取统一技能列表，浏览器模式下滑为本地定义
 import type { WritingSkill } from "./types";
-import { getUnifiedSkills } from "../unifiedSkills";
-import type { UnifiedSkill } from "../skillTypes";
+import { getUnifiedSkills } from "../skill/unified";
+import type { UnifiedSkill } from "../skill/types";
 import { isTauriEnv } from "../../bridge/tauri";
 
 /* ─── UnifiedSkill → WritingSkill 转换（后向兼容） ─── */

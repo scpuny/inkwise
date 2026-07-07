@@ -3,9 +3,11 @@ import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, Che
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
-import type { OutlineSection } from "../../lib/ai/articleBlueprint";
-import type { ToolEvent } from "../../lib/ai/agentEngine";
+import type { OutlineSection } from "../../lib/ai/article/blueprint";
+import type { ToolEvent } from "../../lib/ai/agent/engine";
 import { markdownToHtml } from "../../lib/markdown/renderer";
+import { ProjectFileTree } from "../common/ProjectFileTree";
+import type { FileNode } from "../../lib/storage/collections";
 
 const SUGGESTIONS = [
   "写一篇关于秋天午后的散文",
@@ -75,6 +77,7 @@ interface StartupSplashProps {
   projectName?: string;
   projectReady?: boolean;
   projectFiles?: string[];
+  projectStructure?: FileNode[];
   streamingContent?: string;
   toolEvents?: ToolEvent[];
 }
@@ -89,14 +92,14 @@ export function StartupSplash({
   planState, planStep, partialPlan, planError, lastPlanInput,
   writingOutline, writingSectionId, streamingContent = "",
   onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
-  projectName, projectReady, projectFiles, toolEvents = [],
+  projectName, projectReady, projectFiles, projectStructure, toolEvents = [],
 }: StartupSplashProps) {
   const [inspiration, setInspiration] = useState("");
   const [skillId, setSkillId] = useState("");
   const [audience, setAudience] = useState("");
   const [customAudience, setCustomAudience] = useState("");
-const [tone, setTone] = useState("");
-const [customTone, setCustomTone] = useState("");
+  const [tone, setTone] = useState("");
+  const [customTone, setCustomTone] = useState("");
   const [wordCount, setWordCount] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
   // toolEventsCollapsed removed — replaced with inline progress bar
@@ -210,263 +213,298 @@ const [customTone, setCustomTone] = useState("");
 
   return (
     <div className="startup-splash">
-      {showResponse ? (
-        /* ── Response View (chat-like conversation) ── */
-        <div className="startup-splash__response">
-          {/* User message */}
-          {lastPlanInput && (
-            <div className="startup-splash__msg user-msg">
-              <div className="startup-splash__msg-avatar">U</div>
-              <div className="startup-splash__msg-body">
-                <p>{lastPlanInput.inspiration}</p>
-                {(lastPlanInput.tone || lastPlanInput.targetAudience || lastPlanInput.targetWordCount) && (
-                  <div className="startup-splash__msg-meta">
-                    {lastPlanInput.tone && <span>风格: {lastPlanInput.tone}</span>}{lastPlanInput.skillId && !lastPlanInput.tone && <span>技能: {skillLabel(lastPlanInput.skillId)}</span>}
-                    {lastPlanInput.targetAudience && <span>读者: {lastPlanInput.targetAudience}</span>}
-                    {lastPlanInput.targetWordCount && <span>字数: ~{lastPlanInput.targetWordCount}</span>}
+      {/* 左侧：关联项目信息 */}
+      {projectName ? (
+        <aside className="startup-splash__sidebar">
+          <div className="startup-splash__sidebar-header">
+            <FolderInput size={14} />
+            <span>关联项目</span>
+          </div>
+          <div className="startup-splash__project-info">
+            <div className="startup-splash__project-name">{projectName}</div>
+            <div className="startup-splash__flex">
+              {projectFiles && projectFiles.length > 0 && (
+                <div className="startup-splash__project-stats">
+                  <span>{projectFiles.length} 个文件</span>
+                </div>
+              )}
+              <div className="startup-splash__project-status">
+                <span className={`startup-splash__status-dot ${projectReady ? 'startup-splash__status-dot--ready' : ''}`} />
+                <span>{projectReady ? '已就绪' : '分析中'}</span>
+              </div>
+            </div>
+          </div>
+          {projectStructure && projectStructure.length > 0 && (
+            <div className="startup-splash__project-tree">
+              <div className="startup-splash__project-tree-header">
+                <FolderInput size={11} />
+                <span>目录结构</span>
+              </div>
+              <div className="startup-splash__project-tree-content">
+                <ProjectFileTree nodes={projectStructure} maxDepth={4} onSelect={() => { }} />
+              </div>
+            </div>
+          )}
+        </aside>
+      ) : null}
+      <div className="startup-splash__main">
+        {showResponse ? (
+          /* ── Response View (chat-like conversation) ── */
+          <div className="startup-splash__response">
+            {/* User message */}
+            {lastPlanInput && (
+              <div className="startup-splash__msg user-msg">
+                <div className="startup-splash__msg-avatar">U</div>
+                <div className="startup-splash__msg-body">
+                  <p>{lastPlanInput.inspiration}</p>
+                  {(lastPlanInput.tone || lastPlanInput.targetAudience || lastPlanInput.targetWordCount) && (
+                    <div className="startup-splash__msg-meta">
+                      {lastPlanInput.tone && <span>风格: {lastPlanInput.tone}</span>}{lastPlanInput.skillId && !lastPlanInput.tone && <span>技能: {skillLabel(lastPlanInput.skillId)}</span>}
+                      {lastPlanInput.targetAudience && <span>读者: {lastPlanInput.targetAudience}</span>}
+                      {lastPlanInput.targetWordCount && <span>字数: ~{lastPlanInput.targetWordCount}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* AI response */}
+            <div className="startup-splash__msg ai-msg">
+              <div className="startup-splash__msg-avatar ai-avatar">
+                <Sparkles size={13} />
+              </div>
+              <div className="startup-splash__msg-body ai-body">
+                {/* Thinking indicator while first step loads */}
+                {!hasTitle && isGenerating && (
+                  <div className="startup-splash__thinking">
+                    <Loader2 size={14} className="startup-splash__spinner" />
+                    <span>正在分析你的灵感…</span>
+                  </div>
+                )}
+
+                {/* Title */}
+                {hasTitle && (
+                  <div className="startup-splash__section">
+                    <div className="startup-splash__section-label">
+                      <Check size={12} className="startup-splash__check" />
+                      标题
+                    </div>
+                    <div className="startup-splash__section-value editable" onClick={() => {
+                      const v = prompt("编辑标题", safePlan.title);
+                      if (v) onEditTitle(v);
+                    }}>
+                      {safePlan.title}
+                    </div>
+                  </div>
+                )}
+
+                {/* Description */}
+                {hasDescription && (
+                  <div className="startup-splash__section">
+                    <div className="startup-splash__section-label">
+                      <Check size={12} className="startup-splash__check" />
+                      简介
+                    </div>
+                    <div className="startup-splash__section-value editable" onClick={() => {
+                      const v = prompt("编辑简介", safePlan.description);
+                      if (v) onEditDescription(v);
+                    }}>
+                      {safePlan.description}
+                    </div>
+                  </div>
+                )}
+
+                {/* Outline */}
+                {hasOutline && (
+                  <div className="startup-splash__section">
+                    <div className="startup-splash__section-label">
+                      <Check size={12} className="startup-splash__check" />
+                      大纲
+                    </div>
+                    <ol className="startup-splash__outline">
+                      {(() => {
+                        const counters: number[] = [0, 0, 0];
+                        let lastLevel = 1;
+                        return safePlan.outline.map((sec, i) => {
+                          const lvl = sec.level;
+                          // Reset lower counters
+                          if (lvl < lastLevel) {
+                            for (let j = lvl; j < counters.length; j++) counters[j] = 0;
+                          }
+                          counters[lvl - 1]++;
+                          lastLevel = lvl;
+                          // Build prefix like "1." or "1.1" or "1.1.1"
+                          const prefix = counters.slice(0, lvl).join(".");
+                          return (
+                            <li key={sec.id || i} style={{ marginLeft: `${(lvl - 1) * 20}px` }}
+                              className="startup-splash__outline-item">
+                              <span className="startup-splash__outline-item-title">
+                                <span className="startup-splash__outline-num">{prefix}.</span>
+                                {sec.title}
+                              </span>
+                              {sec.description && <span className="startup-splash__outline-desc">{sec.description}</span>}
+                            </li>
+                          );
+                        });
+                      })()}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {hasTags && (
+                  <div className="startup-splash__section">
+                    <div className="startup-splash__section-label">
+                      <Check size={12} className="startup-splash__check" />
+                      标签
+                    </div>
+                    <div className="startup-splash__tags">
+                      {safePlan.tags.map((tag, i) => (
+                        <span key={i} className="startup-splash__tag">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancel button during planning */}
+                {isGenerating && (
+                  <div className="startup-splash__cancel-row">
+                    <button className="btn" onClick={onCancelPlan} style={{ fontSize: 11, height: 24, padding: '0 8px' }}>
+                      取消规划
+                    </button>
+                  </div>
+                )}
+
+                {/* Step loading indicator */}
+                {isGenerating && hasTitle && (
+                  <div className="startup-splash__thinking startup-splash__thinking--next">
+                    <Loader2 size={13} className="startup-splash__spinner" />
+                    <span>
+                      {planStep === "description" && !hasDescription ? "正在撰写简介…" :
+                        planStep === "outline" && !hasOutline ? "正在规划大纲…" :
+                          planStep === "tags" && !hasTags ? "正在生成标签…" :
+                            "处理中…"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Error */}
+                {planError && (
+                  <div className="startup-splash__error">
+                    <span>{planError}</span>
+                    <button className="btn btn--small" onClick={onRetry}>重试</button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {planState === "review" && (
+                  <div className="startup-splash__actions">
+                    <button className="btn btn--primary" style={{ height: 30 }} onClick={onConfirm}>
+                      <Sparkles size={14} /> 确认并开始写作
+                    </button>
+                    <button className="btn" onClick={onCancel}>
+                      返回修改需求
+                    </button>
+                  </div>
+                )}
+
+                {/* Live streaming content preview */}
+                {(planState === "writing" || streamingContent) && (
+                  <div className="startup-splash__section startup-splash__section--writing">
+                    <div className="startup-splash__section-label">
+                      <PenLine size={12} className={planState === "writing" ? "startup-splash__spinner" : ""} />
+                      {planState === "writing" ? "AI 正在生成文章…" : "生成内容预览"}
+                    </div>
+                    {/* Compact tool progress during writing */}
+                    {planState === "writing" && toolEventItems.length > 0 && (
+                      <div className="startup-splash__tool-progress">
+                        <div className="startup-splash__tool-progress-bar">
+                          <div
+                            className="startup-splash__tool-progress-fill"
+                            style={{ width: Math.min(100, (toolEventItems.length > 0 ? (doneCount / toolEventItems.length) * 100 : 0)) + "%" }}
+                          />
+                        </div>
+                        <span className="startup-splash__tool-progress-label">
+                          {pendingCount > 0 && currentToolOp ? (
+                            <><Loader2 size={10} className="startup-splash__spinner" /> {currentToolOp}</>
+                          ) : (
+                            <><Check size={10} style={{ color: 'var(--accent)' }} /> 已完成 {doneCount} 项操作</>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div className="startup-splash__stream-content" ref={streamContentRef}>
+                      {streamingContent ? (
+                        <>
+                          <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
+                          <span className="startup-splash__stream-cursor">|</span>
+                        </>
+                      ) : (
+                        <div className="startup-splash__stream-placeholder">
+                          <Loader2 size={14} className="startup-splash__spinner" />
+                          <span>正在准备生成内容…</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Article review */}
+                {planState === "article-review" && (
+                  <div className="startup-splash__section">
+                    <div className="startup-splash__section-label">
+                      <Check size={12} className="startup-splash__check" />
+                      文章已生成，请审阅
+                    </div>
+                    <div className="startup-splash__review-summary">
+                      <div className="startup-splash__review-stat">
+                        <FileText size={14} />
+                        <span>{partialPlan.title || "无标题"}</span>
+                      </div>
+                      <div className="startup-splash__review-stat">
+                        <span>{writingOutline.length} 个章节 · 全部完成</span>
+                      </div>
+                    </div>
+                    <div className="startup-splash__writing-list">
+                      {writingOutline.map((s) => (
+                        <div key={s.id} className="startup-splash__writing-item startup-splash__writing-item--done">
+                          <CheckCircle2 size={14} className="startup-splash__writing-icon-done" />
+                          <span className="startup-splash__writing-title">{s.title}</span>
+                          {s.description && <span className="startup-splash__writing-desc">{s.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                    {/* 工具调用进度（简略版） */}
+                    {toolEventItems.length > 0 && (
+                      <div className="startup-splash__review-tool-summary">
+                        <Check size={11} />
+                        <span>AI 在工作过程中读取了 {doneCount} 个文件</span>
+                      </div>
+                    )}                  {planError && (
+                      <div className="startup-splash__error" style={{ marginTop: 12 }}>
+                        <AlertCircle size={12} />
+                        <span>{planError}</span>
+                      </div>
+                    )}
+                    <div className="startup-splash__actions" style={{ marginTop: 16 }}>
+                      <button className="btn btn--primary" style={{ height: 30 }} onClick={onEnterEditor}>
+                        <img src="/inkwise-icon.svg" width="16" height="16" alt="" style={{ verticalAlign: "middle", marginRight: 4 }} /> 进入编辑
+                      </button>
+                      <button className="btn" onClick={onCancel}>
+                        取消
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          )}
 
-          {/* AI response */}
-          <div className="startup-splash__msg ai-msg">
-            <div className="startup-splash__msg-avatar ai-avatar">
-              <Sparkles size={13} />
-            </div>
-            <div className="startup-splash__msg-body ai-body">
-              {/* Thinking indicator while first step loads */}
-              {!hasTitle && isGenerating && (
-                <div className="startup-splash__thinking">
-                  <Loader2 size={14} className="startup-splash__spinner" />
-                  <span>正在分析你的灵感…</span>
-                </div>
-              )}
-
-              {/* Title */}
-              {hasTitle && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Check size={12} className="startup-splash__check" />
-                    标题
-                  </div>
-                  <div className="startup-splash__section-value editable" onClick={() => {
-                    const v = prompt("编辑标题", safePlan.title);
-                    if (v) onEditTitle(v);
-                  }}>
-                    {safePlan.title}
-                  </div>
-                </div>
-              )}
-
-              {/* Description */}
-              {hasDescription && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Check size={12} className="startup-splash__check" />
-                    简介
-                  </div>
-                  <div className="startup-splash__section-value editable" onClick={() => {
-                    const v = prompt("编辑简介", safePlan.description);
-                    if (v) onEditDescription(v);
-                  }}>
-                    {safePlan.description}
-                  </div>
-                </div>
-              )}
-
-              {/* Outline */}
-              {hasOutline && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Check size={12} className="startup-splash__check" />
-                    大纲
-                  </div>
-                  <ol className="startup-splash__outline">
-                    {(() => {
-                      const counters: number[] = [0, 0, 0];
-                      let lastLevel = 1;
-                      return safePlan.outline.map((sec, i) => {
-                        const lvl = sec.level;
-                        // Reset lower counters
-                        if (lvl < lastLevel) {
-                          for (let j = lvl; j < counters.length; j++) counters[j] = 0;
-                        }
-                        counters[lvl - 1]++;
-                        lastLevel = lvl;
-                        // Build prefix like "1." or "1.1" or "1.1.1"
-                        const prefix = counters.slice(0, lvl).join(".");
-                        return (
-                          <li key={sec.id || i} style={{ marginLeft: `${(lvl - 1) * 20}px` }}
-                              className="startup-splash__outline-item">
-                            <span className="startup-splash__outline-item-title">
-                              <span className="startup-splash__outline-num">{prefix}.</span>
-                              {sec.title}
-                            </span>
-                            {sec.description && <span className="startup-splash__outline-desc">{sec.description}</span>}
-                          </li>
-                        );
-                      });
-                    })()}
-                  </ol>
-                </div>
-              )}
-
-              {/* Tags */}
-              {hasTags && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Check size={12} className="startup-splash__check" />
-                    标签
-                  </div>
-                  <div className="startup-splash__tags">
-                    {safePlan.tags.map((tag, i) => (
-                      <span key={i} className="startup-splash__tag">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Cancel button during planning */}
-              {isGenerating && (
-                <div className="startup-splash__cancel-row">
-                  <button className="btn" onClick={onCancelPlan} style={{fontSize: 11, height: 24, padding: '0 8px'}}>
-                    取消规划
-                  </button>
-                </div>
-              )}
-
-              {/* Step loading indicator */}
-              {isGenerating && hasTitle && (
-                <div className="startup-splash__thinking startup-splash__thinking--next">
-                  <Loader2 size={13} className="startup-splash__spinner" />
-                  <span>
-                    {planStep === "description" && !hasDescription ? "正在撰写简介…" :
-                     planStep === "outline" && !hasOutline ? "正在规划大纲…" :
-                     planStep === "tags" && !hasTags ? "正在生成标签…" :
-                     "处理中…"}
-                  </span>
-                </div>
-              )}
-
-              {/* Error */}
-              {planError && (
-                <div className="startup-splash__error">
-                  <span>{planError}</span>
-                  <button className="btn btn--small" onClick={onRetry}>重试</button>
-                </div>
-              )}
-
-              {/* Actions */}
-              {planState === "review" && (
-                <div className="startup-splash__actions">
-                  <button className="btn btn--primary" style={{height:30}} onClick={onConfirm}>
-                    <Sparkles size={14} /> 确认并开始写作
-                  </button>
-                  <button className="btn" onClick={onCancel}>
-                    返回修改需求
-                  </button>
-                </div>
-              )}
-
-              {/* Live streaming content preview */}
-              {(planState === "writing" || streamingContent) && (
-                <div className="startup-splash__section startup-splash__section--writing">
-                  <div className="startup-splash__section-label">
-                    <PenLine size={12} className={planState === "writing" ? "startup-splash__spinner" : ""} />
-                    {planState === "writing" ? "AI 正在生成文章…" : "生成内容预览"}
-                  </div>
-                  {/* Compact tool progress during writing */}
-                  {planState === "writing" && toolEventItems.length > 0 && (
-                    <div className="startup-splash__tool-progress">
-                      <div className="startup-splash__tool-progress-bar">
-                        <div
-                          className="startup-splash__tool-progress-fill"
-                          style={{ width: Math.min(100, (toolEventItems.length > 0 ? (doneCount / toolEventItems.length) * 100 : 0)) + "%" }}
-                        />
-                      </div>
-                      <span className="startup-splash__tool-progress-label">
-                        {pendingCount > 0 && currentToolOp ? (
-                          <><Loader2 size={10} className="startup-splash__spinner" /> {currentToolOp}</>
-                        ) : (
-                          <><Check size={10} style={{color:'var(--accent)'}} /> 已完成 {doneCount} 项操作</>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  <div className="startup-splash__stream-content" ref={streamContentRef}>
-                    {streamingContent ? (
-                      <>
-                        <div className="startup-splash__stream-markdown" dangerouslySetInnerHTML={{ __html: markdownToHtml(streamingContent) }} />
-                        <span className="startup-splash__stream-cursor">|</span>
-                      </>
-                    ) : (
-                      <div className="startup-splash__stream-placeholder">
-                        <Loader2 size={14} className="startup-splash__spinner" />
-                        <span>正在准备生成内容…</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Article review */}
-              {planState === "article-review" && (
-                <div className="startup-splash__section">
-                  <div className="startup-splash__section-label">
-                    <Check size={12} className="startup-splash__check" />
-                    文章已生成，请审阅
-                  </div>
-                  <div className="startup-splash__review-summary">
-                    <div className="startup-splash__review-stat">
-                      <FileText size={14} />
-                      <span>{partialPlan.title || "无标题"}</span>
-                    </div>
-                    <div className="startup-splash__review-stat">
-                      <span>{writingOutline.length} 个章节 · 全部完成</span>
-                    </div>
-                  </div>
-                  <div className="startup-splash__writing-list">
-                    {writingOutline.map((s) => (
-                      <div key={s.id} className="startup-splash__writing-item startup-splash__writing-item--done">
-                        <CheckCircle2 size={14} className="startup-splash__writing-icon-done" />
-                        <span className="startup-splash__writing-title">{s.title}</span>
-                        {s.description && <span className="startup-splash__writing-desc">{s.description}</span>}
-                      </div>
-                    ))}
-                  </div>
-                  {/* 工具调用进度（简略版） */}
-                  {toolEventItems.length > 0 && (
-                    <div className="startup-splash__review-tool-summary">
-                      <Check size={11} />
-                      <span>AI 在工作过程中读取了 {doneCount} 个文件</span>
-                    </div>
-                  )}                  {planError && (
-                    <div className="startup-splash__error" style={{marginTop:12}}>
-                      <AlertCircle size={12} />
-                      <span>{planError}</span>
-                    </div>
-                  )}
-                  <div className="startup-splash__actions" style={{marginTop:16}}>
-                    <button className="btn btn--primary" style={{height:30}} onClick={onEnterEditor}>
-                      <img src="/inkwise-icon.svg" width="16" height="16" alt="" style={{verticalAlign:"middle",marginRight:4}} /> 进入编辑
-                    </button>
-                    <button className="btn" onClick={onCancel}>
-                      取消
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <div ref={responseEndRef} />
           </div>
+        ) : (
+          /* ── Input View (welcome) ── */
+          <>
 
-          <div ref={responseEndRef} />
-        </div>
-      ) : (
-        /* ── Input View (welcome) ── */
-        <>
-          
             <>
               <div className="startup-splash__brand">
                 <img src="/inkwise-icon.svg" width="80" height="80" alt="InkWise" className="startup-splash__logo" />
@@ -486,7 +524,7 @@ const [customTone, setCustomTone] = useState("");
                     <div className="startup-splash__onboarding-header">
                       InkWise 新手引导
                       <button className="startup-splash__onboarding-close" onClick={() => setShowOnboarding(false)}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </button>
                     </div>
                     <div className="startup-splash__onboarding-steps">
@@ -554,7 +592,6 @@ const [customTone, setCustomTone] = useState("");
                 <textarea className="startup-splash__input" placeholder="你想写什么？输入一个主题、一句话或一段描述…"
                   rows={3} value={inspiration}
                   onChange={(e) => setInspiration(e.target.value)}
-                  onFocus={() => setShowSuggestions(false)}
                   autoFocus
                 />
               </div>
@@ -608,8 +645,9 @@ const [customTone, setCustomTone] = useState("");
                 <ArrowRight size={11} /> 按 <kbd>⌘</kbd><kbd>⏎</kbd> 使用 AI 规划
               </p>
             </>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

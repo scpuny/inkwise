@@ -4,7 +4,7 @@
 import { tryInvoke, isTauriEnv, TauriCommands } from "../../bridge/tauri";
 import type { WritingSkill, SkillPhase, PhaseConfig } from "./types";
 import { getBuiltinSkills } from "./builtins";
-import { getUnifiedSkills } from "../unifiedSkills";
+import { getUnifiedSkills } from "../skill/unified";
 import { DEFAULT_PHASE_CONFIGS } from "./defaults";
 
 /* ─── 工具函数 ─── */

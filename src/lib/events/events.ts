@@ -1,6 +1,6 @@
 // events.ts — 全局事件类型定义
 // 所有自定义事件名和 payload 类型集中在此管理
-import type { ToolEvent } from "../ai/agentEngine";
+import type { ToolEvent } from "../ai/agent/engine";
 
 export interface OutlineNavigateDetail {
   headingText: string;

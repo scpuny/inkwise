@@ -16,7 +16,7 @@ import { usePanelStore } from "../../store/panelStore";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { SeriesOverview } from "../series/SeriesOverview";
 import { loadArticleContent } from "../../lib/storage/articles";
-import { loadBlueprint } from "../../lib/ai/articleBlueprint";
+import { loadBlueprint } from "../../lib/ai/article/blueprint";
 import { emit, on } from "../../lib/events/eventBus";
 import type { PlanSeriesSavedDetail } from "../../lib/events/events";
 import { getWordCount } from "../../lib/utils/text";

@@ -273,12 +273,27 @@
 | F21 | appHooks.ts TypeScript 错误：await 在非 async setTimeout 中 | `appHooks.ts` | 🟢 | 2026-07-05 |
 | F22 | SeriesPlanner getProvider() 未用 resolveProviderForModel，模型切换后服务商未切换 | `SeriesPlanner.tsx` | 🟢 | 2026-07-06 |
 | F23 | 快照 rename/copy ENOENT → 简化直接写入 + 过期快照自动清理 | `snapshot.rs`, `lib.rs` | 🟢 | 2026-07-06 |
+| F23 | 快照 rename/copy ENOENT → 简化直接写入 + 过期快照自动清理 | `snapshot.rs`, `lib.rs` | 🟢 | 2026-07-06 |
+
+## v2.0.0 热修复（2026-07-07）
+
+| # | 问题 | 文件 | 状态 | 完成日 |
+|---|------|------|------|--------|
+| F24 | StartupSplash 关联项目侧栏缺失（projectName/projectFiles/projectStructure 未渲染） | `StartupSplash.tsx`, `EditorPane.tsx`, `styles.css` | 🟢 | 2026-07-07 |
+| F25 | addHeadingNumbers 跳过 h3，cleanText 只剥一层序号导致重复编号 | `editorStyles.ts` | 🟢 | 2026-07-07 |
+| F26 | edit-series-plan useEffect 缺少 existingPlan 依赖导致编辑规划不生效 | `SeriesPlanner.tsx` | 🟢 | 2026-07-07 |
+| F27 | StartupSplash autoFocus 触发 onFocus 导致建议词条永远不显示 | `StartupSplash.tsx` | 🟢 | 2026-07-07 |
+| F28 | Sidebar 底部按钮贴紧（padding-bottom 移除） | `styles.css` | 🟢 | 2026-07-07 |
+| F29 | SeriesPlanner 页模式左侧关联项目列表未显示 | `SeriesPlanner.tsx`, `styles.css` | 🟢 | 2026-07-07 |
+| F30 | SeriesPlanner usePanelStore hooks 违反 React Hooks 规则（条件分支内调用） | `SeriesPlanner.tsx` | 🟢 | 2026-07-07 |
+| F31 | StartupSplash 无关联项目时不显示侧栏 | `StartupSplash.tsx` | 🟢 | 2026-07-07 |
+
 ### 统计看板（含热修复）
 
 | 类别 | 总数 | 🟢 完成 | 完成率 |
 |------|------|---------|--------|
 | Sprint 1-4 功能 | 91 | 87 | 96% |
-| 热修复 | 23 | 23 | 100% |
+| 热修复 | 31 | 31 | 100% |
 
 ## 里程碑记录
 

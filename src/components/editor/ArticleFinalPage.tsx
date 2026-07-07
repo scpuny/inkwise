@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/ai/articleBlueprint";
+import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/ai/article/blueprint";
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
 import { on } from "../../lib/events/eventBus";

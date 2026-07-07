@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { List, Settings, SquarePen, FolderTree, FolderInput, Trash2, GalleryThumbnails } from "lucide-react";
+import { List, Settings, SquarePen, FolderTree, FolderInput, Trash2, GalleryThumbnails, Search } from "lucide-react";
 import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
@@ -66,9 +66,7 @@ export function Sidebar({
       </button>
 
       <div className="sidebar__search">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        <Search size={14} className="sidebar__search-icon" />
         <input
           type="text"
           placeholder="搜索文档…"
@@ -104,17 +102,22 @@ export function Sidebar({
         )}
       </section>
 
-      {/* Bottom actions */}
+      {/* Bottom actions — labeled icon buttons */}
       <div className="sidebar__actions">
         <button className="sidebar__action-btn" onClick={() => onManageArticles?.()} title="管理合集">
-          <GalleryThumbnails size={14} />
+          <GalleryThumbnails size={15} />
+          <span className="sidebar__action-label">管理</span>
         </button>
+        <div className="sidebar__action-sep" />
         <button className="sidebar__action-btn" onClick={() => onOpenTrash?.()} title="回收站">
-          <Trash2 size={14} />
+          <Trash2 size={15} />
+          <span className="sidebar__action-label">回收站</span>
           {trashCount > 0 && <span className="sidebar__trash-badge">{trashCount}</span>}
         </button>
+        <div className="sidebar__action-spacer" />
         <button className="sidebar__action-btn" onClick={onOpenSettings} title="设置">
-          <Settings size={14} />
+          <Settings size={15} />
+          <span className="sidebar__action-label">设置</span>
         </button>
       </div>
 

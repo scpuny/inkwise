@@ -45,34 +45,39 @@ export function resetEditorStyle(): void {
 // ─── Heading numbering in content (modifies actual markdown) ───
 
 export function addHeadingNumbers(markdown: string): string {
-  let h1Count = 0;
+  let h2Count = 0;
+  let h3Count = 0;
   return markdown.split('\n').map(line => {
-    const match = line.match(/^(#{1,2})\s+(.+)$/);
+    const match = line.match(/^(#{1,3})\s+(.+)$/);
     if (!match) return line;
     const level = match[1].length;
     const text = match[2];
 
-    // Strip existing numbering
-    const cleanText = text.replace(/^(\d+\.?)+\s+/, '');
+    // Strip ALL leading numbering (e.g. "1. " or "1. 1. " or "1.1. " etc.)
+    const cleanText = text.replace(/^(\d+[.\s]*)+\s*/, '');
 
     if (level === 1) {
       // h1 (article title) - no numbering
       return '# ' + cleanText;
     }
-    // h2 only gets flat numbering starting from 1
     if (level === 2) {
-      h1Count++;
-      return '## ' + h1Count + '. ' + cleanText;
+      h2Count++;
+      h3Count = 0;
+      return '## ' + h2Count + '. ' + cleanText;
+    }
+    // h3 nested under h2: 1.1, 1.2, 2.1 etc.
+    if (level === 3) {
+      h3Count++;
+      return '### ' + h2Count + '.' + h3Count + ' ' + cleanText;
     }
     return line;
   }).join('\n');
-}
-
-export function stripHeadingNumbers(markdown: string): string {
+}export function stripHeadingNumbers(markdown: string): string {
   return markdown.split('\n').map(line => {
-    const match = line.match(/^(#{1,6})\s+(\d+\.?)+\s+(.+)$/);
+    const match = line.match(/^(#{1,6})\s+(.+)$/);
     if (!match) return line;
-    return match[1] + ' ' + match[3];
+    const text = match[2].replace(/^(\d+[.\s]*)+\s*/, '');
+    return match[1] + ' ' + text;
   }).join('\n');
 }
 

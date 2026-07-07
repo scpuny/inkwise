@@ -238,7 +238,7 @@ export async function getProjectContext(path: string): Promise<ProjectContext> {
 export async function getProjectContextText(path: string): Promise<string> {
   try {
     return await invokeOrFallback<string>(
-      TauriCommands.GetProjectContext, { path, format: "text" },
+      TauriCommands.GetProjectContextText, { path },
       () => "",
     );
   } catch { return ""; }

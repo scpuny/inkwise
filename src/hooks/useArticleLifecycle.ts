@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { loadCollections, addCollection, addArticle,
   saveSeriesPlan, loadSeriesPlan } from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
+import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
 import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
@@ -12,7 +12,7 @@ import { useToastStore } from "../store/toastStore";
 import { useArticleStore } from "../store/articleStore";
 import { useEditorStore } from "../store/editorStore";
 import { usePanelStore } from "../store/panelStore";
-import { useArticleLifecycle as useLifecycleRefs } from "./appHooks";
+import { useArticleLifecycleRefs } from "./appHooks";
 
 function makeBlueprint(title: string, plan: {
   title: string; description: string; outline: OutlineSection[];
@@ -44,7 +44,7 @@ export function useArticleLifecycle() {
   const {
     applyHeadingNumbersRef, pendingSeriesArticleRef, prevArticleRef,
     styleReady, setStyleReady,
-  } = useLifecycleRefs();
+  } = useArticleLifecycleRefs();
 
   const activeArticleId = useArticleStore((s) => s.activeArticleId);
   const setActiveArticleIdApp = useArticleStore((s) => s.setActiveArticleId);

@@ -3,8 +3,8 @@
 
 import { useState } from "react";
 import { X, ArrowRight, Lightbulb, FileText, Search, CheckCircle2 } from "lucide-react";
-import type { ArticlePhase } from "../../lib/ai/articleBlueprint";
-import { getPhaseLabel } from "../../lib/ai/articleBlueprint";
+import type { ArticlePhase } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel } from "../../lib/ai/article/blueprint";
 
 const GUIDE_KEY = "inkwise_phase_guide_shown";
 

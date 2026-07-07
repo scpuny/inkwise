@@ -172,11 +172,11 @@ export async function removeCollection(id: string): Promise<void> {
     try {
       const { deleteArticleContent } = await import("../../storage/articles");
       await deleteArticleContent(articleId);
-    } catch { /* non-critical */ }
+    } catch { console.warn("[removeCollection] cleanup failed (non-critical)"); }
     try {
       const { deleteAllVersions } = await import("../../storage/articleVersions");
       await deleteAllVersions(articleId);
-    } catch { /* non-critical */ }
+    } catch { console.warn("[removeCollection] cleanup failed (non-critical)"); }
     try { localStorage.removeItem('plan-draft-' + articleId); } catch { /* ignore */ }
     // 🔮 向量分块清理（Sprint 3 实现后启用）
     // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
@@ -344,7 +344,7 @@ async function trySettingsSync(): Promise<void> {
       });
       console.log('[trySettingsSync] synced from backend');
     }
-  } catch { /* first launch, no saved settings yet */ }
+  } catch { console.debug("[trySettingsSync] no saved settings yet"); }
 }
 
 export async function unlinkCollectionFolder(collectionId: string): Promise<void> {
@@ -406,7 +406,7 @@ export function browserLoad<T>(key: string, fallback: T): T {
 }
 
 export function browserSave<T>(key: string, data: T): void {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { console.warn("[browserSave] localStorage write failed (quota exceeded?)"); }
 }
 
 
@@ -538,7 +538,7 @@ export async function searchArticleContent(
           collectionTitle: col.title, title: article.title,
           matchType: "content", snippet, score: 20,
         });
-      } catch {}
+      } catch { console.warn("[search] content search error (non-critical)"); }
     }
   }
   return results;

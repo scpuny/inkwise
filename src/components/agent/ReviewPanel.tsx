@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { Loader2, Check, X } from "lucide-react";
-import { generateArticleReview, saveArticleReview, loadArticleReview, applyOptimization, type ArticleReview } from "../../lib/ai/articleReview";
+import { generateArticleReview, saveArticleReview, loadArticleReview, applyOptimization, type ArticleReview } from "../../lib/ai/article/review";
 import { loadArticleContent, loadArticleMeta, saveArticleContent } from "../../lib/storage/articles";
 
 /* ─── 文章质量评估面板 ─── */
