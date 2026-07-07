@@ -23,6 +23,9 @@
 - **Sidebar 底部按钮改为图标+标签** — 改用 Lucide 图标 + 文字标签，增加 visual separator
 - **空 catch 添加错误日志** — 多处 `catch {}` 改为 `console.warn` 便于调试
 
+### 内部修复
+- **快照写入可靠性** — save_snapshot rename 失败时 fallback 到 copy+删除；增量跳过已写入块 + 三层写入兜底，彻底解决 ENOENT
+- **Provider 与模型匹配** — 抽取 `resolveProviderForModel()` 共享函数，消除 6 份雷同的 provider 解析逻辑；对齐 Tauri 参数 `provider_id` → `providerId` camelCase 约定
 ### 技术债务
 - **模块重构** — `agentEngine` → `agent/engine`，`articleBlueprint` → `article/blueprint`，`articleReview` → `article/review`，`articleSessions` → `article/sessions`，`skillTypes` → `skill/types`，`unifiedSkills` → `skill/unified`，`writingStyle` → `skill/styles`
 - **Rust imports 提升** — 模块级 use 替代函数内 use，移除 `#[allow(dead_code)]`
