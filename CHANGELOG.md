@@ -1,3 +1,36 @@
+## v2.0.0 (2026-07-07)
+
+### 新功能
+- **StartupSplash 关联项目侧栏** — 左侧显示关联项目名称、状态、文件数量和目录结构树（ProjectFileTree），未关联时不占空间
+- **SeriesPlanner 页模式关联项目侧栏** — 规划系列文章时左侧始终显示项目概览（名称/文件数/语言/路径）+ 可折叠目录树
+- **系列文章规划编辑支持** — 修复"编辑规划"按钮，点击后正确跳转到审阅步骤
+
+### 改进
+- **Sidebar 底部按钮贴边** — 移除 sidebar 底部 padding，让管理/回收站/设置按钮紧贴底部
+- **Heading 编号支持三级标题** — `###` 标题现在显示分层编号（1.1, 1.2, 2.1...），h2 切换时自动重置
+- **Heading 编号去重** — 修复 `cleanText` 正则只剥一层序号的问题，彻底去除重复编号
+- **StartupSplash 建议词条** — 修复 autoFocus 触发 onFocus 导致建议词条永远不显示的问题
+- **编辑器/设置深度链接** — 右键合集直接打开设置页面
+
+### Bug 修复
+- **edit-series-plan 事件不生效** — SeriesPlanner useEffect 缺少 `existingPlan` 依赖，编辑规划时不会跳转到审阅步骤
+- **addHeadingNumbers 跳过 h3** — 正则 `#{1,2}` 只匹配 h1/h2，三级标题完全不受理
+- **StartupSplash `projectName/projectReady/projectFiles` 未渲染** — 三个 props 被接收但从未在 JSX 中使用
+- **EditorPane 传递假数据** — StartupSplash 的 projectName/projectFiles 传的是 `undefined`/`[]`，改为从 `getProjectContext` 加载真实数据
+- **CSS 0→2 列布局切换** — 新增 `.app__main` 为非 editor 路由提供 grid 定位
+- **Sidebar 搜索框样式** — 添加圆角、focus-within 发光边框、过渡动画
+- **Sidebar Tab 栏 flex 分布** — 三个 tab 等宽分配，添加 active scale 反馈
+- **Sidebar 底部按钮改为图标+标签** — 改用 Lucide 图标 + 文字标签，增加 visual separator
+- **空 catch 添加错误日志** — 多处 `catch {}` 改为 `console.warn` 便于调试
+
+### 内部修复
+- **快照写入可靠性** — save_snapshot rename 失败时 fallback 到 copy+删除；增量跳过已写入块 + 三层写入兜底，彻底解决 ENOENT
+- **Provider 与模型匹配** — 抽取 `resolveProviderForModel()` 共享函数，消除 6 份雷同的 provider 解析逻辑；对齐 Tauri 参数 `provider_id` → `providerId` camelCase 约定
+### 技术债务
+- **模块重构** — `agentEngine` → `agent/engine`，`articleBlueprint` → `article/blueprint`，`articleReview` → `article/review`，`articleSessions` → `article/sessions`，`skillTypes` → `skill/types`，`unifiedSkills` → `skill/unified`，`writingStyle` → `skill/styles`
+- **Rust imports 提升** — 模块级 use 替代函数内 use，移除 `#[allow(dead_code)]`
+- **editorStore 简化** — 移除 ArticleContext 依赖，改用 localStorage + saveArticleStyleConfig
+
 
 ## v1.10.0 (2026-07-01)
 

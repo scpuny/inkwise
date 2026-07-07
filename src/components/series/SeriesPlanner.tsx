@@ -1,10 +1,13 @@
-import { AlertCircle, BookOpen, Check, FileText, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { AlertCircle, BookOpen, Check, FileText, FolderInput, Loader2, Plus, Sparkles, X, ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
-import { getAllBuiltinSkills } from "../../lib/ai/writingSkill";
-import type { ProjectContext, SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
-import { generateSeriesId } from "../../lib/storage/collections";
-import { getProvidersSync } from "../../lib/storage/providerModels";
+import { usePanelStore } from "../../store/panelStore";
+import { getAllSkills } from "../../lib/ai/writingSkill";
+import type { WritingSkill } from "../../lib/ai/writingSkill";
+import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../lib/storage/collections";
+import { generateSeriesId, getProjectContext } from "../../lib/storage/collections";
+import { ProjectFileTree } from "../common/ProjectFileTree";
+import { resolveProviderForModel } from "../../lib/config/globalAIConfig";
 import { formatContextText } from "../../lib/utils/projectContext";
 
 /* ─── 类型 ─── */
@@ -18,6 +21,7 @@ export interface SeriesPlannerProps {
   linkedFolder?: string;
   existingPlan?: SeriesPlan | null;
   onSave: (plan: SeriesPlan) => void;
+  pageMode?: boolean;
   onClose: () => void;
 }
 
@@ -27,13 +31,8 @@ const DEFAULT_ARTICLE_COUNT = 5;
 
 /* ─── AI 辅助 ─── */
 
-function getProvider() {
-  const providers = getProvidersSync();
-  return providers.find((p) => p.enabled && p.models.length > 0) || null;
-}
-
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 4096): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
@@ -41,7 +40,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens = 4096)
   ];
   return await sendChat({
     providerId: provider.id,
-    model: provider.models[0]?.id ?? '',
+    model: model || provider.models[0]?.id || '',
     messages,
     temperature: 0.7,
     maxTokens,
@@ -57,6 +56,7 @@ export function SeriesPlanner({
   linkedFolder = "",
   existingPlan,
   onSave,
+  pageMode,
   onClose,
 }: SeriesPlannerProps) {
   const [step, setStep] = useState<PlannerStep>("input");
@@ -75,7 +75,11 @@ const [customAudience, setCustomAudience] = useState("");
   const [ctxText, setCtxText] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [genStatus, setGenStatus] = useState("AI 正在分析项目结构…");
+const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [showProjectTree, setShowProjectTree] = useState(true);
+  const setProjectPanelColId = usePanelStore((s) => s.setProjectPanelColId);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   // Load project context on open
   useEffect(() => {
@@ -114,14 +118,12 @@ const [customAudience, setCustomAudience] = useState("");
     }
 
     if (linkedFolder) {
-      import("../../lib/storage/collections").then(({ getProjectContext }) => {
-        getProjectContext(linkedFolder).then((ctx) => {
-          setProjectCtx(ctx);
-          setCtxText(formatContextText(ctx));
-        }).catch(() => {});
-      });
+      getProjectContext(linkedFolder).then((ctx) => {
+        setProjectCtx(ctx);
+        setCtxText(formatContextText(ctx));
+      }).catch(() => {});
     }
-  }, [open, linkedFolder]);
+  }, [open, linkedFolder, existingPlan]);
 
   // Rotating status messages during generation
   useEffect(() => {
@@ -142,6 +144,11 @@ const [customAudience, setCustomAudience] = useState("");
     }, 3000);
     return () => clearInterval(timer);
   }, [step]);
+
+  // Load available skills on mount
+  useEffect(() => {
+    getAllSkills().then(setAllSkills);
+  }, []);
 
   // Focus input on open
   useEffect(() => {
@@ -310,10 +317,125 @@ const [customAudience, setCustomAudience] = useState("");
 
   if (!open) return null;
 
+  // 页面路由模式：无遮罩，填满主区域（左侧始终显示关联项目信息）
+  if (pageMode) {
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/* 左侧：始终显示关联项目信息 */}
+          <aside className="series-planner__project-sidebar">
+            <div className="series-planner__project-sidebar-header">
+              <FolderInput size={12} />
+              <span>关联项目</span>
+            </div>
+
+            {projectCtx ? (
+              /* 已关联项目：显示项目概览 + 可选文件树 */
+              <div className="series-planner__project-info">
+                <div className="series-planner__project-name" title={projectCtx.rootPath}>
+                  {projectCtx.name}
+                </div>
+                <div className="series-planner__project-meta">
+                  <span>{projectCtx.summary.totalFiles} 文件</span>
+                  <span>·</span>
+                  <span>{projectCtx.primaryLanguage || "未知语言"}</span>
+                </div>
+                <div className="series-planner__project-path" title={projectCtx.rootPath}>
+                  {projectCtx.rootPath}
+                </div>
+
+                {showProjectTree ? (
+                  <div className="series-planner__project-tree-section">
+                    <div className="series-planner__project-tree-header">
+                      <FolderInput size={11} />
+                      <span>文件结构</span>
+                      <button
+                        className="series-planner__project-tree-toggle"
+                        onClick={() => setShowProjectTree(false)}
+                        title="隐藏文件结构"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                    <div className="series-planner__project-sidebar-tree">
+                      <ProjectFileTree nodes={projectCtx.structure} maxDepth={5} onSelect={() => {}} />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="series-planner__project-show-tree"
+                    onClick={() => setShowProjectTree(true)}
+                  >
+                    <FolderInput size={11} />
+                    显示文件结构
+                  </button>
+                )}
+              </div>
+            ) : linkedFolder && !projectCtx ? (
+              /* 正在加载项目 */
+              <div className="series-planner__loading-tree" style={{ flex: 1 }}>
+                <Loader2 size={14} className="spin" />
+                <span>加载项目结构…</span>
+              </div>
+            ) : (
+              /* 未关联项目：引导关联 */
+              <div className="series-planner__no-project">
+                <FolderInput size={28} className="series-planner__no-project-icon" />
+                <p className="series-planner__no-project-text">暂未关联项目目录</p>
+                <p className="series-planner__no-project-desc">
+                  关联本地项目目录后，AI 可以分析项目代码结构，生成更贴合项目的文章规划
+                </p>
+                <button
+                  className="btn btn--primary btn--small"
+                  onClick={() => {
+                    setProjectPanelColId(collectionId);
+                    setMainRoute('scan');
+                  }}
+                >
+                  <FolderInput size={13} />
+                  关联本地目录
+                </button>
+              </div>
+            )}
+          </aside>
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div className="series-planner-page__header">
+              <BookOpen size={16} />
+              <span>规划系列文章 · {collectionTitle}</span>
+              {projectCtx && (
+                <span className="series-planner__project-tag">
+                  {projectCtx.summary.totalFiles} 文件 · {projectCtx.primaryLanguage || ""}
+                </span>
+              )}
+              {linkedFolder && (
+                <button
+                  className="series-planner__tree-toggle"
+                  onClick={() => setShowProjectTree(!showProjectTree)}
+                  title={showProjectTree ? "隐藏项目结构" : "显示项目结构"}
+                >
+                  <FolderInput size={12} />
+                  {showProjectTree ? "隐藏结构" : "项目结构"}
+                </button>
+              )}
+              <button className="series-planner__close" onClick={onClose}>
+                <ArrowLeft size={14} />
+              </button>
+            </div>
+            <div className="series-planner__body" style={{ flex: 1, overflow: "auto", maxHeight: "none", border: "none", borderRadius: 0 }}>
+              {renderBodyContent()}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 弹窗模式：带遮罩
   return (
     <div className="series-planner-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="series-planner" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="series-planner__header">
           <BookOpen size={16} />
           <span>规划系列文章 · {collectionTitle}</span>
@@ -322,191 +444,222 @@ const [customAudience, setCustomAudience] = useState("");
               {projectCtx.summary.totalFiles} 文件 · {projectCtx.primaryLanguage || ""}
             </span>
           )}
+          {linkedFolder && (
+            <button
+              className="series-planner__tree-toggle"
+              onClick={() => setShowProjectTree(!showProjectTree)}
+              title={showProjectTree ? "隐藏项目结构" : "显示项目结构"}
+            >
+              <FolderInput size={12} />
+              {showProjectTree ? "隐藏结构" : "项目结构"}
+            </button>
+          )}
           <button className="series-planner__close" onClick={onClose}>
             <X size={14} />
           </button>
         </div>
-
-        <div className="series-planner__body">
-          {/* Step 1: Input direction */}
-          {step === "input" && (
-            <>
-              <div className="series-planner__desc">
-                描述你想写的系列方向，AI 会根据项目上下文自动生成文章规划。
-              </div>
-
-              {/* Presets */}
-              <div className="series-planner__presets">
-                {PRESETS.map((p) => (
-                  <button key={p.label} className="series-planner__preset-btn" onClick={() => handlePreset(p)}>
-                    <Sparkles size={10} />
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              <input
-                className="series-planner__series-name"
-                placeholder="系列名称（选填，留空则自动生成）"
-                value={seriesName}
-                onChange={(e) => setSeriesName(e.target.value)}
-              />
-              <textarea
-                ref={inputRef}
-                className="series-planner__input"
-                placeholder="例如：写一个面向初学者的项目教程，从架构到部署，覆盖核心功能和最佳实践…"
-                rows={4}
-                value={direction}
-                onChange={(e) => setDirection(e.target.value)}
-              />
-
-              <div className="series-planner__options">
-                <select className="series-planner__option-select" value={articleCount} onChange={(e) => setArticleCount(parseInt(e.target.value))}>
-                  {[2,3,4,5,6,7,8,9,10,12,15,20].map(n => <option key={n} value={n}>{n} 篇</option>)}
-                </select>
-                <select className="series-planner__option-select" value={defaultWordCount} onChange={(e) => setDefaultWordCount(parseInt(e.target.value))}>
-                  {[{v:500,l:"500 字/篇"},{v:800,l:"800 字/篇"},{v:1000,l:"1000 字/篇"},{v:1500,l:"1500 字/篇"},{v:2000,l:"2000 字/篇"},{v:3000,l:"3000 字/篇"}].map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-                </select>
-                <select className="series-planner__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
-                  <option value="">写作语气</option>
-                  <option value="正式">正式</option>
-                  <option value="幽默">幽默</option>
-                  <option value="轻松口语">轻松口语</option>
-                  <option value="热情激昂">热情激昂</option>
-                  <option value="冷静客观">冷静客观</option>
-                  <option value="犀利尖锐">犀利尖锐</option>
-                  <option value="温暖亲和">温暖亲和</option>
-                  <option value="__custom__">自定义…</option>
-                </select>
-                {tone === "__custom__" && (
-                  <input className="series-planner__option-input" placeholder="输入语气" value={customTone}
-                    onChange={(e) => setCustomTone(e.target.value)} />
-                )}
-                <select className="series-planner__option-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-                  <option value="">写作技能</option>
-                  {getAllBuiltinSkills().map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
-                </select>
-                <select className="series-planner__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
-                  <option value="">目标读者</option>
-                  {["不限","大众读者","技术人员","文学爱好者","学生","__custom__"].map(o => (
-                    <option key={o} value={o}>{o === "__custom__" ? "自定义…" : o}</option>
-                  ))}
-                </select>
-                {audience === "__custom__" && (
-                  <input className="series-planner__option-input" placeholder="输入读者" value={customAudience}
-                    onChange={(e) => setCustomAudience(e.target.value)} />
-                )}
-              </div>
-
-              {error && (
-                <div className="series-planner__error">
-                  <AlertCircle size={12} />
-                  <span>{error}</span>
+        {linkedFolder && showProjectTree && (
+          <div className="series-planner__project-sidebar" style={{ borderTop: "1px solid var(--border-soft)", maxHeight: 200, overflow: "auto" }}>
+            <div className="series-planner__project-sidebar-tree">
+              {projectCtx ? (
+                <ProjectFileTree nodes={projectCtx.structure} maxDepth={3} onSelect={() => {}} />
+              ) : (
+                <div className="series-planner__loading-tree">
+                  <Loader2 size={12} className="spin" />
+                  <span>加载项目结构…</span>
                 </div>
               )}
-
-              <div className="series-planner__actions">
-                <button className="btn btn--primary" disabled={!direction.trim() || generating} onClick={handleGenerate}>
-                  {generating ? <><Loader2 size={14} className="series-planner__spinner" /> 生成中…</> : <><Sparkles size={14} /> 生成规划</>}
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 2: Generating */}
-          {step === "generating" && (
-            <div className="series-planner__generating">
-              <Loader2 size={28} className="series-planner__spinner" />
-              <div className="series-planner__gen-status">
-                <div className="series-planner__gen-dots">
-                  <span className="series-planner__gen-dot" />
-                  <span className="series-planner__gen-dot" />
-                  <span className="series-planner__gen-dot" />
-                </div>
-                <p className="series-planner__gen-text">{genStatus}</p>
-              </div>
             </div>
-          )}
-
-          {/* Step 3: Review */}
-          {step === "review" && (
-            <>
-              <div className="series-planner__desc">
-                审阅 AI 生成的系列规划。你可以调整顺序、修改标题和描述。
-              </div>
-
-              <div className="series-planner__article-list">
-                {articles.map((article, i) => (
-                  <div key={article.id} className="series-planner__article-card">
-                    <div className="series-planner__article-order">
-                      <span className="series-planner__article-num">{i + 1}</span>
-                      <div className="series-planner__article-move">
-                        <button disabled={i === 0} onClick={() => handleMoveUp(i)} title="上移">↑</button>
-                        <button disabled={i >= articles.length - 1} onClick={() => handleMoveDown(i)} title="下移">↓</button>
-                      </div>
-                    </div>
-                    <div className="series-planner__article-body">
-                      <input
-                        className="series-planner__article-title"
-                        value={article.title}
-                        onChange={(e) => handleEditTitle(i, e.target.value)}
-                        placeholder="文章标题"
-                      />
-                      <input
-                        className="series-planner__article-desc"
-                        value={article.description}
-                        onChange={(e) => handleEditDesc(i, e.target.value)}
-                        placeholder="文章简介"
-                      />
-                      <div className="series-planner__article-meta">
-                        <span>~{article.targetWordCount || 800} 字</span>
-                      </div>
-                    </div>
-                    <button className="series-planner__article-remove" onClick={() => handleRemove(i)} title="删除">
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <button className="series-planner__add-btn" onClick={handleAddArticle}>
-                <Plus size={12} /> 添加文章
-              </button>
-
-              <div className="series-planner__actions">
-                <button className="btn" onClick={handleRegenerate}>
-                  重新生成
-                </button>
-                <button className="btn btn--primary" onClick={handleConfirm} disabled={articles.filter(a => a.title.trim()).length === 0}>
-                  <Check size={14} /> 确认并保存
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 4: Done */}
-          {step === "done" && (
-            <div className="series-planner__done">
-              <Check size={24} className="series-planner__done-icon" />
-              <p>系列规划已保存！共 {articles.filter(a => a.title.trim()).length} 篇文章。</p>
-              <div className="series-planner__done-list">
-                {articles.filter(a => a.title.trim()).map((a, i) => (
-                  <div key={a.id} className="series-planner__done-item">
-                    <FileText size={12} />
-                    <span>{i + 1}. {a.title}</span>
-                    <span className="series-planner__done-desc">{a.description}</span>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn--primary" onClick={onClose}>
-                <Check size={14} /> 完成
-              </button>
-            </div>
-          )}
+          </div>
+        )}
+        <div className="series-planner__body">
+          {renderBodyContent()}
         </div>
       </div>
     </div>
   );
-}
 
-export default SeriesPlanner;
+  // ─── 抽离 body 内容，两种模式共用 ───
+  function renderBodyContent() {
+    return (
+      <>
+        {/* Step 1: Input direction */}
+        {step === "input" && (
+          <>
+            <div className="series-planner__desc">
+              描述你想写的系列方向，AI 会根据项目上下文自动生成文章规划。
+            </div>
+
+            {/* Presets */}
+            <div className="series-planner__presets">
+              {PRESETS.map((p) => (
+                <button key={p.label} className="series-planner__preset-btn" onClick={() => handlePreset(p)}>
+                  <Sparkles size={10} />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <input
+              className="series-planner__series-name"
+              placeholder="系列名称（选填，留空则自动生成）"
+              value={seriesName}
+              onChange={(e) => setSeriesName(e.target.value)}
+            />
+            <textarea
+              ref={inputRef}
+              className="series-planner__input"
+              placeholder="例如：写一个面向初学者的项目教程，从架构到部署，覆盖核心功能和最佳实践…"
+              rows={4}
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+            />
+
+            <div className="series-planner__options">
+              <select className="series-planner__option-select" value={articleCount} onChange={(e) => setArticleCount(parseInt(e.target.value))}>
+                {[2,3,4,5,6,7,8,9,10,12,15,20].map(n => <option key={n} value={n}>{n} 篇</option>)}
+              </select>
+              <select className="series-planner__option-select" value={defaultWordCount} onChange={(e) => setDefaultWordCount(parseInt(e.target.value))}>
+                {[{v:500,l:"500 字/篇"},{v:800,l:"800 字/篇"},{v:1000,l:"1000 字/篇"},{v:1500,l:"1500 字/篇"},{v:2000,l:"2000 字/篇"},{v:3000,l:"3000 字/篇"}].map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+              <select className="series-planner__option-select" value={tone} onChange={(e) => setTone(e.target.value)}>
+                <option value="">写作语气</option>
+                <option value="正式">正式</option>
+                <option value="幽默">幽默</option>
+                <option value="轻松口语">轻松口语</option>
+                <option value="热情激昂">热情激昂</option>
+                <option value="冷静客观">冷静客观</option>
+                <option value="犀利尖锐">犀利尖锐</option>
+                <option value="温暖亲和">温暖亲和</option>
+                <option value="__custom__">自定义…</option>
+              </select>
+              {tone === "__custom__" && (
+                <input className="series-planner__option-input" placeholder="输入语气" value={customTone}
+                  onChange={(e) => setCustomTone(e.target.value)} />
+              )}
+              <select className="series-planner__option-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
+                <option value="">写作技能</option>
+                {allSkills.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+              </select>
+              <select className="series-planner__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
+                <option value="">目标读者</option>
+                {["不限","大众读者","技术人员","文学爱好者","学生","__custom__"].map(o => (
+                  <option key={o} value={o}>{o === "__custom__" ? "自定义…" : o}</option>
+                ))}
+              </select>
+              {audience === "__custom__" && (
+                <input className="series-planner__option-input" placeholder="输入读者" value={customAudience}
+                  onChange={(e) => setCustomAudience(e.target.value)} />
+              )}
+            </div>
+
+            {error && (
+              <div className="series-planner__error">
+                <AlertCircle size={12} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="series-planner__actions">
+              <button className="btn btn--primary" disabled={!direction.trim() || generating} onClick={handleGenerate}>
+                {generating ? <><Loader2 size={14} className="series-planner__spinner" /> 生成中…</> : <><Sparkles size={14} /> 生成规划</>}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 2: Generating */}
+        {step === "generating" && (
+          <div className="series-planner__generating">
+            <Loader2 size={28} className="series-planner__spinner" />
+            <div className="series-planner__gen-status">
+              <div className="series-planner__gen-dots">
+                <span className="series-planner__gen-dot" />
+                <span className="series-planner__gen-dot" />
+                <span className="series-planner__gen-dot" />
+              </div>
+              <p className="series-planner__gen-text">{genStatus}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Review */}
+        {step === "review" && (
+          <>
+            <div className="series-planner__desc">
+              审阅 AI 生成的系列规划。你可以调整顺序、修改标题和描述。
+            </div>
+
+            <div className="series-planner__article-list">
+              {articles.map((article, i) => (
+                <div key={article.id} className="series-planner__article-card">
+                  <div className="series-planner__article-order">
+                    <span className="series-planner__article-num">{i + 1}</span>
+                    <div className="series-planner__article-move">
+                      <button disabled={i === 0} onClick={() => handleMoveUp(i)} title="上移">↑</button>
+                      <button disabled={i >= articles.length - 1} onClick={() => handleMoveDown(i)} title="下移">↓</button>
+                    </div>
+                  </div>
+                  <div className="series-planner__article-body">
+                    <input
+                      className="series-planner__article-title"
+                      value={article.title}
+                      onChange={(e) => handleEditTitle(i, e.target.value)}
+                      placeholder="文章标题"
+                    />
+                    <input
+                      className="series-planner__article-desc"
+                      value={article.description}
+                      onChange={(e) => handleEditDesc(i, e.target.value)}
+                      placeholder="文章简介"
+                    />
+                    <div className="series-planner__article-meta">
+                      <span>~{article.targetWordCount || 800} 字</span>
+                    </div>
+                  </div>
+                  <button className="series-planner__article-remove" onClick={() => handleRemove(i)} title="删除">
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button className="series-planner__add-btn" onClick={handleAddArticle}>
+              <Plus size={12} /> 添加文章
+            </button>
+
+            <div className="series-planner__actions">
+              <button className="btn" onClick={handleRegenerate}>
+                重新生成
+              </button>
+              <button className="btn btn--primary" onClick={handleConfirm} disabled={articles.filter(a => a.title.trim()).length === 0}>
+                <Check size={14} /> 确认并保存
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 4: Done */}
+        {step === "done" && (
+          <div className="series-planner__done">
+            <Check size={24} className="series-planner__done-icon" />
+            <p>系列规划已保存！共 {articles.filter(a => a.title.trim()).length} 篇文章。</p>
+            <div className="series-planner__done-list">
+              {articles.filter(a => a.title.trim()).map((a, i) => (
+                <div key={a.id} className="series-planner__done-item">
+                  <FileText size={12} />
+                  <span>{i + 1}. {a.title}</span>
+                  <span className="series-planner__done-desc">{a.description}</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn--primary" onClick={onClose}>
+              <Check size={14} /> 完成
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
+
+}

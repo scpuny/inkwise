@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "1.10.0"
+version = "2.0.0"
 description = "AI 写作助手"
 authors = ["you"]
 license = ""
@@ -35,7 +35,13 @@ notify = "6.1"
 notify-debouncer-mini = "0.4"
 
 tree-sitter = "0.24"
+streaming-iterator = "0.1.9"
 tree-sitter-rust = "0.23"
 tree-sitter-typescript = "0.23"
 sha2 = "0.10"
 hex = "0.4"
+
+# 纯 Rust ONNX 推理引擎，零系统依赖，全平台通用
+tract-onnx = "0.23"
+tokenizers = "0.21"
+ndarray = "0.17"

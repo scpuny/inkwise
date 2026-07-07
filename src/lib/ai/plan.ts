@@ -1,11 +1,11 @@
 // plan.ts — AI 文章规划与生成
 // 使用 agentEngine 的 tool calling 模式获取项目文件上下文
 import { sendChatStream, type ChatMessage } from "./ai";
-import { resolveModel } from "../config/globalAIConfig";
-import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agentEngine";
-import { findSkill, getEffectivePhaseConfig, loadCustomSkills, type WritingSkill } from "../ai/writingSkill";
-import { getProvidersSync } from "../storage/providerModels";
-import type { OutlineSection } from "../ai/articleBlueprint";
+import { resolveProviderForModel } from "../config/globalAIConfig";
+import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agent/engine";
+import { isTauriEnv } from "../bridge/tauri";
+import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
+import type { OutlineSection } from "./article/blueprint";
 
 // ─── Types ───
 
@@ -20,6 +20,8 @@ export interface PartialPlan {
   skillId?: string;
   /** Project structure insights from planning-phase exploration (tool-based) */
   projectInsights?: string;
+  styleId?: string;
+  actionId?: string;
 }
 
 export interface PlanInput {
@@ -38,6 +40,13 @@ export interface PlanInput {
   prefilledTitle?: string;
   /** Pre-filled description (from series plan) — skips AI description generation */
   prefilledDescription?: string;
+  styleId?: string;
+  actionId?: string;
+  /** Series context — passed through from series plan */
+  seriesContext?: string;
+  seriesId?: string;
+  /** Explicit collectionId to avoid race condition with activeCollectionId store */
+  planCollectionId?: string;
 }
 
 export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
@@ -76,39 +85,82 @@ export interface SectionWriteInput {
 
 // ─── Skill helpers ───
 
-let _customCache: WritingSkill[] | null = null;
+let _allSkillsCache: WritingSkill[] | null = null;
 
-export async function ensureSkillCache(): Promise<void> {
-  if (_customCache === null) {
-    try { _customCache = await loadCustomSkills(); }
-    catch { _customCache = []; }
+async function ensureAllSkillsCache(): Promise<void> {
+  if (_allSkillsCache !== null) return;
+  const all = new Map<string, WritingSkill>();
+  // Builtin skills
+  getBuiltinSkills().forEach(s => all.set(s.id, s));
+  // Custom skills from localStorage
+  try {
+    const customs = await loadCustomSkills();
+    customs.forEach(s => all.set(s.id, s));
+  } catch {}
+  // Unified skills via IPC (Rust backend)
+  if (isTauriEnv()) {
+    try {
+      const { getUnifiedSkills } = await import("../ai/skill/unified");
+      const unified = await getUnifiedSkills();
+      const ids = ["general","academic","blog","creative","viral","tutorial","business","news","marketing","product-doc","review"];
+      unified.filter(s => s.phaseConfigs.length > 0).forEach((s, i) => {
+        const legacy: WritingSkill = {
+          id: ids[i] || s.name,
+          name: s.name,
+          description: s.description,
+          icon: s.icon,
+          scope: "full" as const,
+          configs: Object.fromEntries(s.phaseConfigs.map(pc => [pc.phase, {
+            systemPrompt: pc.systemPrompt,
+            temperature: pc.temperature,
+            model: pc.model,
+            maxTokens: pc.maxTokens,
+          }])),
+          contextSources: [],
+          dimensions: [],
+          builtin: true,
+          createdAt: 0,
+          updatedAt: 0,
+        };
+        all.set(legacy.id, legacy);
+      });
+    } catch {}
   }
+  _allSkillsCache = Array.from(all.values());
 }
 
 export function clearSkillCache(): void {
-  _customCache = null;
+  _allSkillsCache = null;
 }
 
-function resolveSkill(skillId?: string): WritingSkill | undefined {
-  if (!skillId) return undefined;
-  if (_customCache) {
-    const c = _customCache.find(s => s.id === skillId);
-    if (c) return c;
+async function resolveSkill(skillId?: string): Promise<WritingSkill | undefined> {
+  await ensureAllSkillsCache();
+  if (!skillId) {
+    // Return the default "general" skill when no skill is selected
+    // This ensures the system prompt contains correct writing instructions
+    const general = _allSkillsCache?.find(s => s.id === "general");
+    if (general) return general;
+    // Fallback: first available builtin skill
+    const builtins = getBuiltinSkills();
+    return builtins.find(s => s.id === "general") || builtins[0];
   }
-  return findSkill(skillId);
+  const found = _allSkillsCache?.find(s => s.id === skillId);
+  if (found) return found;
+  // If specific skill not found, fall back to general
+  return _allSkillsCache?.find(s => s.id === "general");
 }
 
 // ─── Provider ───
 
 function getProvider() {
-  const providers = getProvidersSync();
-  return providers.find((p) => p.enabled && p.models.length > 0) || null;
+  return resolveProviderForModel().provider;
 }
+
+
 
 // ─── Prompt builders ───
 
-function buildSystemPrompt(phase: string, skillId?: string, tone?: string): string {
-  const skill = resolveSkill(skillId);
+function buildSystemPrompt(phase: string, skill: WritingSkill | undefined, tone?: string): string {
   const config = getEffectivePhaseConfig(skill, phase as any);
   let prompt = config.systemPrompt;
 
@@ -121,18 +173,49 @@ function buildSystemPrompt(phase: string, skillId?: string, tone?: string): stri
 
 // ─── Tool-based article generation (via AgentEngine) ───
 
-const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **前 2 段内亮出核心卖点**，不要用背景铺垫暖场\n- 第一段直接用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），开头段落直接接在标题后面，**不要用\"引言\"之类的二级标题**\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
+const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **开头必须用一段简短的前置描述或引言（不要直接进入正题）**，交代文章背景和读者预期，自然引出正文\n- 前置描述后立即用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
 
 /**
  * 使用 AgentEngine（tool calling）生成完整文章。
  * AI 主动通过工具读取项目文件，确保代码真实性。
  */
+
+
+// Tool execution instructions appended to skill-based system prompts
+const TOOL_INSTRUCTIONS = `
+
+## 核心原则（重要）
+1. **本文必须围绕关联的真实项目展开** — 项目结构和上下文信息已在用户消息中提供，所有内容必须基于真实项目
+2. **在写作前必须先读取项目的关键文件**，了解项目的真实功能和架构
+3. **禁止编造不存在的能力或功能特性** — 所有描述的功能、API、特性必须能在项目代码中找到真实依据
+4. **禁止编造 API 路径、接口名称、配置项等** — 必须从项目代码中读取真实的命名和结构
+
+## 可用工具
+你必须使用以下工具来获取项目真实文件内容：
+- \`read_project_files\`: 读取项目源代码文件，获取真实的代码示例
+- \`list_project_files\`: 查看项目目录结构
+- \`search_project_files\`: 搜索文件名匹配的文件
+
+## 写作原则
+1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造
+2. 文章中的代码块应是项目中实际存在的文件内容
+3. 在引用代码前，先用 \`read_project_files\` 读取对应文件
+4. 如果需要了解项目结构，用 \`list_project_files\` 查看目录
+5. 如果不确定某个功能在哪个文件中，用 \`search_project_files\` 搜索
+
+## 输出要求
+- 直接输出 Markdown 格式的完整文章
+- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）
+- 所有二级标题（##）按出现顺序标号：\`## 1. 标题\`、\`## 2. 标题\`
+- 三级标题（###）在其父级下按顺序标号：\`### 1.1 子标题\`、\`### 1.2 子标题\`
+- 使用流畅自然的中文`;
+
 export async function generateFullArticleWithTools(
   input: ArticleGenInput,
   onToken?: (token: string) => void,
-  onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
+  onToolEvent?: (event: import("./agent/engine").ToolEvent) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
@@ -150,11 +233,13 @@ export async function generateFullArticleWithTools(
   // Include project structure context so AI doesn't need to re-explore
   if (input.projectContext) {
     parts.push("");
-    parts.push("## 项目结构");
-    parts.push("以下是你已经知道的当前项目结构和关键文件。**不要重新探索目录**，直接读具体文件取代码示例。");
+    parts.push("## 关联项目结构（重要）");
+    parts.push("以上文章必须基于以下真实项目来撰写。这是项目的目录结构和关键文件索引，**不要写不属于此项目的内容**。");
     parts.push("```");
     parts.push(String(input.projectContext || "").slice(0, 8000));
     parts.push("```");
+    parts.push("");
+    parts.push("在开始写作前，请先使用 list_project_files 或 read_project_files 工具了解此项目的真实功能。");
   }
 
   parts.push("");
@@ -181,9 +266,15 @@ export async function generateFullArticleWithTools(
     return generateFullArticleStream(input, onToken);
   }
 
+  // Resolve skill and build system prompt from skill's writing phase config
+  const writingSkill = input.skillId ? await resolveSkill(input.skillId) : await resolveSkill(undefined);
+  const baseSystemPrompt = buildSystemPrompt("writing", writingSkill, input.tone);
+  // Merge skill-specific instructions with tool-based writing instructions  
+  const mergedSystemPrompt = baseSystemPrompt + TOOL_INSTRUCTIONS;
+
   try {
     const result = await runAgentLoop({
-      systemPrompt: ARTICLE_WRITER_SYSTEM_PROMPT,
+      systemPrompt: mergedSystemPrompt,
       userMessage,
       tools: PROJECT_TOOLS,
       toolContext,
@@ -220,14 +311,14 @@ export async function generateFullArticleWithTools(
 export async function generateFullArticleStream(
   input: ArticleGenInput,
   onToken?: (token: string) => void,
-  onToolEvent?: (event: import("./agentEngine").ToolEvent) => void,
+  onToolEvent?: (event: import("./agent/engine").ToolEvent) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) {
     throw new Error("请先在设置中配置 AI 提供商");
   }
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
@@ -273,7 +364,7 @@ export async function generateFullArticleStream(
     fullContent = await sendChatStream(
       {
         providerId: provider.id,
-        model: resolveModel() ?? provider.models[0]?.id ?? '',
+        model,
         messages,
         temperature: 0.7,
         maxTokens: 8192,
@@ -357,7 +448,7 @@ async function exploreProjectStructure(folderPath: string): Promise<string> {
 // ─── Individual plan steps ───
 
 export async function generateTitle(input: PlanInput): Promise<string> {
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "title");
   let sysPrompt = config.systemPrompt;
 
@@ -373,6 +464,7 @@ export async function generateTitle(input: PlanInput): Promise<string> {
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
     ctxBlock,
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 256);
@@ -380,7 +472,7 @@ export async function generateTitle(input: PlanInput): Promise<string> {
 }
 
 export async function generateDescription(input: PlanInput, title: string): Promise<string> {
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "description");
   let sysPrompt = config.systemPrompt;
 
@@ -397,6 +489,7 @@ export async function generateDescription(input: PlanInput, title: string): Prom
     "标题：" + title,
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
     ctxBlock,
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
@@ -404,9 +497,23 @@ export async function generateDescription(input: PlanInput, title: string): Prom
 }
 
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
-  const sysPrompt = buildSystemPrompt("outline", input.skillId, input.tone);
+  const outlineSkill = await resolveSkill(input.skillId);
+  const sysPrompt = buildSystemPrompt("outline", outlineSkill, input.tone);
   const userPrompt = [
-    "请根据以下信息生成文章大纲：",
+    "请根据以下信息生成文章大纲。每条大纲必须包含**序号、标题和描述**，严格按此格式：",
+    "",
+    "## 1. 标题 —— 描述",
+    "### 1.1 子标题 —— 子标题描述",
+    "### 1.2 子标题 —— 子标题描述",
+    "## 2. 标题 —— 描述",
+    "### 2.1 子标题 —— 子标题描述",
+    "",
+    "要求：",
+    "- 一级章节必须用 ## 开头；二级子章节必须用 ### 开头",
+    "- 每个大纲项必须包含序号（1. 2. 3. 或 1.1 2.1 等），序号后跟标题",
+    "- 必须用中文破折号 —— 分隔标题和描述",
+    "- 至少 3-5 个一级章节，每个一级章节下至少 2-3 个子章节",
+    "- 每项描述必须给出（10-20 字），不能省略",
     "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
@@ -415,19 +522,41 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     input.tone ? "风格：" + input.tone : "",
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
     input.articleDescription ? "文章定位：" + input.articleDescription : "",
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
-  const result = await askAI(sysPrompt, userPrompt, 2048);
-  return parseOutline(result);
+  const result = await askAI(sysPrompt, userPrompt, 3072);
+  if (!result || !result.trim()) {
+    console.warn("[generateOutline] AI returned empty result, using fallback");
+    return [
+      { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "用真实场景或问题切入，引出文章主题，制造认知落差，让读者产生好奇心", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解文章涉及的核心概念、工作原理和关键机制，建立完整知识框架", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过实际案例或代码示例展示如何应用所学知识，提供可操作的方法", status: "pending" },
+      { id: "sec_fallback_" + Date.now() + "_4", title: "总结与对比", level: 1, description: "总结全文核心观点，与市面方案做对比分析，突出差异化价值和展望", status: "pending" },
+    ];
+  }
+  console.log("[generateOutline] AI raw result first 500:", result.slice(0, 500));
+  const parsed = parseOutline(result);
+  if (parsed.length === 0) {
+    console.warn("[generateOutline] parseOutline returned 0 sections, raw:", result.slice(0, 300));
+  }
+  return parsed.length > 0 ? parsed : [
+    { id: "sec_fallback_" + Date.now() + "_1", title: "引言", level: 1, description: "用真实场景或问题切入，引出文章主题，制造认知落差", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解核心概念、工作原理和关键机制", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过案例或代码示例展示如何应用所学知识", status: "pending" },
+    { id: "sec_fallback_" + Date.now() + "_4", title: "总结与对比", level: 1, description: "总结全文，与市面方案对比分析，突出差异化价值", status: "pending" },
+  ];
 }
 
 export async function generateTags(input: PlanInput, title: string, description: string): Promise<string[]> {
-  const sysPrompt = buildSystemPrompt("tags", input.skillId, input.tone);
+  const tagsSkill = await resolveSkill(input.skillId);
+  const sysPrompt = buildSystemPrompt("tags", tagsSkill, input.tone);
   const userPrompt = [
     "灵感：" + input.inspiration,
     "标题：" + title,
     "简介：" + description,
     input.targetAudience ? "目标读者：" + input.targetAudience : "",
+    input.seriesContext ? "系列上下文：\n" + input.seriesContext : "",
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
@@ -446,10 +575,10 @@ export async function writeArticleSection(
   }
 
   // For linked folders, use tool-based section writing
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
@@ -498,10 +627,10 @@ async function writeArticleSectionLegacy(
   onToken?: (token: string) => void,
   onDone?: (content: string) => void,
 ): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
-  const skill = resolveSkill(input.skillId);
+  const skill = await resolveSkill(input.skillId);
   const config = getEffectivePhaseConfig(skill, "writing");
   let systemPrompt = config.systemPrompt;
 
@@ -532,7 +661,7 @@ async function writeArticleSectionLegacy(
   const content = await sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() ?? provider.models[0]?.id ?? '',
+      model,
       messages,
       temperature: 0.7,
       maxTokens: 4096,
@@ -557,7 +686,7 @@ function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
 }
 
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
-  const provider = getProvider();
+  const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const messages: ChatMessage[] = [
@@ -568,7 +697,7 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number
   return sendChatStream(
     {
       providerId: provider.id,
-      model: resolveModel() ?? provider.models[0]?.id ?? '',
+      model,
       messages,
       temperature: 0.7,
       maxTokens,
@@ -582,35 +711,94 @@ function parseOutline(text: string): OutlineSection[] {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || /^\d+\.\d+/.test(trimmed)) continue;
+    if (!trimmed) continue;
 
-    // Try multiple patterns:
-    // 1. "N. title - desc" (standard numbered)
-    // 2. "## N. title" or "## title" (markdown heading)
-    // 3. "- title - desc" (bullet)
-    // 4. "N、title" (Chinese numbered)
-    let match = trimmed.match(/^(\d+)\.\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^##\s+(?:\d+\.)?\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) match = trimmed.match(/^(\d+)[、\.\s]\s*(.+?)(?:\s*[-—]\s*(.+))?$/);
-    if (!match) continue;
+    let title = "";
+    let description = "";
+    let level: 1 | 2 | 3 = 1;
+    let match = null;
 
-    const title = (match[2] || match[1]).trim();
-    const description = match[3]?.trim();
+    // Pattern 1: "## 1. Title —— Desc" or "### 1.1 Title —— Desc" (markdown heading with number)
+    match = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (match) {
+      level = (match[1].length <= 2 ? 1 : match[1].length === 3 ? 2 : 3) as 1 | 2 | 3;
+      let rest = match[2].trim();
+      // Strip leading number like "1. ", "1.1 ", "1.1.1 "
+      rest = rest.replace(/^\d+(\.\d+)*\s*[.、]?\s*/, "");
+      const descMatch = rest.match(/^(.+?)\s*[-—]{1,2}\s*(.+)$/);
+      if (descMatch) {
+        title = descMatch[1].trim();
+        description = descMatch[2].trim();
+      } else {
+        title = rest;
+      }
+    }
+
+    // Pattern 2: "1.1.1 Title — Desc" (numbered with dots, level inferred from dot count)
+    if (!match) {
+      match = trimmed.match(/^(\d+)\.(\d+)(?:\.(\d+))?\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      if (match) {
+        // 2-part number (1.1) => level 2, 3-part number (1.1.1) => level 3
+        level = match[3] ? 3 : 2;
+        title = match[4].trim();
+        description = (match[5]?.trim() || "");
+      }
+    }
+
+    // Pattern 3: "1. Title —— Desc" or "1、Title——Desc" (single numbered)
+    if (!match) {
+      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      if (match) {
+        title = match[2].trim();
+        description = (match[3]?.trim() || "");
+      }
+    }
+
+    // Pattern 4: "1) Title —— Desc" (parenthetical number)
+    if (!match) {
+      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      if (match) {
+        title = match[2].trim();
+        description = (match[3]?.trim() || "");
+      }
+    }
+
+    // Pattern 5: "- Title —— Desc" or "* Title —— Desc" (bullet)
+    if (!match) {
+      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      if (match) {
+        title = match[1].trim();
+        description = (match[2]?.trim() || "");
+      }
+    }
+
+    // Pattern 6: Plain title line — only if short (likely a title, not paragraph)
+    if (!match && trimmed.length < 100 && !trimmed.endsWith("。") && !trimmed.endsWith(".") && !trimmed.endsWith("！") && !trimmed.endsWith("？")) {
+      const descMatch = trimmed.match(/^(.+?)\s*[-—]{1,2}\s*(.+)$/);
+      if (descMatch) {
+        title = descMatch[1].trim();
+        description = descMatch[2].trim();
+      } else {
+        title = trimmed;
+      }
+    }
+
+    if (!title) continue;
 
     sections.push({
       id: "sec_plan_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
       title: title.replace(/^\*\*|\*\*$/g, "").trim(),
-      level: 1,
+      level,
       description: description || undefined,
       status: "pending",
     });
   }
 
   return sections.length > 0 ? sections : [
-    { id: "sec_plan_" + Date.now() + "_1", title: "引言", level: 1, status: "pending" },
-    { id: "sec_plan_" + Date.now() + "_2", title: "正文", level: 1, status: "pending" },
-    { id: "sec_plan_" + Date.now() + "_3", title: "结语", level: 1, status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_1", title: "引言", level: 1, description: "从具体场景或问题切入，引出主题，制造认知落差，让读者产生好奇", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_2", title: "核心概念与原理", level: 1, description: "深入讲解核心概念和工作原理，建立完整的知识框架", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_3", title: "实践与应用", level: 1, description: "通过案例或代码示例展示如何应用，提供可操作的方法", status: "pending" },
+    { id: "sec_plan_" + Date.now() + "_4", title: "总结与展望", level: 1, description: "总结全文要点，对比市面方案，突出差异化并展望未来", status: "pending" },
   ];
 }
 
@@ -631,28 +819,32 @@ function ensureHeadingNumbers(markdown: string): string {
     }
     if (inCodeBlock) { out.push(line); continue; }
 
+    // h1 — article title, pass through without numbering (but reset lower counters)
+    const h1Match = line.match(/^(#{1})\s+(.+)$/);
+    if (h1Match) {
+      h2Counter = 0;
+      h3Counter = 0;
+      out.push(line);
+      continue;
+    }
+
     const h2Match = line.match(/^(#{2})\s+(.+)$/);
     if (h2Match) {
       h2Counter++;
       h3Counter = 0;
-      const text = h2Match[2].trim();
-      if (!/^\d+\.\s/.test(text)) {
-        out.push("## " + h2Counter + ". " + text);
-      } else {
-        out.push(line);
-      }
+      // 强制重编号：去掉AI生成的编号前缀，从1开始重新编号
+      const text = h2Match[2].trim().replace(/^\d+\.\s*/, '');
+      out.push('## ' + h2Counter + '. ' + text);
       continue;
     }
 
     const h3Match = line.match(/^(#{3})\s+(.+)$/);
     if (h3Match) {
       h3Counter++;
-      const text = h3Match[2].trim();
-      if (!/^\d+\.\d+\.\s/.test(text)) {
-        out.push("### " + h2Counter + "." + h3Counter + " " + text);
-      } else {
-        out.push(line);
-      }
+      // 强制重编号：去掉已有的 x.x. 前缀，重新编号
+      const text = h3Match[2].trim().replace(/^\d+\.\d+\.\s*/, '');
+      // 修复：如果前面没有 h2 父级，使用简单顺序编号（避免 0.x）
+      out.push('### ' + (h2Counter > 0 ? h2Counter + '.' + h3Counter : h3Counter) + ' ' + text);
       continue;
     }
 

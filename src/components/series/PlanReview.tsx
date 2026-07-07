@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import type { OutlineSection } from "../../lib/ai/articleBlueprint";
+import type { OutlineSection } from "../../lib/ai/article/blueprint";
 import type { PartialPlan, PlanStep } from "../../lib/ai/plan";
 
 interface PlanReviewProps {

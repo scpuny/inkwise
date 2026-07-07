@@ -114,90 +114,137 @@ export function AICommandBar() {
       alert("图片生成失败（模型: " + drawCfg.model + "）：" + (err instanceof Error ? err.message : String(err)) + "\n\n请确认 设置 → 模型 → 插图设置 中选择的绘图模型是否正确");
     }
   }, [drawCfg, closeCommandBar]);
+  const [expanded, setExpanded] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // Auto-expand when command bar opens
+  useEffect(() => {
+    if (commandBarOpen) {
+      // Small delay to allow animation
+      const t = setTimeout(() => setExpanded(true), 50);
+      return () => clearTimeout(t);
+    } else {
+      setExpanded(false);
+    }
+  }, [commandBarOpen]);
+
+  // Close on outside click when expanded
+  useEffect(() => {
+    if (!expanded || !commandBarOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (barRef.current && !barRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+        closeCommandBar();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [expanded, commandBarOpen, closeCommandBar]);
+
   if (!commandBarOpen) return null;
 
   return (
-    <div className="ai-command-bar" onClick={(e) => e.stopPropagation()}>
-      {/* Drag handle */}
-      <div className="ai-command-bar__handle">
-        <Sparkles size={14} />
-      </div>
-
-      {/* Input area */}
-      <div className="ai-command-bar__input-area">
-        {intentPreview && (
-          <span className="ai-command-bar__intent-chip">{intentPreview}</span>
-        )}
-        <textarea
-          ref={inputRef}
-          className="ai-command-bar__input"
-          placeholder="继续写作… 使用 / 命令或直接输入"
-          rows={1}
-          value={commandBarText}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-        />
-        {isProcessing ? (
-          <button className="ai-command-bar__btn ai-command-bar__btn--stop" onClick={cancel} title="停止生成">
-            <span className="ai-command-bar__stop-icon" />
-          </button>
-        ) : (
-          <button
-            className="ai-command-bar__btn ai-command-bar__btn--send"
-            disabled={!commandBarText.trim()}
-            onClick={() => execute(commandBarText)}
-            title="发送 (Enter)"
-          >
-            <SendHorizonal size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Bottom bar */}
-      <div className="ai-command-bar__footer">
-        <div className="ai-command-bar__hints">
-          {!commandBarText.startsWith("/") && (
-            <>
-              <span className="ai-command-bar__hint-key">Enter</span>
-              <span className="ai-command-bar__hint-label">发送 · </span>
-              <span className="ai-command-bar__hint-key">Shift+Enter</span>
-              <span className="ai-command-bar__hint-label">换行 · </span>
-            </>
-          )}
-          {isProcessing && (
-            <span className="ai-command-bar__hint-label">生成中…</span>
-          )}
+    <div
+      ref={barRef}
+      className={`ai-command-bar${expanded ? " ai-command-bar--expanded" : " ai-command-bar--collapsed"}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!expanded) {
+          setExpanded(true);
+          setTimeout(() => inputRef.current?.focus(), 100);
+        }
+      }}
+    >
+      {/* Collapsed bar: just a thin strip */}
+      {!expanded && (
+        <div className="ai-command-bar__collapsed">
+          <Sparkles size={14} />
+          <span className="ai-command-bar__collapsed-text">输入指令…</span>
         </div>
+      )}
 
-        <div className="ai-command-bar__tools">
-          <button
-            className={`ai-command-bar__tool-btn${panelOpen ? " ai-command-bar__tool-btn--active" : ""}`}
-            onClick={togglePanel}
-            title="Agent 面板"
-          >
-            <ArrowLeftRight size={13} />
-            <span>面板</span>
-          </button>
-          {drawCfg.model && (
-            <button
-              className="ai-command-bar__tool-btn"
-              onClick={handleImageGen}
-              title="生成插图"
-            >
-              <Image size={13} />
-              <span>插图</span>
-            </button>
-          )}
-          <button
-            className="ai-command-bar__tool-btn"
-            onClick={closeCommandBar}
-            title="关闭 (Esc)"
-          >
-            <X size={13} />
-            <span>关闭</span>
-          </button>
-        </div>
-      </div>
+      {/* Expanded bar */}
+      {expanded && (
+        <>
+          <div className="ai-command-bar__handle">
+            <Sparkles size={14} />
+          </div>
+
+          <div className="ai-command-bar__input-area">
+            {intentPreview && (
+              <span className="ai-command-bar__intent-chip">{intentPreview}</span>
+            )}
+            <textarea
+              ref={inputRef}
+              className="ai-command-bar__input"
+              placeholder="继续写作… 使用 / 命令或直接输入"
+              rows={1}
+              value={commandBarText}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+            />
+            {isProcessing ? (
+              <button className="ai-command-bar__btn ai-command-bar__btn--stop" onClick={cancel} title="停止生成">
+                <span className="ai-command-bar__stop-icon" />
+              </button>
+            ) : (
+              <button
+                className="ai-command-bar__btn ai-command-bar__btn--send"
+                disabled={!commandBarText.trim()}
+                onClick={() => execute(commandBarText)}
+                title="发送 (Enter)"
+              >
+                <SendHorizonal size={16} />
+              </button>
+            )}
+          </div>
+
+          <div className="ai-command-bar__footer">
+            <div className="ai-command-bar__hints">
+              {!commandBarText.startsWith("/") && (
+                <>
+                  <span className="ai-command-bar__hint-key">Enter</span>
+                  <span className="ai-command-bar__hint-label">发送 · </span>
+                  <span className="ai-command-bar__hint-key">Shift+Enter</span>
+                  <span className="ai-command-bar__hint-label">换行 · </span>
+                </>
+              )}
+              {isProcessing && (
+                <span className="ai-command-bar__hint-label">生成中…</span>
+              )}
+            </div>
+
+            <div className="ai-command-bar__tools">
+              <button
+                className={`ai-command-bar__tool-btn${panelOpen ? " ai-command-bar__tool-btn--active" : ""}`}
+                onClick={togglePanel}
+                title="Agent 面板"
+              >
+                <ArrowLeftRight size={13} />
+                <span>面板</span>
+              </button>
+              {drawCfg.model && (
+                <button
+                  className="ai-command-bar__tool-btn"
+                  onClick={handleImageGen}
+                  title="生成插图"
+                >
+                  <Image size={13} />
+                  <span>插图</span>
+                </button>
+              )}
+              <button
+                className="ai-command-bar__tool-btn"
+                onClick={closeCommandBar}
+                title="关闭 (Esc)"
+              >
+                <X size={13} />
+                <span>关闭</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

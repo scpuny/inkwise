@@ -1,71 +1,93 @@
-// search.ts — 文章搜索（标题 + 全文）
-import type { Collection, SearchResult } from "./types";
+// search.ts — 合集搜索桥接层
+//
+// 提供 searchArticleTitles / searchArticleContent 函数供 SearchPanel 使用。
+// v2.0.0+ 内部改为调 SQLite FTS，保留对旧 SearchPanel 的兼容。
+// 新代码应直接调 lib/ai/vectorSearch.ts 中的 semanticSearch。
+
+import { semanticSearch } from "../../ai/vectorSearch";
+import type { Collection } from "./types";
+
+export type { SearchResult } from "./types";
 
 /**
- * 按标题搜索文章（同步，内存搜索）
+ * 搜索文章标题（同步，基于已加载的合集数据）
  */
-export function searchArticleTitles(collections: Collection[], query: string): SearchResult[] {
+export function searchArticleTitles(
+  collections: Collection[],
+  query: string,
+): Array<{
+  articleId: string;
+  collectionId: string;
+  collectionTitle: string;
+  title: string;
+  matchType: "title" | "content";
+  snippet?: string;
+  score: number;
+}> {
   if (!query.trim()) return [];
-  const q = query.toLowerCase().trim();
-  const results: SearchResult[] = [];
+  const lower = query.toLowerCase();
+  const results: Array<{
+    articleId: string;
+    collectionId: string;
+    collectionTitle: string;
+    title: string;
+    matchType: "title" | "content";
+    snippet?: string;
+    score: number;
+  }> = [];
 
   for (const col of collections) {
     for (const article of col.articles) {
-      const titleLower = article.title.toLowerCase();
-      let score = 0;
-      if (titleLower === q) score = 100;
-      else if (titleLower.startsWith(q)) score = 80;
-      else if (titleLower.includes(q)) score = 50;
-      else if (q.length >= 2 && titleLower.split(/[\s\u4e00-\u9fff]+/).some(
-        (w) => w.startsWith(q) || q.startsWith(w),
-      )) score = 30;
-      else continue;
-
-      results.push({
-        articleId: article.id, collectionId: col.id,
-        collectionTitle: col.title, title: article.title,
-        matchType: "title", score,
-      });
+      if (article.title.toLowerCase().includes(lower)) {
+        results.push({
+          articleId: article.id,
+          collectionId: col.id,
+          collectionTitle: col.title,
+          title: article.title,
+          matchType: "title",
+          score: 2.0, // Title match gets higher score
+        });
+      }
     }
   }
-  results.sort((a, b) => b.score - a.score);
-  return results;
+
+  return results.sort((a, b) => b.score - a.score).slice(0, 20);
 }
 
 /**
- * 全文搜索文章内容（异步，读取文章内容）
+ * 搜索文章内容（异步，调 SQLite FTS 或向量搜索）
+ * excludeIds 用于排除已在标题搜索结果中的文章
  */
 export async function searchArticleContent(
   collections: Collection[],
   query: string,
-  excludeIds: Set<string> = new Set(),
-): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
-  const q = query.toLowerCase().trim();
-  const results: SearchResult[] = [];
+  excludeIds?: Set<string>,
+): Promise<Array<{
+  articleId: string;
+  collectionId: string;
+  collectionTitle: string;
+  title: string;
+  matchType: "title" | "content";
+  snippet?: string;
+  score: number;
+}>> {
+  const results = await semanticSearch(query, 20);
+  const collectionMap = new Map(collections.flatMap((c) =>
+    c.articles.map((a) => [a.id, { collectionId: c.id, collectionTitle: c.title, title: a.title }]),
+  ));
 
-  for (const col of collections) {
-    for (const article of col.articles) {
-      if (excludeIds.has(article.id)) continue;
-      try {
-        const { loadArticleContent } = await import("../articles");
-        const content = await loadArticleContent(article.id);
-        if (!content) continue;
-        const contentLower = content.toLowerCase();
-        const idx = contentLower.indexOf(q);
-        if (idx === -1) continue;
-        const start = Math.max(0, idx - 30);
-        const end = Math.min(content.length, idx + q.length + 40);
-        let snippet = content.slice(start, end);
-        if (start > 0) snippet = "…" + snippet;
-        if (end < content.length) snippet = snippet + "…";
-        results.push({
-          articleId: article.id, collectionId: col.id,
-          collectionTitle: col.title, title: article.title,
-          matchType: "content", snippet, score: 20,
-        });
-      } catch {}
-    }
-  }
-  return results;
+  return results
+    .filter((r) => !excludeIds?.has(r.articleId))
+    .map((r) => {
+      const meta = collectionMap.get(r.articleId);
+      return {
+        articleId: r.articleId,
+        collectionId: meta?.collectionId ?? r.collectionId,
+        collectionTitle: meta?.collectionTitle ?? r.collectionTitle,
+        title: meta?.title ?? r.title,
+        matchType: "content" as const,
+        snippet: r.snippet,
+        score: r.score,
+      };
+    });
 }

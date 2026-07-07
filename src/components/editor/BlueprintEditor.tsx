@@ -5,8 +5,9 @@ import { useState, useCallback, useEffect } from "react";
 import {
   X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
 } from "lucide-react";
-import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../lib/ai/articleBlueprint";
-import { getPhaseLabel, getPhaseNext, createDefaultBlueprint } from "../../lib/ai/articleBlueprint";
+import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel, getPhaseNext, createDefaultBlueprint } from "../../lib/ai/article/blueprint";
+import { PhaseGuideDialog, isPhaseGuideShown, markPhaseGuideShown } from "./PhaseGuideDialog";
 
 interface BlueprintEditorProps {
   blueprint: ArticleBlueprint;
@@ -18,6 +19,8 @@ interface BlueprintEditorProps {
 export function BlueprintEditor({ blueprint, open, onClose, onSave }: BlueprintEditorProps) {
   const [bp, setBp] = useState<ArticleBlueprint>(() => ({ ...blueprint, outline: blueprint.outline.map((s) => ({ ...s })) }));
   const [activeTab, setActiveTab] = useState<"basic" | "outline">("basic");
+  const [showPhaseGuide, setShowPhaseGuide] = useState(false);
+  const [pendingPhase, setPendingPhase] = useState<ArticlePhase | null>(null);
 
   // Sync local state when modal opens with fresh blueprint data
   useEffect(() => {
@@ -72,12 +75,34 @@ export function BlueprintEditor({ blueprint, open, onClose, onSave }: BlueprintE
 
         {/* Footer */}
         <div className="blueprint-editor__footer">
+          {showPhaseGuide && pendingPhase && (
+            <PhaseGuideDialog
+              currentPhase={bp.phase}
+              nextPhase={pendingPhase}
+              onConfirm={() => {
+                setBp({ ...bp, phase: pendingPhase! });
+                setShowPhaseGuide(false);
+                setPendingPhase(null);
+                markPhaseGuideShown();
+              }}
+              onClose={() => {
+                setShowPhaseGuide(false);
+                setPendingPhase(null);
+              }}
+            />
+          )}
           {bp.phase !== "complete" && (
             <button
               className="blueprint-editor__phase-btn"
               onClick={() => {
                 const next = getPhaseNext(bp.phase);
-                if (next) setBp({ ...bp, phase: next });
+                if (!next) return;
+                if (!isPhaseGuideShown()) {
+                  setPendingPhase(next);
+                  setShowPhaseGuide(true);
+                } else {
+                  setBp({ ...bp, phase: next });
+                }
               }}
             >
               进入下一阶段: {getPhaseLabel(getPhaseNext(bp.phase) || bp.phase)}

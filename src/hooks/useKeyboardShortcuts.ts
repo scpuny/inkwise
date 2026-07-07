@@ -14,7 +14,7 @@ export function useKeyboardShortcuts() {
   const setThemePickerOpen = usePanelStore((s) => s.setThemePickerOpen);
   const setShowFinalPage = useArticleStore((s) => s.setShowFinalPage);
   const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
-  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -26,6 +26,7 @@ export function useKeyboardShortcuts() {
       if (ctrl && e.key === ",") {
         e.preventDefault();
         setSettingsOpen(true);
+        setMainRoute('settings');
       }
       if (ctrl && e.key === "k") {
         e.preventDefault();
@@ -42,7 +43,7 @@ export function useKeyboardShortcuts() {
         setCommandPaletteOpen(false);
         setShowFinalPage(false);
         setActiveArticleId(null);
-        setProjectPanelOpen(false);
+        setMainRoute('editor');
       }
     };
     document.addEventListener("keydown", onKey);
@@ -50,6 +51,6 @@ export function useKeyboardShortcuts() {
   }, [
     sidebarOpen, setSidebarOpen, setSettingsOpen,
     commandPaletteOpen, setCommandPaletteOpen, focusMode, setFocusMode,
-    setThemePickerOpen, setShowFinalPage, setActiveArticleId, setProjectPanelOpen,
+    setThemePickerOpen, setShowFinalPage, setActiveArticleId, setMainRoute,
   ]);
 }

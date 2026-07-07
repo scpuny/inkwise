@@ -1,4 +1,5 @@
-// index.ts — 写作技能模块统一导出
+// index.ts [DEPRECATED] — 旧版写作技能模块统一导出
+// @deprecated 向后兼容导出。新代码请直接引用 ../skillTypes.ts / ../unifiedSkills.ts。将在 v2.0.0 后移除。
 export type {
   SkillScope, SkillPhase, ContextSource, PhaseConfig,
   ToolDeclaration, StyleDimension, WritingSkill,

@@ -4,9 +4,9 @@
 import { create } from "zustand";
 import {
   loadArticleStyleConfig,
+  saveArticleStyleConfig,
   type ArticleStyleConfig,
 } from "../lib/editor/editorStyles";
-import { ArticleContext } from "../lib/article/ArticleContext";
 
 /* ───────────── Editor Store ───────────── */
 
@@ -69,21 +69,30 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
         fontFamily: config.editorFontFamily ?? "",
         codeThemeId: config.codeThemeId ?? "atom-one-light",
       });
+    } else {
+      // No saved config for this article — reset to defaults
+      set({
+        lineHeight: 1.75,
+        styleTemplate: "default",
+        fontSize: 15,
+        maxWidth: 820,
+        paragraphGap: 1.25,
+        fontFamily: "",
+        codeThemeId: "atom-one-light",
+      });
     }
   },
 
   persistToArticle: (articleId: string) => {
     const s = get();
-    // 通过 ArticleContext 持久化
-    const ctx = new ArticleContext(articleId);
-    ctx.updateStyle({
-      editorStyleTemplateId: s.styleTemplate,
-      lineHeight: s.lineHeight,
-      editorFontSize: s.fontSize,
-      editorMaxWidth: s.maxWidth,
-      editorParagraphGap: s.paragraphGap,
-      editorFontFamily: s.fontFamily,
-      codeThemeId: s.codeThemeId,
-    });
+    // 先同步 store 值到 localStorage，再持久化到文章级配置
+    localStorage.setItem('editor-style-template', s.styleTemplate);
+    localStorage.setItem('editor-line-height', String(s.lineHeight));
+    localStorage.setItem('editor-font-size', String(s.fontSize));
+    localStorage.setItem('editor-max-width', String(s.maxWidth));
+    localStorage.setItem('editor-paragraph-gap', String(s.paragraphGap));
+    localStorage.setItem('editor-font-family', s.fontFamily);
+    localStorage.setItem('code-theme-id', s.codeThemeId);
+    saveArticleStyleConfig(articleId);
   },
 }));

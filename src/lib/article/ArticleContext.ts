@@ -42,6 +42,7 @@ export class ArticleContext {
     this.articleId = articleId;
     this._styleConfig = this._loadStyleConfig();
     this.applyStyles();
+    emit("article-theme-changed");
   }
 
   /** 当前文章完整样式配置 */

@@ -13,7 +13,7 @@ import { loadCollections, type Collection } from "../../lib/storage/collections"
 import { on, emit } from "../../lib/events/eventBus";
 import type { EventBusMap } from "../../lib/events/events";
 import { marked } from "marked";
-import type { ToolEvent as AgentToolEvent } from "../../lib/ai/agentEngine";
+import type { ToolEvent as AgentToolEvent } from "../../lib/ai/agent/engine";
 
 // ─── 扫描进度日志条目 ───
 interface LogEntry {
@@ -86,8 +86,7 @@ function toolEventToLogEntries(ev: AgentToolEvent): LogEntry[] {
 
 export function ProjectExplorer() {
   const colId = usePanelStore((s) => s.projectPanelColId);
-  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<any[] | null>(null);
@@ -122,6 +121,27 @@ export function ProjectExplorer() {
       }
     });
   }, [colId]);
+
+  // 监听 rescanned 事件 → 清缓存 + 重新加载文件树
+  useEffect(() => {
+    if (!colId) return;
+    const unsub = on("collections-changed", () => {
+      clearProjectFileTree(colId);
+      if (col?.linkedFolder) {
+        setLoading(true);
+        getProjectContext(col.linkedFolder)
+          .then((ctx) => {
+            if (ctx.structure && ctx.structure.length > 0) {
+              storeProjectFileTree(colId, ctx.structure);
+              setTree(ctx.structure);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setLoading(false));
+      }
+    });
+    return unsub;
+  }, [colId, col?.linkedFolder]);
 
   // Load file tree
   useEffect(() => {
@@ -197,9 +217,9 @@ export function ProjectExplorer() {
   const handlePlanSeries = useCallback(() => {
     if (colId) {
       emit("plan-series", { collectionId: colId });
-      setSeriesPlannerOpen(true);
+      setMainRoute("series-plan");
     }
-  }, [colId, setSeriesPlannerOpen]);
+  }, [colId, setMainRoute]);
 
   const getToolIcon = (icon: string) => {
     switch (icon) {
@@ -219,12 +239,12 @@ export function ProjectExplorer() {
           <span className="project-explorer__title">{col?.title || "项目"}</span>
           {col?.linkedFolder && <span className="project-explorer__subtitle">{col.linkedFolder.split("/").pop()}</span>}
         </div>
-        <button className="project-explorer__close" onClick={() => setProjectPanelOpen(false)} title="关闭"><X size={12} /></button>
+        <button className="project-explorer__close" onClick={() => setMainRoute("editor")} title="关闭"><X size={12} /></button>
       </div>
       {/* ── Toolbar ── */}
       <div className="project-explorer__toolbar">
         <button className="project-explorer__toolbar-btn" onClick={handleRescan} disabled={exploring} title="重新扫描">
-          <RotateCw size={12} className={exploring ? "" : ""} />
+          <RotateCw size={12} className={exploring ? "project-explorer__spinner" : ""} />
           重新扫描
         </button>
         <button className="project-explorer__toolbar-btn project-explorer__toolbar-btn--stop" onClick={handleStop} disabled={!exploring} title="停止扫描">

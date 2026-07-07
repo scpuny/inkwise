@@ -1,4 +1,5 @@
-// types.ts — 写作技能类型定义
+// types.ts [DEPRECATED] — 旧版 WritingSkill 类型定义
+// @deprecated 请使用 ../skillTypes.ts 中的 UnifiedSkill 替代。将在 v2.0.0 后移除。
 
 /** 技能作用范围 */
 export type SkillScope = "full" | "phase";

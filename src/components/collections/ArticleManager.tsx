@@ -14,7 +14,7 @@ import {
   FileSearch,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, browserLoad, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
+import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, trashArticle, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
 import { loadArticleContent } from "../../lib/storage/articles";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
@@ -22,7 +22,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 import { saveArticleContent } from "../../lib/storage/articles";
 import { on, emit } from "../../lib/events/eventBus";
-import { searchArticleContent } from "../../lib/storage/collections/search";
+import { searchArticleContent } from "../../lib/storage/collections/index";
 import type { SearchResult } from "../../lib/storage/collections/types";
 
 type SortField = "title" | "wordCount" | "updatedAt";
@@ -84,7 +84,6 @@ export function ArticleManager({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [versionHistoryArticle, setVersionHistoryArticle] = useState<{ id: string; title: string } | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
-  const [useFts5, setUseFts5] = useState(false);
   const [ftsResults, setFtsResults] = useState<SearchResult[] | null>(null);
   const [ftsSearching, setFtsSearching] = useState(false);
 
@@ -101,7 +100,7 @@ export function ArticleManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const cols = browserLoad<Collection[]>('inkwise-collections', []);
+      const cols = await loadCollections();
       console.log('[loadData] cols=%o', cols.map(c => ({id: c.id, title: c.title})));
       setCollections(cols);
 
@@ -172,13 +171,14 @@ export function ArticleManager({
 
   // FTS5 full-text search — debounced
   useEffect(() => {
-    if (!open || !useFts5 || !searchQuery.trim()) {
+    if (!open || !searchQuery.trim()) {
       setFtsResults(null);
       return;
     }
     const timer = setTimeout(async () => {
       setFtsSearching(true);
       try {
+        // Tauri: SQLite FTS
         if (isTauriEnv()) {
           const raw = await tryInvoke<SearchResult[]>(TauriCommands.SearchArticleDb, { query: searchQuery, limit: null });
           setFtsResults(raw);
@@ -194,20 +194,21 @@ export function ArticleManager({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [open, useFts5, searchQuery, collections]);
+  }, [open, searchQuery, collections]);
 
   useEffect(() => { if (open) loadData(); }, [open, loadData]);
   // 外部合集变更时自动刷新（侧边树改名等）
   useEffect(() => {
     const unsub = on("collections-changed", () => {
       if (open) {
-        const cols = browserLoad<Collection[]>('inkwise-collections', []);
-        setCollections(cols);
-        // 同步 article 条目中的 collectionTitle
-        setArticles(prev => prev.map(a => {
-          const c = cols.find(x => x.id === a.collectionId);
-          return c ? { ...a, collectionTitle: c.title } : a;
-        }));
+        loadCollections().then(cols => {
+          setCollections(cols);
+          // 同步 article 条目中的 collectionTitle
+          setArticles(prev => prev.map(a => {
+            const c = cols.find(x => x.id === a.collectionId);
+            return c ? { ...a, collectionTitle: c.title } : a;
+          }));
+        });
       }
     });
     return unsub;
@@ -263,12 +264,17 @@ export function ArticleManager({
 
   const handleDeleteArticles = async () => {
     for (const id of selectedIds) {
-      for (const col of collections) {
-        col.articles = col.articles.filter((a) => a.id !== id);
+      const article = articles.find((a) => a.id === id);
+      if (article) {
+        await trashArticle(article.collectionId, id);
+      } else {
+        // Fallback — article not found in cached list
+        for (const col of collections) {
+          col.articles = col.articles.filter((a) => a.id !== id);
+        }
+        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteArticleDb, { id }); } catch {} }
       }
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteArticleDb, { id }); } catch {} }
     }
-    await saveCollections(collections);
     setShowDeleteConfirm(false);
     setSelectedIds(new Set());
     emit("collections-changed");
@@ -286,7 +292,8 @@ export function ArticleManager({
       srcCol.articles = srcCol.articles.filter((a) => a.id !== id);
       const tgtCol = collections.find((c) => c.id === targetColId);
       if (tgtCol) tgtCol.articles.push(artMeta);
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.MoveArticleDb, { id, newCollectionId: targetColId }); } catch {} }
+      // Tauri: SQLite FTS
+        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.MoveArticleDb, { id, newCollectionId: targetColId }); } catch {} }
     }
     await saveCollections(collections);
     setSelectedIds(new Set());
@@ -320,7 +327,8 @@ export function ArticleManager({
       const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, linkedFolder: linkedFolder || undefined, articles: [], createdAt: Date.now() };
       all.push(col);
       await saveCollections(all);
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {} }
+      // Tauri: SQLite FTS
+        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {} }
     }
     setShowColForm(false);
     setEditingCollection(null);
@@ -338,7 +346,8 @@ export function ArticleManager({
     if (idx >= 0) {
       collections.splice(idx, 1);
       await saveCollections(collections);
-      if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteCollectionDb, { id: colId }); } catch {} }
+      // Tauri: SQLite FTS
+        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.DeleteCollectionCascade, { id: colId }); } catch {} }
       if (filterCollection === colId) setFilterCollection("all");
     }
     emit("collections-changed");
@@ -442,13 +451,6 @@ export function ArticleManager({
                   <X size={12} />
                 </button>
               )}
-              <button
-                className={`article-manager__fts-toggle ${useFts5 ? "is-active" : ""}`}
-                onClick={() => setUseFts5(v => !v)}
-                title={useFts5 ? "关闭全文搜索" : "全文搜索"}
-              >
-                <FileSearch size={13} />
-              </button>
               <div className="article-manager__view-toggle">
                 <button
                   className={`article-manager__view-btn ${viewMode === "table" ? "is-active" : ""}`}
@@ -493,11 +495,7 @@ export function ArticleManager({
             <div className="article-manager__art-table-wrap">
               {loading ? (
                 <div className="article-manager__loading">加载中…</div>
-              ) : filtered.length === 0 ? (
-                <div className="article-manager__empty">
-                  {searchQuery && !useFts5 ? "没有匹配的文章" : searchQuery && useFts5 ? "全文搜索无结果" : "暂无文章"}
-                </div>
-              ) : useFts5 && ftsResults && searchQuery.trim() ? (
+              ) : ftsResults && searchQuery.trim() ? (
                 <div className="article-manager__fts-results">
                   <div className="article-manager__fts-header">
                     <FileSearch size={13} />
@@ -514,7 +512,7 @@ export function ArticleManager({
                       >
                         <div className="article-manager__fts-item-title">{r.title}</div>
                         <div className="article-manager__fts-item-meta">
-                          {r.collectionTitle} · 匹配类型: {r.matchType === "title" ? "标题" : "内容"}
+                          {r.collectionTitle}
                         </div>
                         {r.snippet && (
                           <div className="article-manager__fts-item-snippet"
@@ -524,6 +522,10 @@ export function ArticleManager({
                       </div>
                     ))
                   )}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="article-manager__empty">
+                  {searchQuery ? "全文搜索无结果" : "暂无文章"}
                 </div>
               ) : viewMode === "table" ? (
                 <table className="article-manager__table">

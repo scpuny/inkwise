@@ -1,9 +1,72 @@
+
+// ─── 配图生成缓存（基于内容哈希） ───
+
+const IMAGE_CACHE_KEY = 'inkwise-image-cache';
+
+interface ImageCacheEntry {
+  contentHash: string;
+  timestamp: number;
+  images: { path: string; sectionTitle?: string; altText: string }[];
+}
+
+function hashContent(content: string, config: { model: string; style: string; size: string; count: number }): string {
+  let hash = 0;
+  const str = content.slice(0, 2000) + JSON.stringify(config);
+  for (let i = 0; i < str.length; i++) {
+    const chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return 'img_' + Math.abs(hash).toString(36);
+}
+
+function loadImageCache(): Record<string, ImageCacheEntry> {
+  try {
+    const raw = localStorage.getItem(IMAGE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveImageCache(cache: Record<string, ImageCacheEntry>): void {
+  try {
+    // Keep only last 50 entries to avoid bloating localStorage
+    const entries = Object.entries(cache);
+    if (entries.length > 50) {
+      entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+      const trimmed = Object.fromEntries(entries.slice(0, 50));
+      localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(trimmed));
+    } else {
+      localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cache));
+    }
+  } catch {}
+}
+
+/** 检查是否有缓存的配图 */
+export function getCachedImages(content: string, config: { model: string; style: string; size: string; count: number }): { path: string; sectionTitle?: string; altText: string }[] | null {
+  const hash = hashContent(content, config);
+  const cache = loadImageCache();
+  const entry = cache[hash];
+  if (entry && Date.now() - entry.timestamp < 24 * 60 * 60 * 1000) { // 24h TTL
+    return entry.images;
+  }
+  return null;
+}
+
+/** 缓存配图结果 */
+export function cacheImages(content: string, config: { model: string; style: string; size: string; count: number }, images: { path: string; sectionTitle?: string; altText: string }[]): void {
+  const hash = hashContent(content, config);
+  const cache = loadImageCache();
+  cache[hash] = { contentHash: hash, timestamp: Date.now(), images };
+  saveImageCache(cache);
+}
+
 // draw.ts — 插图自动配图业务逻辑
 // 关键词提取（LLM）+ 图片插入文章
 
 import { sendChatStream, type ChatMessage } from "./ai";
-import { resolveModel } from "../config/globalAIConfig";
-import { getProvidersSync } from "../storage/providerModels";
+import { resolveProviderForModel } from "../config/globalAIConfig";
 
 const IMAGE_EXTRACT_PROMPT = `你是一个配图策划助手。根据下面这篇文章，提取绘画关键词。
 
@@ -29,9 +92,8 @@ export async function extractImageKeywords(
   articleContent: string,
   count: number,
 ): Promise<{ section_title: string; keywords: string; alt_text: string }[]> {
-  const providers = getProvidersSync();
-  const provider = providers.find(p => p.enabled && p.models.length > 0) || null;
-  if (!provider) throw new Error("请先配置 AI 提供商");
+  const { provider, model } = resolveProviderForModel();
+  if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
   const prompt = IMAGE_EXTRACT_PROMPT.replace("{{count}}", String(count));
   const messages: ChatMessage[] = [
@@ -42,7 +104,7 @@ export async function extractImageKeywords(
   try {
     const text = await sendChatStream({
       providerId: provider.id,
-      model: resolveModel() || provider.models[0].id,
+      model,
       messages,
       temperature: 0.3,
       maxTokens: 2000,

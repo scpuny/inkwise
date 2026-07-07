@@ -6,6 +6,8 @@ import type { SettingsTab } from "../components/settings";
 
 /* ───────────── Panel Store ───────────── */
 
+export type MainRoute = 'editor' | 'manage' | 'trash' | 'scan' | 'series-plan' | 'settings';
+
 export interface PanelState {
   // Panels
   themePickerOpen: boolean;
@@ -18,6 +20,7 @@ export interface PanelState {
   docPickerOpen: boolean;
   stylePanelOpen: boolean;
   seriesPlannerOpen: boolean;
+  trashOpen: boolean;
 
   // Layout
   sidebarWidth: number;
@@ -26,6 +29,9 @@ export interface PanelState {
   // Project panel
   projectPanelOpen: boolean;
   projectPanelColId: string | null;
+
+  // 主内容区域路由
+  mainRoute: MainRoute;
 }
 
 export interface PanelActions {
@@ -39,13 +45,15 @@ export interface PanelActions {
   setDocPickerOpen: (open: boolean) => void;
   setStylePanelOpen: (open: boolean) => void;
   setSeriesPlannerOpen: (open: boolean) => void;
+  setTrashOpen: (open: boolean) => void;
   setSidebarWidth: (w: number) => void;
   setResizing: (r: "sidebar" | null) => void;
   setProjectPanelOpen: (open: boolean) => void;
   setProjectPanelColId: (id: string | null) => void;
+  setMainRoute: (route: MainRoute) => void;
 }
 
-const DEFAULT_SETTINGS_TAB = "appearance";
+const DEFAULT_SETTINGS_TAB = "general";
 
 export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   themePickerOpen: false,
@@ -58,10 +66,12 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   docPickerOpen: false,
   stylePanelOpen: false,
   seriesPlannerOpen: false,
+  trashOpen: false,
   sidebarWidth: 264,
   resizing: null,
   projectPanelOpen: false,
   projectPanelColId: null,
+  mainRoute: 'editor',
 
   setThemePickerOpen: (themePickerOpen) => set({ themePickerOpen }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
@@ -73,8 +83,10 @@ export const usePanelStore = create<PanelState & PanelActions>()((set) => ({
   setDocPickerOpen: (docPickerOpen) => set({ docPickerOpen }),
   setStylePanelOpen: (stylePanelOpen) => set({ stylePanelOpen }),
   setSeriesPlannerOpen: (seriesPlannerOpen) => set({ seriesPlannerOpen }),
+  setTrashOpen: (trashOpen) => set({ trashOpen }),
   setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
   setResizing: (resizing) => set({ resizing }),
   setProjectPanelOpen: (projectPanelOpen) => set({ projectPanelOpen }),
   setProjectPanelColId: (projectPanelColId) => set({ projectPanelColId }),
+  setMainRoute: (mainRoute) => set({ mainRoute }),
 }));

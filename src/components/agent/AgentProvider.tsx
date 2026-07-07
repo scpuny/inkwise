@@ -16,7 +16,8 @@ import { runSkill, runSkillStream } from "../../lib/storage/skill";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { resolveModel } from "../../lib/config/globalAIConfig";
 import { getProvidersSync } from "../../lib/storage/providerModels";
-import { saveSessions, loadSessions } from "../../lib/ai/articleSessions";
+import { saveSessions, loadSessions } from "../../lib/ai/article/sessions";
+import { getStyle, getAction } from "../../lib/ai/skill/styles";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AgentState>(() => ({ ...DEFAULT_AGENT_STATE }));
@@ -48,7 +49,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     input: string,
     options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string },
   ) => {
-    if (!input.trim()) return;
+    // Allow empty input only for continue-writing (ghost text mode)
+    if (!input.trim() && options?.intent !== "continue-writing") return;
     cancelledRef.current = false;
 
     const selection = options?.selection;
@@ -68,7 +70,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
 
     const sessionId = generateSessionId();
-    const model = resolveModel() ?? enabled.models[0]?.id ?? '';
+    // Read user's selected provider + model from localStorage
+    const savedProvider = typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-provider") : null;
+    const savedModel = typeof localStorage !== "undefined" ? localStorage.getItem("inkwise-default-model") : null;
+    const providerId = (savedProvider && providers.some(p => p.id === savedProvider && p.enabled))
+      ? savedProvider
+      : enabled.id;
+    const model = (savedModel && providers.some(p => p.id === providerId && p.models.some(m => m.id === savedModel)))
+      ? savedModel
+      : (resolveModel() ?? enabled.models[0]?.id ?? '');
 
     // Create initial session
     const session: AgentSession = {
@@ -116,11 +126,22 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           }
         }
         const agentInput = conversationCtx ? input + conversationCtx : input;
+        // Resolve style/action from blueprint and inject context
+        const bp = options?.blueprint;
+        const currentStyle = bp?.styleId ? getStyle(bp.styleId) : undefined;
+        const currentAction = bp?.actionId ? getAction(bp.actionId) : undefined;
+        let styleContext = "";
+        if (currentStyle || currentAction) {
+          styleContext = "\n\n## 风格与动作设定\n";
+          if (currentStyle) styleContext += "写作风格：" + currentStyle.name + " - " + currentStyle.description + "\n";
+          if (currentAction) styleContext += "当前动作：" + currentAction.name + "（阶段：" + currentAction.phase + "）\n";
+        }
+        const enrichedInput = styleContext ? agentInput + styleContext : agentInput;
         // Use streaming skill execution for real-time feedback
         const streamSessionId = sessionId;
         result = await runSkillStream(
           intent.skill,
-          agentInput,
+          enrichedInput,
           (accumulated) => {
             // Update session content progressively (streaming)
             setState((prev) => ({
@@ -134,6 +155,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           selection ? beforeContent.slice(selection.from, selection.to) : "",
           options?.blueprint,
           options?.currentSectionId,
+          undefined, // projectPath
+          model,
+          providerId, // providerId
         );
       } else {
         // Fallback to direct chat with conversation context
@@ -173,7 +197,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         }
         messages.push({ role: "user", content: userContent });
         result = await sendChat({
-          providerId: enabled.id,
+          providerId: providerId,
           model,
           messages,
           temperature: 0.7,
@@ -227,6 +251,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     // Insert via window.__insertGhostContent (provided by EditorContent)
     const editor = (window as any).editorInstance?.editor;
     if (editor && editor.commands) {
+      editor.commands.focus();
       editor.commands.insertContent(ghost);
     }
 

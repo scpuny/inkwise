@@ -6,14 +6,20 @@ mod db;
 mod project_indexer;
 mod platform;
 mod image_gen;
+mod vector;
 use platform::Platform;
 use platform::wechat::WeChat;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, PhaseConfig, ContextSource, StyleDimension};
-use ai::{chat_completion, chat_completion_text, chat_completion_stream, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ToolCall, ProviderConfig, ProviderListConfig};
-use project_indexer::{ProjectContext, scan_project, build_context_text, spawn_folder_watcher};
-use skill::{Skill, SkillStore, RunAs, builtin_skills};
-use std::sync::Mutex;
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill};
+use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
+use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
+use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+use std::fs;
+use crate::project_indexer::{snapshot_dir_files, save_snapshot};
+use skill::{Skill, SkillStore, RunAs, builtin_skills, UnifiedSkill, unified_builtin_skills};
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 
@@ -21,14 +27,85 @@ struct AppState {
     store: Mutex<DataStore>,
     db: Mutex<Option<db::Database>>,
     watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
+    /// 当前活跃的项目路径（用于退出时保存快照）
+    current_project_path: Mutex<Option<String>>,
+    /// 全局嵌入器（后台懒加载，避免启动时卡界面）
+    embedder: Arc<Mutex<EmbedderState>>,
 }
 
-#[allow(dead_code)]
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64
+}
+
+// ─── 项目快照保存 ───
+
+fn save_project_snapshot(app_state: &AppState, project_path: &str) {
+    let app_dir = match app_state.store.lock() {
+        Ok(store) => store.data_dir().parent().unwrap().to_path_buf(),
+        Err(_) => return,
+    };
+
+    let snapshots_dir = app_dir.join("data").join("index").join("snapshots");
+    let _ = fs::create_dir_all(&snapshots_dir);
+
+    // 用项目路径的 hash 作文件名，避免路径字符问题
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    project_path.hash(&mut hasher);
+    let hash = hasher.finish();
+    let snapshot_path = snapshots_dir.join(format!("{}.json", hash));
+
+    match snapshot_dir_files(std::path::Path::new(project_path)) {
+        Ok(files) => {
+            let mut snapshot = crate::project_indexer::IndexSnapshot {
+                project_path: project_path.to_string(),
+                created_at: now_ms(),
+                files,
+                file_map: HashMap::new(),
+            };
+            snapshot.build_map();
+            if let Err(e) = save_snapshot(&snapshot, &snapshot_path) {
+                log::warn!("保存项目快照失败: {}", e);
+            }
+        }
+        Err(e) => {
+            log::warn!("扫描项目文件（用于快照）失败: {}", e);
+        }
+    }
+
+    // 清理过期间拍：计算所有合集关联的项目路径 hash 集合，删除不在集合中的快照
+    if let Ok(store) = app_state.store.lock() {
+        let collections = store.load_collections();
+        let mut active_hashes: HashSet<u64> = HashSet::new();
+        for col in &collections {
+            if let Some(ref folder) = col.linked_folder {
+                if !folder.is_empty() {
+                    let mut h = std::collections::hash_map::DefaultHasher::new();
+                    folder.hash(&mut h);
+                    active_hashes.insert(h.finish());
+                }
+            }
+        }
+        if let Ok(entries) = fs::read_dir(&snapshots_dir) {
+            let current_hash = hash; // 当前项目一定是活跃的
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    if let Ok(file_hash) = stem.parse::<u64>() {
+                        if file_hash != current_hash && !active_hashes.contains(&file_hash) {
+                            let _ = fs::remove_file(&path);
+                            log::info!("清理过期快照: {:?}", path);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ─── Collections ───
@@ -319,6 +396,29 @@ fn delete_writing_skill(state: tauri::State<AppState>, id: String) -> Result<(),
 }
 
 // ─── Skills ───
+#[tauri::command]
+fn list_custom_themes(state: tauri::State<AppState>) -> Result<Vec<serde_json::Value>, String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    Ok(store.load_custom_themes())
+}
+
+#[tauri::command]
+fn save_custom_themes(state: tauri::State<AppState>, themes: Vec<serde_json::Value>) -> Result<(), String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    store.save_custom_themes(&themes)
+}
+
+#[tauri::command]
+fn delete_custom_theme(state: tauri::State<AppState>, theme_id: String) -> Result<(), String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let themes = store.load_custom_themes();
+    let filtered: Vec<serde_json::Value> = themes.into_iter()
+        .filter(|t| t.get("id").and_then(|v| v.as_str()) != Some(&theme_id))
+        .collect();
+    store.save_custom_themes(&filtered)
+}
+
+
 
 fn get_skill_store(state: &AppState) -> Result<SkillStore, String> {
     let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -363,7 +463,29 @@ fn read_skill(state: tauri::State<AppState>, name: String) -> Result<Option<Skil
     Ok(skill_store.find(&name))
 }
 
+
 #[tauri::command]
+fn list_unified_skills(state: tauri::State<AppState>) -> Result<Vec<UnifiedSkill>, String> {
+    let mut skills = unified_builtin_skills();
+    let disabled = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let data_dir = store.data_dir().parent().unwrap().to_path_buf();
+        drop(store);
+        let disabled_list_path = data_dir.join("disabled_skills.json");
+        if disabled_list_path.exists() {
+            std::fs::read_to_string(&disabled_list_path)
+                .ok()
+                .and_then(|c| serde_json::from_str::<Vec<String>>(&c).ok())
+                .unwrap_or_default()
+        } else { vec![] }
+    };
+    for skill in &mut skills {
+        if disabled.contains(&skill.name) {
+            skill.enabled = false;
+        }
+    }
+    Ok(skills)
+}#[tauri::command]
 async fn run_skill(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -373,6 +495,9 @@ async fn run_skill(
     selected_text: Option<String>,
     blueprint: Option<ArticleBlueprint>,
     current_section_id: Option<String>,
+    project_path: Option<String>,
+    model: Option<String>,
+    provider_id: Option<String>,
 ) -> Result<agent::AgentResult, String> {
     let skill = {
         let store = state.store.lock().map_err(|e| e.to_string())?;
@@ -388,7 +513,8 @@ async fn run_skill(
         skill_store.find(&name).ok_or_else(|| format!("未找到 skill: {}", name))?
     };
 
-    let config = resolve_provider(&state.store, None, skill.model.as_deref())?;
+    let effective_model = model.as_deref().or(skill.model.as_deref());
+    let config = resolve_provider(&state.store, provider_id.as_deref(), effective_model)?;
 
     // Set up streaming callback
     let app_clone = app.clone();
@@ -402,6 +528,7 @@ async fn run_skill(
         user_input,
         blueprint,
         current_section_id,
+        project_path,
     };
 
     let result = agent::execute_agent(&skill, &config, &agent_context, on_token).await?;
@@ -633,7 +760,7 @@ fn list_collections_db(state: tauri::State<AppState>) -> Result<Vec<db::Collecti
 
 /// Create a collection
 #[tauri::command]
-fn create_collection_db(state: tauri::State<AppState>, title: String, linked_folder: Option<String>) -> Result<db::CollectionRow, String> {
+fn create_collection_db(state: tauri::State<AppState>, title: String, _linked_folder: Option<String>) -> Result<db::CollectionRow, String> {
     let db_opt = state.db.lock().map_err(|e| e.to_string())?;
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     let id = format!("col_{}", chrono_now());
@@ -655,6 +782,60 @@ fn rename_collection_db(state: tauri::State<AppState>, id: String, title: String
 fn delete_collection_db(state: tauri::State<AppState>, id: String) -> Result<(), String> {
     let db_opt = state.db.lock().map_err(|e| e.to_string())?;
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
+    db.delete_collection(&id).map_err(|e| e.to_string())
+}
+
+/// 级联删除合集及其所有子文章的关联数据（图片/SQLite/assets）
+#[tauri::command]
+fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Result<(), String> {
+    // 1. 获取合集中所有文章
+    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
+    let articles = db.list_articles(Some(&id), None, 0, 10000).map_err(|e| e.to_string())?;
+
+    // 2. 逐文章清理（复用 delete_article_db 逻辑）
+    for article in &articles {
+        // Clean up associated images
+        let images = db.get_article_images(&article.id).unwrap_or_default();
+        for img in &images {
+            let path = std::path::Path::new(&img.local_path);
+            if path.exists() {
+                let _ = std::fs::remove_file(path);
+            }
+            // Also check absolute path in articles dir
+            let store = state.store.lock().map_err(|e| e.to_string())?;
+            let abs_path = store.articles_dir().join("_assets").join(&article.id).join(
+                path.file_name().unwrap_or_default()
+            );
+            if abs_path.exists() {
+                let _ = std::fs::remove_file(&abs_path);
+            }
+            // Check project-linked path
+            let project_path = std::path::PathBuf::from(".inkwise_assets").join(&article.id).join(
+                path.file_name().unwrap_or_default()
+            );
+            if project_path.exists() {
+                let _ = std::fs::remove_file(&project_path);
+            }
+            drop(store);
+        }
+        // Remove image records
+        let _ = db.delete_article_images(&article.id);
+        // Remove assets directory
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let assets_dir = store.articles_dir().join("_assets").join(&article.id);
+        if assets_dir.exists() {
+            let _ = std::fs::remove_dir_all(&assets_dir);
+        }
+        drop(store);
+        // Delete article content/meta JSON
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let _ = store.delete_article_content(&article.id);
+        let _ = store.delete_article_meta(&article.id);
+        drop(store);
+    }
+
+    // 3. SQLite 级联删除（articles + collection，FTS 通过触发器自动清理）
     db.delete_collection(&id).map_err(|e| e.to_string())
 }
 
@@ -1110,7 +1291,7 @@ async fn build_folder_index(path: String) -> Result<String, String> {
 
 
 #[tauri::command]
-async fn link_collection_folder(state: tauri::State<'_, AppState>, collection_id: String, path: String) -> Result<ProjectContext, String> {
+async fn link_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: String, path: String) -> Result<ProjectContext, String> {
     // Validate path
     let dir = std::path::Path::new(&path);
     if !dir.is_dir() {
@@ -1131,19 +1312,35 @@ fn unlink_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: 
 }
 
 #[tauri::command]
-async fn get_project_context(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path, false)
+async fn get_project_context(state: tauri::State<'_, AppState>, path: String) -> Result<ProjectContext, String> {
+    let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
 }
 
 #[tauri::command]
-async fn get_project_context_text(path: String) -> Result<String, String> {
+async fn get_project_context_text(state: tauri::State<'_, AppState>, path: String) -> Result<String, String> {
     let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
     Ok(build_context_text(&ctx))
 }
 
 #[tauri::command]
-async fn rescan_project_folder(path: String) -> Result<ProjectContext, String> {
-    scan_project(&path, true)
+async fn rescan_project_folder(state: tauri::State<'_, AppState>, path: String) -> Result<ProjectContext, String> {
+    let ctx = scan_project(&path, true)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
+}
+
+#[tauri::command]
+async fn rescan_project_folder_incremental(
+    state: tauri::State<'_, AppState>,
+    path: String,
+    changed_files: Vec<String>,
+) -> Result<ProjectContext, String> {
+    let ctx = rescan_project_incremental(&path, &changed_files, None)?;
+    save_project_snapshot(&state, &path);
+    Ok(ctx)
 }
 
 #[tauri::command]
@@ -1333,7 +1530,7 @@ fn get_publish_history(state: tauri::State<AppState>, article_id: String) -> Res
 async fn publish_to_platform(
     styled_html: String,
     state: tauri::State<'_, AppState>,
-    article_id: String,
+    _article_id: String,
     platform: String,
     markdown: String,
     options: platform::PublishOptions,
@@ -1431,6 +1628,11 @@ fn start_watching_project(
     if !dir.is_dir() {
         return Err("路径不是有效的文件夹".into());
     }
+    // 记录当前项目路径，用于退出时保存快照
+    {
+        let mut cur = state.current_project_path.lock().map_err(|e| e.to_string())?;
+        *cur = Some(path.clone());
+    }
     // 如果已有 watcher 在运行，先停止
     {
         let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
@@ -1449,6 +1651,281 @@ fn start_watching_project(
 fn stop_watching_project(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let mut handle = state.watcher_handle.lock().map_err(|e| e.to_string())?;
     *handle = None;
+    Ok(())
+}
+
+// ─── Vector Embedding & Search ───
+
+#[tauri::command]
+fn vector_search(
+    state: tauri::State<'_, AppState>,
+    query: String,
+    article_id: Option<String>,
+    k: Option<usize>,
+    threshold: Option<f32>,
+) -> Result<Vec<VectorSearchResult>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
+
+    match &*embedder_guard {
+        EmbedderState::Ready(emb) => {
+            let k_val = k.unwrap_or(5);
+            let thr = threshold.unwrap_or(0.6);
+            semantic_search(db, emb, &query, article_id.as_deref(), k_val, thr)
+        }
+        EmbedderState::Pending => {
+            Err("嵌入器正在后台加载中（约 1-3 秒），请稍后再试".to_string())
+        }
+        EmbedderState::Unavailable => {
+            Err("嵌入器不可用（未启用/模型未下载/加载失败）".to_string())
+        }
+    }
+}
+
+#[tauri::command]
+fn index_article_vector(
+    state: tauri::State<'_, AppState>,
+    article_id: String,
+    strategy: Option<String>,
+) -> Result<IndexResult, String> {
+    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
+
+    let content = store.load_article_content(&article_id)
+        .ok_or_else(|| format!("文章内容未找到: {}", article_id))?;
+
+    let chunk_strategy = match strategy.as_deref() {
+        Some("function") => ChunkStrategy::Function,
+        Some("hybrid") => ChunkStrategy::Hybrid,
+        _ => ChunkStrategy::Paragraph,
+    };
+
+    match &*embedder_guard {
+        EmbedderState::Ready(emb) => {
+            vector::index_article(db, emb, &article_id, &content, chunk_strategy)
+        }
+        EmbedderState::Pending | EmbedderState::Unavailable => {
+            // 嵌入器未就绪：降级为纯文本索引（embedding = None）
+            let chunks = vector::chunk_content(&content, chunk_strategy);
+            let mut indexed = 0;
+            for chunk in &chunks {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as i64;
+                let row = vector::VectorChunkRow {
+                    id: format!("{}_{}", article_id, chunk.index),
+                    article_id: article_id.to_string(),
+                    chunk_index: chunk.index as i64,
+                    content: chunk.content.clone(),
+                    content_hash: chunk.content_hash.clone(),
+                    embedding: None,
+                    created_at: now,
+                };
+                let _ = db.upsert_vector_chunk(&row);
+                indexed += 1;
+            }
+            Ok(IndexResult { total: chunks.len(), indexed, skipped: 0, errors: 0 })
+        }
+    }
+}
+
+#[tauri::command]
+fn delete_article_vector(
+    state: tauri::State<'_, AppState>,
+    article_id: String,
+) -> Result<(), String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    crate::vector::delete_article_index(db, &article_id)
+}
+
+#[tauri::command]
+fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = db.as_ref().ok_or("数据库未初始化")?;
+    db.vector_chunk_count().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn check_vector_model(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let app_dir = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.data_dir().parent().unwrap().to_path_buf()
+    };
+    let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+    let exists = Embedder::model_exists(&model_dir);
+    let enabled = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.load_settings().vector_model_enabled
+    };
+
+    // If enabled but model missing, count files to check partial download
+    let status = if !enabled {
+        "disabled"
+    } else if exists {
+        "ready"
+    } else {
+        "missing"
+    };
+
+    Ok(serde_json::json!({
+        "enabled": enabled,
+        "exists": exists,
+        "status": status,
+        "modelDir": model_dir.to_string_lossy(),
+    }))
+}
+
+#[tauri::command]
+async fn download_vector_model(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let app_dir = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        store.data_dir().parent().unwrap().to_path_buf()
+    };
+    let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+
+    if Embedder::model_exists(&model_dir) {
+        return Ok("already_downloaded".to_string());
+    }
+
+    println!("[向量] 开始下载 bge-small-zh-v1.5 模型...");
+    vector::download_model(&model_dir).await?;
+    println!("[向量] 模型下载完成");
+
+    Ok("downloaded".to_string())
+}
+
+
+#[tauri::command]
+fn index_all_vectors(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    // Fast: grab data while holding lock, then release
+    let (app_dir, article_ids) = {
+        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let app_dir = store.data_dir().parent().unwrap().to_path_buf();
+        let collections = store.load_collections();
+        let ids: Vec<String> = collections
+            .iter()
+            .flat_map(|c| c.articles.iter().map(|a| a.id.clone()))
+            .collect();
+        (app_dir, ids)
+    };
+
+    let total = article_ids.len();
+    if total == 0 {
+        let _ = app_handle.emit("vector:index-done", serde_json::json!({
+            "total": 0, "indexed": 0, "skipped": 0, "errors": 0,
+        }));
+        return Ok(());
+    }
+
+    let _ = app_handle.emit("vector:index-start", serde_json::json!({
+        "total": total,
+    }));
+
+    let app_clone = app_handle.clone();
+    std::thread::spawn(move || {
+        // Open own DB connection (avoid holding main thread lock)
+        let db = match db::Database::open(&app_dir) {
+            Ok(d) => d,
+            Err(e) => {
+                let _ = app_clone.emit("vector:index-error",
+                    serde_json::json!({"error": format!("数据库打开失败: {}", e)}));
+                return;
+            }
+        };
+
+        let store = store::DataStore::new(app_dir.clone());
+
+        // 尝试初始化嵌入器（ONNX Runtime）
+        let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+        let embedder = if vector::Embedder::model_exists(&model_dir) {
+            match vector::Embedder::new(&model_dir) {
+                Ok(e) => Some(e),
+                Err(e) => {
+                    let _ = app_clone.emit("vector:index-warn",
+                        serde_json::json!({"warning": format!("嵌入器初始化失败: {}", e)}));
+                    None
+                }
+            }
+        } else {
+            let _ = app_clone.emit("vector:index-warn",
+                serde_json::json!({"warning": "模型文件未找到，仅建立文本索引"}));
+            None
+        };
+
+        let mut indexed_total = 0;
+        let mut skipped_total = 0;
+        let mut errors_total = 0;
+
+        for (i, article_id) in article_ids.iter().enumerate() {
+            let content = match store.load_article_content(article_id) {
+                Some(c) => c,
+                None => {
+                    errors_total += 1;
+                    continue;
+                }
+            };
+
+            if let Some(ref emb) = embedder {
+                match vector::index_article(&db, emb, article_id, &content, vector::ChunkStrategy::Paragraph) {
+                    Ok(result) => {
+                        indexed_total += result.indexed;
+                        skipped_total += result.skipped;
+                    }
+                    Err(e) => {
+                        errors_total += 1;
+                        let _ = app_clone.emit("vector:index-error",
+                            serde_json::json!({"articleId": article_id, "error": e}));
+                    }
+                }
+            } else {
+                // No embedder: chunk only, store text index (embedding=null)
+                let chunks = vector::chunk_content(&content, vector::ChunkStrategy::Paragraph);
+                for chunk in &chunks {
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as i64;
+                    let row = vector::VectorChunkRow {
+                        id: format!("{}_{}", article_id, chunk.index),
+                        article_id: article_id.to_string(),
+                        chunk_index: chunk.index as i64,
+                        content: chunk.content.clone(),
+                        content_hash: chunk.content_hash.clone(),
+                        embedding: None,
+                        created_at: now,
+                    };
+                    let _ = db.upsert_vector_chunk(&row);
+                    indexed_total += 1;
+                }
+            }
+
+            // Progress per article
+            let _ = app_clone.emit("vector:index-progress", serde_json::json!({
+                "current": i + 1,
+                "total": total,
+                "articleId": article_id,
+                "indexed": indexed_total,
+                "skipped": skipped_total,
+                "errors": errors_total,
+            }));
+        }
+
+        let _ = app_clone.emit("vector:index-done", serde_json::json!({
+            "total": total,
+            "indexed": indexed_total,
+            "skipped": skipped_total,
+            "errors": errors_total,
+        }));
+    });
+
     Ok(())
 }
 
@@ -1485,10 +1962,47 @@ pub fn run() {
                 }
             }
             let database = db::Database::open(&app_dir).ok();
+
+            // 嵌入器：后台懒加载，避免启动时卡界面
+            let embedder_slot: Arc<Mutex<EmbedderState>> = Arc::new(Mutex::new(EmbedderState::Pending));
+            {
+                let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
+                let settings = DataStore::new(app_dir.clone()).load_settings();
+                if settings.vector_model_enabled {
+                    let _ = vector::ensure_onnxruntime_dylib(&model_dir);
+
+                    if Embedder::model_exists(&model_dir) {
+                        // 后台线程加载 ONNX 模型，不阻塞主线程
+                        let slot = embedder_slot.clone();
+                        let mdl = model_dir.clone();
+                        std::thread::spawn(move || {
+                            match Embedder::new(&mdl) {
+                                Ok(e) => {
+                                    println!("[向量] 嵌入器就绪 (bge-small-zh-v1.5, {}d)", e.hidden_size);
+                                    *slot.lock().unwrap() = EmbedderState::Ready(e);
+                                }
+                                Err(e) => {
+                                    eprintln!("[向量] 嵌入器初始化失败: {}", e);
+                                    *slot.lock().unwrap() = EmbedderState::Unavailable;
+                                }
+                            }
+                        });
+                    } else {
+                        eprintln!("[向量] 模型文件未找到，请到设置中下载");
+                        *embedder_slot.lock().unwrap() = EmbedderState::Unavailable;
+                    }
+                } else {
+                    eprintln!("[向量] 用户未启用，跳过");
+                    *embedder_slot.lock().unwrap() = EmbedderState::Unavailable;
+                }
+            }
+
             app.manage(AppState {
                 store: Mutex::new(DataStore::new(app_dir.clone())),
                 db: Mutex::new(database),
                 watcher_handle: Mutex::new(None),
+                current_project_path: Mutex::new(None),
+                embedder: embedder_slot,
             });
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -1505,11 +2019,23 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_window_state::Builder::default().build())?;
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Some(state) = window.try_state::<AppState>() {
+                    let project_path = state.current_project_path.lock().ok().and_then(|p| p.clone());
+                    if let Some(path) = project_path {
+                        save_project_snapshot(&state, &path);
+                    }
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
         list_writing_skills,
         save_writing_skill,
         delete_writing_skill,
-            get_collections,
+        list_custom_themes,
+        save_custom_themes,
+        delete_custom_theme,            get_collections,
             set_collections,
             get_trash,
             set_trash,
@@ -1535,6 +2061,7 @@ pub fn run() {
             save_article_blueprint,
             load_article_blueprint,
             list_skills,
+            list_unified_skills,
             read_skill,
             run_skill,
             install_skill,
@@ -1550,6 +2077,7 @@ pub fn run() {
             create_collection_db,
             rename_collection_db,
             delete_collection_db,
+            delete_collection_cascade,
             list_articles_db,
             get_article_db,
             save_article_db,
@@ -1564,6 +2092,7 @@ pub fn run() {
             get_project_context,
             get_project_context_text,
             rescan_project_folder,
+            rescan_project_folder_incremental,
             read_project_files,
             save_series_plan,
             save_all_series_plans,
@@ -1583,7 +2112,14 @@ pub fn run() {
             stop_watching_project,
             generate_image,
             save_article_images,
-            get_article_images,])
+            get_article_images,
+            vector_search,
+            index_article_vector,
+            delete_article_vector,
+            get_vector_stats,
+            index_all_vectors,
+            check_vector_model,
+            download_vector_model,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

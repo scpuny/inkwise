@@ -1,17 +1,18 @@
 // useArticleLifecycle.ts — 文章 CRUD、阶段切换、规划完成（从 MainEditorPage 抽出）
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { loadCollections, addCollection, addArticle,
   saveSeriesPlan, loadSeriesPlan } from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
+import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
 import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
 import { ArticleContext } from "../lib/article/ArticleContext";
 import { emit } from "../lib/events/eventBus";
+import { useToastStore } from "../store/toastStore";
 import { useArticleStore } from "../store/articleStore";
 import { useEditorStore } from "../store/editorStore";
 import { usePanelStore } from "../store/panelStore";
-import { useArticleLifecycle as useLifecycleRefs } from "./appHooks";
+import { useArticleLifecycleRefs } from "./appHooks";
 
 function makeBlueprint(title: string, plan: {
   title: string; description: string; outline: OutlineSection[];
@@ -43,7 +44,7 @@ export function useArticleLifecycle() {
   const {
     applyHeadingNumbersRef, pendingSeriesArticleRef, prevArticleRef,
     styleReady, setStyleReady,
-  } = useLifecycleRefs();
+  } = useArticleLifecycleRefs();
 
   const activeArticleId = useArticleStore((s) => s.activeArticleId);
   const setActiveArticleIdApp = useArticleStore((s) => s.setActiveArticleId);
@@ -71,6 +72,9 @@ export function useArticleLifecycle() {
 
   const { closePanel, setActiveArticleId: setCtxArticleId } = useAgent();
 
+  // ── 追踪新建文章：跳过持久化第一轮脏闭包值 ──
+  const freshArticleRef = useRef<string | null>(null);
+
   // ── Wrapper: sync agent context + store ──
   const setActiveArticleId = useCallback((id: string | null) => {
     setActiveArticleIdApp(id);
@@ -89,11 +93,29 @@ export function useArticleLifecycle() {
         setEditorParagraphGap(config.editorParagraphGap);
         setEditorFontFamily(config.editorFontFamily);
         setCodeThemeId(config.codeThemeId);
+        freshArticleRef.current = null;
       } else {
-        setEditorStyleTemplate('default'); setEditorLineHeight(1.75);
-        setEditorFontSize(15); setEditorMaxWidth(820);
-        setEditorParagraphGap(1.25); setEditorFontFamily('');
+        // 新文章：标记 + 立即写入整份默认配置（含 articleThemeId 等），
+        // 防止后续持久化闭包使用旧文章的值
+        freshArticleRef.current = activeArticleId;
+        setEditorStyleTemplate('default');
+        setEditorLineHeight(1.75);
+        setEditorFontSize(15);
+        setEditorMaxWidth(820);
+        setEditorParagraphGap(1.25);
+        setEditorFontFamily('');
         setCodeThemeId('atom-one-light');
+        new ArticleContext(activeArticleId).updateStyle({
+          editorStyleTemplateId: 'default', lineHeight: 1.75,
+          editorFontSize: 15, editorMaxWidth: 820,
+          editorParagraphGap: 1.25, editorFontFamily: '',
+          codeThemeId: 'atom-one-light',
+          articleThemeId: 'clean',
+          macosCodeBlock: false, firstLineIndent: false,
+          justifyAlign: false, headingConfig: {},
+          bgPattern: '', accentColor: '',
+          captionFormat: '', customCSS: '',
+        });
       }
     }
     prevArticleRef.current = activeArticleId;
@@ -103,6 +125,11 @@ export function useArticleLifecycle() {
   // ── Style persistence (on every change) ──
   useEffect(() => {
     if (!activeArticleId) return;
+    // 新建文章首次抵达时，闭包值可能仍为旧文章的，跳过此轮写入
+    if (freshArticleRef.current === activeArticleId) {
+      freshArticleRef.current = null;
+      return;
+    }
     localStorage.setItem('editor-style-template', editorStyleTemplate);
     localStorage.setItem('editor-line-height', String(editorLineHeight));
     localStorage.setItem('editor-font-size', String(editorFontSize));
@@ -199,52 +226,72 @@ export function useArticleLifecycle() {
     title: string; description: string; outline: OutlineSection[];
     tags: string[]; tone: string; targetAudience: string; targetWordCount: number;
   }, collectionId: string): Promise<{ articleId: string; collectionId: string } | null> => {
+    const addToast = useToastStore.getState().addToast;
     let targetId = collectionId;
-    const cols = await loadCollections();
-    if (!targetId || !cols.some(c => c.id === targetId)) {
-      targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
+    try {
+      const cols = await loadCollections();
+      if (!targetId || !cols.some(c => c.id === targetId)) {
+        targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
+      }
+    } catch (e) {
+      addToast({ type: "error", message: "加载文集列表失败：" + (e as Error).message });
+      return null;
     }
 
     // Check series article for existing articleId
     let existingArticleId: string | null = null;
     const seriesRef = pendingSeriesArticleRef.current;
     if (seriesRef && seriesRef.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
-      const seriesArt = seriesPlan?.articles.find(a => a.id === seriesRef.articleId);
-      if (seriesArt?.articleId) existingArticleId = seriesArt.articleId;
+      try {
+        const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
+        const seriesArt = seriesPlan?.articles.find(a => a.id === seriesRef.articleId);
+        if (seriesArt?.articleId) existingArticleId = seriesArt.articleId;
+      } catch (e) {
+        addToast({ type: "warning", message: "加载系列计划失败：" + (e as Error).message });
+      }
     }
 
     let article: { id: string };
-    if (existingArticleId) {
-      article = { id: existingArticleId };
-      await saveBlueprint(existingArticleId, makeBlueprint(plan.title || "无标题", plan));
-      await saveArticleContent(existingArticleId, makeSkeletonDoc(plan));
-    } else if (seriesRef && seriesRef.collectionId === targetId) {
-      article = { id: seriesRef.articleId };
-      await saveBlueprint(seriesRef.articleId, makeBlueprint(plan.title || "无标题", plan));
-    } else {
-      const newArticle = await addArticle(targetId, plan.title || "无标题");
-      if (!newArticle) return null;
-      article = newArticle;
-      await saveBlueprint(article.id, makeBlueprint(plan.title || "无标题", plan));
-      await saveArticleContent(article.id, makeSkeletonDoc(plan));
+    try {
+      if (existingArticleId) {
+        article = { id: existingArticleId };
+        await saveBlueprint(existingArticleId, makeBlueprint(plan.title || "无标题", plan));
+        await saveArticleContent(existingArticleId, makeSkeletonDoc(plan));
+      } else if (seriesRef && seriesRef.collectionId === targetId) {
+        article = { id: seriesRef.articleId };
+        await saveBlueprint(seriesRef.articleId, makeBlueprint(plan.title || "无标题", plan));
+      } else {
+        const newArticle = await addArticle(targetId, plan.title || "无标题");
+        if (!newArticle) return null;
+        article = newArticle;
+        await saveBlueprint(article.id, makeBlueprint(plan.title || "无标题", plan));
+        await saveArticleContent(article.id, makeSkeletonDoc(plan));
+      }
+    } catch (e) {
+      addToast({ type: "error", message: "保存文章失败：" + (e as Error).message });
+      return null;
     }
 
     // Link series article if applicable
     if (seriesRef && seriesRef.collectionId === targetId) {
-      const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
-      if (seriesPlan) {
-        await saveSeriesPlan(seriesRef.collectionId, {
-          ...seriesPlan,
-          articles: seriesPlan.articles.map(a =>
-            a.id === seriesRef.articleId ? { ...a, status: "writing" as const, articleId: article.id } : a
-          ),
-        });
+      try {
+        const seriesPlan = await loadSeriesPlan(seriesRef.collectionId, seriesRef.seriesId);
+        if (seriesPlan) {
+          await saveSeriesPlan(seriesRef.collectionId, {
+            ...seriesPlan,
+            articles: seriesPlan.articles.map(a =>
+              a.id === seriesRef.articleId ? { ...a, status: "writing" as const, articleId: article.id } : a
+            ),
+          });
+        }
+        pendingSeriesArticleRef.current = null;
+      } catch (e) {
+        addToast({ type: "warning", message: "更新系列状态失败：" + (e as Error).message });
       }
-      pendingSeriesArticleRef.current = null;
     }
 
     emit("collections-changed");
+    addToast({ type: "success", message: "文章创建成功" });
     return { articleId: article.id, collectionId: targetId };
   }, [pendingSeriesArticleRef]);
 

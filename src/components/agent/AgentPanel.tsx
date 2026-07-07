@@ -26,6 +26,7 @@ import type { AgentSession } from "../../lib/ai/agent";
 import { getSkillDisplayLabel, useAgent } from "../../lib/ai/agent";
 import { HistoryPanel } from "./HistoryPanel";
 import { ReviewPanel } from "./ReviewPanel";
+import { on } from "../../lib/events/eventBus";
 
 /* ─── Tab 定义 ─── */
 type TabId = "chat" | "history" | "review";
@@ -48,10 +49,22 @@ export function AgentPanel() {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [flashReview, setFlashReview] = useState(false);
+
   // Auto-scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions]);
+
+  // Auto-switch to review tab when review completes
+  useEffect(() => {
+    const unsub = on("review-complete", () => {
+      setPanelTab("review");
+      setFlashReview(true);
+      setTimeout(() => setFlashReview(false), 2000);
+    });
+    return () => unsub();
+  }, [setPanelTab]);
 
   if (!panelOpen) return null;
 
@@ -75,8 +88,11 @@ export function AgentPanel() {
             key={tab.id}
             role="tab"
             aria-selected={panelTab === tab.id}
-            className={`agent-panel__tab${panelTab === tab.id ? " agent-panel__tab--active" : ""}`}
-            onClick={() => setPanelTab(tab.id)}
+            className={`agent-panel__tab${panelTab === tab.id ? " agent-panel__tab--active" : ""}${tab.id === "review" && flashReview ? " agent-panel__tab--flash" : ""}`}
+            onClick={() => {
+              setPanelTab(tab.id);
+              if (tab.id === "review") setFlashReview(false);
+            }}
           >
             {tab.icon}
             <span>{tab.label}</span>
@@ -423,7 +439,9 @@ function ChatPanel({
     if (!chatInput.trim() || isProcessing) return;
     const editor = (window as any).editorInstance?.editor;
     const docContent = editor ? editor.getText() || "" : "";
-    execute(chatInput, { intent: "chat", beforeContent: docContent });
+    // Pass selection so insertion point is preserved
+    const storedSel = (window as any).__lastEditorSelection;
+    execute(chatInput, { beforeContent: docContent, selection: storedSel || undefined });
     onChatInputChange("");
   }, [chatInput, isProcessing, execute, onChatInputChange]);
 
@@ -515,7 +533,18 @@ function ChatPanel({
         {lastError && (
           <div className="agent-chat__message agent-chat__message--error">
             <div className="agent-chat__error-text">
-              {lastError?.length > 200 ? lastError.slice(0, 200) + "…" : lastError}
+              {lastError?.includes("429") || lastError?.includes("Too Many") || lastError?.includes("Rate limit") || lastError?.includes("FreeUsageLimitError")
+                ? "请求过于频繁，请稍后再试。免费 API 通常有每分钟请求数限制。"
+                : lastError?.includes("409") || lastError?.includes("Conflict")
+                ? "请求冲突，请等待当前处理完成后再试。"
+                : lastError?.includes("401") || lastError?.includes("Unauthorized")
+                ? "API Key 无效或已过期，请到设置中检查。"
+                : lastError?.includes("402") || lastError?.includes("quota") || lastError?.includes("insufficient_quota")
+                ? "账户额度不足，请检查账户余额。"
+                : lastError?.includes("timeout") || lastError?.includes("timed out")
+                ? "请求超时，请重试。"
+                : lastError?.length > 200 ? lastError.slice(0, 200) + "…"
+                : lastError}
             </div>
           </div>
         )}

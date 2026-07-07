@@ -4,12 +4,7 @@ import { initTheme, normalizeThemePreference, normalizeThemeStyle, THEME_KEY, ST
 import { initTextSize, isTextSize, TEXT_SIZE_KEY } from "../../theme/textSize";
 import { initFontFamily, isFontFamily, FONT_FAMILY_KEY } from "../../theme/fontFamily";
 import { useThemeStore } from "../../../store/themeStore";
-import type { Article, Collection, TrashItem } from "./types";
-import { genId, browserLoad, browserSave } from "./internal";
-
-// localStorage 精确读写（不走 Tauri GetCollections/SetCollections）
-const loadFromStorage = <T>(key: string, fallback: T): T => browserLoad(key, fallback);
-const saveToStorage = <T>(key: string, data: T): void => { browserSave(key, data); };
+import type { Article, Collection, TrashItem, SeriesPlan, SearchResult } from "./types";
 
 const COLLECTIONS_KEY = "inkwise-collections";
 const TRASH_KEY = "inkwise-trash";
@@ -128,12 +123,11 @@ export async function loadCollections(): Promise<Collection[]> {
 }
 
 export async function saveCollections(collections: Collection[]): Promise<void> {
-  // ponytail: backend is source of truth — write there first, then cache
-  try {
+  // 原子写入：Rust JSON 是权威源，写入失败则抛异常，不更新缓存
+  if (isTauriEnv()) {
     await tryInvoke(TauriCommands.SetCollections, { collections: collections.map(toTauriCollection) });
-  } catch (e) {
-    console.error('[saveCollections] SetCollections failed:', e);
   }
+  // 浏览器模式 或 Rust 写入成功后，更新前端缓存
   browserSave(COLLECTIONS_KEY, collections);
 }
 
@@ -146,7 +140,7 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
-  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
+  const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (c) { c.title = title; await saveCollections(all); }
 }
@@ -156,21 +150,48 @@ export async function updateCollection(
   data: { title?: string; description?: string; coverImage?: string; linkedFolder?: string }
 ): Promise<void> {
   // 精确更新合集信息，不触及其他集合和文章
-  const all = loadFromStorage<Collection[]>('inkwise-collections', []);
+  const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (!c) return;
   if (data.title !== undefined) c.title = data.title;
   if (data.description !== undefined) c.description = data.description || undefined;
   if (data.coverImage !== undefined) c.coverImage = data.coverImage || undefined;
   if (data.linkedFolder !== undefined) c.linkedFolder = data.linkedFolder || undefined;
-  saveToStorage('inkwise-collections', all);
   await saveCollections(all);
 }
 
 export async function removeCollection(id: string): Promise<void> {
   const all = await loadCollections();
   const idx = all.findIndex((x) => x.id === id);
-  if (idx >= 0) { all.splice(idx, 1); await saveCollections(all); }
+  if (idx < 0) return;
+  const col = all[idx];
+  const articleIds = col.articles.map(a => a.id);
+
+  // 前端缓存清理（localStorage）
+  for (const articleId of articleIds) {
+    try {
+      const { deleteArticleContent } = await import("../../storage/articles");
+      await deleteArticleContent(articleId);
+    } catch { console.warn("[removeCollection] cleanup failed (non-critical)"); }
+    try {
+      const { deleteAllVersions } = await import("../../storage/articleVersions");
+      await deleteAllVersions(articleId);
+    } catch { console.warn("[removeCollection] cleanup failed (non-critical)"); }
+    try { localStorage.removeItem('plan-draft-' + articleId); } catch { /* ignore */ }
+    // 🔮 向量分块清理（Sprint 3 实现后启用）
+    // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
+  }
+
+  // Tauri 后端级联清理：图片/assets/SQLite/JSON
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteCollectionCascade, { id });
+    }
+  } catch { console.warn("[removeCollection] backend cascade failed (non-critical)"); }
+
+  // 删除合集 JSON 缓存
+  all.splice(idx, 1);
+  await saveCollections(all);
 }
 
 /* ─── 文章 CRUD ─── */
@@ -212,11 +233,22 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
     const { deleteAllVersions } = await import("../../storage/articleVersions");
     await deleteAllVersions(articleId);
   } catch { console.warn("[trashArticle] deleteAllVersions failed (non-critical cleanup)"); }
+  // SQLite + 图片清理（FTS5 通过触发器自动清理）
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
+    }
+  } catch { console.warn("[trashArticle] DeleteArticleDb failed (non-critical cleanup)"); }
+  // 后端文件清理（content/meta JSON）
   try {
     if (isTauriEnv()) {
       await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
     }
   } catch { console.warn("[trashArticle] DeleteArticle failed (non-critical cleanup)"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try {
+  //   await vectorIndexer.deleteChunks(articleId);
+  // } catch { console.warn("[trashArticle] vector chunk cleanup failed (non-critical)"); }
   try {
     localStorage.removeItem('plan-draft-' + articleId);
   } catch { console.warn('[trashArticle] remove plan-draft failed (non-critical cleanup)'); }
@@ -253,7 +285,32 @@ export async function restoreArticle(trashId: string): Promise<void> {
 
 export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
   const trash = await loadTrash();
+  const item = trash.find((t) => t.id === trashId);
+  if (!item) return;
   await saveTrash(trash.filter((t) => t.id !== trashId));
+
+  // 物理删除：清理所有关联数据
+  const articleId = item.id;
+  try {
+    const { deleteArticleContent } = await import("../../storage/articles");
+    await deleteArticleContent(articleId);
+  } catch { console.warn("[permanentlyDeleteArticle] deleteArticleContent failed"); }
+  try {
+    const { deleteAllVersions } = await import("../../storage/articleVersions");
+    await deleteAllVersions(articleId);
+  } catch { console.warn("[permanentlyDeleteArticle] deleteAllVersions failed"); }
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId });
+    }
+  } catch { console.warn("[permanentlyDeleteArticle] DeleteArticleDb failed"); }
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteArticle, { id: articleId });
+    }
+  } catch { console.warn("[permanentlyDeleteArticle] DeleteArticle failed"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
 }
 
 export async function emptyTrash(): Promise<void> {
@@ -287,7 +344,7 @@ async function trySettingsSync(): Promise<void> {
       });
       console.log('[trySettingsSync] synced from backend');
     }
-  } catch { /* first launch, no saved settings yet */ }
+  } catch { console.debug("[trySettingsSync] no saved settings yet"); }
 }
 
 export async function unlinkCollectionFolder(collectionId: string): Promise<void> {
@@ -307,6 +364,8 @@ export async function unlinkCollectionFolder(collectionId: string): Promise<void
     try { localStorage.removeItem("plan-draft-" + art.id); } catch { console.warn("[unlinkCollectionFolder] remove plan-draft failed (non-critical)"); }
   }
   await saveCollections(all);
+  // 🔮 project_chunks 向量清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteCollectionChunks("project:" + collectionId); } catch { /* ignore */ }
 }
 
 export async function getCollectionFolderContext(collectionId: string): Promise<string> {
@@ -331,4 +390,156 @@ export async function getCollectionFolderContext(collectionId: string): Promise<
     } catch { console.warn("[getCollectionFolderContext] BuildFolderIndex failed"); return ""; }
   }
   return "";
+}
+
+
+// ─── Internal utilities ───
+export function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+export function browserLoad<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+export function browserSave<T>(key: string, data: T): void {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { console.warn("[browserSave] localStorage write failed (quota exceeded?)"); }
+}
+
+
+// ─── Series plan management ───
+// series.ts — 系列文章计划管理
+
+export function generateSeriesId(): string {
+  return genId();
+}
+
+const OLD_SERIES_KEY = (id: string) => `series_plan:${id}`;
+const NEW_SERIES_KEY = (id: string) => `series_plans:${id}`;
+
+export async function saveSeriesPlan(collectionId: string, plan: SeriesPlan): Promise<void> {
+  // Legacy format
+  localStorage.setItem(OLD_SERIES_KEY(collectionId), JSON.stringify(plan));
+  // New multi-format
+  const all = await loadAllSeriesPlans(collectionId);
+  const idx = all.findIndex((p) => p.id === plan.id);
+  if (idx >= 0) all[idx] = plan;
+  else all.push(plan);
+  browserSave(NEW_SERIES_KEY(collectionId), all);
+}
+
+export async function loadAllSeriesPlans(collectionId: string): Promise<SeriesPlan[]> {
+  // Check new multi-format
+  const all = browserLoad<SeriesPlan[]>(NEW_SERIES_KEY(collectionId), []);
+  if (all.length > 0) return all;
+
+  // Migrate legacy
+  const legacy = browserLoad<SeriesPlan | null>(OLD_SERIES_KEY(collectionId), null);
+  if (legacy) {
+    legacy.id = legacy.id || genId();
+    browserSave(NEW_SERIES_KEY(collectionId), [legacy]);
+    localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+    return [legacy];
+  }
+  return [];
+}
+
+export async function loadSeriesPlan(collectionId: string, seriesId: string): Promise<SeriesPlan | null> {
+  const all = await loadAllSeriesPlans(collectionId);
+  return all.find((p) => p.id === seriesId) ?? null;
+}
+
+export async function deleteSeriesPlan(collectionId: string, seriesId: string): Promise<void> {
+  const all = await loadAllSeriesPlans(collectionId);
+  const filtered = all.filter((p) => p.id !== seriesId);
+  if (filtered.length > 0) {
+    browserSave(NEW_SERIES_KEY(collectionId), filtered);
+  } else {
+    localStorage.removeItem(NEW_SERIES_KEY(collectionId));
+    localStorage.removeItem(OLD_SERIES_KEY(collectionId));
+  }
+  // Tauri 后端清理
+  try {
+    if (isTauriEnv()) {
+      await tryInvoke(TauriCommands.DeleteSeriesPlan, { collectionId, seriesId });
+    }
+  } catch { console.warn("[deleteSeriesPlan] backend cleanup failed (non-critical)"); }
+  // 🔮 向量分块清理（Sprint 3 实现后启用）
+  // try { await vectorIndexer.deleteCollectionChunks("series:" + seriesId); } catch { /* ignore */ }
+}
+
+
+// ─── Article search ───
+// search.ts — 文章搜索（标题 + 全文）
+
+/**
+ * 按标题搜索文章（同步，内存搜索）
+ */
+export function searchArticleTitles(collections: Collection[], query: string): SearchResult[] {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  const results: SearchResult[] = [];
+
+  for (const col of collections) {
+    for (const article of col.articles) {
+      const titleLower = article.title.toLowerCase();
+      let score = 0;
+      if (titleLower === q) score = 100;
+      else if (titleLower.startsWith(q)) score = 80;
+      else if (titleLower.includes(q)) score = 50;
+      else if (q.length >= 2 && titleLower.split(/[\s\u4e00-\u9fff]+/).some(
+        (w) => w.startsWith(q) || q.startsWith(w),
+      )) score = 30;
+      else continue;
+
+      results.push({
+        articleId: article.id, collectionId: col.id,
+        collectionTitle: col.title, title: article.title,
+        matchType: "title", score,
+      });
+    }
+  }
+  results.sort((a, b) => b.score - a.score);
+  return results;
+}
+
+/**
+ * 全文搜索文章内容（异步，读取文章内容）
+ */
+export async function searchArticleContent(
+  collections: Collection[],
+  query: string,
+  excludeIds: Set<string> = new Set(),
+): Promise<SearchResult[]> {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  const results: SearchResult[] = [];
+
+  for (const col of collections) {
+    for (const article of col.articles) {
+      if (excludeIds.has(article.id)) continue;
+      try {
+        const { loadArticleContent } = await import("../articles");
+        const content = await loadArticleContent(article.id);
+        if (!content) continue;
+        const contentLower = content.toLowerCase();
+        const idx = contentLower.indexOf(q);
+        if (idx === -1) continue;
+        const start = Math.max(0, idx - 30);
+        const end = Math.min(content.length, idx + q.length + 40);
+        let snippet = content.slice(start, end);
+        if (start > 0) snippet = "…" + snippet;
+        if (end < content.length) snippet = snippet + "…";
+        results.push({
+          articleId: article.id, collectionId: col.id,
+          collectionTitle: col.title, title: article.title,
+          matchType: "content", snippet, score: 20,
+        });
+      } catch { console.warn("[search] content search error (non-critical)"); }
+    }
+  }
+  return results;
 }

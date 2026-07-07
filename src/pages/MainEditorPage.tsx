@@ -5,17 +5,20 @@ import { AgentPanel } from "../components/agent/AgentPanel";
 import { ThemePicker } from "../components/settings/ThemePicker";
 import { SettingsPanel } from "../components/settings";
 import { StylePanel } from "../components/settings/StylePanel";
-import { StatusBar } from "../components/common/StatusBar";
+import { ToastContainer } from "../components/common/Toast";
+import { StatusBar} from "../components/common/StatusBar";
 import { ProjectExplorer } from "../components/common/ProjectExplorer";
 import { ArticleManager } from "../components/collections/ArticleManager";
 import { DocPicker } from "../components/collections/DocPicker";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { CommandPalette } from "../components/common/CommandPalette";
+import { TrashDialog } from "../components/common/TrashDialog";
+import { UpdateDialog } from "../components/common/UpdateDialog";
 import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
 import { genId, loadCollections, addCollection, addArticle,
   saveSeriesPlan, type SeriesPlan } from "../lib/storage/collections";
-import { loadBlueprint } from "../lib/ai/articleBlueprint";
+import { loadBlueprint } from "../lib/ai/article/blueprint";
 import { useAgent } from "../lib/ai/agent";
 import { useThemeHandlers, useSeriesEventListeners } from "../hooks/appHooks";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -28,6 +31,7 @@ import { useThemeStore } from "../store/themeStore";
 import { useEditorStore } from "../store/editorStore";
 import { usePanelStore } from "../store/panelStore";
 import { useArticleStore } from "../store/articleStore";
+import type { MainRoute } from "../store/panelStore";
 
 export default function MainEditorPage() {
   // ── Theme store ──
@@ -67,9 +71,12 @@ export default function MainEditorPage() {
   const resizing = usePanelStore((s) => s.resizing);
   const manageOpen = usePanelStore((s) => s.manageOpen);
   const docPickerOpen = usePanelStore((s) => s.docPickerOpen);
-  const projectPanelOpen = usePanelStore((s) => s.projectPanelOpen);
+  const projectPanelColId = usePanelStore((s) => s.projectPanelColId);
   const stylePanelOpen = usePanelStore((s) => s.stylePanelOpen);
   const seriesPlannerOpen = usePanelStore((s) => s.seriesPlannerOpen);
+  const trashOpen = usePanelStore((s) => s.trashOpen);
+  const mainRoute = usePanelStore((s) => s.mainRoute);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
   const setThemePickerOpen = usePanelStore((s) => s.setThemePickerOpen);
   const setSettingsOpen = usePanelStore((s) => s.setSettingsOpen);
   const setSidebarOpen = usePanelStore((s) => s.setSidebarOpen);
@@ -79,7 +86,8 @@ export default function MainEditorPage() {
   const setDocPickerOpen = usePanelStore((s) => s.setDocPickerOpen);
   const setStylePanelOpen = usePanelStore((s) => s.setStylePanelOpen);
   const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
-  const setProjectPanelOpen = usePanelStore((s) => s.setProjectPanelOpen);
+  const setTrashOpen = usePanelStore((s) => s.setTrashOpen);
+  const setProjectPanelColId = usePanelStore((s) => s.setProjectPanelColId);
 
   // ── Article store (reads) ──
   const saveState = useArticleStore((s) => s.saveState);
@@ -127,8 +135,6 @@ export default function MainEditorPage() {
   const layoutClass = [
     "layout",
     sidebarOpen ? "layout--sidebar-open" : "",
-    panelOpen ? "layout--ai-open" : "",
-    stylePanelOpen ? "layout--style-open" : "",
     resizing ? "layout--resizing" : "",
     focusMode ? "layout--focus" : "",
   ].filter(Boolean).join(" ");
@@ -138,15 +144,157 @@ export default function MainEditorPage() {
     [activeArticleId],
   );
 
+  // 路由切换：设置 mainRoute + 清理相关状态
+  const navigateTo = (route: MainRoute) => {
+    closePanel();
+    setStylePanelOpen(false);
+    setMainRoute(route);
+  };
+
+  // 主内容区渲染 — 基于路由
+  const renderMainContent = () => {
+    const getContent = () => {
+      switch (mainRoute) {
+      case 'scan':
+        return <ProjectExplorer />;
+
+      case 'manage':
+        return (
+          <ArticleManager
+            open={true}
+            onClose={() => navigateTo('editor')}
+            onOpenArticle={(articleId, collectionId) => {
+              handleOpenArticle(articleId, collectionId);
+              navigateTo('editor');
+            }}
+          />
+        );
+
+      case 'trash':
+        return (
+          <TrashDialog
+            open={true}
+            onClose={() => navigateTo('editor')}
+            pageMode={true}
+          />
+        );
+
+      case 'series-plan':
+        return (
+          <SeriesPlanner
+            key={seriesPlannerColId || "series-planner"}
+            open={true}
+            collectionId={seriesPlannerColId || ""}
+            collectionTitle={seriesPlannerColTitle}
+            linkedFolder={seriesPlannerFolder}
+            pageMode={true}
+            existingPlan={seriesPlannerExistingPlan}
+            onSave={async (plan: SeriesPlan) => {
+              if (seriesPlannerColId) {
+                await saveSeriesPlan(seriesPlannerColId, plan);
+                emit("plan-series-saved", { collectionId: seriesPlannerColId });
+                incSeriesRefreshKey();
+              }
+              navigateTo('editor');
+            }}
+            onClose={() => {
+              setSeriesPlannerExistingPlan(null);
+              navigateTo('editor');
+            }}
+          />
+        );
+
+      case 'settings':
+        return (
+          <SettingsPanel
+            open={true}
+            initialTab={settingsTab}
+            currentStyle={themeStyle}
+            currentTheme={themeMode}
+            currentTextSize={textSize}
+            currentFontFamily={fontFamily}
+            currentEditorFormat={editorFormat}
+            currentEditorLineHeight={editorLineHeight}
+            onClose={() => navigateTo('editor')}
+            onSelectStyle={handleSelectStyle}
+            onSelectTheme={handleSelectMode}
+            onSelectTextSize={handleSelectTextSize}
+            onSelectFontFamily={handleSelectFontFamily}
+            onSetEditorFormat={setEditorFormat}
+            onSetEditorLineHeight={setEditorLineHeight}
+          />
+        );
+
+      default:
+        // 'editor' — EditorPane 处理内部路由（start/plan/write/review/final）
+        return (
+          <>
+            {showFinalPage && activeArticleId ? (
+              <ArticleFinalPage
+                articleId={activeArticleId}
+                collectionId={activeCollectionId ?? ""}
+                onBackToEdit={handleBackToEdit}
+                genId={genId}
+              />
+            ) : (
+              <EditorPane
+                key={(activeArticleId ?? "") + styleReady}
+                hasActiveArticle={hasActiveArticle}
+                activeArticleId={activeArticleId}
+                activeCollectionId={activeCollectionId}
+                onNewDoc={async (collectionId?: string) => {
+                  const cols = await loadCollections();
+                  const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id);
+                  const article = await addArticle(targetId, "无标题");
+                  if (article) {
+                    setActiveArticleId(article.id);
+                    setActiveCollectionId(targetId);
+                    setHasActiveArticle(true);
+                  }
+                }}
+                onPlanComplete={handlePlanComplete}
+                onEnterEditor={handleEnterEditor}
+                onToggleFocus={() => setFocusMode(!focusMode)}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                saveState={saveState}
+                onSaveStateChange={setSaveState}
+                onPhaseChange={handlePhaseChange}
+                editorMode={editorFormat}
+                editorLineHeight={editorLineHeight}
+                editorStyleTemplateId={editorStyleTemplate}
+                onSetEditorFormat={setEditorFormat}
+                onSetEditorLineHeight={setEditorLineHeight}
+                editorFontSize={editorFontSize}
+                editorMaxWidth={editorMaxWidth}
+                editorParagraphGap={editorParagraphGap}
+                editorFontFamily={editorFontFamily}
+                codeThemeId={codeThemeId}
+                onSetEditorStyleTemplate={setEditorStyleTemplate}
+                onOutlineChange={handleOutlineChange}
+                applyHeadingNumbersRef={applyHeadingNumbersRef}
+                showHeadingNumber={showHeadingNumber}
+                onToggleStylePanel={() => { closePanel(); setStylePanelOpen(!stylePanelOpen); }}
+                onCloseStylePanel={() => setStylePanelOpen(false)}
+              />
+            )}
+          </>
+        );
+    }
+    };
+    return <div className="app__main">{getContent()}</div>;
+  };
+
   return (
     <ErrorBoundary name="app">
     <div className={"app" + (focusMode ? " app--focus" : "")}>
+      <div className="app__body">
+      <ArticleCtx.Provider value={articleCtx}>
       <div ref={layoutRef} className={layoutClass}
-        style={{ "--sidebar-width": `${sidebarWidth}px`, "--ai-dock-width": "420px" } as React.CSSProperties}
+        style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
       >
         <Sidebar
           seriesRefreshKey={seriesRefreshKey}
-          onOpenSettings={openSettings}
+          onOpenSettings={() => navigateTo('settings')}
           onSelectArticle={async (id) => {
             closePanel();
             setStylePanelOpen(false);
@@ -161,28 +309,36 @@ export default function MainEditorPage() {
             }
             const bp = await loadBlueprint(id);
             setShowFinalPage(bp?.phase === "complete");
+            navigateTo('editor');
           }}
           activeArticleId={activeArticleId}
           onNewArticle={async () => {
             closePanel();
             setStylePanelOpen(false);
             setShowFinalPage(false);
-            setProjectPanelOpen(false);
             setActiveArticleId(null);
             setActiveCollectionId(null);
             setHasActiveArticle(false);
+            navigateTo('editor');
           }}
           onNewArticleInCollection={async (collectionId: string) => {
             closePanel();
             setStylePanelOpen(false);
             setShowFinalPage(false);
-            setProjectPanelOpen(false);
             setActiveArticleId(null);
             setActiveCollectionId(collectionId);
             setHasActiveArticle(false);
             emit('reset-plan');
+            navigateTo('editor');
           }}
-          onManageArticles={() => setManageOpen(true)}
+          onManageArticles={() => navigateTo('manage')}
+          onOpenTrash={() => navigateTo('trash')}
+          onOpenProject={() => {
+            if (activeCollectionId) {
+              setProjectPanelColId(activeCollectionId);
+            }
+            navigateTo('scan');
+          }}
           outlineItems={outlineItems}
           activeOutlineId={activeOutlineId ?? undefined}
           onOutlineSelect={handleOutlineSelect}
@@ -191,79 +347,35 @@ export default function MainEditorPage() {
           onPointerDown={startResize("sidebar")}
           role="separator" aria-orientation="vertical" aria-label="调整侧栏宽度"
         />
-        <ArticleCtx.Provider value={articleCtx}>
-        {projectPanelOpen && !hasActiveArticle ? (
-          <ProjectExplorer />
-        ) : showFinalPage && activeArticleId ? (
-          <ArticleFinalPage
-            articleId={activeArticleId}
-            collectionId={activeCollectionId ?? ""}
-            onBackToEdit={handleBackToEdit}
-            genId={genId}
-          />
-        ) : (
-        <EditorPane
-          key={(activeArticleId ?? "") + styleReady}
-          hasActiveArticle={hasActiveArticle}
-          activeArticleId={activeArticleId}
-          activeCollectionId={activeCollectionId}
-          onNewDoc={async (collectionId?: string) => {
-            if (collectionId) {
-              const cols = await loadCollections();
-              const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id);
-              const article = await addArticle(targetId, "无标题");
-              if (article) {
-                setActiveArticleId(article.id);
-                setActiveCollectionId(targetId);
-                setHasActiveArticle(true);
-              }
-              return;
-            }
-            setDocPickerOpen(true);
-          }}
-          onPlanComplete={handlePlanComplete}
-          onEnterEditor={handleEnterEditor}
-          onToggleFocus={() => setFocusMode(!focusMode)}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          onSaveStateChange={setSaveState}
-          onPhaseChange={handlePhaseChange}
-          editorMode={editorFormat}
-          editorLineHeight={editorLineHeight}
-          editorStyleTemplateId={editorStyleTemplate}
-          onSetEditorFormat={setEditorFormat}
-          onSetEditorLineHeight={setEditorLineHeight}
-          editorFontSize={editorFontSize}
-          editorMaxWidth={editorMaxWidth}
-          editorParagraphGap={editorParagraphGap}
-          editorFontFamily={editorFontFamily}
-          codeThemeId={codeThemeId}
-          onSetEditorStyleTemplate={setEditorStyleTemplate}
-          onOutlineChange={handleOutlineChange}
-          applyHeadingNumbersRef={applyHeadingNumbersRef}
-          showHeadingNumber={showHeadingNumber}
-          onToggleStylePanel={() => { closePanel(); setStylePanelOpen(!stylePanelOpen); }}
-          onCloseStylePanel={() => setStylePanelOpen(false)}
-        />
+        {renderMainContent()}
+      </div>
+      {panelOpen && (
+          <div className="side-panel">
+            <AgentPanel />
+          </div>
         )}
-        <AgentPanel />
-        <StylePanel
-          key={activeArticleId}
-          open={stylePanelOpen}
-          onClose={() => setStylePanelOpen(false)}
-          editorStyleTemplateId={editorStyleTemplate}
-          lineHeight={editorLineHeight}
-          onSetEditorStyleTemplate={setEditorStyleTemplate}
-          onSetLineHeight={setEditorLineHeight}
-          editorFontSize={editorFontSize}
-          onSetEditorFontSize={setEditorFontSize}
-          editorMaxWidth={editorMaxWidth}
-          editorParagraphGap={editorParagraphGap}
-          editorFontFamily={editorFontFamily}
-          onSetEditorFontFamily={setEditorFontFamily}
-          codeThemeId={codeThemeId}
-          onSetCodeTheme={setCodeThemeId}
-          onApplyHeadingNumbers={handleApplyHeadingNumbers}
-        />
+        {stylePanelOpen && (
+          <div className="side-panel">
+            <StylePanel
+                key={activeArticleId}
+                open={stylePanelOpen}
+                onClose={() => setStylePanelOpen(false)}
+                editorStyleTemplateId={editorStyleTemplate}
+                lineHeight={editorLineHeight}
+                onSetEditorStyleTemplate={setEditorStyleTemplate}
+                onSetLineHeight={setEditorLineHeight}
+                editorFontSize={editorFontSize}
+                onSetEditorFontSize={setEditorFontSize}
+                editorMaxWidth={editorMaxWidth}
+                editorParagraphGap={editorParagraphGap}
+                editorFontFamily={editorFontFamily}
+                onSetEditorFontFamily={setEditorFontFamily}
+                codeThemeId={codeThemeId}
+                onSetCodeTheme={setCodeThemeId}
+                onApplyHeadingNumbers={handleApplyHeadingNumbers}
+              />
+          </div>
+        )}
       </ArticleCtx.Provider>
       </div>
 
@@ -271,23 +383,13 @@ export default function MainEditorPage() {
         <button className="focus-exit-btn"
           onClick={() => setFocusMode(false)}
           title="退出焦点模式 (Esc)"
-        >Exit Focus</button>
+        >退出焦点模式 <kbd className="focus-exit-btn__kbd">Esc</kbd></button>
       )}
       <StatusBar saveState={saveState} phase={articlePhase} />
       <ThemePicker
         currentStyle={themeStyle} currentMode={themeMode}
         open={themePickerOpen} onClose={() => setThemePickerOpen(false)}
         onSelectStyle={handleSelectStyle} onSelectMode={handleSelectMode}
-      />
-      <SettingsPanel
-        open={settingsOpen} initialTab={settingsTab}
-        currentStyle={themeStyle} currentTheme={themeMode}
-        currentTextSize={textSize} currentFontFamily={fontFamily}
-        currentEditorFormat={editorFormat} currentEditorLineHeight={editorLineHeight}
-        onClose={() => setSettingsOpen(false)}
-        onSelectStyle={handleSelectStyle} onSelectTheme={handleSelectMode}
-        onSelectTextSize={handleSelectTextSize} onSelectFontFamily={handleSelectFontFamily}
-        onSetEditorFormat={setEditorFormat} onSetEditorLineHeight={setEditorLineHeight}
       />
       <CommandPalette
         open={commandPaletteOpen}
@@ -302,30 +404,8 @@ export default function MainEditorPage() {
         onResult={handleDocPickerResult}
         activeCollectionId={activeCollectionId}
       />
-      <ArticleManager
-        open={manageOpen}
-        onClose={() => setManageOpen(false)}
-        onOpenArticle={handleOpenArticle}
-      />
-      <SeriesPlanner
-        open={seriesPlannerOpen}
-        collectionId={seriesPlannerColId || ""}
-        collectionTitle={seriesPlannerColTitle}
-        linkedFolder={seriesPlannerFolder}
-        existingPlan={seriesPlannerExistingPlan}
-        onSave={async (plan: SeriesPlan) => {
-          if (seriesPlannerColId) {
-            await saveSeriesPlan(seriesPlannerColId, plan);
-            emit("plan-series-saved", { collectionId: seriesPlannerColId });
-            incSeriesRefreshKey();
-          }
-          setSeriesPlannerOpen(false);
-        }}
-        onClose={() => {
-          setSeriesPlannerOpen(false);
-          setSeriesPlannerExistingPlan(null);
-        }}
-      />
+      <UpdateDialog />
+      <ToastContainer />
     </div>
     </ErrorBoundary>
   );

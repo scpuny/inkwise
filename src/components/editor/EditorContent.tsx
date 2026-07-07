@@ -19,6 +19,7 @@ import { type EditorStyleTemplate } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import type { OutlineNavigateDetail } from "../../lib/events/events";
 import { collectPublishCss } from "../../lib/styles/collector";
+import { getSelectedArticleThemeId, getThemeById, buildEditorThemeCss } from "../../lib/theme/articleThemes";
 import { InlineGhostText } from "./InlineGhostText";
 
 export type EditorMode = "rich" | "markdown";
@@ -134,7 +135,22 @@ export function EditorContent({
       prevMdRef.current = md;
       onChange(md, editorModeRef.current);
     }
-  }, [onChange]);
+    // 实时从编辑器解析大纲（ProseMirror 节点而非静态 markdown）
+    if (onOutlineChange) {
+      const items: OutlineItem[] = [];
+      let headingIdx = 0;
+      editor.state.doc.descendants((node: any, pos: number) => {
+        if (node.type.name === "heading") {
+          const text = node.textContent.trim();
+          const id = text.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-").replace(/^-+|-+$/g, "") || `h-${headingIdx}`;
+          items.push({ id, text, level: node.attrs.level });
+          headingIdx++;
+        }
+      });
+      if (outlineTimer.current) clearTimeout(outlineTimer.current);
+      outlineTimer.current = setTimeout(() => onOutlineChange(items), 300);
+    }
+  }, [onChange, onOutlineChange]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -252,7 +268,8 @@ export function EditorContent({
         if (ghostTextRef.current || isProcessingRef.current) return;
         const { from } = editor.state.selection;
         if (from < text.length - 20) return; // cursor not near end
-        execute("", { intent: "continue-writing", beforeContent: text });
+        
+        execute("", { intent: "continue-writing", beforeContent: text, selection: { from, to: from } });
       }, 2000);
     },
   });
@@ -357,8 +374,7 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
     }
   }, [editor, mode]);
 
-  // ─── 统一样式管线：使用 collectPublishCss 与导出保持一致 ───
-  const editorStyleTagRef = useRef<HTMLStyleElement | null>(null);
+  // ─── 统一样式管线：使用 collectPublishCss + buildEditorThemeCss 与导出保持一致 ───
   const [styleRevision, setStyleRevision] = useState(0);
 
   const refreshEditorStyles = useCallback(() => {
@@ -366,16 +382,27 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
   }, []);
 
   useEffect(() => {
-    if (!editorStyleTagRef.current) {
-      editorStyleTagRef.current = document.createElement("style");
-      editorStyleTagRef.current.id = "editor-unified-styles";
-      document.head.appendChild(editorStyleTagRef.current);
+    let tag = document.getElementById("editor-unified-styles") as HTMLStyleElement;
+    if (!tag) {
+      tag = document.createElement("style");
+      tag.id = "editor-unified-styles";
+      document.head.appendChild(tag);
     }
     const cssText = collectPublishCss(".editor-container .tiptap");
+    // Apply theme CSS variables for editor (colors, bg, headings, etc.)
+    // This ensures theme changes take effect in real-time in the editor
+
+    const themeId = getSelectedArticleThemeId();
+    const theme = getThemeById(themeId);
+    const themeCss = theme ? buildEditorThemeCss(theme.vars) : "";
     // Editor safety overrides for code blocks (TipTap compatibility)
-    editorStyleTagRef.current.textContent = cssText + `
+    tag.textContent = cssText + themeCss + `
 .editor-container .tiptap pre { overflow: visible !important; }
 .editor-container .tiptap pre code { overflow: visible !important; white-space: inherit !important; min-height: 1.5em !important; }`;
+    // Cleanup: remove tag on unmount so new editor instance starts fresh
+    return () => {
+      if (tag.parentNode) tag.parentNode.removeChild(tag);
+    };
   }, [styleTemplate, codeThemeId, styleRevision]);
 
   useEffect(() => {
@@ -383,14 +410,13 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
   }, [refreshEditorStyles]);
 
   // Dynamic overrides for font-size, max-width, line-height on top of unified CSS
-  const overrideTagRef = useRef<HTMLStyleElement | null>(null);
   useEffect(() => {
-    if (!overrideTagRef.current) {
-      overrideTagRef.current = document.createElement("style");
-      overrideTagRef.current.id = "editor-style-overrides";
-      document.head.appendChild(overrideTagRef.current);
+    let tag = document.getElementById("editor-style-overrides") as HTMLStyleElement;
+    if (!tag) {
+      tag = document.createElement("style");
+      tag.id = "editor-style-overrides";
+      document.head.appendChild(tag);
     }
-    const tag = overrideTagRef.current;
     const ov: string[] = [];
     if (editorFontSize) ov.push(`font-size: ${editorFontSize}px !important`);
     if (editorMaxWidth) ov.push(`max-width: ${editorMaxWidth}px !important`);
@@ -414,9 +440,14 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       .editor-container .tiptap h4:before { counter-increment: h4-counter; content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) "." counter(h4-counter) " "; color: var(--accent); }\n`;
     }
     tag.textContent = cssText;
-  }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber]);
+    // Cleanup: remove tag on unmount so new editor instance starts fresh
+    return () => {
+      if (tag.parentNode) tag.parentNode.removeChild(tag);
+    };
+  }, [editorFontSize, editorMaxWidth, lineHeight, editorFontFamily, editorParagraphGap, showHeadingNumber, styleRevision]);
 
   // Font family !important override (from StylePanel)
+  // Cleanup removes tag on unmount so new EditorContent instance starts fresh.
   useEffect(() => {
     let tag = document.getElementById('editor-font-style') as HTMLStyleElement;
     if (!tag) {
@@ -429,6 +460,9 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
       rules.push(`.tiptap, .tiptap * { font-family: ${editorFontFamily} !important; }`);
     }
     tag.textContent = rules.join('\n');
+    return () => {
+      if (tag.parentNode) tag.parentNode.removeChild(tag);
+    };
   }, [editorFontFamily]);
 
   // Expose editor globally
@@ -463,6 +497,15 @@ function compressBase64Image(dataUrl: string, maxWidth = 1200, quality = 0.8): P
             const editorCenter = editorRect.top + editorRect.height / 2;
             const scrollOffset = coords.top - editorCenter;
             editorEl.scrollBy({ top: scrollOffset, behavior: "smooth" });
+            // 高亮目标标题
+            const el = editor.view.domAtPos(pos)?.node;
+            if (el) {
+              const headingEl = el.nodeType === Node.TEXT_NODE ? el.parentElement : el as HTMLElement;
+              if (headingEl) {
+                headingEl.classList.add("heading-highlight");
+                setTimeout(() => headingEl.classList.remove("heading-highlight"), 2000);
+              }
+            }
           });
           return false; // stop traversal
         }

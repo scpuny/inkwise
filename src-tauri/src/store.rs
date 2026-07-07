@@ -11,6 +11,8 @@ pub struct ArticleMeta {
     pub title: String,
     pub created_at: u64,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -142,6 +144,8 @@ pub struct AppSettings {
     pub draw_count: u32,
     #[serde(default)]
     pub draw_negative_prompt: String,
+    #[serde(default)]
+    pub vector_model_enabled: bool,
 }
 
 // ─── AI Config ───
@@ -197,6 +201,8 @@ pub struct WritingSkill {
     pub builtin: bool,
     pub created_at: u64,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 // ─── DataStore ───
@@ -382,6 +388,7 @@ impl DataStore {
             draw_size: "1024x1024".into(),
             draw_count: 3,
             draw_negative_prompt: String::new(),
+            vector_model_enabled: false,
         })
     }
 
@@ -438,6 +445,15 @@ impl DataStore {
     pub fn save_writing_skills(&self, skills: &[WritingSkill]) -> Result<(), String> {
         self.write_json("writing_skills", skills)
     }
+    pub fn load_custom_themes(&self) -> Vec<serde_json::Value> {
+        self.read_json("custom_themes").unwrap_or_default()
+    }
+
+    pub fn save_custom_themes(&self, themes: &[serde_json::Value]) -> Result<(), String> {
+        self.write_json("custom_themes", themes)
+    }
+
+
 
     pub fn load_article_content(&self, id: &str) -> Option<String> {
         let path = self.articles_dir.join(format!("{}.md", id));
@@ -641,6 +657,8 @@ pub struct ArticleBlueprint {
     pub tags: Vec<String>,
     pub outline: Vec<OutlineSection>,
     pub updated_at: u64,
+    pub style_id: Option<String>,
+    pub action_id: Option<String>,
 }
 
 impl DataStore {

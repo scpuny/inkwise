@@ -180,8 +180,8 @@ export function StylePanel({
                           className={"style-panel__theme-card" + (t.id === articleThemeId ? " style-panel__theme-card--active" : "")}
                           onClick={() => { const _tc = t.id !== articleThemeId; setArticleThemeId(t.id); if (_tc) { onSetEditorFontSize?.(parseInt(t.vars.fontSize)); onSetLineHeight(t.vars.lineHeight); onSetEditorParagraphGap?.(parseFloat(t.vars.paragraphGap)); onSetEditorFontFamily?.(t.vars.fontFamily); } ctx?.updateStyle({ articleThemeId: t.id }); }}
                         >
-                          <div className="style-panel__theme-card-name">{t.label}</div>
-                          <div className="style-panel__theme-card-desc">{t.desc}</div>
+                          <div className="style-panel__theme-card-name" title={t.label}>{t.label}</div>
+                          <div className="style-panel__theme-card-desc" title={t.desc}>{t.desc}</div>
                           <div className="style-panel__theme-card-strip">
                             <span style={{ background: v.bgColor, border: "1px solid " + (v.blockquoteBorder || '#ddd') }} title="背景" />
                             <span style={{ background: v.textColor }} title="正文" />

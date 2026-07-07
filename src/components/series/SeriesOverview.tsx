@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { loadArticleContent } from "../../lib/storage/articles";
 import type { SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
-import { saveSeriesPlan } from "../../lib/storage/collections";
+import { saveSeriesPlan, trashArticle } from "../../lib/storage/collections";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 
 interface SeriesOverviewProps {
@@ -66,6 +66,16 @@ export function SeriesOverview({
   }, [plan, collectionId]);
 
   const handleRemoveArticle = useCallback(async (articleId: string) => {
+    // Find the article in the series plan
+    const article = plan.articles.find(a => a.id === articleId);
+    if (article?.articleId) {
+      // If the article was actually created, move it to trash
+      try {
+        await trashArticle(collectionId, article.articleId);
+      } catch (e) {
+        console.warn("[SeriesOverview] trashArticle failed", e);
+      }
+    }
     const updated = {
       ...plan,
       articles: plan.articles.filter(a => a.id !== articleId)

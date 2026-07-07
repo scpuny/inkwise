@@ -13,7 +13,7 @@ export function usePanelManager() {
   const layoutRef = useRef<HTMLDivElement>(null);
 
   const openSettings = useCallback(() => {
-    setSettingsTab("appearance");
+    setSettingsTab("general");
     setSettingsOpen(true);
   }, [setSettingsTab, setSettingsOpen]);
 

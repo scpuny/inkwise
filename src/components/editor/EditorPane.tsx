@@ -1,7 +1,7 @@
-import { FileText, FolderInput } from "lucide-react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
+import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/skill/styles";
 import {
   ArticleBlueprint,
   buildBlueprintContext,
@@ -10,16 +10,14 @@ import {
   saveBlueprint,
   type ArticlePhase,
   type OutlineSection,
-} from "../../lib/ai/articleBlueprint";
+} from "../../lib/ai/article/blueprint";
 import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
 import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
-import type { FileNode } from "../../lib/storage/collections";
-import { loadCollections } from "../../lib/storage/collections";
-import { ProjectFileTree } from "../common/ProjectFileTree";
+import { loadCollections, getProjectContext } from "../../lib/storage/collections";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
 import { ArticleHeader } from "./ArticleHeader";
@@ -29,7 +27,7 @@ import { InlineToolbar } from "./InlineToolbar";
 import { Toolbar } from "./Toolbar";
 import { AICommandBar } from "../agent/AICommandBar";
 
-import { extractImageKeywords, insertImagesIntoArticle } from "../../lib/ai/draw";
+import { extractImageKeywords, insertImagesIntoArticle, getCachedImages, cacheImages } from "../../lib/ai/draw";
 import { tryInvoke } from "../../lib/bridge/tauri";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { getProvidersSync } from "../../lib/storage/providerModels";
@@ -62,8 +60,10 @@ export function EditorPane({
   onToggleFocus,
   onToggleStylePanel,
   onCloseStylePanel,
+  saveState: saveStateProp,
   onToggleSidebar,}: {
   hasActiveArticle: boolean;
+  saveState?: "idle" | "saving" | "saved" | "error";
   activeArticleId?: string | null;
   activeCollectionId?: string | null;
   onNewDoc?: (collectionId?: string) => Promise<void>;
@@ -74,6 +74,8 @@ export function EditorPane({
     tags: string[];
     tone: string;
     skillId?: string;
+    styleId?: string;
+    actionId?: string;
     targetAudience: string;
     targetWordCount: number;
   }, collectionId: string) => Promise<{ articleId: string; collectionId: string } | null>;
@@ -106,7 +108,7 @@ export function EditorPane({
   const [sending, setSending] = useState(false);
   const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "writing" | "article-review">("idle");
   const [planStep, setPlanStep] = useState<PlanStep>("idle");
-  const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+  const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
   const [planError, setPlanError] = useState<string | null>(null);
   const [lastPlanInput, setLastPlanInput] = useState<PlanInput | null>(null);
   const [editorContent, setEditorContent] = useState<string>("");
@@ -114,12 +116,12 @@ export function EditorPane({
   const writtenContentRef = useRef<string | null>(null); // written content from plan flow
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
-  const folderProjectNameRef = useRef<string>("");
   const seriesCtxRef = useRef<string>("");
-  const [folderProjectName, setFolderProjectName] = useState("");
+  const [projectName, setProjectName] = useState<string>("");
   const [projectFiles, setProjectFiles] = useState<string[]>([]);
-const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
-  const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agentEngine").ToolEvent[]>([]);
+  const [projectStructure, setProjectStructure] = useState<any[]>([]);
+  const [projectReady, setProjectReady] = useState(false);
+  const [toolEvents, setToolEvents] = useState<import("../../lib/ai/agent/engine").ToolEvent[]>([]);
   const abortPlanRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<any>(undefined);
   const outlineTimer = useRef<any>(undefined);
@@ -149,9 +151,51 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
 
   // Blueprint state
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
+  const [blueprintLoaded, setBlueprintLoaded] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [blueprintEditorOpen, setBlueprintEditorOpen] = useState(false);
 
+  // Load project context for sidebar
+  useEffect(() => {
+    if (!activeCollectionId) {
+      setProjectName("");
+      setProjectFiles([]);
+      setProjectReady(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { loadCollections } = await import("../../lib/storage/collections");
+        const cols = await loadCollections();
+        const col = cols.find(c => c.id === activeCollectionId);
+        if (col?.linkedFolder) {
+          const ctx = await getProjectContext(col.linkedFolder);
+          setProjectName(ctx.name);
+          const files: string[] = [];
+          function collectNames(nodes: any[]) {
+            for (const n of nodes) {
+              if (!n.isDir) files.push(n.name);
+              if (n.children) collectNames(n.children);
+            }
+          }
+          if (ctx.structure) {
+            collectNames(ctx.structure);
+            setProjectStructure(ctx.structure);
+          }
+          setProjectFiles(files);
+          setProjectReady(files.length > 0);
+        } else {
+          setProjectName("");
+          setProjectFiles([]);
+          setProjectReady(false);
+        }
+      } catch {
+        setProjectName("");
+        setProjectFiles([]);
+        setProjectReady(false);
+      }
+    })();
+  }, [activeCollectionId]);
   // Sync target word count to window for StatusBar
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -320,6 +364,17 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     // explicitly chose to illustrate. The "自动配图" checkbox only controls automatic
     // (unprompted) illustration.
 
+    // Check cache first (内容哈希缓存)
+    const cacheConfig = { model: drawCfg.model, style: drawCfg.style, size: drawCfg.size || "1024x1024", count: drawCfg.count ?? 1 };
+    const cached = getCachedImages(content, cacheConfig);
+    if (cached && cached.length > 0) {
+      const newContent = insertImagesIntoArticle(content, cached.map(c => ({ path: c.path, altText: c.altText, targetSectionTitle: c.sectionTitle })));
+      await saveArticleContent(articleId, newContent);
+      contentRef.current = newContent;
+      setEditorContent(newContent);
+      return;
+    }
+
     emit("image-gen-start", { articleId, total: drawCfg.count ?? 1 });
 
     // 1. LLM 提取配图计划
@@ -395,6 +450,9 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       return;
     }
 
+    // Cache the generated images
+    cacheImages(content, cacheConfig, validImages.map(v => ({ path: v.path, altText: v.altText, sectionTitle: v.targetSectionTitle })));
+
     // 5. 插入图片到文章
     const newContent = insertImagesIntoArticle(content, validImages);
 
@@ -424,8 +482,12 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     emit("image-gen-complete", { articleId, count: validImages.length });
   }
 
-  // Style template
-  const [styleTemplate, setStyleTemplate] = useState(() => getTemplate(editorStyleTemplateId || getSelectedTemplateId()));
+  // Style template - prefer localStorage values (set by ArticleContext constructor) over props
+  const [styleTemplate, setStyleTemplate] = useState(() => {
+    const storedId = getSelectedTemplateId();
+    const effectiveId = editorStyleTemplateId || storedId;
+    return getTemplate(storedId) || getTemplate(effectiveId) || getTemplate('default');
+  });
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [pendingImageArticleId, setPendingImageArticleId] = useState<string | null>(null);
   const [pendingImageContent, setPendingImageContent] = useState<string>("");
@@ -451,11 +513,15 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
 
   // Sync styleTemplate when parent changes editorStyleTemplateId (e.g. from StylePanel)
   useEffect(() => {
-    const t = getTemplate(editorStyleTemplateId || getSelectedTemplateId());
-    if (t && t.id !== styleTemplate?.id) {
-      setStyleTemplate(t);
+    // Compare localStorage vs prop - localStorage takes priority if it has a real value
+    const storedId = getSelectedTemplateId();
+    const propT = getTemplate(editorStyleTemplateId || storedId);
+    const storedT = getTemplate(storedId);
+    const effectiveT = storedT || propT;
+    if (effectiveT && effectiveT.id !== styleTemplate?.id) {
+      setStyleTemplate(effectiveT);
     }
-  }, [editorStyleTemplateId]);
+  }, [editorStyleTemplateId, activeArticleId]);
 
   const handleSelectStyleTemplate = useCallback((id: string) => {
     const t = getTemplate(id);
@@ -500,6 +566,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     if (!activeArticleId) {
       setEditorContent("");
       setBlueprint(null);
+      setBlueprintLoaded(false);
       onOutlineChange?.([]);
       writtenContentRef.current = null;
       contentInjectedFromPlanRef.current = false;
@@ -508,13 +575,11 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       // Reset plan state so StartupSplash is fresh
       setPlanState("idle");
       setPlanStep("idle");
-      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
       setLastPlanInput(null);
       setPlanError(null);
-      // Reset folder context refs for fresh load
+      // Reset folder context ref for fresh load
       folderContextRef.current = "";
-      folderProjectNameRef.current = "";
-      setFolderProjectName("");
       return;
     }
 
@@ -559,6 +624,24 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
     loadBlueprint(activeArticleId).then((bp) => {
       if (bp) {
         setBlueprint(bp);
+        setBlueprintLoaded(true);
+        if (bp.phase === "planning") {
+          // 规划中文章 → 预填现有规划，显示 StartupSplash 审阅模式
+          setPartialPlan({
+            title: bp.workingTitle,
+            description: bp.description,
+            outline: bp.outline,
+            tags: bp.tags || [],
+            tone: bp.tone || "",
+            targetAudience: bp.targetAudience || "",
+            targetWordCount: bp.targetWordCount || 0,
+            skillId: bp.skillId,
+            styleId: bp.styleId || "general",
+            actionId: bp.actionId,
+          });
+          setPlanState("review");
+          setPlanStep("outline");
+        }
         updateOutline(contentRef.current, bp.outline);
         onPhaseChange?.(bp.phase);
       } else {
@@ -570,6 +653,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           updateOutline(contentRef.current, defaultBp.outline);
           onPhaseChange?.(defaultBp.phase);
           saveBlueprint(activeArticleId, defaultBp);
+          setBlueprintLoaded(true);
         });
       }
     });
@@ -677,7 +761,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
           targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
           skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
           projectContext: folderContextRef.current || undefined,
-          projectName: folderProjectNameRef.current || undefined,
+          projectName: "",
           seriesContext: seriesCtxRef.current || undefined,
           linkedFolder: (await (async () => {
             if (activeCollectionId) {
@@ -790,6 +874,8 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       bp.description = partialPlan.description || "";
       bp.tone = lastPlanInput?.tone || partialPlan.tone || undefined;
       bp.skillId = lastPlanInput?.skillId || undefined;
+      bp.styleId = lastPlanInput?.styleId || migrateSkillIdToStyleId(bp.skillId);
+      bp.actionId = lastPlanInput?.actionId || "action-write";
       bp.targetAudience = lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined;
       bp.targetWordCount = lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0;
       bp.tags = partialPlan.tags || [];
@@ -838,6 +924,9 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
             
             // 标记当前文章位置
             seriesCtx += `\n### 当前文章\n本文是系列「${seriesPlan.title}」的第 ${currentIdx + 1}/${allArticles.length} 篇。`;
+
+            // 要求开场白：系列文章不能在 # 标题后直接进入正文
+            seriesCtx += `\n请在文章标题（# 一级标题）之后、正文之前，写一段简短的开场白或引言，交代本篇在系列中的位置、串联前文并预告本篇核心内容。`;
             
             // 如果有上一篇，记录引用ID
             if (currentIdx > 0) {
@@ -904,7 +993,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
         targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
         skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
         projectContext: folderContextRef.current || undefined,
-        projectName: folderProjectNameRef.current || undefined,
+        projectName: "",
         seriesContext: seriesCtx || undefined,
         linkedFolder: projectLinkedFolder || undefined,
       };
@@ -1000,7 +1089,7 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       setPlanError(typeof e === "string" ? e : e?.message || "写作过程出错");
       setPlanState("article-review");
     }
-  }, [partialPlan, lastPlanInput, activeCollectionId, onPlanComplete, folderContextRef, folderProjectNameRef]);
+  }, [partialPlan, lastPlanInput, activeCollectionId, onPlanComplete, folderContextRef]);
 
   const handleEnterEditor = useCallback(() => {
     const pending = pendingArticleRef.current;
@@ -1015,20 +1104,20 @@ const [projectTree, setProjectTree] = useState<FileNode[] | null>(null);
       onEnterEditor(pending.articleId, pending.collectionId);
     }
     setPlanState("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setPlanError(null);
     pendingArticleRef.current = null;
     writtenContentRef.current = null;
   }, [onEnterEditor]);
 
-  const handleToolEvent = useCallback((event: import("../../lib/ai/agentEngine").ToolEvent) => {
+  const handleToolEvent = useCallback((event: import("../../lib/ai/agent/engine").ToolEvent) => {
     setToolEvents(prev => [...prev, event]);
   }, []);
 
   const handlePlanCancel = useCallback(() => {
     if (activeArticleId) try { localStorage.removeItem('plan-draft-' + activeArticleId); } catch {}
     setPlanState("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setPlanError(null);
   }, []);
 
@@ -1146,18 +1235,49 @@ ${seriesCtx}`;
     abortPlanRef.current = abortController;
     
     // Load linked folder path for tool-based file reading
-    const _linkedFolder = activeCollectionId
-      ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === activeCollectionId)?.linkedFolder || undefined
+    // Use planCollectionId from input if provided (avoids race condition with activeCollectionId store)
+    const targetCollectionId = input.planCollectionId || activeCollectionId;
+    const _linkedFolder = targetCollectionId
+      ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === targetCollectionId)?.linkedFolder || undefined
       : undefined;
+    // Also update project context if we got an explicit collectionId from event
+    const targetFolderContext = (input.planCollectionId && _linkedFolder && !folderContextRef.current)
+      ? await (async () => {
+          try {
+            const { buildContextText } = await import("../../lib/utils/projectContext");
+            return await buildContextText(_linkedFolder, undefined);
+          } catch {
+            try {
+              const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+              return await getCollectionFolderContext(input.planCollectionId!);
+            } catch { return undefined; }
+          }
+        })()
+      : undefined;
+    // If folder context not yet loaded, try to load it directly (race condition fix)
+    let projectCtx = folderContextRef.current;
+    if (!projectCtx && _linkedFolder) {
+      try {
+        const { buildContextText } = await import("../../lib/utils/projectContext");
+        projectCtx = await buildContextText(_linkedFolder, undefined);
+      } catch {
+        try {
+          const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+          projectCtx = await getCollectionFolderContext(activeCollectionId!);
+        } catch {}
+      }
+    }
+    // CRITICAL: Save loaded context back to ref so it persists for confirm/writing phase
+    folderContextRef.current = targetFolderContext || projectCtx || folderContextRef.current;
     const enrichedInput: PlanInput = {
       ...input,
-      projectContext: folderContextRef.current || undefined,
-      projectName: folderProjectNameRef.current || undefined,
-      collectionId: activeCollectionId || undefined,
+      projectContext: targetFolderContext || projectCtx || undefined,
+      projectName: "",
+      collectionId: targetCollectionId || undefined,
       linkedFolder: _linkedFolder,
     };
     setLastPlanInput(enrichedInput);
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: input.tone || "", targetAudience: input.targetAudience || "", targetWordCount: input.targetWordCount || 0, skillId: input.skillId || undefined, styleId: input.styleId || "general", actionId: input.actionId || "action-write" });
     setPlanError(null);
     setToolEvents([]);
     setPlanState("planning");
@@ -1167,7 +1287,7 @@ ${seriesCtx}`;
         // Check if cancelled
         if (abortController.signal.aborted) {
           setPlanState("idle");
-          setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+          setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
           return;
         }
         if (result.step === "title" && result.data) {
@@ -1202,12 +1322,44 @@ ${seriesCtx}`;
     }
     setPlanState("idle");
     setPlanStep("idle");
-    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+    setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
     setLastPlanInput(null);
     setPlanError(null);
   }, []);
 
-  // Cleanup plan on unmount
+  // Listen for external blueprint changes (e.g. from sidebar, ArticleManager)
+  useEffect(() => {
+    return on("blueprint-changed", (detail) => {
+      if (!detail?.articleId || detail.articleId !== activeArticleId) return;
+      // Re-read blueprint from storage to pick up external changes
+      loadBlueprint(detail.articleId).then((bp) => {
+        if (bp) {
+          setBlueprint(bp);
+          setBlueprintLoaded(true);
+          if (bp.phase === "planning") {
+            setPartialPlan({
+              title: bp.workingTitle,
+              description: bp.description,
+              outline: bp.outline,
+              tags: bp.tags || [],
+              tone: bp.tone || "",
+              targetAudience: bp.targetAudience || "",
+              targetWordCount: bp.targetWordCount || 0,
+              skillId: bp.skillId,
+              styleId: bp.styleId || "general",
+              actionId: bp.actionId,
+            });
+            setPlanState("review");
+            setPlanStep("outline");
+          }
+          updateOutline(contentRef.current, bp.outline);
+          onPhaseChange?.(bp.phase);
+        }
+      });
+    });
+  }, [activeArticleId]);
+
+// Cleanup plan on unmount
   useEffect(() => {
     return () => {
       if (abortPlanRef.current) {
@@ -1221,18 +1373,28 @@ ${seriesCtx}`;
   useEffect(() => {
     return on("auto-plan-article", (detail) => {
       if (!detail?.title) return;
-      const { title, description, tone: articleTone, targetAudience, skillId, targetWordCount } = detail;
+      const { title, description, tone: articleTone, targetAudience,
+              skillId, styleId, actionId, targetWordCount, seriesId, seriesTitle, seriesDescription } = detail;
       const inspiration = description 
         ? `写一篇关于「${title}」的文章：${description}`
         : `写一篇关于「${title}」的文章`;
+      const seriesCtx = seriesTitle
+        ? `系列「${seriesTitle}」
+${seriesDescription || ""}`
+        : undefined;
       handleStartPlan({
         inspiration,
         tone: articleTone || undefined,
         targetAudience: targetAudience || undefined,
         targetWordCount: targetWordCount || undefined,
         skillId: skillId || undefined,
+        styleId: styleId || undefined,
+        actionId: actionId || undefined,
         prefilledTitle: title || undefined,
         prefilledDescription: description || undefined,
+        seriesContext: seriesCtx,
+        seriesId: seriesId || undefined,
+        planCollectionId: detail.collectionId || undefined,
       });
     });
   }, [handleStartPlan]);
@@ -1242,15 +1404,11 @@ ${seriesCtx}`;
   useEffect(() => {
     // Always clear first
     folderContextRef.current = "";
-    folderProjectNameRef.current = "";
-    setFolderProjectName("");
-
-    setProjectFiles([]);
     // Reset plan state when switching collections on startup splash
     if (!activeArticleId) {
       setPlanState("idle");
       setPlanStep("idle");
-      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined });
+      setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
       setLastPlanInput(null);
       setPlanError(null);
     }
@@ -1260,8 +1418,6 @@ ${seriesCtx}`;
     loadCollections().then(cols => {
       const col = cols.find(c => c.id === activeCollectionId);
       if (col?.linkedFolder) {
-        folderProjectNameRef.current = col.title;
-        setFolderProjectName(col.title);
         import("../../lib/utils/projectContext").then(({ buildContextText }) => {
           buildContextText(col.linkedFolder!, undefined).then(ctx => {
             if (ctx) folderContextRef.current = ctx;
@@ -1271,26 +1427,6 @@ ${seriesCtx}`;
             getCollectionFolderContext(activeCollectionId!).then(ctx => {
               if (ctx) folderContextRef.current = ctx;
             });
-          });
-        });
-        // Load project context data for left panel
-        import("../../lib/storage/collections").then(({ getProjectContext }) => {
-          getProjectContext(col.linkedFolder!).then(ctx => {
-            // Store tree structure and extract top-level files for flat list fallback
-            setProjectTree(ctx.structure);
-            const topFiles = ctx.summary.topFiles
-              .filter(f => f.language)
-              .slice(0, 15)
-              .map(f => f.path.replace(ctx.rootPath + "/", ""));
-            const topSymbols = ctx.symbols
-              .filter(s => s.kind === "function" || s.kind === "class")
-              .slice(0, 10)
-              .map(s => s.name);
-            setProjectFiles([...topFiles, ...topSymbols]);
-          }).catch(() => {
-            // getProjectContext 失败时（浏览器模式或 IPC 错误），
-            // 用 collection 的基本信息作为 fallback
-            setProjectFiles([]);
           });
         });
       }
@@ -1345,7 +1481,8 @@ ${seriesCtx}`;
 
   return (
     <section className="editor-pane">
-      {(hasActiveArticle && activeArticleId) ? (
+      {/* ── TOOLBAR: only when actively editing ── */}
+      {(hasActiveArticle && activeArticleId && blueprintLoaded && blueprint && blueprint.phase !== "planning") ? (
         <Toolbar
           onModeSwitch={onSetEditorFormat}
           editorMode={parentEditorMode}
@@ -1356,7 +1493,93 @@ ${seriesCtx}`;
           onToggleFocus={onToggleFocus}
           onToggleSidebar={onToggleSidebar}        />
       ) : null}
-      {hasActiveArticle && activeArticleId ? (
+
+      {/* ── MAIN CONTENT ── */}
+      {!hasActiveArticle || !activeArticleId ? (
+        /* Welcome page — no active article */
+        <StartupSplash
+          onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
+          onAIPlan={handleStartPlan}
+          planState={planState}
+          planStep={planStep}
+          streamingContent={streamingContent}
+          partialPlan={partialPlan}
+          planError={planError}
+          lastPlanInput={lastPlanInput}
+          writingOutline={blueprint?.outline || partialPlan.outline}
+          writingSectionId={writingSection}
+          onConfirm={handlePlanConfirm}
+          onCancel={handlePlanCancel}
+          onCancelPlan={cancelPlan}
+          onEditTitle={handleEditTitle}
+          onEditDescription={handleEditDescription}
+          onEditOutline={handleEditOutline}
+          onRetry={handlePlanRetry}
+          onEnterEditor={handleEnterEditor}
+          projectName={projectName}
+          projectReady={projectReady}
+          projectFiles={projectFiles}
+          projectStructure={projectStructure}
+          toolEvents={toolEvents}
+        />
+      ) : !blueprintLoaded ? (
+        /* Loading — blueprint is loading in background */
+        <div className="editor-pane__loading">
+          <svg className="editor-pane__loading-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+          <span>加载中…</span>
+        </div>
+      ) : blueprint && blueprint.phase === "planning" ? (
+        /* Planning review — article is in planning phase */
+        <StartupSplash
+          onQuickStart={() => {
+            // 规划中文章：快速开始 → 转为写作阶段
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+            }
+          }}
+          onAIPlan={handleStartPlan}
+          planState={planState}
+          planStep={planStep}
+          partialPlan={partialPlan}
+          planError={planError}
+          lastPlanInput={lastPlanInput}
+          writingOutline={blueprint?.outline || partialPlan.outline}
+          writingSectionId={writingSection}
+          onConfirm={handlePlanConfirm}
+          onCancel={() => { setPlanState("idle"); setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined }); }}
+          onCancelPlan={cancelPlan}
+          onEditTitle={handleEditTitle}
+          onEditDescription={handleEditDescription}
+          onEditOutline={handleEditOutline}
+          onRetry={handlePlanRetry}
+          onEnterEditor={() => {
+            // 跳过规划直接进入编辑
+            if (activeArticleId && blueprint) {
+              const updatedBp = { ...blueprint, phase: "writing" as const };
+              setBlueprint(updatedBp);
+              saveBlueprint(activeArticleId, updatedBp);
+              onPhaseChange?.("writing");
+              setPlanState("idle");
+              writtenContentRef.current = contentRef.current || "";
+              contentInjectedFromPlanRef.current = true;
+              onEnterEditor?.(activeArticleId, activeCollectionId || "");
+              setPlanState("idle");
+            }
+          }}
+          streamingContent={streamingContent}
+          projectName={projectName}
+          projectReady={projectReady}
+          projectFiles={projectFiles}
+          toolEvents={toolEvents}
+        />
+      ) : (
+        /* Full editor */
         <div className="editor-content-area">
           {/* Article Blueprint Header */}
           {blueprint && (
@@ -1393,95 +1616,25 @@ ${seriesCtx}`;
             showHeadingNumber={showHeadingNumber}
           />
           <InlineToolbar />
-          <AICommandBar />        </div>
-      ) : folderProjectName ? (
-        <div className="editor-pane__startup-split">
-          <div className="editor-pane__project-panel">
-            <div className="editor-pane__project-header">
-              <FolderInput size={13} />
-              <span>项目灵感</span>
+          <AICommandBar />
+          {/* Save state indicator: green dot / spinning icon */}
+          {saveStateProp && saveStateProp !== "idle" && (
+            <div className="editor-save-indicator" title={saveStateProp === "saving" ? "保存中…" : saveStateProp === "saved" ? "已保存" : saveStateProp === "error" ? "保存失败" : ""}>
+              {saveStateProp === "saving" ? (
+                <svg className="editor-save-indicator__spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 11-6.219-8.56" />
+                </svg>
+              ) : saveStateProp === "saved" ? (
+                <span className="editor-save-indicator__dot editor-save-indicator__dot--saved" />
+              ) : (
+                <span className="editor-save-indicator__dot editor-save-indicator__dot--error" />
+              )}
+              <span className="editor-save-indicator__label">
+                {saveStateProp === "saving" ? "保存中" : saveStateProp === "saved" ? "已保存" : "保存失败"}
+              </span>
             </div>
-            <div className="editor-pane__project-name">{folderProjectName}</div>
-            {projectFiles.length > 0 ? (
-              <>
-              <p className="editor-pane__project-hint">浏览项目文件获取灵感，点击「AI 规划」开始写作</p>
-              <div className="editor-pane__project-files">
-                {projectTree ? (
-                  <ProjectFileTree
-                    nodes={projectTree}
-                    maxDepth={3}
-                    onSelect={(_path) => {
-                      // 项目灵感树仅作浏览，不触发生成
-                    }}
-                  />
-                ) : (
-                  projectFiles.map((f, i) => (
-                    <button key={i} className="editor-pane__file-chip"
-                      onClick={() => {
-                        // 项目灵感文件仅作浏览，不触发生成
-                      }}
-                    >
-                      <FileText size={10} />
-                      <span>{f}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              </>
-            ) : (
-              <p className="editor-pane__project-hint">关联了目录「{folderProjectName}」，点击下方 AI 规划开始写作</p>
-            )}
-          </div>
-          <StartupSplash
-            onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
-            onAIPlan={handleStartPlan}
-            planState={planState}
-            planStep={planStep}
-            partialPlan={partialPlan}
-            planError={planError}
-            lastPlanInput={lastPlanInput}
-            writingOutline={blueprint?.outline || partialPlan.outline}
-            writingSectionId={writingSection}
-            onConfirm={handlePlanConfirm}
-            onCancel={handlePlanCancel}
-            onCancelPlan={cancelPlan}
-            onEditTitle={handleEditTitle}
-            onEditDescription={handleEditDescription}
-            onEditOutline={handleEditOutline}
-            onRetry={handlePlanRetry}
-            onEnterEditor={handleEnterEditor}
-            streamingContent={streamingContent}
-            projectName={folderProjectName || undefined}
-            projectReady={!!folderProjectName}
-            projectFiles={projectFiles}
-            toolEvents={toolEvents}
-          />
+          )}
         </div>
-      ) : (
-        <StartupSplash
-          onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
-          onAIPlan={handleStartPlan}
-          planState={planState}
-          planStep={planStep}
-          streamingContent={streamingContent}
-          partialPlan={partialPlan}
-          planError={planError}
-          lastPlanInput={lastPlanInput}
-          writingOutline={blueprint?.outline || partialPlan.outline}
-          writingSectionId={writingSection}
-          onConfirm={handlePlanConfirm}
-          onCancel={handlePlanCancel}
-          onCancelPlan={cancelPlan}
-          onEditTitle={handleEditTitle}
-          onEditDescription={handleEditDescription}
-          onEditOutline={handleEditOutline}
-          onRetry={handlePlanRetry}
-          onEnterEditor={handleEnterEditor}
-          projectName={folderProjectName || undefined}
-          projectReady={!!folderProjectName}
-          projectFiles={projectFiles}
-          toolEvents={toolEvents}
-        />
       )}
 
       {/* Blueprint Editor Modal */}

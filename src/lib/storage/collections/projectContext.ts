@@ -2,6 +2,7 @@
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../bridge/tauri";
 import type { ProjectContext, FileNode, FileContent } from "./types";
 
+import { resolveProviderForModel } from "../../config/globalAIConfig";
 export async function linkCollectionFolder(collectionId: string, path: string): Promise<ProjectContext & { insights?: string }> {
   const ctx = await getProjectContext(path);
   const { loadCollections, saveCollections } = await import("./crud");
@@ -28,9 +29,7 @@ export async function exploreProjectForCollection(collectionId: string, path: st
   _exploringSet.add(collectionId);
   const { emit } = await import("../../events/eventBus");
   const { sendChat } = await import("../../ai/ai");
-  const { getProvidersSync } = await import("../../storage/providerModels");
-  const { resolveModel } = await import("../../config/globalAIConfig");
-  try {
+    try {
     emit("project-exploring" as any, { collectionId, status: "start" });
     emit("project-exploring" as any, { collectionId, status: "progress", toolEvent: { type: "thinking", toolName: "", toolCallId: "think_0", arguments: "", summary: "\u{1F50D} 正在读取项目目录\u2026" } });
 
@@ -53,10 +52,8 @@ export async function exploreProjectForCollection(collectionId: string, path: st
     const contextStr = buildProjectContextPrompt(ctx, fileContents);
 
     // 5. Single AI call (no tools, one round only!)
-    const providers = getProvidersSync();
-    const provider = providers.find(function(p: any) { return p.enabled && p.models && p.models.length > 0; });
-    if (!provider) throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6E AI \u63D0\u4F9B\u5546");
-    const model: string = resolveModel() || provider.models[0]?.id || "";
+    const { provider, model } = resolveProviderForModel();
+    if (!provider) throw new Error("请先在设置中配置 AI 提供商");
     const providerId: string = provider.id;
 
     const result = await sendChat({
@@ -241,33 +238,16 @@ export async function getProjectContext(path: string): Promise<ProjectContext> {
 export async function getProjectContextText(path: string): Promise<string> {
   try {
     return await invokeOrFallback<string>(
-      TauriCommands.GetProjectContext, { path, format: "text" },
+      TauriCommands.GetProjectContextText, { path },
       () => "",
     );
   } catch { return ""; }
 }
 
 export async function rescanProjectFolder(path: string): Promise<ProjectContext> {
-  try {
-    return await invokeOrFallback<ProjectContext>(
-      TauriCommands.RescanProjectFolder, { path },
-      () => ({
-        name: "", rootPath: path, primaryLanguage: null, files: [], structure: [],
-        codegraphAvailable: false,
-    configs: [],
-    symbols: [],
-    imports: [],
-        summary: { totalFiles: 0, totalDirs: 0, totalLines: 0, languages: [], topFiles: [] }, configFiles: [],
-      }),
-    );
-  } catch {
-    return { name: "", rootPath: path, primaryLanguage: null, files: [], structure: [],
-      codegraphAvailable: false,
-    configs: [],
-    symbols: [],
-    imports: [],
-      summary: { totalFiles: 0, totalDirs: 0, totalLines: 0, languages: [], topFiles: [] }, configFiles: [] };
-  }
+  return await tryInvoke<ProjectContext>(
+    TauriCommands.RescanProjectFolder, { path }
+  );
 }
 
 export async function readProjectFiles(path: string, files: string[]): Promise<FileContent[]> {

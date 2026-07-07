@@ -47,6 +47,9 @@ export async function runSkill(
   selectedText?: string,
   blueprint?: any,
   currentSectionId?: string,
+  projectPath?: string,
+  model?: string | null,
+  providerId?: string | null,
 ): Promise<AgentResult> {
   if (isTauriEnv()) {
     try {
@@ -57,6 +60,9 @@ export async function runSkill(
         selectedText: selectedText ?? "",
         blueprint: blueprint ?? null,
         currentSectionId: currentSectionId ?? null,
+        projectPath: projectPath ?? null,
+        model: model ?? null,
+        providerId: providerId ?? null,
       });
     } catch (e: any) {
       const msg = e?.message ?? String(e);
@@ -144,9 +150,12 @@ export async function runSkillStream(
   selectedText?: string,
   blueprint?: any,
   currentSectionId?: string,
+  projectPath?: string,
+  model?: string | null,
+  providerId?: string | null,
 ): Promise<string> {
   if (!isTauriEnv()) {
-    const result = await runSkill(name, userInput, documentContent, selectedText, blueprint, currentSectionId);
+    const result = await runSkill(name, userInput, documentContent, selectedText, blueprint, currentSectionId, projectPath, model, providerId);
     return result.content;
   }
 
@@ -194,6 +203,8 @@ export async function runSkillStream(
           selectedText: selectedText ?? "",
           blueprint: blueprint ?? null,
           currentSectionId: currentSectionId ?? null,
+          model: model ?? null,
+          providerId: providerId ?? null,
         }).catch((e: any) => {
           unlistenToken?.();
           unlistenDone?.();

@@ -1,6 +1,6 @@
 // events.ts — 全局事件类型定义
 // 所有自定义事件名和 payload 类型集中在此管理
-import type { ToolEvent } from "../ai/agentEngine";
+import type { ToolEvent } from "../ai/agent/engine";
 
 export interface OutlineNavigateDetail {
   headingText: string;
@@ -10,9 +10,14 @@ export interface AutoPlanArticleDetail {
   collectionId: string;
   title: string;
   description: string;
+  seriesId?: string;
+  seriesTitle?: string;
+  seriesDescription?: string;
   tone?: string;
   targetAudience?: string;
   skillId?: string;
+  styleId?: string;
+  actionId?: string;
   targetWordCount?: number;
 }
 
@@ -46,6 +51,10 @@ export interface SeriesArticleReviewDetail {
   seriesId?: string;
 }
 
+export interface BlueprintChangedDetail {
+  articleId: string;
+}
+
 export interface ContentSavedDetail {
   articleId: string;
   content: string;
@@ -68,6 +77,13 @@ export interface ProjectExploringDoneDetail {
   collectionId: string;
   status: "done" | "error";
   message?: string;
+}
+
+// ── Review Complete Event ──
+
+export interface ReviewCompleteDetail {
+  articleId: string;
+  summary?: string;
 }
 
 // ── Image Generation Events ──
@@ -103,6 +119,7 @@ export type EventBusKey =
   | "edit-series-plan"
   | "plan-series-article"
   | "series-article-review"
+  | "blueprint-changed"
   | "content-saved"
   | "editor-ready"
   | "providers-changed"
@@ -113,7 +130,8 @@ export type EventBusKey =
   | "image-gen-complete"
   | "image-gen-error"
   | "writing-skill-changed"
-  | "project-exploring";
+  | "project-exploring"
+  | "review-complete";
 
 export interface EventBusMap {
   "article-theme-changed": void;
@@ -125,6 +143,7 @@ export interface EventBusMap {
   "edit-series-plan": EditSeriesPlanDetail;
   "plan-series-article": PlanSeriesArticleDetail;
   "series-article-review": SeriesArticleReviewDetail;
+  "blueprint-changed": BlueprintChangedDetail;
   "content-saved": ContentSavedDetail;
   "editor-ready": void;
   "providers-changed": void;
@@ -136,4 +155,5 @@ export interface EventBusMap {
   "image-gen-error": ImageGenErrorDetail;
   "writing-skill-changed": string;
   "project-exploring": ProjectExploringStartDetail | ProjectExploringProgressDetail | ProjectExploringDoneDetail;
+  "review-complete": ReviewCompleteDetail;
 }

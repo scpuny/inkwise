@@ -69,3 +69,34 @@ Tauri commands are listed as `TauriCommands` enum in `src/lib/bridge/tauri.ts`. 
 - **Skills**: Markdown files with frontmatter. Builtin skills defined in both Rust `skill.rs` `builtin_skills()` and frontend `skill.ts`. Skills support inline and subagent execution modes, context injection sources, and Alt+1~5 hotkeys
 - **Publishing**: Each platform gets a branch in `publisher.rs`, follows token → media → draft → publish flow, returns `PublishResult`
 - **Git**: Prefer new commits over amend, no forced pushes, no bypassing hooks
+
+## 开发工作流（强制规则）
+
+### v2.0.0 开发规范
+
+1. **每完成一个功能点**，必须先更新 `docs/plan/TRACKING.md`：
+   - 状态改为 🟢
+   - 填写完成日期
+   - 更新底部统计看板的完成数字
+2. **更新后立即提交 Git**：
+   - 提交信息格式：`feat: [功能编号] 功能描述`
+   - 示例：`feat: 1.1.1 loadCollections统一入口`
+3. **只有提交后才能开始下一个功能点**
+4. **功能开发顺序**：严格按照 `docs/plan/TRACKING.md` 的 Sprint 划分顺序执行，
+   不可跳 Sprint。每个 Sprint 完成后更新 INDEX.md 中的状态并打 tag
+5. **Sprint 完成检查**：标注该 Sprint 所有功能点为 🟢 后，打版本 tag：
+   - Sprint 1 → `v2.0.0-alpha`
+   - Sprint 2 → `v2.0.0-beta`
+   - Sprint 3 → `v2.0.0-rc`
+   - Sprint 4 → `v2.0.0`
+
+<!-- CODEGRAPH_START -->
+## CodeGraph
+
+In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+
+- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
+- **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
+
+If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
+<!-- CODEGRAPH_END -->

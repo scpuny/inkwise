@@ -25,6 +25,7 @@ impl ChatMessage {
     pub fn user(content: impl Into<String>) -> Self {
         Self { role: "user".into(), content: Some(content.into()), tool_calls: None, tool_call_id: None, name: None }
     }
+    #[allow(dead_code)]
     pub fn assistant(content: impl Into<String>) -> Self {
         Self { role: "assistant".into(), content: Some(content.into()), tool_calls: None, tool_call_id: None, name: None }
     }
@@ -113,8 +114,10 @@ pub struct ProviderListConfig {
 // ─── Provider resolution ───
 
 /// Look up a provider and build a ProviderConfig.
-/// If `provider_id` is Some, finds by id; otherwise finds the first enabled provider with models.
-/// If `model` is Some, uses it; otherwise uses the provider's first model.
+/// If `provider_id` is Some, finds by id.
+/// If `model` is Some, tries to find the provider that has that model first.
+/// Otherwise uses the first enabled provider,
+/// but prefers the user's default model from AiConfig when available.
 pub fn resolve_provider(
     store: &Mutex<DataStore>,
     provider_id: Option<&str>,
@@ -123,14 +126,38 @@ pub fn resolve_provider(
     let store = store.lock().map_err(|e| e.to_string())?;
     let providers = store.load_providers();
 
+    // If no model specified, try to use the user's saved default model from AiConfig
+    let effective_model: Option<String> = model
+        .map(|m| m.to_string())
+        .or_else(|| {
+            store.load_ai_config()
+                .and_then(|cfg| cfg.default_model)
+                .filter(|m| !m.is_empty())
+        });
+
+    // If we have a specific model but no provider_id, find the provider that has it
     let provider = match provider_id {
         Some(pid) => providers.iter().find(|p| p.id == pid)
             .ok_or_else(|| format!("未找到提供商: {pid}"))?,
-        None => providers.iter().find(|p| p.enabled && !p.models.is_empty())
-            .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?,
+        None => {
+            // Try to find a provider that has the requested model
+            if let Some(ref m) = effective_model {
+                if let Some(p) = providers.iter().find(|p| {
+                    p.enabled && p.models.iter().any(|pm| pm.id == *m)
+                }) {
+                    p
+                } else {
+                    providers.iter().find(|p| p.enabled && !p.models.is_empty())
+                        .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?
+                }
+            } else {
+                providers.iter().find(|p| p.enabled && !p.models.is_empty())
+                    .ok_or_else(|| "没有已启用的 AI 提供商".to_string())?
+            }
+        },
     };
 
-    let model = model.map(|m| m.to_string()).unwrap_or_else(|| provider.models[0].id.clone());
+    let model = effective_model.unwrap_or_else(|| provider.models[0].id.clone());
 
     Ok(ProviderConfig {
         id: provider.id.clone(),

@@ -6,7 +6,7 @@ import { loadCollections, addCollection, addArticle, renameArticle, genId,
   linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan, loadAllSeriesPlans,
   type SeriesPlan,
 } from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/articleBlueprint";
+import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
 import { saveArticleContent } from "../lib/storage/articles";
 import { useAgent } from "../lib/ai/agent";
 import { usePanelStore } from "../store/panelStore";
@@ -87,7 +87,7 @@ export function useThemeHandlers() {
 /**
  * 文章生命周期处理器
  */
-export function useArticleLifecycle() {
+export function useArticleLifecycleRefs() {
   const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
   const setActiveCollectionId = useArticleStore((s) => s.setActiveCollectionId);
   const setHasActiveArticle = useArticleStore((s) => s.setHasActiveArticle);
@@ -136,7 +136,7 @@ export function usePlanSeriesListener() {
   const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   useEffect(() => {
     const handler = (detail?: EventBusMap["plan-series"]) => {
@@ -149,7 +149,7 @@ export function usePlanSeriesListener() {
             setSeriesPlannerColId(col.id);
             setSeriesPlannerColTitle(col.title);
             setSeriesPlannerFolder(col.linkedFolder || "");
-            setSeriesPlannerOpen(true);
+            setMainRoute('series-plan');
           } else {
             console.warn("plan-series: 未找到合集", collectionId);
           }
@@ -168,7 +168,7 @@ export function useEditSeriesPlanListener() {
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
   const setSeriesPlannerExistingPlan = useArticleStore((s) => s.setSeriesPlannerExistingPlan);
-  const setSeriesPlannerOpen = usePanelStore((s) => s.setSeriesPlannerOpen);
+  const setMainRoute = usePanelStore((s) => s.setMainRoute);
 
   useEffect(() => {
     const handler = async (detail?: EventBusMap["edit-series-plan"]) => {
@@ -185,7 +185,7 @@ export function useEditSeriesPlanListener() {
         setSeriesPlannerColTitle(col.title);
         setSeriesPlannerFolder(col.linkedFolder || "");
         setSeriesPlannerExistingPlan(plan || null);
-        setSeriesPlannerOpen(true);
+        setMainRoute('series-plan');
       }
     };
     return on("edit-series-plan", handler);
@@ -214,6 +214,8 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
         const seriesTone = seriesPlan?.tone;
         const seriesAudience = seriesPlan?.targetAudience;
         const seriesSkillId = seriesPlan?.skillId;
+        const seriesStyleId = seriesPlan?.styleId;
+        const seriesActionId = seriesPlan?.actionId;
 
         // 计算文章在系列中的序号，追加到标题
         const articleIndex = seriesPlan?.articles?.findIndex(a => a.id === article.id) ?? -1;
@@ -224,14 +226,23 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
           ? articleIndex + 1 + '. ' + numberedTitle
           : article.title;
 
-        setTimeout(() => {
+        setTimeout(async () => {
+          const seriesTitle = seriesPlan?.title || "";
+          const seriesDescription = seriesPlan?.articles?.map((a, i) =>
+            `${i+1}. ${a.title}${a.description ? " — " + a.description : ""}`
+          ).join("\n");
           emit("auto-plan-article", {
             collectionId,
+            seriesId: eventSeriesId || "",
+            seriesTitle,
+            seriesDescription,
             title: finalTitle,
             description: article.description || "",
             tone: seriesTone,
             targetAudience: seriesAudience,
             skillId: seriesSkillId,
+            styleId: seriesStyleId || undefined,
+            actionId: seriesActionId || undefined,
             targetWordCount: article.targetWordCount,
           });
         }, 100);
