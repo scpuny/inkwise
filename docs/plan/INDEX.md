@@ -69,7 +69,7 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 ├─────────────────────────────────────────────────────────────────┤
 │                     UI Layer                                     │
 │  EditorPage（~80行容器） + PlanPanel + EditorCanvas              │
-│  AIActionBar + AIFloatingPanel（浮动层，不固定占位）              │
+│  AIActionBar + AISidebar（tab 侧栏，`Cmd+B` 切换）               │
 │  只做渲染 + 事件绑定，状态由 Service 管理                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -106,20 +106,23 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 ## 实施路线
 
 ```
-Sprint 6: 存储统一（SQLite 成为唯一事实源 + 数据迁移）
-  ├── 定义完整 SQLite schema + migration 脚本
-  ├── 所有 Tauri 命令从 JSON 改为 SQLite
-  └── 删除旧 JSON 文件和冗余前端存储层
+Sprint 6: 存储统一 + 后端模块拆分
+  ├── domain/ 类型定义独立
+  ├── storage/ (SQLite + Storage trait + migration)
+  ├── commands/ 迁移（JSON 命令逐个切到 SQLite）
+  ├── ai/ 拆分（openai.rs + anthropic.rs + streaming.rs）
+  ├── 前端存储层重写（去掉 localStorage 业务缓存）
+  └── 删除旧文件（store.rs / db.rs / JSON 文件）
 
-Sprint 7: 分层拆分（代码重组）
-  ├── Domain 类型独立 + Infrastructure 接口定义
-  ├── Service 层提取（PlanService / DocumentService 等）
-  └── EditorPane 拆 5 个组件 + planState 简化
+Sprint 7: 分层拆分
+  ├── Service 层提取（PlanService / DocumentService / CollectionService）
+  ├── EditorPane 拆分 + planState 简化
+  └── 右侧面板合并为 tab 侧栏
 
-Sprint 8: 功能增强（新能力）
-  ├── Skill 纯净分离 + PhaseConfig 独立注册
+Sprint 8: 增强
+  ├── Skill 纯净分离 + PhaseConfig 独立
   ├── 向量搜索 ndarray 矩阵乘加速
-  └── UI 浮动层 + 一致性交互
+  └── 一致性交互打磨
 ```
 
 ---
