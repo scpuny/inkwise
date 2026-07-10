@@ -297,8 +297,19 @@ export async function restoreArticle(trashId: string): Promise<void> {
 export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
   const trash = await loadTrash();
   const item = trash.find((t) => t.id === trashId);
-  if (!item) return;
-  await saveTrash(trash.filter((t) => t.id !== trashId));
+  if (!item) {
+    console.warn("[permanentlyDeleteArticle] item not found in trash, id:", trashId);
+    return;
+  }
+  const filtered = trash.filter((t) => t.id !== trashId);
+  await saveTrash(filtered);
+
+  // Verify save succeeded
+  const verify = await loadTrash();
+  if (verify.find((t) => t.id === trashId)) {
+    console.error("[permanentlyDeleteArticle] saveTrash did NOT remove item!");
+    return; // Don't proceed with physical cleanup if trash list wasn't updated
+  }
 
   // 物理删除：清理所有关联数据
   const articleId = item.id;
@@ -328,23 +339,24 @@ export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
 
 export async function emptyTrash(): Promise<void> {
   const trash = await loadTrash();
+  if (trash.length === 0) return;
   // 物理清理每个条目
   for (const item of trash) {
     const articleId = item.id;
     try {
       const { deleteArticleContent } = await import("../../storage/articles");
       await deleteArticleContent(articleId);
-    } catch { /* ignore */ }
+    } catch (e) { console.warn("[emptyTrash] deleteArticleContent failed for", articleId, e); }
     try {
       const { deleteAllVersions } = await import("../../storage/articleVersions");
       await deleteAllVersions(articleId);
-    } catch { /* ignore */ }
+    } catch (e) { console.warn("[emptyTrash] deleteAllVersions failed for", articleId, e); }
     try {
       if (isTauriEnv()) { await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId }); }
-    } catch { /* ignore */ }
+    } catch (e) { console.warn("[emptyTrash] DeleteArticleDb failed for", articleId, e); }
     try {
       if (isTauriEnv()) { await tryInvoke(TauriCommands.DeleteArticle, { id: articleId }); }
-    } catch { /* ignore */ }
+    } catch (e) { console.warn("[emptyTrash] DeleteArticle failed for", articleId, e); }
   }
   await saveTrash([]);
   // Notify UI components
