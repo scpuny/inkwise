@@ -26,20 +26,26 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
   }, [open]);
 
   const handleRestore = async (id: string) => {
-    await restoreArticle(id);
-    loadTrash().then(setTrashItems);
+    try {
+      await restoreArticle(id);
+      loadTrash().then(setTrashItems);
+    } catch (e) { console.error("[TrashDialog] restore failed:", e); }
   };
 
   const handlePermanentDelete = async (id: string) => {
     if (!confirm("确定永久删除此文章？此操作不可撤销。")) return;
-    await permanentlyDeleteArticle(id);
-    loadTrash().then(setTrashItems);
+    try {
+      await permanentlyDeleteArticle(id);
+      loadTrash().then(setTrashItems);
+    } catch (e) { console.error("[TrashDialog] permanent delete failed:", e); }
   };
 
   const handleEmptyTrash = async () => {
     if (!confirm("确定清空回收站？此操作不可撤销。")) return;
-    await emptyTrash();
-    setTrashItems([]);
+    try {
+      await emptyTrash();
+      setTrashItems([]);
+    } catch (e) { console.error("[TrashDialog] empty trash failed:", e); }
   };
 
   if (!open) return null;

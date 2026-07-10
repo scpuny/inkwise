@@ -290,6 +290,8 @@ export async function restoreArticle(trashId: string): Promise<void> {
   }
   c.articles.push({ id: item.id, title: item.title, createdAt: item.deletedAt, updatedAt: item.deletedAt });
   await saveCollections(all);
+  // Notify UI components
+  emit("collections-changed");
 }
 
 export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
@@ -320,10 +322,33 @@ export async function permanentlyDeleteArticle(trashId: string): Promise<void> {
   } catch { console.warn("[permanentlyDeleteArticle] DeleteArticle failed"); }
   // 🔮 向量分块清理（Sprint 3 实现后启用）
   // try { await vectorIndexer.deleteChunks(articleId); } catch { /* ignore */ }
+  // Notify UI components
+  emit("collections-changed");
 }
 
 export async function emptyTrash(): Promise<void> {
+  const trash = await loadTrash();
+  // 物理清理每个条目
+  for (const item of trash) {
+    const articleId = item.id;
+    try {
+      const { deleteArticleContent } = await import("../../storage/articles");
+      await deleteArticleContent(articleId);
+    } catch { /* ignore */ }
+    try {
+      const { deleteAllVersions } = await import("../../storage/articleVersions");
+      await deleteAllVersions(articleId);
+    } catch { /* ignore */ }
+    try {
+      if (isTauriEnv()) { await tryInvoke(TauriCommands.DeleteArticleDb, { id: articleId }); }
+    } catch { /* ignore */ }
+    try {
+      if (isTauriEnv()) { await tryInvoke(TauriCommands.DeleteArticle, { id: articleId }); }
+    } catch { /* ignore */ }
+  }
   await saveTrash([]);
+  // Notify UI components
+  emit("collections-changed");
 }
 
 /* ─── 文集文件夹关联 ─── */
