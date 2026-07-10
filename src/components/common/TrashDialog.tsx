@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Trash2, RotateCcw, X, FileText, ArrowLeft } from "lucide-react";
 import { loadTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, type TrashItem } from "../../lib/storage/collections";
 import { on } from "../../lib/events/eventBus";
+import { isTauriEnv } from "../../lib/bridge/tauri";
 
 interface TrashDialogProps {
   open: boolean;
@@ -33,9 +34,21 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
     } catch (e) { console.error("[TrashDialog] restore failed:", e); }
   };
 
+  /** Tauri 原生 confirm 对话框（带浏览器降级） */
+  async function tauriConfirm(message: string, title: string): Promise<boolean> {
+    if (isTauriEnv()) {
+      try {
+        const { confirm } = await import("@tauri-apps/plugin-dialog");
+        return await confirm(message, { title, kind: "warning" });
+      } catch { /* fall through */ }
+    }
+    return window.confirm(title + "\n" + message);
+  }
+
   const handlePermanentDelete = async (id: string) => {
     console.log("[TrashDialog] handlePermanentDelete called, id:", id);
-    if (!confirm("确定永久删除此文章？此操作不可撤销。")) return;
+    const ok = await tauriConfirm("此操作不可撤销。", "确定永久删除此文章？");
+    if (!ok) return;
     console.log("[TrashDialog] confirm OK, proceeding...");
     try {
       await permanentlyDeleteArticle(id);
@@ -45,7 +58,8 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
 
   const handleEmptyTrash = async () => {
     console.log("[TrashDialog] handleEmptyTrash called");
-    if (!confirm("确定清空回收站？此操作不可撤销。")) return;
+    const ok = await tauriConfirm("此操作不可撤销。", "确定清空回收站？");
+    if (!ok) return;
     console.log("[TrashDialog] confirm OK, proceeding...");
     try {
       await emptyTrash();
