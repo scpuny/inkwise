@@ -1406,6 +1406,8 @@ ${seriesCtx}`;
     setPlanError(null);
     setToolEvents([]);
     setPlanState("planning");
+    // Track generated values for logging (state not yet flushed)
+    let _title = "", _desc = "", _outlineCount = 0, _tagCount = 0;
     try {
       const gen = generatePlanStream(enrichedInput);
       for await (const result of gen) {
@@ -1416,12 +1418,16 @@ ${seriesCtx}`;
           return;
         }
         if (result.step === "title" && result.data) {
+          _title = result.data;
           setPartialPlan(p => ({ ...p, title: result.data }));
         } else if (result.step === "description" && result.data) {
+          _desc = result.data;
           setPartialPlan(p => ({ ...p, description: result.data }));
         } else if (result.step === "outline" && result.data) {
+          _outlineCount = Array.isArray(result.data) ? result.data.length : 0;
           setPartialPlan(p => ({ ...p, outline: result.data }));
         } else if (result.step === "tags" && result.data) {
+          _tagCount = Array.isArray(result.data) ? result.data.length : 0;
           setPartialPlan(p => ({ ...p, tags: result.data }));
         } else if (result.step === "explored" && result.data) {
           setPartialPlan(p => ({ ...p, projectInsights: result.data }));
@@ -1429,6 +1435,7 @@ ${seriesCtx}`;
         setPlanStep(result.step);
       }
       if (!abortController.signal.aborted) {
+        console.log("[plan] ✅ Done. title:", _title?.slice(0,40), "desc:", _desc?.slice(0,40), "outline:", _outlineCount, "tags:", _tagCount);
         setPlanState("review");
       }
     } catch (e: any) {
