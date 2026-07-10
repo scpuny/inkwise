@@ -1,5 +1,6 @@
 // crud.ts — 集合/文章/回收站 CRUD 操作
 import { isTauriEnv, tryInvoke, invokeOrFallback, TauriCommands } from "../../bridge/tauri";
+import { emit } from "../../events/eventBus";
 import { initTheme, normalizeThemePreference, normalizeThemeStyle, THEME_KEY, STYLE_KEY } from "../../theme/theme";
 import { initTextSize, isTextSize, TEXT_SIZE_KEY } from "../../theme/textSize";
 import { initFontFamily, isFontFamily, FONT_FAMILY_KEY } from "../../theme/fontFamily";
@@ -252,18 +253,26 @@ export async function trashArticle(collectionId: string, articleId: string): Pro
   try {
     localStorage.removeItem('plan-draft-' + articleId);
   } catch { console.warn('[trashArticle] remove plan-draft failed (non-critical cleanup)'); }
+  // Notify UI components (trash dialog sidebar, trash count, etc.)
+  emit("collections-changed");
 }
 
 /* ─── 回收站 ─── */
 
 export async function loadTrash(): Promise<TrashItem[]> {
-  try { return await tryInvoke<TrashItem[]>(TauriCommands.GetTrash); } catch { console.warn("[loadTrash] GetTrash failed, using localStorage fallback"); }
+  // Try backend first
+  try {
+    const backend = await tryInvoke<TrashItem[]>(TauriCommands.GetTrash);
+    // If backend returned data, use it (merge with localStorage for safety)
+    if (backend && backend.length > 0) return backend;
+  } catch { console.warn("[loadTrash] GetTrash failed, using localStorage fallback"); }
+  // Fallback: localStorage (also covers the case where saveTrash write to backend failed)
   return browserLoad<TrashItem[]>(TRASH_KEY, []);
 }
 
 export async function saveTrash(items: TrashItem[]): Promise<void> {
   // ponytail: backend is source of truth — write there first, then cache
-  try { await tryInvoke(TauriCommands.SetTrash, { items }); } catch { console.warn("[saveTrash] SetTrash failed"); }
+  try { await tryInvoke(TauriCommands.SetTrash, { trash: items }); } catch { console.warn("[saveTrash] SetTrash failed"); }
   browserSave(TRASH_KEY, items);
 }
 

@@ -529,6 +529,14 @@ impl DataStore {
         }
     }
 
+    pub fn delete_article_document(&self, id: &str) -> Result<(), String> {
+        let path = self.documents_dir.join(format!("{}.json", id));
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
     // ─── Article metadata (individual .meta.json) ───
 
     pub fn save_article_meta(&self, meta: &ArticleMeta) -> Result<(), String> {

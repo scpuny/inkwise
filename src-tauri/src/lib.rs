@@ -351,6 +351,7 @@ fn delete_article(state: tauri::State<AppState>, id: String) -> Result<(), Strin
     store.delete_article_content(&id)?;
     store.delete_article_meta(&id)?;
     store.delete_blueprint(&id).ok();
+    store.delete_article_document(&id).ok();
     Ok(())
 }
 
