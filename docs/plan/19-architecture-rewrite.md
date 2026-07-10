@@ -256,13 +256,16 @@ CREATE VIRTUAL TABLE documents_fts USING fts5(
 -- 3 个触发器：documents_search_ai, _ad, _au (同现有的 articles_search 模式)
 
 -- ─── 向量分块 ───
+-- 存储策略：Base64(float32[]) 存 TEXT 列。
+-- 查询策略：全量加载 → ndarray 矩阵乘法一次算全部余弦相似度 → Top-K。
+-- 说明见 3.1.3 节「向量存储策略」
 CREATE TABLE vector_chunks (
     id              TEXT PRIMARY KEY,
     document_id     TEXT NOT NULL,
     chunk_index     INTEGER NOT NULL,
     content         TEXT NOT NULL,
     content_hash    TEXT NOT NULL,
-    embedding       TEXT,                            -- Base64 float32 array
+    embedding       TEXT,                            -- Base64(float32[384])
     created_at      INTEGER NOT NULL
 );
 CREATE INDEX idx_vector_document ON vector_chunks(document_id);
@@ -296,6 +299,67 @@ CREATE INDEX idx_phase_skill ON phase_configs(skill_id, phase);
 
 -- ─── 系统主题（非业务，仍可放 SQLite 但 localStorage 兜底也行） ───
 -- 存储在 settings 表中：key='system_theme', value='{...}'
+```
+
+#### 3.1.3 向量存储策略
+
+**本地模型**：bge-small-zh-v1.5（384 维，~1.5KB/向量）
+**推理引擎**：tract-onnx（纯 Rust，已在项目中）
+**索引兜底**：tree-sitter AST + FTS5（向量不可用时回退）
+
+**为什么选方案 3（ndarray 矩阵运算）而不是 sqlite-vec：**
+
+| 方案 | 实现 | 优缺点 |
+|------|------|--------|
+| 1. BLOB 存 + 逐条算 | 当前方案 | 万条以内够用，逐条循环慢 |
+| 2. sqlite-vec 扩展 | 编译 .dylib 随 Tauri 打包 | 需额外依赖，打包复杂，项目规模不需要 |
+| **3. ndarray 矩阵算** | **全量加载 → 矩阵乘法一次算所有** | **零额外依赖，性能提升 10-100x** |
+
+**方案 3 的查询流程：**
+
+```
+用户搜索 "如何优化 Rust 编译速度"
+  │
+  ├── embedder.embed("如何优化...") 
+  │   └── 返回 [0.12, -0.34, ..., 0.67]  (384维)
+  │
+  ├── SQLite: SELECT id, content, embedding FROM vector_chunks
+  │   └── Rust 端解码: Base64 → Vec<Vec<f32>>
+  │
+  ├── ndarray::stack(all_embeddings)  // shape: (N, 384)
+  ├── scores = embeddings.dot(&query)  // 一次矩阵乘，shape: (N,)
+  │   └── 比逐条 for 循环快 10-100 倍（SIMD 自动向量化）
+  │
+  ├── top_k_indices(scores, 5)         // 取前 5
+  │
+  └── 返回 VectorSearchResult[]
+```
+
+**性能估算（以 5,000 条 chunk, 384 维为例）：**
+
+| 步骤 | 方案 1（逐条循环） | 方案 3（矩阵乘） |
+|------|-------------------|-----------------|
+| Base64 解码 | ~30ms | ~30ms |
+| 余弦相似度计算 | ~80ms | ~1-3ms |
+| 排序 Top-5 | ~2ms | ~2ms |
+| **总计** | **~112ms** | **~33-35ms** |
+
+**索引增量更新**：
+
+```
+写文章 → 分块(chunk.rs) → 对比 content_hash 找出变化块
+  └── 变化的块 → embedder.embed() → Base64 编码 → UPSERT vector_chunks
+  └── 未变化的块 → 跳过（content_hash 相同）
+```
+
+**回退策略（降级链）**：
+
+```
+语义搜索 → 向量模型就绪？ → YES → ndarray 矩阵乘 → 返回
+                      ↓ NO
+                  tree-sitter / FTS5 精确匹配 → 返回
+                      ↓ NO
+                  内存关键词搜索 → 返回
 ```
 
 #### 3.1.2 迁移路径
