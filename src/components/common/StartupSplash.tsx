@@ -59,7 +59,8 @@ async function ensureSkills() {
 interface StartupSplashProps {
   onQuickStart: () => void;
   onAIPlan: (input: PlanInput) => void;
-  planState: "idle" | "planning" | "review" | "writing" | "article-review";
+  onContinueToOutline?: () => void;
+  planState: "idle" | "planning" | "review" | "review-title-desc" | "writing" | "article-review";
   planStep: PlanStep;
   partialPlan: PartialPlan;
   planError: string | null;
@@ -88,7 +89,7 @@ function skillLabel(id: string): string {
 }
 
 export function StartupSplash({
-  onQuickStart, onAIPlan,
+  onQuickStart, onAIPlan, onContinueToOutline,
   planState, planStep, partialPlan, planError, lastPlanInput,
   writingOutline, writingSectionId, streamingContent = "",
   onConfirm, onCancel, onCancelPlan, onEditTitle, onEditDescription, onEditOutline, onRetry, onEnterEditor,
@@ -142,7 +143,7 @@ export function StartupSplash({
   };
 
   const isGenerating = planState === "planning" || planState === "writing";
-  const showResponse = planState === "planning" || planState === "review" || planState === "writing" || planState === "article-review";
+  const showResponse = planState === "planning" || planState === "review" || planState === "review-title-desc" || planState === "writing" || planState === "article-review";
   // ─── Process tool events into displayable items ───
   interface ToolEventItem {
     type: "pending" | "done" | "error" | "thinking" | "thinking_done";
@@ -396,7 +397,19 @@ export function StartupSplash({
                   </div>
                 )}
 
-                {/* Actions */}
+                {/* Actions: title+desc review (new document) */}
+                {planState === "review-title-desc" && (
+                  <div className="startup-splash__actions">
+                    <button className="btn btn--primary" style={{ height: 30 }} onClick={onContinueToOutline}>
+                      <Sparkles size={14} /> 继续生成大纲
+                    </button>
+                    <button className="btn" onClick={onCancel}>
+                      返回修改需求
+                    </button>
+                  </div>
+                )}
+
+                {/* Actions: full review */}
                 {planState === "review" && (
                   <div className="startup-splash__actions">
                     <button className="btn btn--primary" style={{ height: 30 }} onClick={onConfirm}>

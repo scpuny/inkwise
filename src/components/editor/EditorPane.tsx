@@ -11,7 +11,7 @@ import {
   type ArticlePhase,
   type OutlineSection,
 } from "../../lib/ai/article/blueprint";
-import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
+import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, generatePlanStage2, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
@@ -114,7 +114,7 @@ export function EditorPane({
   const { execute, isProcessing, openPanel, setPanelTab, openCommandBar } = useAgent();
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "writing" | "article-review">("idle");
+  const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "review-title-desc" | "writing" | "article-review">("idle");
   const [planStep, setPlanStep] = useState<PlanStep>("idle");
   const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
   const [planError, setPlanError] = useState<string | null>(null);
@@ -1407,7 +1407,10 @@ ${seriesCtx}`;
     setToolEvents([]);
     setPlanState("planning");
     try {
-      const gen = generatePlanStream(enrichedInput);
+      // New document: generate title+description first, let user review before outline
+      const isNewDoc = !input.prefilledTitle;
+      const genPhase = isNewDoc ? "stage1" as const : undefined;
+      const gen = generatePlanStream(enrichedInput, genPhase);
       for await (const result of gen) {
         // Check if cancelled
         if (abortController.signal.aborted) {
@@ -1425,6 +1428,11 @@ ${seriesCtx}`;
           setPartialPlan(p => ({ ...p, tags: result.data }));
         } else if (result.step === "explored" && result.data) {
           setPartialPlan(p => ({ ...p, projectInsights: result.data }));
+        } else if (result.step === "stage1-done") {
+          // New document: stop here, let user review title+description
+          setPlanStep(result.step);
+          setPlanState("review-title-desc");
+          return;
         }
         setPlanStep(result.step);
       }
@@ -1438,6 +1446,37 @@ ${seriesCtx}`;
       }
     }
   }, []);
+
+  /** Continue from title+description review → generate outline+tags */
+  const handleContinueToOutline = useCallback(async () => {
+    if (!lastPlanInput) return;
+    setPlanState("planning");
+    abortPlanRef.current = new AbortController();
+    const abortController = abortPlanRef.current;
+    try {
+      const gen = generatePlanStage2(lastPlanInput, partialPlan.title, partialPlan.description);
+      for await (const result of gen) {
+        if (abortController.signal.aborted) {
+          setPlanState("idle");
+          return;
+        }
+        if (result.step === "outline" && result.data) {
+          setPartialPlan(p => ({ ...p, outline: result.data }));
+        } else if (result.step === "tags" && result.data) {
+          setPartialPlan(p => ({ ...p, tags: result.data }));
+        }
+        setPlanStep(result.step);
+      }
+      if (!abortController.signal.aborted) {
+        setPlanState("review");
+      }
+    } catch (e: any) {
+      if (!abortController.signal.aborted) {
+        setPlanError(typeof e === "string" ? e : e?.message || "生成失败");
+        setPlanState("review");
+      }
+    }
+  }, [lastPlanInput, partialPlan.title, partialPlan.description]);
 
   // Cancel plan function exposed to StartupSplash
   const cancelPlan = useCallback(() => {
@@ -1625,6 +1664,7 @@ ${seriesDescription || ""}`
         <StartupSplash
           onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
           onAIPlan={handleStartPlan}
+          onContinueToOutline={handleContinueToOutline}
           planState={planState}
           planStep={planStep}
           streamingContent={streamingContent}
@@ -1669,6 +1709,7 @@ ${seriesDescription || ""}`
             }
           }}
           onAIPlan={handleStartPlan}
+          onContinueToOutline={handleContinueToOutline}
           planState={planState}
           planStep={planStep}
           partialPlan={partialPlan}

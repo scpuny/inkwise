@@ -49,7 +49,7 @@ export interface PlanInput {
   planCollectionId?: string;
 }
 
-export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
+export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "stage1-done" | "done";
 export type PlanStepResult = { step: PlanStep; data: any };
 
 export interface ArticleGenInput {
@@ -193,6 +193,9 @@ function buildSystemPrompt(
       prompt = styleCtx.join("\n\n") + "\n\n" + prompt;
     }
   }
+
+  // 所有阶段通用：中文输出约束
+  prompt += "\n\n## 输出语言\n- 使用流畅自然的中文，禁止混用英文或其他语言。所有内容必须为中文。";
 
   return prompt;
 }
@@ -347,8 +350,7 @@ export async function generateFullArticleStream(
   }
 
   const skill = await resolveSkill(input.skillId);
-  const systemPrompt = buildSystemPrompt("writing", skill, input.tone, input.styleId, input.actionId) +
-    "\n\n## 输出语言\n- 使用流畅自然的中文，禁止混用英文。标题、正文、所有内容均必须为中文。";
+  const systemPrompt = buildSystemPrompt("writing", skill, input.tone, input.styleId, input.actionId);
 
   // Build user message
   const lines: string[] = [];
@@ -417,7 +419,9 @@ export async function generateFullArticleStream(
 
 // ─── Plan generation (streaming) ───
 
-export async function* generatePlanStream(input: PlanInput): AsyncGenerator<PlanStepResult> {
+export type PlanPhase = "full" | "stage1";
+
+export async function* generatePlanStream(input: PlanInput, phase?: PlanPhase): AsyncGenerator<PlanStepResult> {
   yield { step: "idle", data: null };
 
   // Silently explore project structure if linked folder — runs before user
@@ -450,11 +454,41 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
   const description = input.prefilledDescription || await generateDescription(enriched, title);
   yield { step: "description", data: description };
 
+  // Phase 1 (new document) — stop here, let user review title+description before outline
+  if (phase === "stage1") {
+    yield { step: "stage1-done", data: null };
+    return;
+  }
+
   // Generate outline
   const outline = await generateOutline(enriched, title, description);
   yield { step: "outline", data: outline };
 
   // Generate tags
+  const tags = await generateTags(input, title, description);
+  yield { step: "tags", data: tags };
+
+  yield { step: "done", data: null };
+}
+
+/**
+ * Phase 2 of plan generation: outline + tags, based on confirmed title+description.
+ * Called after user reviews/edits title+description from Stage 1.
+ */
+export async function* generatePlanStage2(
+  input: PlanInput,
+  title: string,
+  description: string,
+): AsyncGenerator<PlanStepResult> {
+  const enriched = input.projectContext
+    ? { ...input, projectContext: input.projectContext }
+    : input;
+
+  // Generate outline with the confirmed title+description
+  const outline = await generateOutline(enriched, title, description);
+  yield { step: "outline", data: outline };
+
+  // Generate tags with the confirmed title+description
   const tags = await generateTags(input, title, description);
   yield { step: "tags", data: tags };
 
