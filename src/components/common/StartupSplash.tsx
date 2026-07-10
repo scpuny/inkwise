@@ -132,7 +132,6 @@ export function StartupSplash({
   const handlePlan = () => {
     if (!inspiration.trim()) return;
     setShowSuggestions(false);
-    const skill = skillId ? _allSkills.find(s => s.id === skillId) : undefined;
     onAIPlan({
       inspiration: inspiration.trim(),
       skillId: skillId || undefined,

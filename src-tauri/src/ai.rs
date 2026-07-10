@@ -716,6 +716,8 @@ async fn anthropic_chat_stream(
             }
         }
     }
+
+    Ok(full_content)
 }
 
 // ─── Public API ───

@@ -337,6 +337,13 @@
 | F29 | SeriesPlanner 页模式左侧关联项目列表未显示 | `SeriesPlanner.tsx`, `styles.css` | 🟢 | 2026-07-07 |
 | F30 | SeriesPlanner usePanelStore hooks 违反 React Hooks 规则（条件分支内调用） | `SeriesPlanner.tsx` | 🟢 | 2026-07-07 |
 | F31 | StartupSplash 无关联项目时不显示侧栏 | `StartupSplash.tsx` | 🟢 | 2026-07-07 |
+| F32 | AI 大纲泄漏思考过程 + 格式错乱 | `plan.ts`, `defaults.ts` | 🟢 | 2026-07-10 |
+| F33 | AI 中英混杂（新建文档路径缺指令） | `plan.ts` | 🟢 | 2026-07-10 |
+| F34 | 回收站不显示已删除文章（参数名不匹配） | `crud.ts`, `store.rs`, `lib.rs` | 🟢 | 2026-07-10 |
+| F35 | 回收站按钮操作失效（confirm 被拦截） | `TrashDialog.tsx` | 🟢 | 2026-07-10 |
+| F36 | Rust SSE 流 UTF-8 乱码 | `ai.rs` | 🟢 | 2026-07-10 |
+| F37 | 标题/简介不显示（空字符串+falsy+缺指令） | `plan.ts`, `EditorPane.tsx` | 🟢 | 2026-07-10 |
+| F38 | askAI 短文本用流式接口 + 生命周期不清晰 | `plan.ts`, `EditorPane.tsx`, `articleDocument.ts` | 🟢 | 2026-07-10 |
 
 ### 统计看板（含热修复）
 

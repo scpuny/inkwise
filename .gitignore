@@ -40,7 +40,7 @@ src-tauri/target/
 # --- Tool-generated ---
 .codegraph/
 .reasonix/
-
+.workbuddy/
 # --- Misc ---
 *.tsbuildinfo
 
