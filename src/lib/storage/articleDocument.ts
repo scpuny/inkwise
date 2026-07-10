@@ -32,7 +32,7 @@ export interface ArticleStyleConfig {
   macosCodeBlock: boolean;
   firstLineIndent: boolean;
   justifyAlign: boolean;
-  headingConfig: Record<string, unknown>;
+  headingConfig: Record<string, string[]>;
   bgPattern: string;
   accentColor: string;
   captionFormat: string;
@@ -41,11 +41,16 @@ export interface ArticleStyleConfig {
 }
 
 export interface PublishRecord {
+  id: string;
+  articleId: string;
   platform: string;
-  platformName: string;
+  platformName?: string;
+  platformArticleId?: string;
   status: "draft" | "published" | "failed";
   url?: string;
   publishTime?: number;
+  publishedAt: number;
+  platformUrl?: string;
   errorMessage?: string;
 }
 
@@ -99,6 +104,8 @@ export interface ArticleDocument {
 
   // ─── 审阅 ───
   reviewState?: ReviewState;
+  /** Full review data blob from review system (stored as JSON) */
+  reviewExtra?: string;
 
   // ─── 版本 ───
   version: number;

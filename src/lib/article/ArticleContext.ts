@@ -1,7 +1,7 @@
 // ArticleContext.ts — 每篇文章独立的上下文
-// 所有文章级别的状态（样式配置、蓝图等）由这个类统一管理。
-// 组件通过 React Context 获取当前文章的上下文，所有读写操作都经过这里，
-// 不直接操作 localStorage。切换文章时，旧实例被回收，新实例从存储加载。
+// 所有文章级别的状态（样式配置等）由这个类统一管理。
+// 现在样式配置同时写入 ArticleDocument.styleConfig 以保证统一。
+// 仍然保留 localStorage 作为构造时的同步快速加载源。
 
 import { createContext } from "react";
 import { emit } from "../events/eventBus";
@@ -62,8 +62,11 @@ export class ArticleContext {
     applyArticleStyleConfig(this._styleConfig);
   }
 
-  /** 持久化到存储 */
+  /** 持久化到存储（localStorage + ArticleDocument.styleConfig） */
   save(): void {
+    // Primary: save to ArticleDocument.styleConfig for unified state
+    this._saveToDocument();
+    // Fallback: localStorage for backward compat
     try {
       localStorage.setItem(
         "article-style-config:" + this.articleId,
@@ -72,10 +75,32 @@ export class ArticleContext {
     } catch { console.warn("[ArticleContext.save] localStorage failed (quota exceeded?)"); }
   }
 
+  /** 异步从 ArticleDocument 加载样式配置 */
+  static async loadFromDocument(articleId: string): Promise<ArticleStyleConfig | null> {
+    try {
+      const { loadArticleDocument } = await import("../storage/articleDocument");
+      const doc = await loadArticleDocument(articleId);
+      if (doc?.styleConfig) return doc.styleConfig;
+    } catch { /* ignore */ }
+    return null;
+  }
+
   // ── private ──
 
   private _loadStyleConfig(): ArticleStyleConfig {
     return loadArticleStyleConfig(this.articleId) ?? { ...DEFAULT_STYLE_CONFIG };
+  }
+
+  private async _saveToDocument(): Promise<void> {
+    try {
+      const { loadArticleDocument, saveArticleDocument } = await import("../storage/articleDocument");
+      const doc = await loadArticleDocument(this.articleId);
+      if (doc) {
+        doc.styleConfig = { ...this._styleConfig };
+        doc.updatedAt = Date.now();
+        await saveArticleDocument(doc);
+      }
+    } catch { /* ignore — backward compat */ }
   }
 
   private _applyAndSave(): void {

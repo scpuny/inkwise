@@ -1269,6 +1269,26 @@ export function EditorPane({
     }
     if (activeArticleId) {
       saveBlueprint(activeArticleId, bp);
+      // Also sync to ArticleDocument for unified state
+      setActiveDoc(prev => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        let changed = false;
+        if (next.title !== bp.workingTitle) { next.title = bp.workingTitle; changed = true; }
+        if (next.phase !== bp.phase) { next.phase = bp.phase; changed = true; }
+        if (next.tone !== bp.tone) { next.tone = bp.tone; changed = true; }
+        if (next.targetAudience !== bp.targetAudience) { next.targetAudience = bp.targetAudience; changed = true; }
+        if (next.targetWordCount !== bp.targetWordCount) { next.targetWordCount = bp.targetWordCount; changed = true; }
+        if (next.styleId !== (bp.styleId || "general")) { next.styleId = bp.styleId || "general"; changed = true; }
+        if (next.actionId !== (bp.actionId || "action-write")) { next.actionId = bp.actionId || "action-write"; changed = true; }
+        if (JSON.stringify(next.outline) !== JSON.stringify(bp.outline)) { next.outline = bp.outline; changed = true; }
+        if (JSON.stringify(next.tags) !== JSON.stringify(bp.tags || [])) { next.tags = bp.tags || []; changed = true; }
+        if (!changed) return prev;
+        next.updatedAt = Date.now();
+        next.version += 1;
+        saveArticleDocument(next);
+        return next;
+      });
     }
   }, [activeArticleId, onPhaseChange, onOutlineChange]);
 

@@ -381,6 +381,21 @@ export async function saveArticleReview(
   articleId: string,
   review: ArticleReview,
 ): Promise<void> {
+  // Primary: save to ArticleDocument for unified state
+  const { loadArticleDocument, saveArticleDocument } = await import("../../storage/articleDocument");
+  const doc = await loadArticleDocument(articleId);
+  if (doc) {
+    doc.reviewExtra = JSON.stringify(review);
+    doc.reviewState = {
+      reviewedAt: review.reviewedAt,
+      suggestions: [],
+      styleId: review.styleId || "",
+      actionId: "",
+    };
+    doc.updatedAt = Date.now();
+    await saveArticleDocument(doc);
+  }
+  // Fallback: localStorage for backward compat
   const key = `article_review:${articleId}`;
   try {
     localStorage.setItem(key, JSON.stringify(review));
@@ -390,6 +405,13 @@ export async function saveArticleReview(
 export async function loadArticleReview(
   articleId: string,
 ): Promise<ArticleReview | null> {
+  // Primary: load from ArticleDocument
+  const { loadArticleDocument } = await import("../../storage/articleDocument");
+  const doc = await loadArticleDocument(articleId);
+  if (doc?.reviewExtra) {
+    try { return JSON.parse(doc.reviewExtra) as ArticleReview; } catch { /* ignore */ }
+  }
+  // Fallback: localStorage
   const key = `article_review:${articleId}`;
   try {
     const raw = localStorage.getItem(key);

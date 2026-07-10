@@ -4,7 +4,9 @@ import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/comp
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
 import { on } from "../../lib/events/eventBus";
 import { loadArticleContent, loadArticleMeta } from "../../lib/storage/articles";
-import { addPublishRecord, getPublishHistory, publishArticle, type PublishOptions, type PublishRecord, type PublishResult } from "../../lib/storage/platforms";
+import { addPublishRecord, publishArticle, type PublishOptions, type PublishResult } from "../../lib/storage/platforms";
+import type { PublishRecord } from "../../lib/storage/articleDocument";
+import { loadArticleDocument, saveArticleDocument } from "../../lib/storage/articleDocument";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { PublishDialog } from "../collections/PublishDialog";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
@@ -82,28 +84,56 @@ export function ArticleFinalPage({
     return () => clearTimeout(timer);
   }, []);
 
-  // Load article data
+  // Load article data from unified ArticleDocument
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const meta = await loadArticleMeta(articleId);
-      if (!cancelled) {
-        setCreatedAt(meta?.createdAt ?? Date.now());
-        setUpdatedAt(meta?.updatedAt ?? Date.now());
-      }
-      const content = await loadArticleContent(articleId);
+      const doc = await loadArticleDocument(articleId);
       if (cancelled) return;
-      const md = content || DEFAULT_CONTENT;
-      setMarkdown(md);
-      const firstLine = md.split("\n").find((l) => l.trim().startsWith("# "));
-      if (firstLine) setArticleTitle(firstLine.trim().replace(/^#\s+/, ""));
-      const bp = await loadBlueprint(articleId);
-      if (!cancelled && bp) {
-        setBlueprint(bp);
-        if (bp.workingTitle && !firstLine) setArticleTitle(bp.workingTitle);
+      if (doc) {
+        setMarkdown(doc.content || DEFAULT_CONTENT);
+        setArticleTitle(doc.title);
+        setBlueprint({
+          workingTitle: doc.title,
+          description: "",
+          outline: doc.outline,
+          phase: doc.phase,
+          tags: doc.tags,
+          tone: doc.tone,
+          targetAudience: doc.targetAudience,
+          targetWordCount: doc.targetWordCount,
+          skillId: undefined,
+          styleId: doc.styleId,
+          actionId: doc.actionId,
+          coverImage: undefined,
+          updatedAt: doc.updatedAt,
+        });
+        setPublishRecords(doc.publishRecords || []);
+        setCreatedAt(doc.createdAt);
+        setUpdatedAt(doc.updatedAt);
+      } else {
+        // Fallback: load from old storage
+        const [meta, content, bp, records] = await Promise.all([
+          import("../../lib/storage/articles").then(m => m.loadArticleMeta(articleId)),
+          import("../../lib/storage/articles").then(m => m.loadArticleContent(articleId)),
+          import("../../lib/ai/article/blueprint").then(m => m.loadBlueprint(articleId)),
+          import("../../lib/storage/platforms").then(m => m.getPublishHistory(articleId)),
+        ]);
+        if (cancelled) return;
+        if (meta) {
+          setCreatedAt(meta.createdAt ?? Date.now());
+          setUpdatedAt(meta.updatedAt ?? Date.now());
+        }
+        const md = content || DEFAULT_CONTENT;
+        setMarkdown(md);
+        const firstLine = md.split("\n").find((l) => l.trim().startsWith("# "));
+        if (firstLine) setArticleTitle(firstLine.trim().replace(/^#\s+/, ""));
+        if (bp) {
+          setBlueprint(bp);
+          if (bp.workingTitle && !firstLine) setArticleTitle(bp.workingTitle);
+        }
+        setPublishRecords(records);
       }
-      const records = await getPublishHistory(articleId);
-      if (!cancelled) setPublishRecords(records);
     })();
     return () => { cancelled = true; };
   }, [articleId]);
@@ -116,10 +146,19 @@ export function ArticleFinalPage({
 
   const handleBackWithReview = useCallback(async () => {
     if (articleId) {
-      const bp = await loadBlueprint(articleId);
-      if (bp) {
-        bp.phase = "reviewing";
-        await saveBlueprint(articleId, bp);
+      // Update phase to reviewing in ArticleDocument
+      const doc = await loadArticleDocument(articleId);
+      if (doc) {
+        doc.phase = "reviewing";
+        doc.updatedAt = Date.now();
+        await saveArticleDocument(doc);
+      } else {
+        // Fallback to old blueprint
+        const bp = await loadBlueprint(articleId);
+        if (bp) {
+          bp.phase = "reviewing";
+          await saveBlueprint(articleId, bp);
+        }
       }
     }
     onBackToEdit();
@@ -143,6 +182,13 @@ export function ArticleFinalPage({
       };
       await addPublishRecord(record);
       setPublishRecords((prev) => [...prev, record]);
+      // Also save to ArticleDocument for unified state
+      const doc = await loadArticleDocument(articleId);
+      if (doc) {
+        doc.publishRecords = [...(doc.publishRecords || []), record];
+        doc.updatedAt = Date.now();
+        await saveArticleDocument(doc);
+      }
     }
     return result;
   }, [articleId, markdown, articleTitle, genId]);

@@ -245,10 +245,10 @@
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 5.4.1 | BlueprintEditor 改为读写 doc.outline / doc.phase | `BlueprintEditor.tsx` | 🔴 | — | — | — |
-| 5.4.2 | PublishDialog 改为读写 doc.publishRecords | `PublishDialog.tsx` | 🔴 | — | — | 不再独立存储 |
-| 5.4.3 | ReviewPanel 改为读写 doc.reviewState | `ReviewPanel.tsx` | 🔴 | — | — | — |
-| 5.4.4 | ArticleContext 类降级为操作 doc.styleConfig | `article/ArticleContext.ts` | 🔴 | — | — | 保留 React Context 壳 |
+| 5.4.1 | BlueprintEditor 同步到 document + handleSaveBlueprint 写入 doc | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | saveBlueprint 后同步 activeDoc |
+| 5.4.2 | ArticleFinalPage 从 document 加载 + 发布记录写入 doc | `ArticleFinalPage.tsx` | 🟢 | — | 2026-07-10 | 前后双兼容 |
+| 5.4.3 | ReviewPanel 存储层改为优先使用 document.reviewExtra | `review.ts` | 🟢 | — | 2026-07-10 | localStorage 降级 |
+| 5.4.4 | ArticleContext 保存时同步写入 document.styleConfig | `ArticleContext.ts` | 🟢 | — | 2026-07-10 | 异步写入不阻塞 UI |
 
 ### 5.5 SeriesPlanner 补全 + 清理
 
