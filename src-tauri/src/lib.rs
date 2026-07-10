@@ -10,7 +10,7 @@ mod vector;
 use platform::Platform;
 use platform::wechat::WeChat;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill};
+use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, ArticleDocument, OutlineSection};
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
 use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
@@ -664,6 +664,17 @@ fn load_article_blueprint(state: tauri::State<AppState>, id: String) -> Result<O
     Ok(state.store.lock().map_err(|e| e.to_string())?.load_blueprint(&id))
 }
 
+// ─── ArticleDocument Commands (v2.1.0) ───
+
+#[tauri::command]
+fn save_article_document(state: tauri::State<AppState>, doc: ArticleDocument) -> Result<(), String> {
+    state.store.lock().map_err(|e| e.to_string())?.save_article_document(&doc)
+}
+
+#[tauri::command]
+fn load_article_document(state: tauri::State<AppState>, id: String) -> Result<Option<ArticleDocument>, String> {
+    Ok(state.store.lock().map_err(|e| e.to_string())?.load_article_document(&id))
+}
 
 
 // ─── Database SQLite Commands ───
@@ -2060,6 +2071,8 @@ pub fn run() {
             load_article_meta,
             save_article_blueprint,
             load_article_blueprint,
+            save_article_document,
+            load_article_document,
             list_skills,
             list_unified_skills,
             read_skill,

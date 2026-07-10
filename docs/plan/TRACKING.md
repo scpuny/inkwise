@@ -211,16 +211,65 @@
 
 ---
 
+## Sprint 5：ArticleDocument 统一上下文（doc 18）| 目标: v2.1.0-alpha
+
+### 5.1 定义 + 存储层
+
+| # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
+|---|--------|------|------|--------|--------|------|
+| 5.1.1 | 定义 `ArticleDocument` 完整类型 | `storage/articleDocument.ts` | 🟢 | — | 2026-07-10 | 含 styleConfig/outline/publishRecords/reviewState 嵌套 |
+| 5.1.2 | 实现 `loadArticleDocument` / `saveArticleDocument`（Tauri + localStorage） | `storage/articleDocument.ts` | 🟢 | — | 2026-07-10 | 原子写入 |
+| 5.1.3 | 实现 `migrateArticleDocument` 从旧数据重建 | `storage/articleDocument.ts` | 🟢 | — | 2026-07-10 | 惰性迁移 |
+| 5.1.4 | Rust 新增 `load_article_document` / `save_article_document` 命令 | `lib.rs`, `store.rs` | 🟢 | — | 2026-07-10 | 存储于 `documents/{id}.json` |
+| 5.1.5 | 前端桥接注册新命令 | `bridge/tauri.ts` | 🟢 | — | 2026-07-10 | TauriCommands + invokeOrFallback |
+
+### 5.2 EditorPane 接入
+
+| # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
+|---|--------|------|------|--------|--------|------|
+| 5.2.1 | EditorPane 新增 `activeDoc` 状态，打开文章时 loadDocument | `EditorPane.tsx` | 🔴 | — | — | 替换旧的 activeBlueprint/activeArticle 分散状态 |
+| 5.2.2 | `handleStartPlan` 改为创建 ArticleDocument | `EditorPane.tsx` | 🔴 | — | — | 继承 seriesPlan 的 styleId/actionId |
+| 5.2.3 | `handlePlanConfirm` 改为写入 document | `EditorPane.tsx` | 🔴 | — | — | 不再构建残缺的 ArticleGenInput |
+| 5.2.4 | `handleExecute` 改为从 activeDoc 读全部参数 | `EditorPane.tsx` | 🔴 | — | — | 不再拼凑 blueprint + style + action |
+
+### 5.3 AI 引擎改造
+
+| # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
+|---|--------|------|------|--------|--------|------|
+| 5.3.1 | `generateFullArticleWithTools` 改为接收 document | `plan.ts` | 🔴 | — | — | 废弃 ArticleGenInput |
+| 5.3.2 | `generateFullArticleStream` 同样 | `plan.ts` | 🔴 | — | — | — |
+| 5.3.3 | `buildSystemPrompt` 从 doc 读取 styleId/actionId/tone/outline | `plan.ts` | 🔴 | — | — | 初稿即可感知风格/动作 |
+| 5.3.4 | 废弃 `ArticleGenInput` / `SectionWriteInput` 类型 | `plan.ts` | 🔴 | — | — | 清理 |
+
+### 5.4 周边组件适配
+
+| # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
+|---|--------|------|------|--------|--------|------|
+| 5.4.1 | BlueprintEditor 改为读写 doc.outline / doc.phase | `BlueprintEditor.tsx` | 🔴 | — | — | — |
+| 5.4.2 | PublishDialog 改为读写 doc.publishRecords | `PublishDialog.tsx` | 🔴 | — | — | 不再独立存储 |
+| 5.4.3 | ReviewPanel 改为读写 doc.reviewState | `ReviewPanel.tsx` | 🔴 | — | — | — |
+| 5.4.4 | ArticleContext 类降级为操作 doc.styleConfig | `article/ArticleContext.ts` | 🔴 | — | — | 保留 React Context 壳 |
+
+### 5.5 SeriesPlanner 补全 + 清理
+
+| # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
+|---|--------|------|------|--------|--------|------|
+| 5.5.1 | SeriesPlanner UI 增加 styleId/actionId 选择器 | `SeriesPlanner.tsx` | 🔴 | — | — | 填入 handleConfirm |
+| 5.5.2 | 旧类型清理（ArticleMeta / ArticleBlueprint） | 全库 | 🔴 | — | — | 引用替换为 doc 字段 |
+| 5.5.3 | 旧 Tauri 命令废弃（LoadArticleBlueprint 等） | `lib.rs`, `tauri.ts` | 🔴 | — | — | — |
+
+---
+
 ## 未来扩展（doc 15）| 目标: v2.x
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 5.1 | AI 改写适配：Rust 改写引擎 + 平台预设 | `rewrite/` | 🔴 | — | — | 复用 Plan+Agent |
-| 5.2 | 视频/音频提取：ffmpeg + Whisper 集成 | `media/` | 🔴 | — | — | 本地/云端双模式 |
-| 5.3 | 多平台热点追踪：数据源调度 + UI 展示 | `hot-topics/` | 🔴 | — | — | 依赖外部 API |
-| 5.4 | 效果追踪：阅读量/点赞/评论分析 | `analytics/` | 🔴 | — | — | 依赖发布平台 API |
-| 5.5 | 热点 → 自动选题 | `hot-topics/matcher.ts` | 🔴 | — | — | 依赖 5.3 |
-| 5.6 | 多平台一键改写 + 发布 | `rewrite/`, `publisher/` | 🔴 | — | — | 依赖 5.1 + 发布模块 |
+| 6.1 | AI 改写适配：Rust 改写引擎 + 平台预设 | `rewrite/` | 🔴 | — | — | 复用 Plan+Agent |
+| 6.2 | 视频/音频提取：ffmpeg + Whisper 集成 | `media/` | 🔴 | — | — | 本地/云端双模式 |
+| 6.3 | 多平台热点追踪：数据源调度 + UI 展示 | `hot-topics/` | 🔴 | — | — | 依赖外部 API |
+| 6.4 | 效果追踪：阅读量/点赞/评论分析 | `analytics/` | 🔴 | — | — | 依赖发布平台 API |
+| 6.5 | 热点 → 自动选题 | `hot-topics/matcher.ts` | 🔴 | — | — | 依赖 6.3 |
+| 6.6 | 多平台一键改写 + 发布 | `rewrite/`, `publisher/` | 🔴 | — | — | 依赖 6.1 + 发布模块 |
 
 ---
 
@@ -242,8 +291,9 @@
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
 | S4: 体验优化 | 16 | 16 | 0 | 0 | 0 | 100% |
+| S5: ArticleDocument | 16 | 5 | 0 | 11 | 0 | 31% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **91** | **87** | 0 | 4 | 0 | 96% |
+| **总计** | **107** | **92** | 0 | 15 | 0 | 86% |
 ---
 
 ## v2.0.0 热修复（2026-07-04）

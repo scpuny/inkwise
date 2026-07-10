@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { SettingsPage } from "./SettingsPageLayout";
 import { Loader2 } from "lucide-react";
 
-const APP_VERSION = "1.10.0";
+const APP_VERSION = __APP_VERSION__;
 const GITHUB_REPO = "scpuny/inkwise";
 const RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
 

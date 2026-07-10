@@ -15,6 +15,10 @@ export enum TauriCommands {
   LoadArticleMeta = "load_article_meta",
   SaveArticleBlueprint = "save_article_blueprint",
   LoadArticleBlueprint = "load_article_blueprint",
+
+  // ── ArticleDocument (v2.1.0) ──
+  SaveArticleDocument = "save_article_document",
+  LoadArticleDocument = "load_article_document",
   CreateCollectionDb = "create_collection_db",
   DeleteArticleDb = "delete_article_db",
   DeleteCollectionDb = "delete_collection_db",

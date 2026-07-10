@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ExternalLink } from "lucide-react";
 
-const APP_VERSION = "1.10.0";
+const APP_VERSION = __APP_VERSION__;
 const GITHUB_REPO = "scpuny/inkwise";
 const RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
 const DISMISS_KEY = "inkwise-update-dismiss";

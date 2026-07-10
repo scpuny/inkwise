@@ -5,6 +5,33 @@ use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ArticleDocument {
+    pub id: String,
+    pub collection_id: Option<String>,
+    pub series_id: Option<String>,
+    pub title: String,
+    pub content: String,
+    pub style_id: String,
+    pub action_id: String,
+    pub tone: Option<String>,
+    pub target_audience: Option<String>,
+    pub target_word_count: Option<u32>,
+    pub phase: String,
+    pub outline: Vec<OutlineSection>,
+    pub tags: Vec<String>,
+    pub style_config: serde_json::Value,
+    pub linked_folder: Option<String>,
+    pub project_context: Option<String>,
+    pub series_context: Option<String>,
+    pub publish_records: Vec<serde_json::Value>,
+    pub review_state: Option<serde_json::Value>,
+    pub version: u32,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ArticleMeta {
     pub id: String,
     pub collection_id: String,
@@ -210,6 +237,7 @@ pub struct WritingSkill {
 pub struct DataStore {
     data_dir: PathBuf,
     articles_dir: PathBuf,
+    documents_dir: PathBuf,
     _index_dir: PathBuf,
     _codegraph_dir: PathBuf,
 }
@@ -218,14 +246,16 @@ impl DataStore {
     pub fn new(app_dir: PathBuf) -> Self {
         let data_dir = app_dir.join("data");
         let articles_dir = data_dir.join("articles");
+        let documents_dir = data_dir.join("documents");
         let index_dir = data_dir.join("index");
         let codegraph_dir = data_dir.join("codegraph");
-        for d in [&data_dir, &articles_dir, &index_dir, &codegraph_dir] {
+        for d in [&data_dir, &articles_dir, &documents_dir, &index_dir, &codegraph_dir] {
             std::fs::create_dir_all(d).ok();
         }
         Self {
             data_dir,
             articles_dir,
+            documents_dir,
             _index_dir: index_dir,
             _codegraph_dir: codegraph_dir,
         }
@@ -471,6 +501,31 @@ impl DataStore {
             std::fs::remove_file(&path).map_err(|e| format!("删除文章失败: {}", e))
         } else {
             Ok(())
+        }
+    }
+
+    // ─── ArticleDocument (v2.1.0, individual .json) ───
+
+    pub fn save_article_document(&self, doc: &ArticleDocument) -> Result<(), String> {
+        let path = self.documents_dir.join(format!("{}.json", doc.id));
+        let tmp_path = self.documents_dir.join(format!("{}.json.tmp", doc.id));
+        let content = serde_json::to_string_pretty(doc).map_err(|e| e.to_string())?;
+        std::fs::write(&tmp_path, &content).map_err(|e| e.to_string())?;
+        let f = std::fs::File::open(&tmp_path).map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+        drop(f);
+        std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn load_article_document(&self, id: &str) -> Option<ArticleDocument> {
+        let path = self.documents_dir.join(format!("{}.json", id));
+        if path.exists() {
+            std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|c| serde_json::from_str(&c).ok())
+        } else {
+            None
         }
     }
 

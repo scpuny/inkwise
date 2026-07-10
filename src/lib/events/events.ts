@@ -120,6 +120,7 @@ export type EventBusKey =
   | "plan-series-article"
   | "series-article-review"
   | "blueprint-changed"
+  | "article-document-changed"
   | "content-saved"
   | "editor-ready"
   | "providers-changed"
@@ -144,6 +145,7 @@ export interface EventBusMap {
   "plan-series-article": PlanSeriesArticleDetail;
   "series-article-review": SeriesArticleReviewDetail;
   "blueprint-changed": BlueprintChangedDetail;
+  "article-document-changed": BlueprintChangedDetail;
   "content-saved": ContentSavedDetail;
   "editor-ready": void;
   "providers-changed": void;
