@@ -426,28 +426,43 @@ async fn openai_chat_stream(
     let mut full_content = String::new();
     let mut stream = response.bytes_stream();
     use futures_util::StreamExt;
-    let mut buf = String::new();
+    let mut raw_buf: Vec<u8> = Vec::new();
 
     while let Some(chunk_result) = stream.next().await {
         let chunk = chunk_result.map_err(|e| format!("读取流失败: {}", e))?;
-        let chunk_str = String::from_utf8_lossy(&chunk);
-        buf.push_str(&chunk_str);
+        raw_buf.extend_from_slice(&chunk);
 
-        while let Some(pos) = buf.find("\n\n") {
-            let event = buf[..pos].to_string();
-            buf = buf[pos + 2..].to_string();
-
-            for line in event.lines() {
-                if let Some(token) = parse_sse_line(line) {
-                    full_content.push_str(&token);
-                    on_token(token);
+        // 只在完整的 SSE event 边界 (\n\n) 处解码，避免 UTF-8 跨 chunk 截断
+        loop {
+            let event_end = raw_buf.windows(2)
+                .position(|w| w == b"\n\n");
+            match event_end {
+                Some(pos) => {
+                    let event_bytes = &raw_buf[..pos];
+                    // 完整 event 应为有效 UTF-8，用 from_utf8 而非 from_utf8_lossy
+                    match String::from_utf8(event_bytes.to_vec()) {
+                        Ok(event_str) => {
+                            raw_buf.drain(..pos + 2);
+                            for line in event_str.lines() {
+                                if let Some(token) = parse_sse_line(line) {
+                                    full_content.push_str(&token);
+                                    on_token(token);
+                                }
+                            }
+                        }
+                        // 事件仍被跨 chunk 截断 → 保留字节等待下一个 chunk
+                        Err(_) => break,
+                    }
                 }
+                None => break,
             }
         }
     }
 
-    if !buf.is_empty() {
-        for line in buf.lines() {
+    // 尾部残留（可能不完整，fallback 到 lossy）
+    if !raw_buf.is_empty() {
+        let remaining = String::from_utf8_lossy(&raw_buf);
+        for line in remaining.lines() {
             if let Some(token) = parse_sse_line(line) {
                 full_content.push_str(&token);
                 on_token(token);
@@ -662,27 +677,45 @@ async fn anthropic_chat_stream(
     let mut full_content = String::new();
     let mut stream = response.bytes_stream();
     use futures_util::StreamExt;
-    let mut buf = String::new();
+    let mut raw_buf: Vec<u8> = Vec::new();
 
     while let Some(chunk_result) = stream.next().await {
         let chunk = chunk_result.map_err(|e| format!("读取流失败: {}", e))?;
-        let chunk_str = String::from_utf8_lossy(&chunk);
-        buf.push_str(&chunk_str);
+        raw_buf.extend_from_slice(&chunk);
 
-        while let Some(pos) = buf.find("\n\n") {
-            let event = buf[..pos].to_string();
-            buf = buf[pos + 2..].to_string();
-
-            for line in event.lines() {
-                if let Some(token) = parse_sse_line(line) {
-                    full_content.push_str(&token);
-                    on_token(token);
+        loop {
+            let event_end = raw_buf.windows(2)
+                .position(|w| w == b"\n\n");
+            match event_end {
+                Some(pos) => {
+                    let event_bytes = &raw_buf[..pos];
+                    match String::from_utf8(event_bytes.to_vec()) {
+                        Ok(event_str) => {
+                            raw_buf.drain(..pos + 2);
+                            for line in event_str.lines() {
+                                if let Some(token) = parse_sse_line(line) {
+                                    full_content.push_str(&token);
+                                    on_token(token);
+                                }
+                            }
+                        }
+                        Err(_) => break,
+                    }
                 }
+                None => break,
             }
         }
     }
 
-    Ok(full_content)
+    if !raw_buf.is_empty() {
+        let remaining = String::from_utf8_lossy(&raw_buf);
+        for line in remaining.lines() {
+            if let Some(token) = parse_sse_line(line) {
+                full_content.push_str(&token);
+                on_token(token);
+            }
+        }
+    }
 }
 
 // ─── Public API ───
