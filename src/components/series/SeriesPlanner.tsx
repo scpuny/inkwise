@@ -4,6 +4,7 @@ import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { usePanelStore } from "../../store/panelStore";
 import { getAllSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill";
+import { getBuiltinStyles, BUILTIN_ACTIONS } from "../../lib/ai/skill/styles";
 import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../lib/storage/collections";
 import { generateSeriesId, getProjectContext } from "../../lib/storage/collections";
 import { ProjectFileTree } from "../common/ProjectFileTree";
@@ -67,6 +68,8 @@ const [defaultWordCount, setDefaultWordCount] = useState(800);
   const [tone, setTone] = useState("");
   const [audience, setAudience] = useState("");
   const [skillId, setSkillId] = useState("");
+  const [styleId, setStyleId] = useState("general");
+  const [actionId, setActionId] = useState("action-write");
 const [customTone, setCustomTone] = useState("");
 const [customAudience, setCustomAudience] = useState("");
   const [articles, setArticles] = useState<SeriesArticle[]>([]);
@@ -93,6 +96,8 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
       setTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? "__custom__" : (existingPlan.tone || ""));
       setCustomTone(existingPlan.tone && !["正式","幽默","轻松口语","热情激昂","冷静客观","犀利尖锐","温暖亲和"].includes(existingPlan.tone) ? existingPlan.tone : "");
       setSkillId(existingPlan.skillId || "");
+      setStyleId(existingPlan.styleId || "general");
+      setActionId(existingPlan.actionId || "action-write");
       setAudience(existingPlan.targetAudience || "");
       setCustomAudience("");
       setArticleCount(existingPlan.articles.length);
@@ -301,12 +306,14 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
       tone: toneVal || undefined,
       targetAudience: audienceVal || undefined,
       skillId: skillId || undefined,
+      styleId: styleId || undefined,
+      actionId: actionId || undefined,
       articles: articles.filter((a) => a.title.trim()),
     };
     if (plan.articles.length === 0) return;
     await onSave(plan);
     setStep("done");
-  }, [articles, collectionId, direction, collectionTitle, tone, audience, customAudience, onSave]);
+  }, [articles, collectionId, direction, collectionTitle, tone, customTone, audience, customAudience, skillId, styleId, actionId, seriesName, existingPlan, onSave]);
 
   /* 重新生成 */
   const handleRegenerate = useCallback(() => {
@@ -540,6 +547,14 @@ const [allSkills, setAllSkills] = useState<WritingSkill[]>([]);
               <select className="series-planner__option-select" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
                 <option value="">写作技能</option>
                 {allSkills.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+              </select>
+              <select className="series-planner__option-select" value={styleId} onChange={(e) => setStyleId(e.target.value)}>
+                <option value="general">默认风格</option>
+                {getBuiltinStyles().map(s => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+              </select>
+              <select className="series-planner__option-select" value={actionId} onChange={(e) => setActionId(e.target.value)}>
+                <option value="action-write">默认动作</option>
+                {BUILTIN_ACTIONS.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
               </select>
               <select className="series-planner__option-select" value={audience} onChange={(e) => setAudience(e.target.value)}>
                 <option value="">目标读者</option>

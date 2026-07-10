@@ -1,5 +1,5 @@
 # InkWise v2.0.0 · 功能开发跟踪表
-> 最后更新: 2026-07-07 | 分支: `codex/v2.0.0-s4` | 状态: 🟢 Sprint 4 完成
+> 最后更新: 2026-07-10 | 分支: `main` | 状态: 🟡 Sprint 5 进行中
 
 ---
 
@@ -254,7 +254,7 @@
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 5.5.1 | SeriesPlanner UI 增加 styleId/actionId 选择器 | `SeriesPlanner.tsx` | 🔴 | — | — | 填入 handleConfirm |
+| 5.5.1 | SeriesPlanner UI 增加 styleId/actionId 选择器 | `SeriesPlanner.tsx` | 🟢 | — | 2026-07-10 | 填入 handleConfirm |
 | 5.5.2 | 旧类型清理（ArticleMeta / ArticleBlueprint） | 全库 | 🔴 | — | — | 引用替换为 doc 字段 |
 | 5.5.3 | 旧 Tauri 命令废弃（LoadArticleBlueprint 等） | `lib.rs`, `tauri.ts` | 🔴 | — | — | — |
 
@@ -291,9 +291,9 @@
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
 | S4: 体验优化 | 16 | 16 | 0 | 0 | 0 | 100% |
-| S5: ArticleDocument | 16 | 12 | 0 | 4 | 0 | 75% |
+| S5: ArticleDocument | 16 | 13 | 0 | 3 | 0 | 81% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **107** | **92** | 0 | 15 | 0 | 86% |
+| **总计** | **107** | **93** | 0 | 14 | 0 | 87% |
 ---
 
 ## v2.0.0 热修复（2026-07-04）
