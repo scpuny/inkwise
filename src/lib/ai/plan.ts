@@ -49,7 +49,7 @@ export interface PlanInput {
   planCollectionId?: string;
 }
 
-export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "stage1-done" | "done";
+export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
 export type PlanStepResult = { step: PlanStep; data: any };
 
 export interface ArticleGenInput {
@@ -419,9 +419,7 @@ export async function generateFullArticleStream(
 
 // ─── Plan generation (streaming) ───
 
-export type PlanPhase = "full" | "stage1";
-
-export async function* generatePlanStream(input: PlanInput, phase?: PlanPhase): AsyncGenerator<PlanStepResult> {
+export async function* generatePlanStream(input: PlanInput): AsyncGenerator<PlanStepResult> {
   yield { step: "idle", data: null };
 
   // Silently explore project structure if linked folder — runs before user
@@ -454,41 +452,11 @@ export async function* generatePlanStream(input: PlanInput, phase?: PlanPhase): 
   const description = input.prefilledDescription || await generateDescription(enriched, title);
   yield { step: "description", data: description };
 
-  // Phase 1 (new document) — stop here, let user review title+description before outline
-  if (phase === "stage1") {
-    yield { step: "stage1-done", data: null };
-    return;
-  }
-
   // Generate outline
   const outline = await generateOutline(enriched, title, description);
   yield { step: "outline", data: outline };
 
   // Generate tags
-  const tags = await generateTags(input, title, description);
-  yield { step: "tags", data: tags };
-
-  yield { step: "done", data: null };
-}
-
-/**
- * Phase 2 of plan generation: outline + tags, based on confirmed title+description.
- * Called after user reviews/edits title+description from Stage 1.
- */
-export async function* generatePlanStage2(
-  input: PlanInput,
-  title: string,
-  description: string,
-): AsyncGenerator<PlanStepResult> {
-  const enriched = input.projectContext
-    ? { ...input, projectContext: input.projectContext }
-    : input;
-
-  // Generate outline with the confirmed title+description
-  const outline = await generateOutline(enriched, title, description);
-  yield { step: "outline", data: outline };
-
-  // Generate tags with the confirmed title+description
   const tags = await generateTags(input, title, description);
   yield { step: "tags", data: tags };
 
