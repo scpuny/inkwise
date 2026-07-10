@@ -26,6 +26,7 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
   }, [open]);
 
   const handleRestore = async (id: string) => {
+    console.log("[TrashDialog] handleRestore called, id:", id);
     try {
       await restoreArticle(id);
       loadTrash().then(setTrashItems);
@@ -33,7 +34,9 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
   };
 
   const handlePermanentDelete = async (id: string) => {
+    console.log("[TrashDialog] handlePermanentDelete called, id:", id);
     if (!confirm("确定永久删除此文章？此操作不可撤销。")) return;
+    console.log("[TrashDialog] confirm OK, proceeding...");
     try {
       await permanentlyDeleteArticle(id);
       loadTrash().then(setTrashItems);
@@ -41,7 +44,9 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
   };
 
   const handleEmptyTrash = async () => {
+    console.log("[TrashDialog] handleEmptyTrash called");
     if (!confirm("确定清空回收站？此操作不可撤销。")) return;
+    console.log("[TrashDialog] confirm OK, proceeding...");
     try {
       await emptyTrash();
       setTrashItems([]);
