@@ -174,7 +174,7 @@ function buildSystemPrompt(
   actionId?: string,
 ): string {
   const config = getEffectivePhaseConfig(skill, phase as any);
-  let prompt = config.systemPrompt;
+  let prompt = "直接输出所需内容，不要输出任何思考过程。\n\n" + config.systemPrompt;
 
   if (tone && tone.trim()) {
     prompt = "整体基调：" + tone + "。\n\n" + prompt;
@@ -199,7 +199,7 @@ function buildSystemPrompt(
 
 // ─── Tool-based article generation (via AgentEngine) ───
 
-const ARTICLE_WRITER_SYSTEM_PROMPT = "你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **开头必须用一段简短的前置描述或引言（不要直接进入正题）**，交代文章背景和读者预期，自然引出正文\n- 前置描述后立即用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
+const ARTICLE_WRITER_SYSTEM_PROMPT = "直接输出文章，不要输出任何思考过程或额外说明。\n\n你是一位资深技术文章写作者。你的任务是为给定的项目写一篇高质量的技术文章。\n\n## 可用工具\n你可以在写作过程中随时使用以下工具来获取项目文件内容：\n- `read_project_files`: 读取项目源代码文件，获取真实的代码示例\n- `list_project_files`: 查看项目目录结构\n- `search_project_files`: 搜索文件名匹配的文件\n\n## 写作原则\n1. 所有代码示例必须直接从项目中读取真实代码，不要自己编造\n2. 文章中的代码块应是项目中实际存在的文件内容\n3. 在引用代码前，先用 `read_project_files` 读取对应文件\n4. 如果需要了解项目结构，用 `list_project_files` 查看目录\n5. 如果不确定某个功能在哪个文件中，用 `search_project_files` 搜索\n\n## 开篇要求\n- **开头必须用一段简短的前置描述或引言（不要直接进入正题）**，交代文章背景和读者预期，自然引出正文\n- 前置描述后立即用具体场景、反差或问题切入，避免\"大家好\"\"欢迎回到\"等冗余开场白\n\n## 行文规范\n- 受众是两类读者：技术开发者和有技术背景的创作者，为两者都提供价值\n- 段落控制 3-5 行，适配手机阅读；长短段交替\n- 整体调性统一：技术部分专业严谨，非技术部分简洁平实，不要混搭口语与硬核术语\n- 超长复合句拆成短句，避免同一个观点反复说\n\n## 技术内容准则\n- 贴代码时在代码上方用一句话说明这段代码的作用\n- 结构体/接口定义下方用注释解释每个字段的用途\n- 复杂概念用通俗类比降低理解成本\n- 涉及业务逻辑链路时，给出文本流程图（用 -> 连接）\n- 对易混淆概念做对比说明\n\n## 产品价值\n- 在结语前留一段对比分析：当前方案与市面上通用方案的核心差异\n- 突出本地优先、隐私安全、细粒度控制等差异化卖点\n- 结语简要预告下篇内容\n\n## 输出要求\n- 直接输出 Markdown 格式的完整文章\n- 文章标题已为 #（一级），标题后必须用一段简短的前置描述或引言（不要直接进入正题）\n- 所有二级标题（##）按出现顺序标号：`## 1. 标题`、`## 2. 标题`\n- 三级标题（###）在其父级下按顺序标号：`### 1.1 子标题`、`### 1.2 子标题`\n- 使用流畅自然的中文";
 
 /**
  * 使用 AgentEngine（tool calling）生成完整文章。
@@ -525,7 +525,10 @@ export async function generateOutline(input: PlanInput, title: string, descripti
   const outlineSkill = await resolveSkill(input.skillId);
   const sysPrompt = buildSystemPrompt("outline", outlineSkill, input.tone);
   const userPrompt = [
-    "请根据以下信息生成文章大纲。每条大纲必须包含**序号、标题和描述**，严格按此格式：",
+    "请根据以下信息生成文章大纲。直接输出大纲，不要输出思考过程。",
+    "",
+    "## 格式要求（严格遵循）",
+    "每条大纲必须包含**序号、标题和描述**：",
     "",
     "## 1. 标题 —— 描述",
     "### 1.1 子标题 —— 子标题描述",
@@ -533,12 +536,13 @@ export async function generateOutline(input: PlanInput, title: string, descripti
     "## 2. 标题 —— 描述",
     "### 2.1 子标题 —— 子标题描述",
     "",
-    "要求：",
-    "- 一级章节必须用 ## 开头；二级子章节必须用 ### 开头",
+    "规则：",
+    "- 一级章节用 ## 开头，二级子章节用 ### 开头 — 必须用 Markdown 标题标记",
     "- 每个大纲项必须包含序号（1. 2. 3. 或 1.1 2.1 等），序号后跟标题",
     "- 必须用中文破折号 —— 分隔标题和描述",
     "- 至少 3-5 个一级章节，每个一级章节下至少 2-3 个子章节",
     "- 每项描述必须给出（10-20 字），不能省略",
+    "- 只输出大纲内容，Markdown 格式，不要加任何前言后语",
     "",
     input.projectName ? "关联项目：" + input.projectName : "",
     "灵感：" + input.inspiration,
@@ -750,7 +754,7 @@ function parseOutline(text: string): OutlineSection[] {
       let rest = match[2].trim();
       // Strip leading number like "1. ", "1.1 ", "1.1.1 "
       rest = rest.replace(/^\d+(\.\d+)*\s*[.、]?\s*/, "");
-      const descMatch = rest.match(/^(.+?)\s*[-—]{1,2}\s*(.+)$/);
+      const descMatch = rest.match(/^(.+?)\s*(?:[-—]{1,2}|：)\s*(.+)$/);
       if (descMatch) {
         title = descMatch[1].trim();
         description = descMatch[2].trim();
@@ -761,7 +765,7 @@ function parseOutline(text: string): OutlineSection[] {
 
     // Pattern 2: "1.1.1 Title — Desc" (numbered with dots, level inferred from dot count)
     if (!match) {
-      match = trimmed.match(/^(\d+)\.(\d+)(?:\.(\d+))?\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      match = trimmed.match(/^(\d+)\.(\d+)(?:\.(\d+))?\s+(.+?)(?:\s*(?:[-—]{1,2}|：)\s*(.+))?$/);
       if (match) {
         // 2-part number (1.1) => level 2, 3-part number (1.1.1) => level 3
         level = match[3] ? 3 : 2;
@@ -772,7 +776,7 @@ function parseOutline(text: string): OutlineSection[] {
 
     // Pattern 3: "1. Title —— Desc" or "1、Title——Desc" (single numbered)
     if (!match) {
-      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      match = trimmed.match(/^(\d+)[.、]\s*(.+?)(?:\s*(?:[-—]{1,2}|：)\s*(.+))?$/);
       if (match) {
         title = match[2].trim();
         description = (match[3]?.trim() || "");
@@ -781,7 +785,7 @@ function parseOutline(text: string): OutlineSection[] {
 
     // Pattern 4: "1) Title —— Desc" (parenthetical number)
     if (!match) {
-      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      match = trimmed.match(/^(\d+)\)\s*(.+?)(?:\s*(?:[-—]{1,2}|：)\s*(.+))?$/);
       if (match) {
         title = match[2].trim();
         description = (match[3]?.trim() || "");
@@ -790,7 +794,7 @@ function parseOutline(text: string): OutlineSection[] {
 
     // Pattern 5: "- Title —— Desc" or "* Title —— Desc" (bullet)
     if (!match) {
-      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*[-—]{1,2}\s*(.+))?$/);
+      match = trimmed.match(/^[-*]\s+(.+?)(?:\s*(?:[-—]{1,2}|：)\s*(.+))?$/);
       if (match) {
         title = match[1].trim();
         description = (match[2]?.trim() || "");

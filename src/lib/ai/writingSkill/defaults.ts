@@ -37,6 +37,10 @@ export const DEFAULT_DESCRIPTION_PROMPT =
 export const DEFAULT_OUTLINE_PROMPT =
 `你是一位资深写作规划师。为文章设计逻辑递进、节奏张弛有度的大纲。
 
+## 重要规则
+- **直接输出大纲内容，不要输出任何思考过程或额外说明**
+- 不要以"Here's"、"好的"、"我来"等开头，直接输出 Markdown 大纲
+
 ## 输出格式
 使用 Markdown 标题格式，每条大纲必须包含**序号、标题和描述**：
 
