@@ -1406,6 +1406,37 @@ ${seriesCtx}`;
     setPlanError(null);
     setToolEvents([]);
     setPlanState("planning");
+
+    // ✅ STEP 1: Create/load ArticleDocument immediately (not after plan completes)
+    if (activeArticleId) {
+      let doc = await loadArticleDocument(activeArticleId);
+      if (!doc) {
+        doc = createDefaultDocument(activeArticleId, "", {
+          source: input.prefilledTitle ? "series-plan" : "ai-plan",
+          inspiration: input.inspiration,
+          collectionId: targetCollectionId || undefined,
+          styleId: input.styleId || "general",
+          actionId: input.actionId || "action-write",
+          tone: input.tone || undefined,
+          targetAudience: input.targetAudience || undefined,
+          targetWordCount: input.targetWordCount || 0,
+        });
+        await saveArticleDocument(doc);
+        console.log("[plan] ✅ Created ArticleDocument:", doc.id, "source:", doc.source);
+      } else {
+        console.log("[plan] ✅ ArticleDocument exists:", doc.id, "phase:", doc.phase, "source:", doc.source);
+        // Reset plan fields for regeneration
+        doc.title = "";
+        doc.outline = [];
+        doc.tags = [];
+        doc.inspiration = input.inspiration;
+        doc.phase = "planning";
+        await saveArticleDocument(doc);
+      }
+      setActiveDoc(doc);
+      setActiveDocReady(true);
+    }
+
     let _title = "", _desc = "", _outlineCount = 0, _tagCount = 0;
     try {
       // New document (no prefilled title): generate title+description first
@@ -1433,6 +1464,17 @@ ${seriesCtx}`;
           setPartialPlan(p => ({ ...p, projectInsights: result.data }));
         } else if (result.step === "stage1-done") {
           console.log("[plan] Stage1 done. title:", _title?.slice(0,40), "desc:", _desc?.slice(0,40));
+          // ✅ Save title+description to document
+          if (activeArticleId) {
+            const doc = await loadArticleDocument(activeArticleId);
+            if (doc) {
+              doc.title = _title;
+              doc.tone = enrichedInput.tone || "";
+              doc.targetAudience = enrichedInput.targetAudience || "";
+              doc.targetWordCount = enrichedInput.targetWordCount || 0;
+              await saveArticleDocument(doc);
+            }
+          }
           setPlanState("review-title-desc");
           return;
         }
@@ -1440,6 +1482,17 @@ ${seriesCtx}`;
       }
       if (!abortController.signal.aborted) {
         console.log("[plan] ✅ Done. title:", _title?.slice(0,40), "desc:", _desc?.slice(0,40), "outline:", _outlineCount, "tags:", _tagCount);
+        // ✅ Save full plan to document
+        if (activeArticleId) {
+          const doc = await loadArticleDocument(activeArticleId);
+          if (doc) {
+            doc.title = _title;
+            doc.outline = partialPlan.outline;
+            doc.tags = partialPlan.tags;
+            doc.phase = "planning";
+            await saveArticleDocument(doc);
+          }
+        }
         setPlanState("review");
       }
     } catch (e: any) {
@@ -1464,6 +1517,16 @@ ${seriesCtx}`;
           setPartialPlan(p => ({ ...p, outline: result.data }));
         } else if (result.step === "tags" && Array.isArray(result.data)) {
           setPartialPlan(p => ({ ...p, tags: result.data }));
+          // ✅ Save outline+tags to document
+          if (activeArticleId) {
+            const doc = await loadArticleDocument(activeArticleId);
+            if (doc) {
+              doc.outline = result.data;
+              doc.tags = result.data;
+              doc.phase = "planning";
+              await saveArticleDocument(doc);
+            }
+          }
         }
         setPlanStep(result.step);
       }
@@ -1474,7 +1537,7 @@ ${seriesCtx}`;
         setPlanState("review");
       }
     }
-  }, [lastPlanInput, partialPlan.title, partialPlan.description]);
+  }, [lastPlanInput, partialPlan.title, partialPlan.description, activeArticleId]);
 
   // Cancel plan function exposed to StartupSplash
   const cancelPlan = useCallback(() => {

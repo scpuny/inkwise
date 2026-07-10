@@ -79,6 +79,10 @@ export interface ArticleDocument {
   title: string;
   content: string;
 
+  // ─── 来源 ───
+  source?: "quick-start" | "ai-plan" | "series-plan";
+  inspiration?: string;
+
   // ─── 写作参数 ───
   styleId: string;
   actionId: string;

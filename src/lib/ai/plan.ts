@@ -1,6 +1,6 @@
 // plan.ts — AI 文章规划与生成
 // 使用 agentEngine 的 tool calling 模式获取项目文件上下文
-import { sendChatStream, type ChatMessage } from "./ai";
+import { sendChat, sendChatStream, type ChatMessage } from "./ai";
 import { resolveProviderForModel } from "../config/globalAIConfig";
 import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agent/engine";
 import { isTauriEnv } from "../bridge/tauri";
@@ -753,7 +753,7 @@ function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
   return "\n\n## " + header + "\n当前写作关联了以下本地项目目录，请参考项目结构、代码符号和配置来进行写作。\n```\n" + ctx.slice(0, 4000) + "\n```";
 }
 
-async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number): Promise<string> {
+async function askAI(systemPrompt: string, userPrompt: string, maxTokens?: number): Promise<string> {
   const { provider, model } = resolveProviderForModel();
   if (!provider) throw new Error("请先在设置中配置 AI 提供商");
 
@@ -762,15 +762,25 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens: number
     { role: "user", content: userPrompt },
   ];
 
-  return sendChatStream(
-    {
+  try {
+    return await sendChat({
       providerId: provider.id,
       model,
       messages,
       temperature: 0.7,
-      maxTokens,
-    },
-  );
+      maxTokens: maxTokens ?? 1024,
+    });
+  } catch (e) {
+    console.error("[askAI] Non-streaming chat failed, falling back to streaming:", e);
+    // Fallback: use streaming (collect full result)
+    return sendChatStream({
+      providerId: provider.id,
+      model,
+      messages,
+      temperature: 0.7,
+      maxTokens: maxTokens ?? 1024,
+    });
+  }
 }
 
 function parseOutline(text: string): OutlineSection[] {
