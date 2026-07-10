@@ -530,7 +530,11 @@ export async function generateTitle(input: PlanInput): Promise<string> {
   const result = await askAI(sysPrompt, userPrompt, 256);
   const cleaned = result.trim().replace(/^["']|["']$/g, "").trim();
   // Fallback: use first 40 chars of inspiration if AI returns empty
-  return cleaned || (input.inspiration ? input.inspiration.slice(0, 40) : "无标题");
+  if (!cleaned) {
+    console.warn("[generateTitle] AI returned empty, using inspiration fallback");
+    return input.inspiration ? input.inspiration.slice(0, 40) : "无标题";
+  }
+  return cleaned;
 }
 
 export async function generateDescription(input: PlanInput, title: string): Promise<string> {
@@ -557,7 +561,13 @@ export async function generateDescription(input: PlanInput, title: string): Prom
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 512);
-  return result.trim().replace(/^["']|["']$/g, "").trim();
+  const cleaned = result.trim().replace(/^["']|["']$/g, "").trim();
+  // Fallback: use title as description if AI returns empty
+  if (!cleaned) {
+    console.warn("[generateDescription] AI returned empty, using title fallback");
+    return "关于「" + title + "」的一篇文章";
+  }
+  return cleaned;
 }
 
 export async function generateOutline(input: PlanInput, title: string, description: string): Promise<OutlineSection[]> {
@@ -762,25 +772,31 @@ async function askAI(systemPrompt: string, userPrompt: string, maxTokens?: numbe
     { role: "user", content: userPrompt },
   ];
 
+  // 1) Try non-streaming first (faster for short text)
   try {
-    return await sendChat({
+    const result = await sendChat({
       providerId: provider.id,
       model,
       messages,
       temperature: 0.7,
       maxTokens: maxTokens ?? 1024,
     });
+    if (result && result.trim()) {
+      return result;
+    }
+    console.warn("[askAI] Non-streaming returned empty, falling back to streaming (reasoning model?)");
   } catch (e) {
-    console.error("[askAI] Non-streaming chat failed, falling back to streaming:", e);
-    // Fallback: use streaming (collect full result)
-    return sendChatStream({
-      providerId: provider.id,
-      model,
-      messages,
-      temperature: 0.7,
-      maxTokens: maxTokens ?? 1024,
-    });
+    console.error("[askAI] Non-streaming chat failed:", e);
   }
+
+  // 2) Fallback: streaming (needed for reasoning models that return null content in non-streaming mode)
+  return sendChatStream({
+    providerId: provider.id,
+    model,
+    messages,
+    temperature: 0.7,
+    maxTokens: maxTokens ?? 1024,
+  });
 }
 
 function parseOutline(text: string): OutlineSection[] {
