@@ -60,6 +60,10 @@ export interface ArticleGenInput {
   targetAudience?: string;
   targetWordCount?: number;
   skillId?: string;
+  /** 写作风格 ID（v2.1.0 新增，使初稿即可感知风格） */
+  styleId?: string;
+  /** 写作动作 ID（v2.1.0 新增） */
+  actionId?: string;
   projectContext?: string;
   projectName?: string;
   seriesContext?: string;
@@ -76,6 +80,8 @@ export interface SectionWriteInput {
   tone?: string;
   targetWordCount?: number;
   skillId?: string;
+  styleId?: string;
+  actionId?: string;
   totalSections?: number;
   previousSectionTitle?: string;
   previousSectionContent?: string;
@@ -160,12 +166,32 @@ function getProvider() {
 
 // ─── Prompt builders ───
 
-function buildSystemPrompt(phase: string, skill: WritingSkill | undefined, tone?: string): string {
+function buildSystemPrompt(
+  phase: string,
+  skill: WritingSkill | undefined,
+  tone?: string,
+  styleId?: string,
+  actionId?: string,
+): string {
   const config = getEffectivePhaseConfig(skill, phase as any);
   let prompt = config.systemPrompt;
 
   if (tone && tone.trim()) {
     prompt = "整体基调：" + tone + "。\n\n" + prompt;
+  }
+
+  // 注入风格/动作描述（v2.1.0）
+  if (styleId || actionId) {
+    const styleCtx: string[] = [];
+    if (styleId) {
+      styleCtx.push(`## 当前写作风格\n本文应遵循「${styleId}」风格的写作规范。`);
+    }
+    if (actionId) {
+      styleCtx.push(`## 当前写作动作\n当前阶段为「${actionId}」，请据此调整内容的详略和侧重点。`);
+    }
+    if (styleCtx.length > 0) {
+      prompt = styleCtx.join("\n\n") + "\n\n" + prompt;
+    }
   }
 
   return prompt;
@@ -227,6 +253,8 @@ export async function generateFullArticleWithTools(
   parts.push("标题：" + input.title);
   if (input.description) parts.push("简介：" + input.description);
   if (input.tone) parts.push("风格：" + input.tone);
+  if (input.styleId) parts.push("写作风格：" + input.styleId);
+  if (input.actionId) parts.push("写作动作：" + input.actionId);
   if (input.targetAudience) parts.push("目标读者：" + input.targetAudience);
   if (input.targetWordCount) parts.push("目标字数：约 " + input.targetWordCount + " 字");
 
@@ -268,7 +296,7 @@ export async function generateFullArticleWithTools(
 
   // Resolve skill and build system prompt from skill's writing phase config
   const writingSkill = input.skillId ? await resolveSkill(input.skillId) : await resolveSkill(undefined);
-  const baseSystemPrompt = buildSystemPrompt("writing", writingSkill, input.tone);
+  const baseSystemPrompt = buildSystemPrompt("writing", writingSkill, input.tone, input.styleId, input.actionId);
   // Merge skill-specific instructions with tool-based writing instructions  
   const mergedSystemPrompt = baseSystemPrompt + TOOL_INSTRUCTIONS;
 
@@ -319,12 +347,7 @@ export async function generateFullArticleStream(
   }
 
   const skill = await resolveSkill(input.skillId);
-  const config = getEffectivePhaseConfig(skill, "writing");
-  let systemPrompt = config.systemPrompt;
-
-  if (input.tone && input.tone.trim()) {
-    systemPrompt = "整体基调：" + input.tone + "。\n\n" + systemPrompt;
-  }
+  const systemPrompt = buildSystemPrompt("writing", skill, input.tone, input.styleId, input.actionId);
 
   // Build user message
   const lines: string[] = [];
@@ -332,6 +355,8 @@ export async function generateFullArticleStream(
   lines.push("");
   lines.push("标题：" + input.title);
   if (input.description) lines.push("简介：" + input.description);
+  if (input.styleId) lines.push("写作风格：" + input.styleId);
+  if (input.actionId) lines.push("写作动作：" + input.actionId);
 
   if (input.projectContext) {
     if (input.projectName) {

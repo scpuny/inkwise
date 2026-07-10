@@ -236,10 +236,10 @@
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 5.3.1 | `generateFullArticleWithTools` 改为接收 document | `plan.ts` | 🔴 | — | — | 废弃 ArticleGenInput |
-| 5.3.2 | `generateFullArticleStream` 同样 | `plan.ts` | 🔴 | — | — | — |
-| 5.3.3 | `buildSystemPrompt` 从 doc 读取 styleId/actionId/tone/outline | `plan.ts` | 🔴 | — | — | 初稿即可感知风格/动作 |
-| 5.3.4 | 废弃 `ArticleGenInput` / `SectionWriteInput` 类型 | `plan.ts` | 🔴 | — | — | 清理 |
+| 5.3.1 | ArticleGenInput 增加 styleId/actionId 字段 | `plan.ts` | 🟢 | — | 2026-07-10 | 不再残缺 |
+| 5.3.2 | generateFullArticleWithTools/Stream 传递 style/action 到 buildSystemPrompt | `plan.ts` | 🟢 | — | 2026-07-10 | 初稿即可感知风格/动作 |
+| 5.3.3 | buildSystemPrompt 注入风格/动作到 AI 上下文 | `plan.ts` | 🟢 | — | 2026-07-10 | 含 system prompt 和 user prompt |
+| 5.3.4 | handlePlanConfirm 的 genInput 补传 styleId/actionId | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 链路完整 |
 
 ### 5.4 周边组件适配
 
@@ -291,7 +291,7 @@
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
 | S4: 体验优化 | 16 | 16 | 0 | 0 | 0 | 100% |
-| S5: ArticleDocument | 16 | 8 | 1 | 7 | 0 | 50% |
+| S5: ArticleDocument | 16 | 12 | 0 | 4 | 0 | 75% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
 | **总计** | **107** | **92** | 0 | 15 | 0 | 86% |
 ---

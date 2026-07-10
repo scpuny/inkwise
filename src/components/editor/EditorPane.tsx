@@ -1069,6 +1069,8 @@ export function EditorPane({
         targetAudience: lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined,
         targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
         skillId: lastPlanInput?.skillId || partialPlan.skillId || undefined,
+        styleId: lastPlanInput?.styleId || partialPlan.styleId || undefined,
+        actionId: lastPlanInput?.actionId || partialPlan.actionId || undefined,
         projectContext: folderContextRef.current || undefined,
         projectName: "",
         seriesContext: seriesCtx || undefined,
