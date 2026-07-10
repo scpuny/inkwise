@@ -13,6 +13,7 @@ export enum TauriCommands {
   DeleteArticle = "delete_article",
   SaveArticleMeta = "save_article_meta",
   LoadArticleMeta = "load_article_meta",
+  // ⚠️ DEPRECATED in v2.1.0 — use SaveArticleDocument / LoadArticleDocument
   SaveArticleBlueprint = "save_article_blueprint",
   LoadArticleBlueprint = "load_article_blueprint",
 

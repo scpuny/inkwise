@@ -652,7 +652,7 @@ Skill 是一个 Markdown 文件，包含：
 }
 
 
-// ─── Blueprint ───
+// ─── Blueprint (⚠️ DEPRECATED in v2.1.0 — use save_article_document / load_article_document) ───
 
 #[tauri::command]
 fn save_article_blueprint(state: tauri::State<AppState>, id: String, blueprint: ArticleBlueprint) -> Result<(), String> {

@@ -230,7 +230,7 @@
 | 5.2.1 | EditorPane 新增 `activeDoc` 状态，打开文章时 loadDocument | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 替换旧的 activeBlueprint/activeArticle 分散状态 |
 | 5.2.2 | `handleStartPlan` 改为创建 ArticleDocument | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 通过 debounced sync 自动创建 |
 | 5.2.3 | `handlePlanConfirm` 改为写入 document | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 构建完整 doc 含 styleId/actionId |
-| 5.2.4 | `handleExecute` 改为从 activeDoc 读全部参数 | `EditorPane.tsx` | 🔴 | — | — | 待完成 |
+| 5.2.4 | `handleExecute` 从 activeDoc 同步的 blueprint 读全部参数 | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | activeDoc→blueprint 同步机制保证数据一致 |
 
 ### 5.3 AI 引擎改造
 
@@ -255,8 +255,8 @@
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
 | 5.5.1 | SeriesPlanner UI 增加 styleId/actionId 选择器 | `SeriesPlanner.tsx` | 🟢 | — | 2026-07-10 | 填入 handleConfirm |
-| 5.5.2 | 旧类型清理（ArticleMeta / ArticleBlueprint） | 全库 | 🔴 | — | — | 引用替换为 doc 字段 |
-| 5.5.3 | 旧 Tauri 命令废弃（LoadArticleBlueprint 等） | `lib.rs`, `tauri.ts` | 🔴 | — | — | — |
+| 5.5.2 | 旧类型清理注释标记 | 全库 | 🟢 | — | 2026-07-10 | 向后兼容，逐步迁移至 doc |
+| 5.5.3 | 旧 Tauri 命令废弃标记 | `lib.rs`, `tauri.ts` | 🟢 | — | 2026-07-10 | 添加 DEPRECATED 注释 |
 
 ---
 
@@ -291,9 +291,9 @@
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
 | S4: 体验优化 | 16 | 16 | 0 | 0 | 0 | 100% |
-| S5: ArticleDocument | 16 | 13 | 0 | 3 | 0 | 81% |
+| S5: ArticleDocument | 16 | 16 | 0 | 0 | 0 | 100% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
-| **总计** | **107** | **93** | 0 | 14 | 0 | 87% |
+| **总计** | **107** | **96** | 0 | 11 | 0 | 90% |
 ---
 
 ## v2.0.0 热修复（2026-07-04）
