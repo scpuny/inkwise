@@ -347,7 +347,8 @@ export async function generateFullArticleStream(
   }
 
   const skill = await resolveSkill(input.skillId);
-  const systemPrompt = buildSystemPrompt("writing", skill, input.tone, input.styleId, input.actionId);
+  const systemPrompt = buildSystemPrompt("writing", skill, input.tone, input.styleId, input.actionId) +
+    "\n\n## 输出语言\n- 使用流畅自然的中文，禁止混用英文。标题、正文、所有内容均必须为中文。";
 
   // Build user message
   const lines: string[] = [];
@@ -355,8 +356,11 @@ export async function generateFullArticleStream(
   lines.push("");
   lines.push("标题：" + input.title);
   if (input.description) lines.push("简介：" + input.description);
+  if (input.tone) lines.push("风格：" + input.tone);
   if (input.styleId) lines.push("写作风格：" + input.styleId);
   if (input.actionId) lines.push("写作动作：" + input.actionId);
+  if (input.targetAudience) lines.push("目标读者：" + input.targetAudience);
+  if (input.targetWordCount) lines.push("目标字数：约 " + input.targetWordCount + " 字");
 
   if (input.projectContext) {
     if (input.projectName) {
