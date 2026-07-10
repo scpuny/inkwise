@@ -16,6 +16,14 @@ import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTempl
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
+import {
+  loadArticleDocument,
+  saveArticleDocument,
+  migrateArticleDocument,
+  createDefaultDocument,
+  DEFAULT_STYLE_CONFIG,
+  type ArticleDocument,
+} from "../../lib/storage/articleDocument";
 import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
 import { loadCollections, getProjectContext } from "../../lib/storage/collections";
 import { StartupSplash } from "../common/StartupSplash";
@@ -149,7 +157,11 @@ export function EditorPane({
     };
   }, [applyHeadingNumbersRef, processHeadingNumbers]);
 
-  // Blueprint state
+  // ArticleDocument (v2.1.0) — single source of truth
+  const [activeDoc, setActiveDoc] = useState<ArticleDocument | null>(null);
+  const [activeDocReady, setActiveDocReady] = useState(false);
+
+  // Blueprint state (legacy — kept for backward compat, synced from activeDoc)
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
   const [blueprintLoaded, setBlueprintLoaded] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -565,6 +577,8 @@ export function EditorPane({
 
     if (!activeArticleId) {
       setEditorContent("");
+      setActiveDoc(null);
+      setActiveDocReady(false);
       setBlueprint(null);
       setBlueprintLoaded(false);
       onOutlineChange?.([]);
@@ -620,44 +634,107 @@ export function EditorPane({
       }
     } catch {}
 
-    // Load blueprint
-    loadBlueprint(activeArticleId).then((bp) => {
-      if (bp) {
+    // Load ArticleDocument (v2.1.0) — with migration from old data
+    (async () => {
+      let doc = await loadArticleDocument(activeArticleId);
+      if (!doc) {
+        doc = await migrateArticleDocument(activeArticleId);
+      }
+      if (doc) {
+        setActiveDoc(doc);
+        setActiveDocReady(true);
+        // Sync to legacy blueprint for backward compat
+        const bp: ArticleBlueprint = {
+          workingTitle: doc.title,
+          description: doc.outline.length > 0 ? "" : doc.seriesContext || "",
+          phase: doc.phase,
+          outline: doc.outline,
+          tags: doc.tags,
+          tone: doc.tone,
+          targetAudience: doc.targetAudience,
+          targetWordCount: doc.targetWordCount,
+          styleId: doc.styleId,
+          actionId: doc.actionId,
+          skillId: undefined,
+          coverImage: undefined,
+          updatedAt: doc.updatedAt,
+        };
         setBlueprint(bp);
         setBlueprintLoaded(true);
-        if (bp.phase === "planning") {
-          // 规划中文章 → 预填现有规划，显示 StartupSplash 审阅模式
+        if (doc.phase === "planning") {
           setPartialPlan({
-            title: bp.workingTitle,
-            description: bp.description,
-            outline: bp.outline,
-            tags: bp.tags || [],
-            tone: bp.tone || "",
-            targetAudience: bp.targetAudience || "",
-            targetWordCount: bp.targetWordCount || 0,
-            skillId: bp.skillId,
-            styleId: bp.styleId || "general",
-            actionId: bp.actionId,
+            title: doc.title,
+            description: doc.seriesContext || "",
+            outline: doc.outline,
+            tags: doc.tags,
+            tone: doc.tone || "",
+            targetAudience: doc.targetAudience || "",
+            targetWordCount: doc.targetWordCount || 0,
+            styleId: doc.styleId || "general",
+            actionId: doc.actionId,
           });
           setPlanState("review");
           setPlanStep("outline");
         }
-        updateOutline(contentRef.current, bp.outline);
-        onPhaseChange?.(bp.phase);
+        updateOutline(contentRef.current, doc.outline);
+        onPhaseChange?.(doc.phase);
       } else {
-        // Create default blueprint from article title
-        loadArticleContent(activeArticleId).then((content) => {
-          const title = content ? content.split('\n')[0].replace(/^#\s*/, '') : "无标题";
-          const defaultBp = createDefaultBlueprint(title);
-          setBlueprint(defaultBp);
-          updateOutline(contentRef.current, defaultBp.outline);
-          onPhaseChange?.(defaultBp.phase);
-          saveBlueprint(activeArticleId, defaultBp);
-          setBlueprintLoaded(true);
+        // No document yet — create default from content
+        const content = contentRef.current;
+        const title = content ? content.split('\n')[0].replace(/^#\s*/, '') : "无标题";
+        const defaultDoc = createDefaultDocument(activeArticleId, title, {
+          collectionId: activeCollectionId || undefined,
+          createdAt: Date.now(),
         });
+        setActiveDoc(defaultDoc);
+        setActiveDocReady(true);
+        const defaultBp: ArticleBlueprint = {
+          workingTitle: title,
+          description: "",
+          phase: defaultDoc.phase,
+          outline: [],
+          tags: [],
+          tone: undefined,
+          targetAudience: undefined,
+          targetWordCount: undefined,
+          styleId: defaultDoc.styleId,
+          actionId: defaultDoc.actionId,
+          skillId: undefined,
+          coverImage: undefined,
+          updatedAt: Date.now(),
+        };
+        setBlueprint(defaultBp);
+        updateOutline(contentRef.current, defaultBp.outline);
+        onPhaseChange?.(defaultDoc.phase);
+        setBlueprintLoaded(true);
       }
-    });
+    })();
   }, [activeArticleId]);
+
+  // Periodically save ArticleDocument from blueprint state (debounced)
+  const lastDocSaveRef = useRef<number>(0);
+  useEffect(() => {
+    if (!activeDoc || !activeArticleId || !blueprint) return;
+    const now = Date.now();
+    if (now - lastDocSaveRef.current < 5000) return; // debounce 5s
+    lastDocSaveRef.current = now;
+    const next: ArticleDocument = {
+      ...activeDoc,
+      title: blueprint.workingTitle || activeDoc.title,
+      content: contentRef.current,
+      styleId: blueprint.styleId || activeDoc.styleId || "general",
+      actionId: blueprint.actionId || activeDoc.actionId || "action-write",
+      tone: blueprint.tone || activeDoc.tone,
+      targetAudience: blueprint.targetAudience || activeDoc.targetAudience,
+      targetWordCount: blueprint.targetWordCount || activeDoc.targetWordCount,
+      phase: blueprint.phase || activeDoc.phase,
+      outline: blueprint.outline || activeDoc.outline,
+      tags: blueprint.tags || activeDoc.tags,
+      updatedAt: now,
+      version: activeDoc.version,
+    };
+    saveArticleDocument(next);
+  }, [blueprint, editorContent, activeArticleId]);
 
   // Sync article/collection IDs to window for other components (AIBar, InlineToolbar)
   useEffect(() => {
@@ -1044,6 +1121,32 @@ export function EditorPane({
           emit("collections-changed");
           return completeBp;
         });
+
+        // Save ArticleDocument with full style/action context (v2.1.0)
+        const doc: ArticleDocument = {
+          id: result.articleId,
+          title: partialPlan.title || "",
+          content: articleContent || accumulatedContent || "",
+          styleId: lastPlanInput?.styleId || partialPlan.styleId || "general",
+          actionId: lastPlanInput?.actionId || partialPlan.actionId || "action-write",
+          tone: lastPlanInput?.tone || partialPlan.tone || undefined,
+          targetAudience: lastPlanInput?.targetAudience || partialPlan.targetAudience || undefined,
+          targetWordCount: lastPlanInput?.targetWordCount || partialPlan.targetWordCount || 0,
+          phase: "reviewing",
+          outline: partialPlan.outline.map(s => ({ ...s, status: "complete" as const })),
+          tags: partialPlan.tags || [],
+          styleConfig: DEFAULT_STYLE_CONFIG,
+          linkedFolder: projectLinkedFolder || undefined,
+          projectContext: folderContextRef.current || undefined,
+          seriesContext: seriesCtx || undefined,
+          publishRecords: [],
+          version: 1,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        await saveArticleDocument(doc);
+        setActiveDoc(doc);
+        setActiveDocReady(true);
 
         // Auto-generate images if configured (非阻塞)
         const drawCfg = useDrawConfig.getState().config;

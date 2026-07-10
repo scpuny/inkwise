@@ -227,10 +227,10 @@
 
 | # | 功能点 | 文件 | 状态 | 开发者 | 完成日 | 备注 |
 |---|--------|------|------|--------|--------|------|
-| 5.2.1 | EditorPane 新增 `activeDoc` 状态，打开文章时 loadDocument | `EditorPane.tsx` | 🔴 | — | — | 替换旧的 activeBlueprint/activeArticle 分散状态 |
-| 5.2.2 | `handleStartPlan` 改为创建 ArticleDocument | `EditorPane.tsx` | 🔴 | — | — | 继承 seriesPlan 的 styleId/actionId |
-| 5.2.3 | `handlePlanConfirm` 改为写入 document | `EditorPane.tsx` | 🔴 | — | — | 不再构建残缺的 ArticleGenInput |
-| 5.2.4 | `handleExecute` 改为从 activeDoc 读全部参数 | `EditorPane.tsx` | 🔴 | — | — | 不再拼凑 blueprint + style + action |
+| 5.2.1 | EditorPane 新增 `activeDoc` 状态，打开文章时 loadDocument | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 替换旧的 activeBlueprint/activeArticle 分散状态 |
+| 5.2.2 | `handleStartPlan` 改为创建 ArticleDocument | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 通过 debounced sync 自动创建 |
+| 5.2.3 | `handlePlanConfirm` 改为写入 document | `EditorPane.tsx` | 🟢 | — | 2026-07-10 | 构建完整 doc 含 styleId/actionId |
+| 5.2.4 | `handleExecute` 改为从 activeDoc 读全部参数 | `EditorPane.tsx` | 🔴 | — | — | 待完成 |
 
 ### 5.3 AI 引擎改造
 
@@ -291,7 +291,7 @@
 | S2: 架构+UX | 29 | 29 | 0 | 0 | 0 | 100% |
 | S3: 智能增强 | 22 | 22 | 0 | 0 | 0 | 100% |
 | S4: 体验优化 | 16 | 16 | 0 | 0 | 0 | 100% |
-| S5: ArticleDocument | 16 | 5 | 0 | 11 | 0 | 31% |
+| S5: ArticleDocument | 16 | 8 | 1 | 7 | 0 | 50% |
 | 未来扩展 | 6 | 0 | 0 | 6 | 0 | 0% |
 | **总计** | **107** | **92** | 0 | 15 | 0 | 86% |
 ---

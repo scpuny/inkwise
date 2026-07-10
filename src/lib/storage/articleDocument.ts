@@ -108,7 +108,7 @@ export interface ArticleDocument {
 
 /* ─── 默认值 ─── */
 
-const DEFAULT_STYLE_CONFIG: ArticleStyleConfig = {
+export const DEFAULT_STYLE_CONFIG: ArticleStyleConfig = {
   editorStyleTemplateId: "default",
   lineHeight: 1.75,
   editorFontSize: 15,
