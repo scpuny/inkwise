@@ -486,6 +486,8 @@ export async function generateTitle(input: PlanInput): Promise<string> {
   if (input.tone && input.tone.trim()) {
     sysPrompt = "整体基调：" + input.tone + "。\n\n" + sysPrompt;
   }
+  // 抑制思考链 + 输出语言约束（这些函数不经过 buildSystemPrompt）
+  sysPrompt = "直接输出所需内容，不要输出任何思考过程。\n\n" + sysPrompt + "\n\n## 输出语言\n- 使用流畅自然的中文。";
 
   const ctxBlock = input.projectContext ? buildProjectContextBlockForPlan(input.projectContext, input.projectName) : "";
   const userPrompt = [
@@ -510,6 +512,8 @@ export async function generateDescription(input: PlanInput, title: string): Prom
   if (input.tone && input.tone.trim()) {
     sysPrompt = "整体基调：" + input.tone + "。\n\n" + sysPrompt;
   }
+  // 抑制思考链 + 输出语言约束（这些函数不经过 buildSystemPrompt）
+  sysPrompt = "直接输出所需内容，不要输出任何思考过程。\n\n" + sysPrompt + "\n\n## 输出语言\n- 使用流畅自然的中文。";
 
   const ctxBlock = input.projectContext ? buildProjectContextBlockForPlan(input.projectContext, input.projectName) : "";
   const userPrompt = [

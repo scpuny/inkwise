@@ -1417,16 +1417,16 @@ ${seriesCtx}`;
           setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
           return;
         }
-        if (result.step === "title" && result.data) {
+        if (result.step === "title" && result.data !== undefined && result.data !== null) {
           _title = result.data;
           setPartialPlan(p => ({ ...p, title: result.data }));
-        } else if (result.step === "description" && result.data) {
+        } else if (result.step === "description" && result.data !== undefined && result.data !== null) {
           _desc = result.data;
           setPartialPlan(p => ({ ...p, description: result.data }));
-        } else if (result.step === "outline" && result.data) {
+        } else if (result.step === "outline" && result.data !== undefined && result.data !== null) {
           _outlineCount = Array.isArray(result.data) ? result.data.length : 0;
           setPartialPlan(p => ({ ...p, outline: result.data }));
-        } else if (result.step === "tags" && result.data) {
+        } else if (result.step === "tags" && result.data !== undefined && result.data !== null) {
           _tagCount = Array.isArray(result.data) ? result.data.length : 0;
           setPartialPlan(p => ({ ...p, tags: result.data }));
         } else if (result.step === "explored" && result.data) {
