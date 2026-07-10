@@ -11,7 +11,7 @@ import {
   type ArticlePhase,
   type OutlineSection,
 } from "../../lib/ai/article/blueprint";
-import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
+import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, generatePlanStage2, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
@@ -114,7 +114,7 @@ export function EditorPane({
   const { execute, isProcessing, openPanel, setPanelTab, openCommandBar } = useAgent();
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "writing" | "article-review">("idle");
+  const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "review-title-desc" | "writing" | "article-review">("idle");
   const [planStep, setPlanStep] = useState<PlanStep>("idle");
   const [partialPlan, setPartialPlan] = useState<PartialPlan>({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
   const [planError, setPlanError] = useState<string | null>(null);
@@ -1406,31 +1406,35 @@ ${seriesCtx}`;
     setPlanError(null);
     setToolEvents([]);
     setPlanState("planning");
-    // Track generated values for logging (state not yet flushed)
     let _title = "", _desc = "", _outlineCount = 0, _tagCount = 0;
     try {
-      const gen = generatePlanStream(enrichedInput);
+      // New document (no prefilled title): generate title+description first
+      const useStage1 = !input.prefilledTitle;
+      const gen = generatePlanStream(enrichedInput, useStage1 || undefined);
       for await (const result of gen) {
-        // Check if cancelled
         if (abortController.signal.aborted) {
           setPlanState("idle");
           setPartialPlan({ title: "", description: "", outline: [], tags: [], tone: "", targetAudience: "", targetWordCount: 0, skillId: undefined, styleId: "general", actionId: undefined });
           return;
         }
-        if (result.step === "title" && result.data !== undefined && result.data !== null) {
-          _title = result.data;
-          setPartialPlan(p => ({ ...p, title: result.data }));
-        } else if (result.step === "description" && result.data !== undefined && result.data !== null) {
-          _desc = result.data;
-          setPartialPlan(p => ({ ...p, description: result.data }));
-        } else if (result.step === "outline" && result.data !== undefined && result.data !== null) {
-          _outlineCount = Array.isArray(result.data) ? result.data.length : 0;
+        if (result.step === "title") {
+          _title = typeof result.data === "string" ? result.data : "";
+          setPartialPlan(p => ({ ...p, title: _title }));
+        } else if (result.step === "description") {
+          _desc = typeof result.data === "string" ? result.data : "";
+          setPartialPlan(p => ({ ...p, description: _desc }));
+        } else if (result.step === "outline" && Array.isArray(result.data)) {
+          _outlineCount = result.data.length;
           setPartialPlan(p => ({ ...p, outline: result.data }));
-        } else if (result.step === "tags" && result.data !== undefined && result.data !== null) {
-          _tagCount = Array.isArray(result.data) ? result.data.length : 0;
+        } else if (result.step === "tags" && Array.isArray(result.data)) {
+          _tagCount = result.data.length;
           setPartialPlan(p => ({ ...p, tags: result.data }));
         } else if (result.step === "explored" && result.data) {
           setPartialPlan(p => ({ ...p, projectInsights: result.data }));
+        } else if (result.step === "stage1-done") {
+          console.log("[plan] Stage1 done. title:", _title?.slice(0,40), "desc:", _desc?.slice(0,40));
+          setPlanState("review-title-desc");
+          return;
         }
         setPlanStep(result.step);
       }
@@ -1445,6 +1449,32 @@ ${seriesCtx}`;
       }
     }
   }, []);
+
+  /** Continue from title+description review → generate outline+tags */
+  const handleContinueToOutline = useCallback(async () => {
+    if (!lastPlanInput) return;
+    setPlanState("planning");
+    abortPlanRef.current = new AbortController();
+    const abortController = abortPlanRef.current;
+    try {
+      const gen = generatePlanStage2(lastPlanInput, partialPlan.title, partialPlan.description);
+      for await (const result of gen) {
+        if (abortController.signal.aborted) { setPlanState("idle"); return; }
+        if (result.step === "outline" && Array.isArray(result.data)) {
+          setPartialPlan(p => ({ ...p, outline: result.data }));
+        } else if (result.step === "tags" && Array.isArray(result.data)) {
+          setPartialPlan(p => ({ ...p, tags: result.data }));
+        }
+        setPlanStep(result.step);
+      }
+      if (!abortController.signal.aborted) setPlanState("review");
+    } catch (e: any) {
+      if (!abortController.signal.aborted) {
+        setPlanError(typeof e === "string" ? e : e?.message || "生成失败");
+        setPlanState("review");
+      }
+    }
+  }, [lastPlanInput, partialPlan.title, partialPlan.description]);
 
   // Cancel plan function exposed to StartupSplash
   const cancelPlan = useCallback(() => {
@@ -1632,6 +1662,7 @@ ${seriesDescription || ""}`
         <StartupSplash
           onQuickStart={() => onNewDoc?.(activeCollectionId ?? undefined)}
           onAIPlan={handleStartPlan}
+          onContinueToOutline={handleContinueToOutline}
           planState={planState}
           planStep={planStep}
           streamingContent={streamingContent}
@@ -1676,6 +1707,7 @@ ${seriesDescription || ""}`
             }
           }}
           onAIPlan={handleStartPlan}
+          onContinueToOutline={handleContinueToOutline}
           planState={planState}
           planStep={planStep}
           partialPlan={partialPlan}

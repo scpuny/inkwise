@@ -49,7 +49,7 @@ export interface PlanInput {
   planCollectionId?: string;
 }
 
-export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
+export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "stage1-done" | "done";
 export type PlanStepResult = { step: PlanStep; data: any };
 
 export interface ArticleGenInput {
@@ -419,7 +419,7 @@ export async function generateFullArticleStream(
 
 // ─── Plan generation (streaming) ───
 
-export async function* generatePlanStream(input: PlanInput): AsyncGenerator<PlanStepResult> {
+export async function* generatePlanStream(input: PlanInput, stage1?: boolean): AsyncGenerator<PlanStepResult> {
   yield { step: "idle", data: null };
 
   // Silently explore project structure if linked folder — runs before user
@@ -452,11 +452,38 @@ export async function* generatePlanStream(input: PlanInput): AsyncGenerator<Plan
   const description = input.prefilledDescription || await generateDescription(enriched, title);
   yield { step: "description", data: description };
 
+  // Stage 1: stop here for new documents — let user review title+description
+  if (stage1) {
+    yield { step: "stage1-done", data: null };
+    return;
+  }
+
   // Generate outline
   const outline = await generateOutline(enriched, title, description);
   yield { step: "outline", data: outline };
 
   // Generate tags
+  const tags = await generateTags(input, title, description);
+  yield { step: "tags", data: tags };
+
+  yield { step: "done", data: null };
+}
+
+/**
+ * Phase 2: generate outline + tags from confirmed title+description.
+ */
+export async function* generatePlanStage2(
+  input: PlanInput,
+  title: string,
+  description: string,
+): AsyncGenerator<PlanStepResult> {
+  const enriched = input.projectContext
+    ? { ...input, projectContext: input.projectContext }
+    : input;
+
+  const outline = await generateOutline(enriched, title, description);
+  yield { step: "outline", data: outline };
+
   const tags = await generateTags(input, title, description);
   yield { step: "tags", data: tags };
 
@@ -501,7 +528,9 @@ export async function generateTitle(input: PlanInput): Promise<string> {
   ].filter(Boolean).join("\n");
 
   const result = await askAI(sysPrompt, userPrompt, 256);
-  return result.trim().replace(/^["']|["']$/g, "").trim();
+  const cleaned = result.trim().replace(/^["']|["']$/g, "").trim();
+  // Fallback: use first 40 chars of inspiration if AI returns empty
+  return cleaned || (input.inspiration ? input.inspiration.slice(0, 40) : "无标题");
 }
 
 export async function generateDescription(input: PlanInput, title: string): Promise<string> {
