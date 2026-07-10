@@ -1,167 +1,135 @@
-# InkWise v2.x 架构演进主方案
+# InkWise 架构方案索引
 
-> 版本: v2.1.0 → **v3.0** | 状态: Sprint 5 ✅ → **Sprint 6 设计阶段** | 最后更新: 2026-07-10
-> 基于: [Kiro tree-sitter Query 验证] + 15 份专题设计文档 + 全功能代码审查
+> **当前版本**: v2.1.0-alpha | **下一版本**: v3.0（设计方案） | 最后更新: 2026-07-10
 
 ---
 
-## 核心问题一览
+## 现状：v2.x 已完成的工作
 
-| # | 问题 | 严重度 | 方案文档 |
+Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见 [TRACKING.md](TRACKING.md)。
+
+已解决的 v1.x 问题：
+- 数据一致性、删除级联、风格/动作分离、回收站修正
+- 技能系统统一、模块重构、UX 改造、agent 统一
+- Query AST、向量嵌入、增量扫描
+- Context Planner、新技能、主题系统精简
+- ArticleDocument 统一生命周期上下文
+
+---
+
+## 核心问题（v3.0 待解决）
+
+| # | 问题 | 严重度 | 涉及文档 |
 |---|------|--------|---------|
-| 1 | **数据多源头不一致**：Rust JSON / localStorage / SQLite 三套存储互相覆盖 | P0 | 01 |
-| 2 | **删除级联遗漏**：删除合集不删子文章、回收站操作不清理向量和 SQLite | P0 | 02 |
-| 3 | **回收站逻辑错误**：trashArticle 物理删内容导致恢复后无内容 | P0 (新) | 17 |
-| 4 | **"风格"和"动作"混淆**：skill 容器同时承担两个完全不同的语义 | P0 | 13 |
-| 5 | **审阅不感知风格**：5 维度硬编码，不匹配当前写作风格 | P0 | 13 |
-| 6 | **离线变更无法检测**：文件 watcher 只在运行时有效，关 app 后变更丢失 | P0 | 03 |
-| 7 | **AST 遍历方式落后**：200 行手写 node_stack 遍历，而非 tree-sitter Query | P1 | 04 |
-| 8 | **缺少语义检索**：只能精确匹配符号名，无法语义搜索相关代码/文章 | P1 | 05 |
-| 9 | **两套平行技能体系**：Rust 14 个 + 前端 10 个，完全脱节 | P0 | 09 |
-| 10 | **agent 双套执行引擎**：前端 agentEngine.ts + Rust agent.rs 重复 | P0 | 09, 11 |
-| 11 | **工具使用缺乏规划**：所有项目上下文一股脑塞给 AI | P1 | 06 |
-| 12 | **CodeGraph 角色模糊**：装了也不知能额外得到什么 | P2 | 08 |
-| 13 | **editorStyles.ts 1585 行**：编辑器配置 + 样式 + 导入导出全部混在一个文件 | P1 | 11 |
-| 14 | **搜索实现性能差**：前端 search.ts 内存遍历全文，SQLite FTS 未被调用 | P1 | 01, 17 |
-| 15 | **主题数量过多**：25 个主题含大量同质重复 | P1 | 10 |
-| 16 | **UX 三层面板视觉过载**：右侧固定面板 + 侧栏同时打开压缩编辑器 | P0 | 14 |
-| **18** | **存储碎片化**：数据散在 4 个后端 × 17+ 文件、内容存 5 份互相不一致 | **P0 (v3.0)** | 19 |
-| 17 | **前端搜索不调 SQLite**：search.ts 内存遍历，SQLite FTS 闲置 | P1 | 01 |
-
-> **新发现（doc 17）**：回收站当前策略有问题——trashArticle 物理删内容 meta，
-> 恢复后只有标题回来内容丢了。正确做法是软删除：只移出合集列表，不删物理文件。
-> permanentlyDelete 再做物理清理。
+| 01 | **存储碎片化**：数据散在 4 个后端（SQLite/JSON/ls/文件）× 17+ 存储文件，同一内容存 5 处无同步保证 | P0 | [19-architecture-rewrite](19-architecture-rewrite.md) |
+| 02 | **层混叠**：UI/Service/Domain/AI 互相混调，EditorPane 1910 行 | P0 | 同上 |
+| 03 | **Skill 和 PhaseConfig 混淆**：Skill 结构体嵌 systemPrompt，加新技能要改 5 个文件 | P0 | 同上 |
+| 04 | **无统一分层**：没有 Service/Domain/Infrastructure 边界，无法测试无法 mock | P1 | 同上 |
+| 05 | **UI 状态机过于复杂**：planState 5 种状态，组件间事件耦合紧 | P1 | 同上 |
+| 06 | **旧代码堆积**：store.rs JSON 读写 + articles.ts + articleDocument.ts 三个存储层并存 | P1 | 同上 |
+| 07 | **回收站独立存储**：trash.json 可以用 Document.deletedAt 替代 | P1 | 同上 |
 
 ---
 
-## 方案全景
+## 方案文档索引
 
-```
-问题域                       方案                           实施阶段
-──────────────────────────────────────────────────────────────────────
-数据一致性                  单源头(Rust JSON) + 统一 CRUD       Sprint 1
-删除级联                    完整清理矩阵                         Sprint 1
-风格/动作分离               Style/Action/Phase/Review 四分离    Sprint 1
-回收站逻辑修复              软删除 → 物理删除两阶段             Sprint 1
-──────────────────────────────────────────────────────────────────────
-技能系统统一                UnifiedSkill（Rust 权威）           Sprint 2
-agent 统一                  Rust 主执行 + 前端调度              Sprint 2
-模块重构                    按领域分包                           Sprint 2
-UX 改造                    浮动层 + 双栏精简                    Sprint 2
-──────────────────────────────────────────────────────────────────────
-Query AST                   tree-sitter .scm 三层查询           Sprint 3
-向量嵌入                    bge-small-zh-v1.5 + 三层索引         Sprint 3
-增量扫描                    三层降级 + IndexSnapshot            Sprint 3
-──────────────────────────────────────────────────────────────────────
-Context Planner             关键词规则 + 向量检索 + 小模型      Sprint 4
-新技能                      项目变动报告/导读/影响评估          Sprint 4
-主题系统精简                25→12 核心 + 平台变体               Sprint 4
-未来扩展                    热点/改写/音视频                    Sprint 5+
-──────────────────────────────────────────────────────────────────────
-ArticleDocument            统一文章生命周期上下文               Sprint 5
-──────────────────────────────────────────────────────────────────────
-架构重构 v3.0              存储统一 + 分层拆分 + Skill 净化     Sprint 6+
-```
+| # | 文档 | 核心内容 | 状态 |
+|---|------|---------|------|
+| — | **[INDEX.md](INDEX.md)** | **方案索引（本文档）** | 🟢 |
+| 01-17 | v2.x 遗留文档 | Sprint 1-5 方案（已实施） | ✅ 历史 |
+| **18** | **[ArticleDocument](18-article-document.md)** | 统一文章生命周期上下文 | 🟢 Sprint 5 |
+| **19** | **[架构重构 v3.0](19-architecture-rewrite.md)** | **完整方案：存储统一 + 分层拆分 + 净化** | 🟡 **设计方案** |
 
 ---
 
-## 文档索引
+## v3.0 方案全景
 
-| # | 文档名 | 核心内容 | 前置依赖 | 状态 |
-|---|--------|---------|---------|------|
-| — | **[INDEX.md](INDEX.md)** | 主方案索引（本文档） | — | ✅ 完整 |
-| 01 | **[数据一致性](01-data-consistency.md)** | 单源头、统一 CRUD、SQLite 瘦身 | — | ✅ 完整 |
-| 02 | **[删除级联](02-deletion-cascade.md)** | 清理矩阵、Rust 级联命令 | 01 | ✅ 完整 |
-| 03 | **[增量扫描](03-incremental-scanning.md)** | 三层降级、IndexSnapshot | 01 | ✅ 完整 |
-| 04 | **[Query AST](04-query-ast.md)** | tree-sitter Query 体系、.scm 文件 | 03 | ✅ 完整 |
-| 05 | **[向量嵌入](05-vector-embedding.md)** | ONNX 模型、三层索引、增量策略 | 03, 04 | ✅ 完整 |
-| 06 | **[Context Planner](06-context-planner.md)** | 意图预检、精准注入 | 04, 05 | ✅ 完整 |
-| 07 | **[新技能](07-new-skills.md)** | 变动报告、导读、影响评估 | 06 | ✅ 完整 |
-| 08 | **[CodeGraph 角色](08-codegraph-role.md)** | 可选加速器、向量互补 | 04, 05 | ✅ 完整 |
-| 09 | **[技能系统缺陷](09-skill-system-review.md)** | UnifiedSkill 统一契约 | — | ✅ 完整 |
-| 10 | **[主题系统缺陷](10-theme-system-review.md)** | 语义类型、25→12 精简 | — | ✅ 完整 |
-| 11 | **[架构重塑](11-architecture-restructure.md)** | 模块拆分、4 层重构 | — | ✅ 完整 |
-| 12 | **[功能地图](12-feature-map.md)** | 11 域完整功能审查 | — | ✅ 完整 |
-| 13 | **[写作业务重塑](13-skill-business-redesign.md)** | Style/Action/Phase/Review 四分离 | 09, 12 | ✅ 完整 |
-| 14 | **[UX 审查](14-ux-review.md)** | 14 个 UX 问题、布局调整、交互优化 | 12, 13 | ✅ 完整 |
-| **15** | **[未来扩展](15-future-expansion.md)** | 热点追踪、视频/音频提取、改写、效果分析 | — | ✅ 完整 |
-| **16** | **[实施路线图](16-implementation-roadmap.md)** | 4 Sprint + 依赖关系 + 验收标准 | 全部 | ✅ 完整 |
-| **17** | **[代码质量审查](17-code-quality-review.md)** | 11 域逐功能审查 + 插图/审阅/修复专项 | 12 | ✅ 完整 |
-| **18** | **[ArticleDocument](18-article-document.md)** | **统一文章生命周期上下文** | 13, 11 | 🆕 Sprint 5 |
-| **19** | **[架构重构 v3.0](19-architecture-rewrite.md)** | **存储统一 + 分层拆分 + Skill 净化** | 18 | 🆕 设计方案 |
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Infrastructure Layer                        │
+│  SQLite（唯一事实源） → 废除 JSON + localStorage 业务数据       │
+│  ┌────────────────────────────────────────────────────────┐     │
+│  │ documents  │  documents_fts  │  vector_chunks         │     │
+│  │ collections│  series_plans   │  publish_records       │     │
+│  │ providers  │  platform_configs│ settings               │     │
+│  │ skills     │  phase_configs  │  article_images         │     │
+│  └────────────────────────────────────────────────────────┘     │
+│  文件系统：仅存图片 + 用户可见的 .md                             │
+│  localStorage：仅存系统主题偏好                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                     Domain Layer                                │
+│  Document（聚合根） | Skill（元数据） | PhaseConfig（模板）      │
+│  Collection（容器） | SeriesPlan（编排）                         │
+├─────────────────────────────────────────────────────────────────┤
+│                     Service Layer                                │
+│  PlanService  │  WriteService  │  DocumentService                │
+│  PublishService│  ReviewService │  CollectionService             │
+│  TrashService  │  SkillService  │  AIService                    │
+│  编排流程 → 调 Domain 逻辑 → 调 Infrastructure 接口             │
+├─────────────────────────────────────────────────────────────────┤
+│                     UI Layer                                     │
+│  EditorPage（~80行容器） + PlanPanel + EditorCanvas              │
+│  AIActionBar + AIFloatingPanel（浮动层，不固定占位）              │
+│  只做渲染 + 事件绑定，状态由 Service 管理                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 核心原则
+
+| 原则 | 说明 |
+|------|------|
+| **SQLite 唯一事实源** | 所有业务数据进 SQLite，不 split 到 JSON/localStorage |
+| **Document 聚合根** | 一个 Document 包含一切（内容/元数据/样式/审阅/回收站状态） |
+| **Skill 不含 AI** | Skill 只有 id/name/desc/icon，systemPrompt 在 PhaseConfig |
+| **Service 编排不混 IO** | Service 调 Domain + Infrastructure 接口，不直接调 Tauri invoke |
+| **UI 纯渲染** | 组件不包含业务逻辑，状态通过 Service 获取 |
+
+### 被清除的旧代码
+
+| 删除 | 原因 |
+|------|------|
+| `store.rs` 中全部 JSON 读写方法 | SQLite 替代 |
+| `articles/{id}.md` 独立文件 | 合并到 documents.content |
+| `articles/{id}.meta.json` | 合并到 documents 表字段 |
+| `articles/{id}.blueprint.json` | 合并到 documents.outline |
+| `documents/{id}.json` | 合并到 documents 表 |
+| `data/*.json` × 8 个文件 | 数据在 SQLite |
+| `StorageEngine` 的 localStorage 写缓存 | 不需要，SQLite 直接读写 |
+| `articleDocument.ts` | 合并到 DocumentService |
+| `articles.ts` | 合并到 DocumentService |
+| `articleVersions.ts` | 版本在 documents 表 |
+| `trash.json` | Document.deletedAt 替代 |
+| EditorPane 1700 → 拆为 5 个组件 | 组件职责明确 |
 
 ---
 
-## 新增关键发现（New Findings）
-
-### 1. Kiro 代码验证（doc 04）
-
-Kiro 已采用三层 Query 结构：
+## 实施路线
 
 ```
-code-snippet/     → 函数/类/接口定义提取（~10 种语言）
-import/           → 依赖关系提取（~10 种语言）
-root-context/     → 类型标注提取（按语法节点细分）
-```
+Sprint 6: 存储统一（SQLite 成为唯一事实源 + 数据迁移）
+  ├── 定义完整 SQLite schema + migration 脚本
+  ├── 所有 Tauri 命令从 JSON 改为 SQLite
+  └── 删除旧 JSON 文件和冗余前端存储层
 
-与我们设计的 doc 04 完全一致。Kiro 使用 `@vscode/tree-sitter-wasm`（WASM 运行时）支持 27 种语言，
-而我们当前用原生 Rust tree-sitter crate 只支持 3 种（ts/js/rs）。
-**建议**：不着急切换到 WASM，先用 raw crate + .scm 文件验证方案，长期可切。
+Sprint 7: 分层拆分（代码重组）
+  ├── Domain 类型独立 + Infrastructure 接口定义
+  ├── Service 层提取（PlanService / DocumentService 等）
+  └── EditorPane 拆 5 个组件 + planState 简化
 
-### 2. 向量模型（doc 05）
-
-Kiro **未内置向量模型**。InkWise 自主选型 `bge-small-zh-v1.5`（中文优化、384 维、~33MB）路径正确。
-
-### 3. 回收站逻辑缺陷（doc 17 🔴 新发现）
-
-当前 `trashArticle` 物理删 content/meta，若恢复则无内容。
-**修正**：改为软删除（只移出合集，不删文件），`permanentlyDelete` 再做物理清理。
-
-### 4. 搜索实现漏洞（doc 17 🟡 新发现）
-
-前端 `search.ts` 内存遍历每篇文章内容，性能差。SQLite FTS `search_articles_db` 已实现但未被前端调用。
-
----
-
-## 实施优先级路线图
-
-```
-          Sprint 1 ✅                  Sprint 2 ✅                 Sprint 3 ✅                Sprint 4 (2-3周)
-         ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-P0 核心   │ ~~数据一致性~~   │     │ ~~技能系统统一~~ │     │ Query AST       │     │ Context Planner  │     │ ArticleDocument  │
-          │ ~~删除级联~~     │     │ ~~模块重构~~     │     │ 向量嵌入         │     │ 新技能           │     │ 统一上下文       │
-          │ ~~风格/动作分离~~ │     │ ~~UX 改造~~      │     │ 增量扫描         │     │ 主题系统精简     │     │ 初稿感知风格     │
-          │ ~~回收站修正~~   │     │ ~~agent 统一~~   │     │                 │     │                  │     │ 旧类型清理       │
-          └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
-            ~~v2.0.0-alpha~~       ~~v2.0.0-beta~~          v2.0.0-rc               v2.0.0              v2.1.0-alpha
+Sprint 8: 功能增强（新能力）
+  ├── Skill 纯净分离 + PhaseConfig 独立注册
+  ├── 向量搜索 ndarray 矩阵乘加速
+  └── UI 浮动层 + 一致性交互
 ```
 
 ---
 
-## 分支与版本
+## 版本分支
 
 ```
-codex/v2.0.0            ← 主分支，保存完整规划文档
-  ├── codex/v2.0.0-docs   ← 最终方案文档（当前分支）
-  ├── codex/v2.0.0-s1     ← Sprint 1 实施 ✅
-  ├── codex/v2.0.0-s2     ← Sprint 2 实施 ✅（当前）
-  ├── codex/v2.0.0-s3     ← Sprint 3 实施 ✅
-  └── codex/v2.0.0-s4     ← Sprint 4 实施
-
-~~v2.0.0-alpha~~  ← Sprint 1 完成（2026-07-03）
-~~v2.0.0-beta~~   ← Sprint 2 完成（2026-07-03）
-~~v2.0.0-rc~~   ← Sprint 3 完成（2026-07-03）
-v2.0.0        ← Sprint 4 完成（正式发布）
-v2.1.0-alpha  ← Sprint 5 完成（ArticleDocument 统一上下文）
+main → v2.1.0-alpha
+  └── codex/v3.0-s6     Sprint 6（存储统一）
+  └── codex/v3.0-s7     Sprint 7（分层拆分）
+  └── codex/v3.0-s8     Sprint 8（功能增强）
+  └── v3.0              正式发布
 ```
-
----
-
-## 推荐实施顺序
-
-1. **Sprint 1** 优先：修复最影响数据正确性和业务逻辑的缺陷
-2. **Sprint 2** 其次：架构重塑 + UX 改造，提升可维护性和使用体验
-3. **Sprint 3** 再次：智能能力增强，依赖 Sprint 2 的模块重构
-4. **Sprint 4** 最后：体验优化 + 新技能 + 主题精简
-5. **Sprint 5**：ArticleDocument 统一生命周期上下文 — 解决碎片化根本问题
-6. **未来扩展**：基于 v2.1.0 按需开发（热点/改写/音视频）
