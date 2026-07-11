@@ -37,6 +37,9 @@ pub struct WritingSkill {
     pub icon: String,
     pub scope: String,
     pub phase: Option<String>,
+    /// DEPRECATED: Use PhaseConfigRegistry instead.
+    /// Will be removed in v3.1. For backward compatibility only.
+    #[serde(default)]
     pub configs: HashMap<String, PhaseConfig>,
     pub context_sources: Vec<ContextSource>,
     pub dimensions: Vec<StyleDimension>,
