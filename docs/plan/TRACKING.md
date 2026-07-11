@@ -405,5 +405,20 @@
 | 7.3 | Service 层：PlanService 提取 | `src/services/PlanService.ts` | 🟢 | 2026-07-11 | 依赖 AIProvider + DocumentStore 接口 |
 | 7.4 | Service 层：DocumentService / CollectionService | `src/services/*.ts` | 🟢 | 2026-07-11 | 文档存管 + 合集管理 + 回收站 |
 | 7.5 | hooks 胶水层 | `src/hooks/useDocument.ts` 等 | 🟢 | 2026-07-11 | useDocument / usePlan / useCollection |
-| **Sprint 6 功能** | **8** | **8** | **0** | **100%** |
-| **总计** | **146** | **142** | **4** | **97%** |
+| **Sprint 7 功能** | **5** | **5** | **0** | **100%** |
+
+## Sprint 8：UI 组件拆分 + 能力增强
+
+**目标**：EditorPane 拆分 + Skill 净化 + 向量加速
+
+| # | 功能点 | 文件 | 状态 | 完成日 | 备注 |
+|---|--------|------|------|--------|------|
+| 8.1 | EditorPane → EditorPage + PlanPanel + EditorCanvas | `EditorPage.tsx` 等 | 🟢 | 2026-07-11 | 1910 行拆 5 个独立组件 |
+| 8.2 | PlanPanel 内部 UI 拆分（5 个子组件） | `PlanPanel/` | 🔴 | — | 标题编辑/描述编辑/大纲编辑/标签/状态栏 |
+| 8.3 | AISidebar（AI/样式/审阅 tab 侧栏） | `AISidebar.tsx` | 🔴 | — | 合并右侧面板，Cmd+B 切换 |
+| 8.4 | Skill 纯净分离 — 去掉 systemPrompt | `domain/Skill.ts`, `services/SkillService.ts` | 🔴 | — | Skill 只含元数据 + inputSchema |
+| 8.5 | vector/search.rs ndarray 矩阵乘加速 | `vector/search.rs` | 🔴 | — | 全量加载 → 矩阵运算 |
+| 8.6 | 全量回归测试 + 发布 v3.0 | — | 🔴 | — | cargo build + tsc + playwright + tag |
+
+| **Sprint 8 功能** | **6** | **1** | **5** | **16%** |
+| **总计** | **151** | **143** | **8** | **95%** |
