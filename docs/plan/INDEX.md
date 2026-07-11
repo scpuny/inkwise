@@ -1,6 +1,6 @@
 # InkWise 架构方案索引
 
-> **当前版本**: v2.1.0-alpha | **下一版本**: v3.0（设计方案） | 最后更新: 2026-07-10
+> **当前版本**: v2.1.0-alpha | **下一版本**: v3.0（设计方案） | 最后更新: 2026-07-11
 
 ---
 
@@ -106,24 +106,33 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 ## 实施路线
 
 ```
-Sprint 6: 存储统一 + 后端模块拆分
-  ├── domain/ 类型定义独立
-  ├── storage/ (SQLite + Storage trait + migration)
-  ├── commands/ 迁移（JSON 命令逐个切到 SQLite）
-  ├── ai/ 拆分（openai.rs + anthropic.rs + streaming.rs）
-  ├── 前端存储层重写（去掉 localStorage 业务缓存）
-  └── 删除旧文件（store.rs / db.rs / JSON 文件）
+Sprint 6（2 周）：存储统一 + Rust 后端模块拆分
+  目标：SQLite 唯一事实源，lib.rs 2139→拆 commands/ + storage/ + domain/ + ai/
+  ├── 周1：domain/ 类型定义 → storage/ (trait + sqlite + migration)
+  ├── 周2：commands/ 迁移 + ai/ 拆分 → 前端适配
+  └── 产出：v3.0-s6 分支，稳定后合并 main
 
-Sprint 7: 分层拆分
-  ├── Service 层提取（PlanService / DocumentService / CollectionService）
-  ├── EditorPane 拆分 + planState 简化
-  └── 右侧面板合并为 tab 侧栏
+Sprint 7（2 周）：分层拆分
+  目标：UI/Service/Domain/Infrastructure 四层清晰
+  ├── 周1：Domain + Infrastructure 接口定义
+  ├── 周2：Service 层提取 + hooks 胶水层
+  └── 产出：v3.0-s7 分支
 
-Sprint 8: 增强
-  ├── Skill 纯净分离 + PhaseConfig 独立
-  ├── 向量搜索 ndarray 矩阵乘加速
-  └── 一致性交互打磨
+Sprint 8（2 周）：UI 拆分 + 能力增强
+  目标：EditorPane 1910→拆 5 组件 + Skill 净化 + 向量加速
+  ├── 周1：EditorPage + PlanPanel + EditorCanvas + AIActionBar
+  ├── 周2：AISidebar + Skill 净化 + ndarray 向量加速
+  └── 产出：v3.0 正式发布
 ```
+
+### 重写 vs 适配 vs 保留统计
+
+| 分类 | 文件数 | 行数 | 占比 |
+|------|--------|------|------|
+| 🔴 重写 | ~20 文件 | ~12,000 行 | 17% |
+| 🟡 适配 | ~30 文件 | ~15,000 行 | 22% |
+| 🟢 保留 | ~40 文件 | ~42,000 行（含 CSS 27k） | 61% |
+| **总计** | **~90 文件** | **~69,000 行** | 100% |
 
 ---
 
