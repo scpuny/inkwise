@@ -378,7 +378,7 @@
 |---|--------|------|------|--------|------|
 | 6.1 | 创建 `domain/` 目录，从 `store.rs` 剥离类型定义 | `domain/*.rs` | 🟢 | 2026-07-11 | 8 个 Rust 类型文件 + serde camelCase |
 | 6.2 | 实现 `storage/` 目录（Storage trait + sqlite.rs） | `storage/mod.rs`, `sqlite.rs` | 🟢 | 2026-07-11 | 25 方法 trait + SQLite 实现 |
-| 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🔴 | — | 全量迁移脚本 |
+| 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🟢 | 2026-07-11 | 全量迁移脚本 + 7 项数据 |
 | 6.4 | 创建 `commands/` 目录，逐个迁移命令 | `commands/*.rs` | 🔴 | — | 8 个命令文件 |
 | 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🔴 | — | openai + anthropic + streaming |
 | 6.6 | 前端存储层适配 SQLite | `src/lib/storage/*.ts` | 🔴 | — | 调新命令 |
@@ -392,5 +392,5 @@
 | Sprint 1-4 功能 | 91 | 87 | — | 96% |
 | 热修复 | 31 | 31 | — | 100% |
 | Sprint 5 功能 | 16 | 16 | — | 100% |
-| **Sprint 6 功能** | **8** | **1** | **7** | **12%** |
-| **总计** | **146** | **135** | **11** | **92%** |
+| **Sprint 6 功能** | **8** | **3** | **5** | **37%** |
+| **总计** | **146** | **137** | **9** | **94%** |

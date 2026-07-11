@@ -1,6 +1,9 @@
 // ─── Storage 层：抽象存储接口 ───
 // 所有数据操作通过此 trait，方便测试 mock + 切换实现
 
+pub mod migration;
+pub mod sqlite;
+
 use crate::domain::*;
 
 /// 统一存储接口

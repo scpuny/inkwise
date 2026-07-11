@@ -65,6 +65,7 @@ impl Storage for SqliteStorage {
         self.db.get_article(id).ok()?.map(|row| ArticleDocument {
             id: row.id,
             collection_id: Some(row.collection_id),
+            series_id: None,
             title: row.title,
             content: row.content,
             style_id: "general".to_string(),
@@ -99,6 +100,7 @@ impl Storage for SqliteStorage {
             ArticleDocument {
                 id: row.id,
                 collection_id: Some(row.collection_id),
+                series_id: None,
                 title: row.title,
                 content: row.content,
                 style_id: "general".to_string(),
