@@ -1,3 +1,4 @@
+mod domain;
 mod store;
 mod ai;
 mod skill;
@@ -10,7 +11,8 @@ mod vector;
 use platform::Platform;
 use platform::wechat::WeChat;
 
-use store::{Collection, DataStore, Provider, TrashItem, AppSettings, AiConfig, ArticleMeta, ImageSavedResult, ArticleBlueprint, SeriesPlan, PlatformConfig, PublishRecord, WritingSkill, ArticleDocument, OutlineSection};
+use domain::*;
+use store::DataStore;
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
 use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
