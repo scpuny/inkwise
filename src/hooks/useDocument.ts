@@ -1,31 +1,82 @@
 // ─── useDocument — 文档操作 Hook ───
-// 基层 Hook，计划未来取代 appHooks.ts 中的文档相关逻辑
+// 封装 ArticleDocument 完整生命周期（加载/保存/创建/删除）
+// 通过 DocumentStore 接口访问存储，不依赖具体实现
 
 import { useState, useCallback } from "react";
 import type { ArticleDocument } from "../domain";
-import type { DocumentStore } from "../infrastructure/DocumentStore";
+import { TauriDocumentStore } from "../infrastructure/TauriDocumentStore";
+import { genId } from "../lib/storage/collections/crud";
 
-export function useDocument(store: DocumentStore) {
+const DEFAULT_STORE = new TauriDocumentStore();
+
+export function useDocument(store = DEFAULT_STORE) {
   const [doc, setDoc] = useState<ArticleDocument | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadDocument = useCallback(async (id: string) => {
     setLoading(true);
+    setError(null);
     try {
       const result = await store.loadDocument(id);
       setDoc(result);
       return result;
+    } catch (e: any) {
+      const msg = e?.message || "加载文档失败";
+      setError(msg);
+      return null;
     } finally {
       setLoading(false);
     }
   }, [store]);
 
   const saveDocument = useCallback(async (d: ArticleDocument) => {
-    d.updatedAt = Date.now();
-    d.version += 1;
-    await store.saveDocument(d);
-    setDoc(d);
+    setError(null);
+    try {
+      d.updatedAt = Date.now();
+      d.version = (d.version || 0) + 1;
+      await store.saveDocument(d);
+      setDoc({ ...d });
+      return true;
+    } catch (e: any) {
+      setError(e?.message || "保存文档失败");
+      return false;
+    }
   }, [store]);
 
-  return { doc, loading, loadDocument, saveDocument };
+  const createDocument = useCallback(async (): Promise<ArticleDocument> => {
+    const { DEFAULT_STYLE_CONFIG } = await import("../lib/storage/articleDocument");
+    const now = Date.now();
+    const newDoc: ArticleDocument = {
+      id: genId(),
+      title: "无标题",
+      content: "",
+      styleId: "general",
+      actionId: "action-write",
+      phase: "planning",
+      outline: [],
+      tags: [],
+      styleConfig: DEFAULT_STYLE_CONFIG as any,
+      inspiration: "",
+      publishRecords: [],
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setDoc(newDoc);
+    return newDoc;
+  }, []);
+
+  const deleteDocument = useCallback(async (id: string) => {
+    await store.deleteDocument(id);
+    if (doc?.id === id) setDoc(null);
+  }, [store, doc]);
+
+  const reset = useCallback(() => {
+    setDoc(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
+  return { doc, loading, error, loadDocument, saveDocument, createDocument, deleteDocument, reset };
 }
