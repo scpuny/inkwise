@@ -54,8 +54,11 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 │  │ providers  │  platform_configs│ settings               │     │
 │  │ skills     │  phase_configs  │  article_images         │     │
 │  └────────────────────────────────────────────────────────┘     │
-│  文件系统：仅存图片 + 用户可见的 .md                             │
+│  文件系统：仅存图片 + 用户可见的 .md + packages/{id}/            │
 │  localStorage：仅存系统主题偏好                                  │
+│  ┌────────────────────────────────────────────────────────┐     │
+│  │  +3 市场表：installed_packages / templates / template_skills│     │
+│  └────────────────────────────────────────────────────────┘     │
 ├─────────────────────────────────────────────────────────────────┤
 │                     Domain Layer                                │
 │  Document（聚合根） | Skill（元数据） | PhaseConfig（模板）      │
@@ -63,8 +66,9 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 ├─────────────────────────────────────────────────────────────────┤
 │                     Service Layer                                │
 │  PlanService  │  WriteService  │  DocumentService                │
-│  PublishService│  ReviewService │  CollectionService             │
-│  TrashService  │  SkillService  │  AIService                    │
+│  PublishService│ ReviewService  │ CollectionService              │
+│  TrashService  │  SkillService  │  AIService                     │
+│  PackageService│ MarketplaceService │ TemplateService             │
 │  编排流程 → 调 Domain 逻辑 → 调 Infrastructure 接口             │
 ├─────────────────────────────────────────────────────────────────┤
 │                     UI Layer                                     │
@@ -83,6 +87,7 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 | **Skill 不含 AI** | Skill 只有 id/name/desc/icon，systemPrompt 在 PhaseConfig |
 | **Service 编排不混 IO** | Service 调 Domain + Infrastructure 接口，不直接调 Tauri invoke |
 | **UI 纯渲染** | 组件不包含业务逻辑，状态通过 Service 获取 |
+| **市场就绪架构** | Package 统一基类，3 张表 + 3 个 Service 预留，加市场不改存储层 |
 
 ### 被清除的旧代码
 

@@ -116,6 +116,7 @@
 │  WriteService     PublishService    ReviewService                    │
 │  SettingsService  ThemeService      TrashService                     │
 │  SeriesService    SkillService      AIService                        │
+│  PackageService   MarketplaceService  TemplateService                │
 ├─────────────────────────────────────────────────────────────────────┤
 │  DOMAIN LAYER (TypeScript) — 纯数据 + 纯函数                          │
 │                                                                     │
@@ -270,9 +271,9 @@ src/
 
 ### 3.4 存储层设计
 
-#### SQLite 完整 Schema（12 张表）
+#### SQLite 完整 Schema（15 张表）
 
-详见上一版方案 `3.1.1 完整 Schema`——collections, documents, series_plans, publish_records, providers, platform_configs, settings, article_images, documents_search, documents_fts, vector_chunks, skills, phase_configs。
+详见上一版方案 12 张基础表（collections, documents, series_plans, publish_records, providers, platform_configs, settings, article_images, documents_search, documents_fts, vector_chunks, skills, phase_configs）+ 新增 3 张市场相关表（见 3.6.2 节）。
 
 #### 文件系统存什么
 
@@ -321,6 +322,254 @@ src/
   writing-skill-changed      → 由 SkillService 内部管理
   project-exploring          → 由 ProjectService 内部返回 progress
 ```
+
+---
+
+### 3.6 市场与插件系统（为未来设计）
+
+> 虽然 v3.0 不实现市场 UI，但 **架构层面必须预留**。否则后期加市场等于在错误的地基上搭新楼。
+
+#### 核心原则
+
+```
+所有可安装的内容都是「Package」，Skill 和 Template 是 Package 的两种类型。
+一套接口管所有，不为每种可安装内容单独造轮子。
+```
+
+#### 3.6.1 Domain 层新增类型
+
+```typescript
+// ─── PackageType — 包类型 ───
+type PackageType = "skill" | "template";
+
+// ─── PackageManifest — 包元数据（和文件系统中的 manifest.json 一致） ───
+interface PackageManifest {
+  formatVersion: number;           // 清单格式版本（当前为 1）
+  type: PackageType;
+  id: string;                      // 唯一 ID，如 "com.inkwise.skill.essay"
+  name: string;
+  version: string;                 // semver "1.0.0"
+  minAppVersion: string;           // 最低兼容应用版本 "3.0.0"
+  author: {
+    name: string;
+    email?: string;
+    website?: string;
+  };
+  description: string;
+  icon?: string;                   // 包内图标路径
+  thumbnail?: string;              // 包内预览图路径
+  license?: string;                // "MIT" | "GPL-3.0" | "Proprietary"
+  tags: string[];
+  keywords: string[];
+
+  // Skill 专用
+  styles?: StyleDef[];             // 该技能可用的写作风格
+  actions?: ActionDef[];           // 该技能可用的写作动作
+  phases: Record<string, PhaseConfigDef>;  // 阶段提示词
+
+  // Template 专用
+  template?: {
+    defaultTitle?: string;
+    defaultTone?: string;
+    defaultAudience?: string;
+    defaultOutline?: OutlineSection[];
+    defaultStyleId?: string;
+    defaultActionId?: string;
+    sampleContent?: string;         // 示例内容（可选）
+    requiredSkill?: string;         // 关联技能 ID
+  };
+}
+
+// ─── InstalledPackage — 已安装包（数据库记录） ───
+interface InstalledPackage {
+  id: string;
+  type: PackageType;
+  name: string;
+  version: string;
+  author?: string;
+  description?: string;
+  source: "marketplace" | "file" | "builtin";
+  sourceUrl?: string;              // 市场 URL（检查更新用）
+  manifestJson: string;            // 完整 manifest 快照
+  installPath?: string;            // 本地包文件路径
+  installedAt: number;
+  updatedAt: number;
+  isEnabled: boolean;
+}
+
+// ─── Template — 文章模板 ───
+interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  packageId?: string;              // 来自哪个包（null = 用户自建）
+  presetData: {
+    defaultTitle?: string;
+    tone?: string;
+    targetAudience?: string;
+    targetWordCount?: number;
+    outline: OutlineSection[];
+    styleId: string;
+    actionId: string;
+    tags: string[];
+    inspiration?: string;
+  };
+  thumbnailPath?: string;
+  isUserCreated: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+#### 3.6.2 SQLite 新增 3 张表
+
+```sql
+-- ─── 已安装包注册表 ───
+CREATE TABLE installed_packages (
+  id              TEXT PRIMARY KEY,         -- "com.inkwise.skill.essay"
+  type            TEXT NOT NULL,            -- "skill" | "template"
+  name            TEXT NOT NULL,
+  version         TEXT NOT NULL,
+  author          TEXT,
+  description     TEXT,
+  source          TEXT NOT NULL DEFAULT 'file',  -- marketplace / file / builtin
+  source_url      TEXT,                     -- 市场 URL，用于检查更新
+  manifest_json   TEXT NOT NULL,            -- 完整 manifest 快照（恢复用）
+  install_path    TEXT,                     -- packages/{id}/ 目录
+  is_enabled      INTEGER NOT NULL DEFAULT 1,
+  installed_at    INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+
+-- ─── 文章模板 ───
+CREATE TABLE templates (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  description     TEXT,
+  package_id      TEXT REFERENCES installed_packages(id) ON DELETE SET NULL,
+  preset_data     TEXT NOT NULL,            -- JSON（完整的 Template.presetData）
+  thumbnail_path  TEXT,
+  is_user_created INTEGER NOT NULL DEFAULT 0,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+
+-- ─── 模板 ↔ 技能关联 ───
+CREATE TABLE template_skills (
+  template_id     TEXT REFERENCES templates(id) ON DELETE CASCADE,
+  skill_id        TEXT NOT NULL,
+  PRIMARY KEY (template_id, skill_id)
+);
+```
+
+#### 3.6.3 Service 层新增
+
+```typescript
+// ─── PackageService — 包生命周期管理 ───
+class PackageService {
+  async install(path: string): Promise<InstalledPackage>;
+    // 读取 .inkwise-package → 解包 → 校验 manifest
+    // → 存入 installed_packages → 如果是 skill 注册到 SkillService
+    // → 如果是 template 注册到 TemplateService
+
+  async uninstall(id: string): Promise<void>;
+    // 从 installed_packages 删除 → 清理文件 → 注销 Service 注册
+
+  async list(type?: PackageType): Promise<InstalledPackage[]>;
+  async get(id: string): Promise<InstalledPackage | null>;
+
+  async checkUpdate(id: string): Promise<string | null>;
+    // 读取 source_url → 远程比较 version
+
+  async update(id: string): Promise<InstalledPackage>;
+    // 下载新版 → 安装 → 保留用户配置
+
+  async export(id: string, targetPath: string): Promise<void>;
+    // 将已安装包导出为 .inkwise-package 文件
+}
+
+// ─── MarketplaceService — 市场通讯 ───
+class MarketplaceService {
+  private baseUrl: string;          // 可配置的市场 API 地址
+
+  async browse(type?: PackageType, category?: string): Promise<PackageListing[]>;
+  async search(query: string): Promise<PackageListing[]>;
+  async getDetail(packageId: string): Promise<PackageDetail>;
+
+  async download(packageId: string, version?: string): Promise<string>;
+    // 下载到临时目录 → 返回路径 → PackageService.install 接手
+}
+
+// ─── TemplateService — 模板管理 ───
+class TemplateService {
+  async list(): Promise<Template[]>;
+  async get(id: string): Promise<Template | null>;
+
+  async apply(templateId: string, collectionId?: string): Promise<ArticleDocument>;
+    // 用 presetData 创建 ArticleDocument → 保存 → 返回
+
+  async createFromDocument(documentId: string, name: string): Promise<Template>;
+    // 从已有文章提取 outline/styleId/actionId 保存为模板
+
+  async export(templateId: string): Promise<string>;
+    // 导出为 .inkwise-package 文件（可分享到市场）
+
+  async delete(id: string): Promise<void>;
+}
+```
+
+#### 3.6.4 Package 文件格式 `.inkwise-package`
+
+```text
+# 物理格式：tar.gz（或 zip）
+# 必须包含 manifest.json
+
+my-skill-1.0.0.inkwise-package
+├── manifest.json              # 【必须】包元数据
+├── icon.svg                   # 图标（可选）
+├── screenshot.png             # 市场预览图（可选）
+├── preview.mp4                # 演示视频（可选）
+└── prompts/                   # 提示词文件（可选，manifest 可引用）
+    ├── title.md
+    └── outline.md
+```
+
+#### 3.6.5 文件系统存储
+
+```text
+{app_data}/
+├── packages/                  # 已安装包的文件
+│   └── com.inkwise.skill.essay/
+│       ├── manifest.json
+│       ├── icon.svg
+│       └── prompts/
+├── assets/                    # 文章图片
+└── inkwise.db                 # SQLite（含 installed_packages 表）
+```
+
+#### 3.6.6 加一个新 Skill 的市场化路径
+
+```
+开发者侧                             用户侧
+─────────                           ──────
+1. 写 manifest.json               1. 打开市场浏览
+2. 写 prompts/*.md                2. 点击安装
+3. 打包 .inkwise-package          3. PackageService.install()
+4. 上传到市场                     4. SkillService 自动注册
+5. 审核通过上线                   5. PlanService 自动可用
+```
+
+#### 3.6.7 为什么现在就要设计
+
+| 如果现在不预留 | v3.1 加市场时会 |
+|---------------|-----------------|
+| `installed_packages` 表不存在 | 要么改 schema migration，要么创建平行存储 |
+| `PackageManifest` 类型不存在 | 临时拼凑，不一致 |
+| `PackageService` 不设计 | 安装逻辑散落在各组件中 |
+| 文件格式无规范 | 每个包作者各写各的 |
+| `minAppVersion` 不存在 | 安装了不兼容的包，应用崩溃 |
+
+**这 3 张表 + 3 个 Service + 1 个文件格式的代码投入不超过 2 天，但为未来的市场省下至少 2 周的改造成本。**
 
 ---
 
@@ -393,6 +642,8 @@ src/
 
 ### 加一个新 Skill 的步骤（重构后）
 
+#### 方式 A：作为内置技能（代码内注册）
+
 ```typescript
 // 1. 注册技能元数据
 SkillService.register({
@@ -410,6 +661,65 @@ PhaseConfigService.set("resume-title", {
 });
 
 // ✅ 完成！PlanService 自动适配
+```
+
+#### 方式 B：作为可安装包（市场/文件分发）
+
+```bash
+# 1. 创建包目录
+mkdir my-skill && cd my-skill
+
+# 2. 写 manifest.json
+cat > manifest.json <<EOF
+{
+  "formatVersion": 1,
+  "type": "skill",
+  "id": "com.example.write-resume",
+  "name": "简历大师",
+  "version": "1.0.0",
+  "minAppVersion": "3.0.0",
+  "author": { "name": "张三" },
+  "description": "一键生成专业求职简历",
+  "tags": ["简历", "求职"],
+  "phases": {
+    "title": {
+      "systemPrompt": "你是简历专家，根据以下信息生成标题...",
+      "temperature": 0.7
+    },
+    "writing": {
+      "systemPrompt": "根据大纲撰写简历正文...",
+      "temperature": 0.8
+    }
+  }
+}
+EOF
+
+# 3. 打包
+tar -czf ../com.example.write-resume-1.0.0.inkwise-package .
+
+# 4. 分发（上传到市场 / 发给用户）
+# 用户侧：双击 .inkwise-package → PackageService.install() → 自动可用
+```
+
+### 加一个新 Template 的步骤（重构后）
+
+```typescript
+// 从已有文章创建模板
+const template = await TemplateService.createFromDocument(
+  documentId: "doc_xxx",
+  name: "技术博客模板"
+);
+
+// 应用模板到新文章
+const doc = await TemplateService.apply(
+  templateId: "tpl_xxx",
+  collectionId: "col_xxx"
+);
+// doc 已包含预设的 title/tone/outline/styleId/actionId
+
+// 导出模板为可分享包
+await TemplateService.export("tpl_xxx");
+// → 生成 .inkwise-package 文件，可上传市场或分享
 ```
 
 ### 加一个新 AI 提供商的步骤（重构后）
