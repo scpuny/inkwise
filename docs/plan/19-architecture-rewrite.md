@@ -118,9 +118,10 @@
 │  SeriesService    SkillService      AIService                        │
 │  PackageService   MarketplaceService  TemplateService                │
 ├─────────────────────────────────────────────────────────────────────┤
-│  DOMAIN LAYER (TypeScript) — 纯数据 + 纯函数                          │
+│  DOMAIN LAYER (TypeScript) — 纯数据 + 纯函数 + 枚举定义              │
 │                                                                     │
 │  原则：不 import 任何外部依赖，可被任何层引用                          │
+│  所有魔法字符串作为 const enum，编译器而非运行时捕获拼写错误           │
 │                                                                     │
 │  Document  Skill  PhaseConfig  Collection  SeriesPlan                 │
 │  Provider  PlatformConfig  PublishRecord  Theme                      │
@@ -204,11 +205,14 @@ src-tauri/src/
 ```
 src/
 ├── domain/                          # 纯类型（从各文件剥离）
-│   ├── Document.ts
-│   ├── Collection.ts
-│   ├── Skill.ts
-│   ├── PhaseConfig.ts
-│   └── index.ts
+│   ├── index.ts                     # 重新导出所有类型
+│   ├── Document.ts                  # ArticleDocument, OutlineSection
+│   ├── Collection.ts                # Collection, SeriesPlan
+│   ├── Skill.ts                     # Skill, PhaseConfig
+│   ├── Package.ts                   # PackageManifest, InstalledPackage
+│   ├── Template.ts                  # Template
+│   ├── enums.ts                     # 所有字符串枚举（Phase / PlanStep / DocumentPhase / EventName / StorageKey / ...）
+│   └── constants.ts                 # 默认值、边界值（Defaults.STYLE_ID / Defaults.TEMPERATURE / ...）
 │
 ├── service/                         # 业务编排
 │   ├── PlanService.ts
@@ -570,6 +574,184 @@ my-skill-1.0.0.inkwise-package
 | `minAppVersion` 不存在 | 安装了不兼容的包，应用崩溃 |
 
 **这 3 张表 + 3 个 Service + 1 个文件格式的代码投入不超过 2 天，但为未来的市场省下至少 2 周的改造成本。**
+
+---
+
+### 3.7 常量与枚举体系 — 消除魔法字符串
+
+#### 问题
+
+当前代码中散落大量硬编码字符串：
+
+```typescript
+// plan.ts
+export type PlanStep = "idle" | "title" | "description" | "outline" | "tags" | "explored" | "done";
+// EditorPane.tsx
+setPlanState("review-title-desc");
+// events.ts
+"collections-changed", "article-document-changed"
+// defaults.ts
+phase: "writing"
+```
+
+**后果**：
+- 写错一个字母 → 静默失败（"outlin" 不匹配 "outline" → 步骤不执行）
+- 重构时全文搜索 → 漏一个就出 bug
+- 新开发者不知道有哪些合法值 → 自己猜一个
+
+#### 方案：`domain/enums.ts` + `domain/constants.ts`
+
+所有魔法字符串集中在两个文件中，各层引用枚举而非字面量：
+
+```
+                    domain/enums.ts
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+   UI Layer          Service Layer     Infrastructure
+   引用枚举            引用枚举           引用枚举
+   (渲染)             (编排逻辑)          (命令名/事件名)
+```
+
+#### 具体设计
+
+```typescript
+// ============================================================
+// domain/enums.ts — 所有字符串枚举，单一事实源
+// 使用 as const + typeof 模式：编译时展开为字符串，无运行时开销
+// ============================================================
+
+// ─── Phase（写作阶段名） ───
+export const Phase = {
+  TITLE: "title",
+  DESCRIPTION: "description",
+  OUTLINE: "outline",
+  TAGS: "tags",
+  WRITING: "writing",
+} as const;
+export type Phase = (typeof Phase)[keyof typeof Phase];
+
+// ─── PlanStep（规划内部步骤） ───
+export const PlanStep = {
+  IDLE: "idle",
+  EXPLORED: "explored",
+  TITLE: "title",
+  DESCRIPTION: "description",
+  OUTLINE: "outline",
+  TAGS: "tags",
+  DONE: "done",
+} as const;
+export type PlanStep = (typeof PlanStep)[keyof typeof PlanStep];
+
+// ─── DocumentPhase（文档生命周期） ───
+export const DocumentPhase = {
+  PLANNING: "planning",
+  WRITING: "writing",
+  REVIEWING: "reviewing",
+  COMPLETE: "complete",
+} as const;
+export type DocumentPhase = (typeof DocumentPhase)[keyof typeof DocumentPhase];
+
+// ─── Source（文章来源，用于 ArticleDocument.source） ───
+export const DocumentSource = {
+  NEW: "new",
+  SERIES: "series",
+  QUICK: "quick",
+  TEMPLATE: "template",
+} as const;
+export type DocumentSource = (typeof DocumentSource)[keyof typeof DocumentSource];
+
+// ─── EventName（mitt 事件名） ───
+export const EventName = {
+  COLLECTIONS_CHANGED: "collections-changed",
+  DOCUMENT_CHANGED: "article-document-changed",
+  EDITOR_READY: "editor-ready",
+  OUTLINE_NAVIGATE: "outline-navigate",
+  AI_CONFIG_CHANGED: "ai-config-changed",
+  PROVIDERS_CHANGED: "providers-changed",
+  THEME_CHANGED: "article-theme-changed",
+} as const;
+export type EventName = (typeof EventName)[keyof typeof EventName];
+
+// ─── TauriCommandName（桥接命令名，Rust 和 TS 共用） ───
+export const Cmd = {
+  SAVE_DOCUMENT: "save_article_document",
+  LOAD_DOCUMENT: "load_article_document",
+  LIST_COLLECTIONS: "list_collections_db",
+  // ... 完整列表见 tauri.ts
+} as const;
+export type Cmd = (typeof Cmd)[keyof typeof Cmd];
+
+// ─── StorageKey（localStorage 键名 — 只存非业务数据） ───
+export const StorageKey = {
+  THEME: "inkwise-theme",
+  WINDOW_BOUNDS: "inkwise-window-bounds",
+} as const;
+
+// ─── OutlineSectionStatus ───
+export const SectionStatus = {
+  PENDING: "pending",
+  WRITING: "writing",
+  COMPLETE: "complete",
+} as const;
+export type SectionStatus = (typeof SectionStatus)[keyof typeof SectionStatus];
+```
+
+```typescript
+// ============================================================
+// domain/constants.ts — 默认值、边界值、业务常量
+// ============================================================
+export const Defaults = {
+  STYLE_ID: "general" as const,
+  ACTION_ID: "action-write" as const,
+  TEMPERATURE: 0.7,
+  MAX_TOKENS: 1024,
+  OUTLINE_TEMPERATURE: 0.7,
+  WRITING_TEMPERATURE: 0.8,
+  MAX_TITLE_LENGTH: 40,
+  MAX_INSPIRATION_FALLBACK: 40,
+  MAX_DESCRIPTION_LENGTH: 200,
+  DEBOUNCE_SAVE_MS: 500,
+} as const;
+```
+
+#### 使用示例
+
+```typescript
+// ❌ 之前（魔法字符串）
+if (phase === "writing") { ... }
+setPlanState("review");
+emit("collections-changed");
+
+// ✅ 之后（枚举引用）
+import { Phase, PlanState, EventName } from "../../domain/enums";
+
+if (phase === Phase.WRITING) { ... }
+setPlanState(PlanState.REVIEW);
+emit(EventName.COLLECTIONS_CHANGED);
+```
+
+#### 优势
+
+| 维度 | 魔法字符串 | 枚举引用 |
+|------|-----------|---------|
+| 拼写错误 | `"outlin"` → 静默不执行 | `Phase.OUTLINE` → 编译报错 |
+| 重构 | `grep -r "writing"` 搜到无关代码 | 改 `Phase.WRITING` 一处，全项目更新 |
+| IDE 支持 | 无 | 输入 `Phase.` → 自动补全所有选项 |
+| 值变更 | 搜索替换容易漏 | 改 `as const` 值，全项目反射 |
+| 文档价值 | 无 | `enums.ts` 就是所有合法值的完整清单 |
+| 运行时开销 | 无 | 编译展开为字符串，零开销 |
+
+#### 迁移策略
+
+不一步到位——采用 **"触碰原则"**（Touch Rule）：
+
+1. Sprint 6 建 `domain/enums.ts` 和 `domain/constants.ts`
+2. **不改动的文件继续用魔法字符串**（不动老代码）
+3. 每次重写/适配一个文件时，顺手把该文件中的魔法字符串切换为枚举引用
+4. Sprint 8 结束时，旧魔法字符串应全部消除
+
+这样不额外增加迁移工作量，和重写/适配同步进行。
 
 ---
 
