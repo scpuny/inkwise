@@ -404,6 +404,6 @@
 | 7.2 | Infrastructure 接口定义 | `src/infrastructure/*.ts` | 🟢 | 2026-07-11 | AIProvider / DocumentStore / EventBus |
 | 7.3 | Service 层：PlanService 提取 | `src/services/PlanService.ts` | 🟢 | 2026-07-11 | 依赖 AIProvider + DocumentStore 接口 |
 | 7.4 | Service 层：DocumentService / CollectionService | `src/services/*.ts` | 🟢 | 2026-07-11 | 文档存管 + 合集管理 + 回收站 |
-| 7.5 | hooks 胶水层 | `src/hooks/useDocument.ts` 等 | 🔴 | — | useDocument / usePlan / useCollection |
+| 7.5 | hooks 胶水层 | `src/hooks/useDocument.ts` 等 | 🟢 | 2026-07-11 | useDocument / usePlan / useCollection |
 | **Sprint 6 功能** | **8** | **8** | **0** | **100%** |
 | **总计** | **146** | **142** | **4** | **97%** |
