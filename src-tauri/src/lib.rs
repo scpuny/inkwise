@@ -766,6 +766,14 @@ async fn migrate_to_sqlite(state: tauri::State<'_, AppState>) -> Result<usize, S
     
     Ok(total)
 }
+
+/// Clean up old JSON files after successful migration
+#[tauri::command]
+fn cleanup_old_json(state: tauri::State<AppState>) -> Result<storage::migration::CleanupReport, String> {
+    let data_dir = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    storage::migration::cleanup_old_files(&data_dir)
+}
+
 /// List all collections from DB
 #[tauri::command]
 fn list_collections_db(state: tauri::State<AppState>) -> Result<Vec<db::CollectionRow>, String> {
@@ -2137,7 +2145,8 @@ pub fn run() {
             get_vector_stats,
             index_all_vectors,
             check_vector_model,
-            download_vector_model,])
+            download_vector_model,
+            cleanup_old_json,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

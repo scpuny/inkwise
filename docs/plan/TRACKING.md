@@ -382,7 +382,7 @@
 | 6.4 | 创建 `commands/` 目录 | `commands/*.rs` | 🟡 | 2026-07-11 | 架子已建（document_cmds + collection_cmds），D6 前端适配时启用 |
 | 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🟢 | 2026-07-11 | ai.rs → ai/mod.rs 目录模块 |
 | 6.6 | 前端存储层适配 SQLite：补充 DB 命令桥接 + crud.ts/articles.ts DB 优先 | `bridge/tauri.ts`, `crud.ts`, `articles.ts` | 🟢 | 2026-07-11 | 类型检查通过 |
-| 6.7 | 删除旧 JSON 文件 + 清理 | `data/*.json` | 🔴 | — | 确认 SQLite 稳定后删除 |
+| 6.7 | 旧 JSON 文件清理（cleanup_old_json 命令） | `migration.rs`, `lib.rs`, `tauri.ts` | 🟢 | 2026-07-11 | 确认 SQLite 稳定后手动触发 |
 | 6.8 | 端到端测试 + 集成测试 | — | 🔴 | — | 全流程验证 |
 
 ### 统计看板

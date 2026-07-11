@@ -23,6 +23,7 @@ export enum TauriCommands {
 
   // ── SQLite DB Commands (Sprint 6) ──
   MigrateToSqlite = "migrate_to_sqlite",
+  CleanupOldJson = "cleanup_old_json",
   ListCollectionsDb = "list_collections_db",
   CreateCollectionDb = "create_collection_db",
   RenameCollectionDb = "rename_collection_db",
