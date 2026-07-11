@@ -4,6 +4,7 @@ mod ai;
 mod skill;
 mod agent;
 mod db;
+mod storage;
 mod project_indexer;
 mod platform;
 mod image_gen;

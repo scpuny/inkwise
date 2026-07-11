@@ -377,7 +377,7 @@
 | # | 功能点 | 文件 | 状态 | 完成日 | 备注 |
 |---|--------|------|------|--------|------|
 | 6.1 | 创建 `domain/` 目录，从 `store.rs` 剥离类型定义 | `domain/*.rs` | 🟢 | 2026-07-11 | 8 个 Rust 类型文件 + serde camelCase |
-| 6.2 | 实现 `storage/` 目录（Storage trait + sqlite.rs） | `storage/mod.rs`, `sqlite.rs` | 🔴 | — | 15 张表 schema |
+| 6.2 | 实现 `storage/` 目录（Storage trait + sqlite.rs） | `storage/mod.rs`, `sqlite.rs` | 🟢 | 2026-07-11 | 25 方法 trait + SQLite 实现 |
 | 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🔴 | — | 全量迁移脚本 |
 | 6.4 | 创建 `commands/` 目录，逐个迁移命令 | `commands/*.rs` | 🔴 | — | 8 个命令文件 |
 | 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🔴 | — | openai + anthropic + streaming |
