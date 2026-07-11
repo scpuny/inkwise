@@ -26948,3 +26948,83 @@ body {
   .toast--info .toast__icon {
     color: #3b82f6;
   }
+
+/* ── AISidebar — 合并 AI/样式/审阅 右侧多功能侧栏 ── */
+.ai-sidebar {
+  width: 360px;
+  min-width: 320px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+  overflow: hidden;
+  animation: sidebar-slide-in 0.15s ease-out;
+}
+
+@keyframes sidebar-slide-in {
+  from { max-width: 0; min-width: 0; width: 0; opacity: 0; }
+  to { max-width: 480px; min-width: 320px; width: 360px; opacity: 1; }
+}
+
+.ai-sidebar__tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.ai-sidebar__tab {
+  flex: 1;
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ai-sidebar__tab:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.ai-sidebar__tab--active {
+  color: var(--text);
+  background: var(--bg-active);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.ai-sidebar__close {
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ai-sidebar__close:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.ai-sidebar__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.ai-sidebar__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+}

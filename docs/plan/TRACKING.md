@@ -415,10 +415,10 @@
 |---|--------|------|------|--------|------|
 | 8.1 | EditorPane → EditorPage + PlanPanel + EditorCanvas | `EditorPage.tsx` 等 | 🟢 | 2026-07-11 | 1910 行拆 5 个独立组件 |
 | 8.2 | PlanPanel 内部 UI 拆分（5 个子组件） | `PlanPanel/` | 🔴 | — | 标题编辑/描述编辑/大纲编辑/标签/状态栏 |
-| 8.3 | AISidebar（AI/样式/审阅 tab 侧栏） | `AISidebar.tsx` | 🔴 | — | 合并右侧面板，Cmd+B 切换 |
+| 8.3 | AISidebar（AI/样式/审阅 tab 侧栏） | `AISidebar.tsx` | 🟢 | 2026-07-11 | 合并右侧面板，Cmd+B 切换 |
 | 8.4 | Skill 纯净分离 — 去掉 systemPrompt | `domain/Skill.ts`, `services/SkillService.ts` | 🔴 | — | Skill 只含元数据 + inputSchema |
 | 8.5 | vector/search.rs ndarray 矩阵乘加速 | `vector/search.rs` | 🔴 | — | 全量加载 → 矩阵运算 |
 | 8.6 | 全量回归测试 + 发布 v3.0 | — | 🔴 | — | cargo build + tsc + playwright + tag |
 
-| **Sprint 8 功能** | **6** | **1** | **5** | **16%** |
-| **总计** | **151** | **143** | **8** | **95%** |
+| **Sprint 8 功能** | **6** | **2** | **4** | **33%** |
+| **总计** | **151** | **144** | **7** | **95%** |
