@@ -422,3 +422,16 @@
 
 | **Sprint 8 功能** | **6** | **6** | **0** | **100%** |
 | **总计** | **151** | **147** | **4** | **97%** |
+
+## 未完成旧代码迁移
+
+v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migration-plan.md](20-migration-plan.md)。
+
+| # | 旧文件 | 消费者 | 新替代 | 计划 Phase |
+|---|--------|--------|--------|-----------|
+| 1 | `storage/collections` | 25 个文件 | `services/CollectionService` | Phase 2 |
+| 2 | `storage/articles.ts` | 10 个文件 | `services/DocumentService` | Phase 3 |
+| 3 | `storage/providerModels` | 8 个文件 | `infrastructure/AIProvider` | Phase 2 |
+| 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 |
+| 5 | `store.rs` (DataStore) | 102 处 `store.` 引用 | `storage/Storage` trait | Phase 5 |
+| 6 | `db.rs` (Database) | 25 处 `db::` 引用 | `storage/Storage` trait | Phase 5 |
