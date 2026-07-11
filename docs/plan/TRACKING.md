@@ -393,4 +393,17 @@
 | 热修复 | 31 | 31 | — | 100% |
 | Sprint 5 功能 | 16 | 16 | — | 100% |
 | **Sprint 6 功能** | **8** | **8** | **0** | **100%** |
+
+## Sprint 7：分层拆分 + Service 提取
+
+**目标**：前后端按 UI/Service/Domain/Infrastructure 四层组织
+
+| # | 功能点 | 文件 | 状态 | 完成日 | 备注 |
+|---|--------|------|------|--------|------|
+| 7.1 | 前端 `domain/` 目录创建 + 类型剥离 | `src/domain/*.ts` | 🟢 | 2026-07-11 | 5 文件：Document/Collection/Plan/Project/enums + index |
+| 7.2 | Infrastructure 接口定义 | `src/infrastructure/*.ts` | 🔴 | — | AIProvider/DocumentStore/EventBus |
+| 7.3 | Service 层：PlanService 提取 | `src/services/PlanService.ts` | 🔴 | — | plan.ts 重构 |
+| 7.4 | Service 层：DocumentService / CollectionService | `src/services/*.ts` | 🔴 | — | 存储操作封装 |
+| 7.5 | hooks 胶水层 | `src/hooks/useDocument.ts` 等 | 🔴 | — | useDocument / usePlan / useCollection |
+| **Sprint 6 功能** | **8** | **8** | **0** | **100%** |
 | **总计** | **146** | **142** | **4** | **97%** |
