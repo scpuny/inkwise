@@ -89,6 +89,7 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 | **UI 纯渲染** | 组件不包含业务逻辑，状态通过 Service 获取 |
 | **市场就绪架构** | Package 统一基类，3 张表 + 3 个 Service 预留，加市场不改存储层 |
 | **零魔法字符串** | 所有常量/事件名/阶段名作为 const enum 集中在 `domain/enums.ts`，编译器而非运行时验证 |
+| **前后端命名一致** | Rust 加 `#[serde(rename_all = "camelCase")]`，前端类型用 ts-rs 自动生成或手动同步，杜绝参数名 mismatch |
 
 ### 被清除的旧代码
 

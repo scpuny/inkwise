@@ -173,12 +173,16 @@ src-tauri/src/
 │
 ├── domain/                          # 纯类型定义 — 无 IO
 │   ├── mod.rs
-│   ├── document.rs                  # ArticleDocument, OutlineSection
+│   ├── document.rs                  # ArticleDocument, OutlineSection（+ #[serde(rename_all = "camelCase")]）
 │   ├── collection.rs                # Collection, SeriesPlan
 │   ├── skill.rs                     # Skill, PhaseConfig
 │   ├── provider.rs                  # Provider, ModelEntry
 │   ├── publish.rs                   # PlatformConfig, PublishRecord
-│   └── settings.rs                  # AppSettings, AiConfig
+│   ├── settings.rs                  # AppSettings, AiConfig
+│   └── package.rs                   # PackageManifest, InstalledPackage
+│
+│   # 所有 domain 类型加 #[serde(rename_all = "camelCase")]
+│   # 所有 domain 类型加 #[derive(TS)]（ts-rs，自动输出前端类型）
 │
 ├── ai/                              # AI 层 — 按提供商分文件
 │   ├── mod.rs                       # 统一接口 + 路由
@@ -752,6 +756,155 @@ emit(EventName.COLLECTIONS_CHANGED);
 4. Sprint 8 结束时，旧魔法字符串应全部消除
 
 这样不额外增加迁移工作量，和重写/适配同步进行。
+
+---
+
+### 3.8 前后端命名一致性 — 终结 `{items}` / `{trash}` 类 Bug
+
+#### 问题
+
+回收站 bug（前端传 `{ items }`，Rust 等 `{ trash }`）只是冰山一角。根因是前后端共享的数据**没有一致的命名约定**：
+
+| 层面 | Rust 习惯 | TypeScript 习惯 | 冲突成本 |
+|------|-----------|----------------|---------|
+| 字段名 | `snake_case` | `camelCase` | 每次 invoke 参数名靠人肉对齐 |
+| 命令名 | `save_article_document` | `SaveArticleDocument` | 前端枚举转字符串时易错 |
+| 类型定义 | `struct` + serde | `interface` 手写 | 两边独立演变，不同步 |
+| 枚举值 | Rust `enum` | TypeScript union | 改 Rust 枚举忘了改前端 → 运行时崩 |
+
+#### 约定：全项目遵守同一套命名规则
+
+```
+                  Rust 内部           跨语言边界（JSON）       TypeScript
+                  ──────────          ─────────────────      ──────────
+字段/属性         snake_case           camelCase              camelCase
+函数/方法         snake_case           不经过边界              camelCase
+命令名            snake_case           snake_case            对象属性（CamelCase）
+类型名            PascalCase           PascalCase             PascalCase
+枚举变体          PascalCase           序列化为 camelCase     string union
+```
+
+**具体实施规则**：
+
+**规则 1：所有跨边界的 Rust 类型加 `#[serde(rename_all = "camelCase")]`**
+
+```rust
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticleDocument {
+    pub id: String,
+    pub title: String,
+    pub style_id: String,  // → JSON 中为 "styleId"
+    pub created_at: i64,   // → JSON 中为 "createdAt"
+}
+```
+
+前端 TypeScript 类型**必须用 camelCase 字段名**（因为 JSON 已经是 camelCase）：
+
+```typescript
+interface ArticleDocument {
+  id: string;
+  title: string;
+  styleId: string;       // ← 匹配 JSON 中的 "styleId"
+  createdAt: number;     // ← 匹配 JSON 中的 "createdAt"
+}
+```
+
+**规则 2：Tauri 命令参数名必须一致，通过 `rename_all` 对齐**
+
+```rust
+// Rust 端
+#[tauri::command(rename_all = "camelCase")]
+fn save_article_document(state: ..., document: ArticleDocument) { ... }
+// 参数 "document" → snake_case，但 rename_all 不影响单个词
+// 多词参数如 "article_id" → 变为 "articleId"
+```
+
+```typescript
+// 前端调用
+tryInvoke(Cmd.SAVE_DOCUMENT, { document });  // 参数名与 Rust 一致
+// 如果 Rust 参数名是 camelCase，这里用 camelCase
+// 如果 Rust 参数名是 snake_case，这里用 snake_case
+```
+
+**规则 3：统一用 `#[tauri::command(rename_all = "camelCase")]`**，前端 invoke 参数也统一用 camelCase。这样 `snake_case` 只在 Rust 内部出现，跨边界一律 camelCase。
+
+**规则 4：Tauri 命令名统一 snake_case**
+
+```
+Rust 函数名:      save_article_document
+Tauri 命令注册:   #[tauri::command] fn save_article_document(...)
+TypeScript 枚举:  Cmd.SAVE_DOCUMENT = "save_article_document"
+```
+
+命令名字符串**永远**是 snake_case，因为它是人类可读的标识符，两边用同一个字符串，不转换。
+
+#### 类型同步策略
+
+前后端共享的类型不靠人肉同步。**采用 Rust 作为单一事实源**，前端类型从 Rust 自动生成：
+
+**方案：用 `ts-rs` crate 自动生成 TypeScript 类型**
+
+```rust
+// Rust 端 — 加一行 derive
+use ts_rs::TS;
+
+#[derive(Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticleDocument {
+    pub id: String,
+    pub title: String,
+    pub style_id: String,
+    // ...
+}
+```
+
+运行 `cargo test` 时会自动输出 `bindings/ArticleDocument.ts`：
+
+```typescript
+// 自动生成 — 不需要手动写
+export interface ArticleDocument {
+  id: string;
+  title: string;
+  styleId: string;
+  // ...
+}
+```
+
+**优点**：
+- Rust 结构体是唯一来源 → 前端类型不会落后
+- serde rename 自动反映到 TS 类型
+- 修改 Rust struct 后 `cargo test` 自动更新 TS 文件，`tsc` 会报前端不匹配的地方
+
+**如果不用 ts-rs**（减少依赖），则用文件头的约定标记手动同步：
+
+```typescript
+// ─── src/domain/Document.ts
+// ⚠️ 必须与 src-tauri/src/domain/document.rs 保持同步
+// 修改 Rust 版本后，必须同时更新此文件，否则 tsc 不报错但运行时可能崩
+export interface ArticleDocument {
+  id: string;
+  title: string;
+  styleId: string;
+  // ...
+}
+```
+
+建议用 ts-rs 方案。`ts-rs` 是纯编译期工具，不增加运行时依赖，`cargo test` 时自动输出 `.ts` 文件。
+
+#### 命名一致性检查清单
+
+重构一个新命令/类型时对照此表：
+
+```
+□ Rust struct 加了 #[serde(rename_all = "camelCase")]？
+□ Tauri 命令加了 #[tauri::command(rename_all = "camelCase")]？
+□ TypeScript 接口字段和 Rust struct 序列化后的字段名一致？
+□ 前端 invoke 参数名和 Rust 命令参数名一致？
+□ TypeScript Cmd 枚举值和 Rust 命令名字符串一致？
+□ Rust 枚举变体序列化值和 TypeScript 枚举值一致？
+```
 
 ---
 
