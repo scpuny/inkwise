@@ -5,6 +5,7 @@ mod skill;
 mod agent;
 mod db;
 mod storage;
+// mod commands;  // D6 前端适配时启用：从 lib.rs 逐个迁移命令到 commands/
 mod project_indexer;
 mod platform;
 mod image_gen;

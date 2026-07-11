@@ -379,8 +379,8 @@
 | 6.1 | 创建 `domain/` 目录，从 `store.rs` 剥离类型定义 | `domain/*.rs` | 🟢 | 2026-07-11 | 8 个 Rust 类型文件 + serde camelCase |
 | 6.2 | 实现 `storage/` 目录（Storage trait + sqlite.rs） | `storage/mod.rs`, `sqlite.rs` | 🟢 | 2026-07-11 | 25 方法 trait + SQLite 实现 |
 | 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🟢 | 2026-07-11 | 全量迁移脚本 + 7 项数据 |
-| 6.4 | 创建 `commands/` 目录，逐个迁移命令 | `commands/*.rs` | 🔴 | — | 8 个命令文件 |
-| 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🔴 | — | openai + anthropic + streaming |
+| 6.4 | 创建 `commands/` 目录 | `commands/*.rs` | 🟡 | 2026-07-11 | 架子已建（document_cmds + collection_cmds），D6 前端适配时启用 |
+| 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🟢 | 2026-07-11 | ai.rs → ai/mod.rs 目录模块 |
 | 6.6 | 前端存储层适配 SQLite | `src/lib/storage/*.ts` | 🔴 | — | 调新命令 |
 | 6.7 | 删除旧 JSON 文件 + 清理 | `data/*.json` | 🔴 | — | 确认 SQLite 稳定后删除 |
 | 6.8 | 端到端测试 + 集成测试 | — | 🔴 | — | 全流程验证 |
@@ -392,5 +392,5 @@
 | Sprint 1-4 功能 | 91 | 87 | — | 96% |
 | 热修复 | 31 | 31 | — | 100% |
 | Sprint 5 功能 | 16 | 16 | — | 100% |
-| **Sprint 6 功能** | **8** | **3** | **5** | **37%** |
-| **总计** | **146** | **137** | **9** | **94%** |
+| **Sprint 6 功能** | **8** | **4** | **3** 🟡 **1** | **50%** |
+| **总计** | **146** | **138** | **8** | **94%** |
