@@ -1,3 +1,4 @@
+// mod commands;  // D6 前端适配时启用：从 lib.rs 逐个迁移命令到 commands/
 mod domain;
 mod store;
 mod ai;
@@ -5,7 +6,7 @@ mod skill;
 mod agent;
 mod db;
 mod storage;
-// mod commands;  // D6 前端适配时启用：从 lib.rs 逐个迁移命令到 commands/
+mod commands;
 mod project_indexer;
 mod platform;
 mod image_gen;
@@ -14,6 +15,7 @@ use platform::Platform;
 use platform::wechat::WeChat;
 
 use domain::*;
+use commands::*;
 use store::DataStore;
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
@@ -113,26 +115,6 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
 }
 
 // ─── Collections ───
-
-#[tauri::command]
-fn get_collections(state: tauri::State<AppState>) -> Result<Vec<Collection>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_collections())
-}
-
-#[tauri::command]
-fn set_collections(state: tauri::State<AppState>, collections: Vec<Collection>) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_collections(&collections)
-}
-
-#[tauri::command]
-fn get_trash(state: tauri::State<AppState>) -> Result<Vec<TrashItem>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_trash())
-}
-
-#[tauri::command]
-fn set_trash(state: tauri::State<AppState>, trash: Vec<TrashItem>) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_trash(&trash)
-}
 
 // ─── Providers ───
 
@@ -347,28 +329,6 @@ fn save_article(state: tauri::State<AppState>, id: String, content: String) -> R
 fn load_article(state: tauri::State<AppState>, id: String) -> Result<Option<String>, String> {
     let store = state.store.lock().map_err(|e| e.to_string())?;
     Ok(store.load_article_content(&id))
-}
-
-#[tauri::command]
-fn delete_article(state: tauri::State<AppState>, id: String) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    store.delete_article_content(&id)?;
-    store.delete_article_meta(&id)?;
-    store.delete_blueprint(&id).ok();
-    store.delete_article_document(&id).ok();
-    Ok(())
-}
-
-#[tauri::command]
-fn save_article_meta(state: tauri::State<AppState>, meta: ArticleMeta) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    store.save_article_meta(&meta)
-}
-
-#[tauri::command]
-fn load_article_meta(state: tauri::State<AppState>, id: String) -> Result<Option<ArticleMeta>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    Ok(store.load_article_meta(&id))
 }
 
 // ─── Writing Skills ───
@@ -659,28 +619,7 @@ Skill 是一个 Markdown 文件，包含：
 
 // ─── Blueprint (⚠️ DEPRECATED in v2.1.0 — use save_article_document / load_article_document) ───
 
-#[tauri::command]
-fn save_article_blueprint(state: tauri::State<AppState>, id: String, blueprint: ArticleBlueprint) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_blueprint(&id, &blueprint)
-}
-
-#[tauri::command]
-fn load_article_blueprint(state: tauri::State<AppState>, id: String) -> Result<Option<ArticleBlueprint>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_blueprint(&id))
-}
-
 // ─── ArticleDocument Commands (v2.1.0) ───
-
-#[tauri::command]
-fn save_article_document(state: tauri::State<AppState>, doc: ArticleDocument) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_article_document(&doc)
-}
-
-#[tauri::command]
-fn load_article_document(state: tauri::State<AppState>, id: String) -> Result<Option<ArticleDocument>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_article_document(&id))
-}
-
 
 // ─── Database SQLite Commands ───
 
@@ -775,40 +714,9 @@ fn cleanup_old_json(state: tauri::State<AppState>) -> Result<storage::migration:
 }
 
 /// List all collections from DB
-#[tauri::command]
-fn list_collections_db(state: tauri::State<AppState>) -> Result<Vec<db::CollectionRow>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.list_collections().map_err(|e| e.to_string())
-}
-
 /// Create a collection
-#[tauri::command]
-fn create_collection_db(state: tauri::State<AppState>, title: String, _linked_folder: Option<String>) -> Result<db::CollectionRow, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    let id = format!("col_{}", chrono_now());
-    let now = chrono_now();
-    db.create_collection(&id, &title, 0, now).map_err(|e| e.to_string())?;
-    db.list_collections().map_err(|e| e.to_string())?.into_iter().find(|c| c.id == id).ok_or("创建失败".to_string())
-}
-
 /// Rename a collection
-#[tauri::command]
-fn rename_collection_db(state: tauri::State<AppState>, id: String, title: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.rename_collection(&id, &title).map_err(|e| e.to_string())
-}
-
 /// Delete a collection
-#[tauri::command]
-fn delete_collection_db(state: tauri::State<AppState>, id: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.delete_collection(&id).map_err(|e| e.to_string())
-}
-
 /// 级联删除合集及其所有子文章的关联数据（图片/SQLite/assets）
 #[tauri::command]
 fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Result<(), String> {
@@ -872,62 +780,8 @@ fn list_articles_db(state: tauri::State<AppState>, collection_id: Option<String>
 }
 
 /// Get a single article
-#[tauri::command]
-fn get_article_db(state: tauri::State<AppState>, id: String) -> Result<Option<db::ArticleRow>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.get_article(&id).map_err(|e| e.to_string())
-}
-
 /// Save (insert or replace) an article
-#[tauri::command]
-fn save_article_db(state: tauri::State<AppState>, article: db::ArticleRow) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.save_article(&article).map_err(|e| e.to_string())
-}
-
 /// Delete an article
-#[tauri::command]
-fn delete_article_db(state: tauri::State<AppState>, id: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-
-    // Clean up associated images
-    let images = db.get_article_images(&id).unwrap_or_default();
-    for img in &images {
-        let path = std::path::Path::new(&img.local_path);
-        if path.exists() {
-            let _ = std::fs::remove_file(path);
-        }
-        // Also check absolute path in articles dir
-        let store = state.store.lock().map_err(|e| e.to_string())?;
-        let abs_path = store.articles_dir().join("_assets").join(&id).join(
-            path.file_name().unwrap_or_default()
-        );
-        if abs_path.exists() {
-            let _ = std::fs::remove_file(&abs_path);
-        }
-        // Check project-linked path
-        let project_path = std::path::PathBuf::from(".inkwise_assets").join(&id).join(
-            path.file_name().unwrap_or_default()
-        );
-        if project_path.exists() {
-            let _ = std::fs::remove_file(&project_path);
-        }
-    }
-    // Remove image records
-    let _ = db.delete_article_images(&id);
-    // Remove assets directory
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    let assets_dir = store.articles_dir().join("_assets").join(&id);
-    if assets_dir.exists() {
-        let _ = std::fs::remove_dir_all(&assets_dir);
-    }
-
-    db.delete_article(&id).map_err(|e| e.to_string())
-}
-
 /// Move an article to a different collection
 #[tauri::command]
 fn move_article_db(state: tauri::State<AppState>, id: String, new_collection_id: String) -> Result<(), String> {
@@ -945,13 +799,6 @@ fn search_articles_db(state: tauri::State<AppState>, query: String, limit: Optio
 }
 
 /// List ALL articles (for management page)
-#[tauri::command]
-fn list_all_articles_db(state: tauri::State<AppState>) -> Result<Vec<db::ArticleRow>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
-    let db = db_opt.as_ref().ok_or("数据库未初始化")?;
-    db.list_all_articles().map_err(|e| e.to_string())
-}
-
 /// Link a folder to a collection
 #[tauri::command]
 fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: String) -> Result<(), String> {
@@ -1326,13 +1173,6 @@ async fn link_collection_folder(_state: tauri::State<'_, AppState>, _collection_
     // Save the link info (via existing store - collections will be updated from frontend)
     // The frontend calls set_collections after linking
     Ok(ctx)
-}
-
-#[tauri::command]
-fn unlink_collection_folder(_state: tauri::State<'_, AppState>, _collection_id: String) -> Result<(), String> {
-    // Frontend handles removing linkedFolder from collection data
-    // This is a placeholder for any server-side cleanup
-    Ok(())
 }
 
 #[tauri::command]

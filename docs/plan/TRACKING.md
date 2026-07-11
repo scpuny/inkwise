@@ -379,7 +379,7 @@
 | 6.1 | 创建 `domain/` 目录，从 `store.rs` 剥离类型定义 | `domain/*.rs` | 🟢 | 2026-07-11 | 8 个 Rust 类型文件 + serde camelCase |
 | 6.2 | 实现 `storage/` 目录（Storage trait + sqlite.rs） | `storage/mod.rs`, `sqlite.rs` | 🟢 | 2026-07-11 | 25 方法 trait + SQLite 实现 |
 | 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🟢 | 2026-07-11 | 全量迁移脚本 + 7 项数据 |
-| 6.4 | 创建 `commands/` 目录 | `commands/*.rs` | 🟡 | 2026-07-11 | 架子已建（document_cmds + collection_cmds），D6 前端适配时启用 |
+| 6.4 | 创建 `commands/` 目录 + 集成到 lib.rs | `commands/*.rs`, `lib.rs` | 🟢 | 2026-07-11 | 23 个命令从 lib.rs 移入 commands/，cargo build 通过 |
 | 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🟢 | 2026-07-11 | ai.rs → ai/mod.rs 目录模块 |
 | 6.6 | 前端存储层适配 SQLite：补充 DB 命令桥接 + crud.ts/articles.ts DB 优先 | `bridge/tauri.ts`, `crud.ts`, `articles.ts` | 🟢 | 2026-07-11 | 类型检查通过 |
 | 6.7 | 旧 JSON 文件清理（cleanup_old_json 命令） | `migration.rs`, `lib.rs`, `tauri.ts` | 🟢 | 2026-07-11 | 确认 SQLite 稳定后手动触发 |

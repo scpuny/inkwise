@@ -53,7 +53,7 @@ pub fn delete_collection_db(state: State<AppState>, id: String) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn link_collection_folder(state: State<AppState>, id: String, folder: String) -> Result<(), String> {
+pub fn link_collection_folder_db(state: State<AppState>, id: String, folder: String) -> Result<(), String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     db.as_ref().ok_or("数据库未初始化")?.update_collection_folder(&id, Some(&folder)).map_err(|e| e.to_string())
 }
