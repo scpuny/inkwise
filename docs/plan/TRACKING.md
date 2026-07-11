@@ -381,7 +381,7 @@
 | 6.3 | 编写 migration.rs（JSON → SQLite 迁移） | `storage/migration.rs` | 🟢 | 2026-07-11 | 全量迁移脚本 + 7 项数据 |
 | 6.4 | 创建 `commands/` 目录 | `commands/*.rs` | 🟡 | 2026-07-11 | 架子已建（document_cmds + collection_cmds），D6 前端适配时启用 |
 | 6.5 | 拆分 `ai.rs` 为 `ai/` 模块 | `ai/*.rs` | 🟢 | 2026-07-11 | ai.rs → ai/mod.rs 目录模块 |
-| 6.6 | 前端存储层适配 SQLite | `src/lib/storage/*.ts` | 🔴 | — | 调新命令 |
+| 6.6 | 前端存储层适配 SQLite：补充 DB 命令桥接 + crud.ts/articles.ts DB 优先 | `bridge/tauri.ts`, `crud.ts`, `articles.ts` | 🟢 | 2026-07-11 | 类型检查通过 |
 | 6.7 | 删除旧 JSON 文件 + 清理 | `data/*.json` | 🔴 | — | 确认 SQLite 稳定后删除 |
 | 6.8 | 端到端测试 + 集成测试 | — | 🔴 | — | 全流程验证 |
 
@@ -392,5 +392,5 @@
 | Sprint 1-4 功能 | 91 | 87 | — | 96% |
 | 热修复 | 31 | 31 | — | 100% |
 | Sprint 5 功能 | 16 | 16 | — | 100% |
-| **Sprint 6 功能** | **8** | **4** | **3** 🟡 **1** | **50%** |
+| **Sprint 6 功能** | **8** | **5** | **3** | **62%** |
 | **总计** | **146** | **138** | **8** | **94%** |

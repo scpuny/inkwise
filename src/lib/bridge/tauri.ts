@@ -20,12 +20,22 @@ export enum TauriCommands {
   // ── ArticleDocument (v2.1.0) ──
   SaveArticleDocument = "save_article_document",
   LoadArticleDocument = "load_article_document",
+
+  // ── SQLite DB Commands (Sprint 6) ──
+  MigrateToSqlite = "migrate_to_sqlite",
+  ListCollectionsDb = "list_collections_db",
   CreateCollectionDb = "create_collection_db",
-  DeleteArticleDb = "delete_article_db",
+  RenameCollectionDb = "rename_collection_db",
   DeleteCollectionDb = "delete_collection_db",
   DeleteCollectionCascade = "delete_collection_cascade",
+  ListArticlesDb = "list_articles_db",
+  GetArticleDb = "get_article_db",
+  SaveArticleDb = "save_article_db",
+  DeleteArticleDb = "delete_article_db",
   MoveArticleDb = "move_article_db",
   SearchArticleDb = "search_articles_db",
+  LinkFolderDb = "link_folder_db",
+  UnlinkFolderDb = "unlink_folder_db",
 
   // ── Vector Search ──
   VectorSearch = "vector_search",
@@ -33,7 +43,6 @@ export enum TauriCommands {
   DeleteArticleVector = "delete_article_vector",
   GetVectorStats = "get_vector_stats",
   IndexAllVectors = "index_all_vectors",
-  RenameCollectionDb = "rename_collection_db",
   BuildFolderIndex = "build_folder_index",
   LinkCollectionFolder = "link_collection_folder",
   GetProjectContext = "get_project_context",

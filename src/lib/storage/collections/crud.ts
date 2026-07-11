@@ -133,6 +133,23 @@ export async function saveCollections(collections: Collection[]): Promise<void> 
 }
 
 export async function addCollection(title: string): Promise<Collection> {
+  // DB-first: create via SQLite
+  if (isTauriEnv()) {
+    try {
+      const row = await tryInvoke<Record<string, unknown>>(TauriCommands.CreateCollectionDb, { title });
+      if (row) {
+        const c: Collection = {
+          id: String(row.id ?? ""),
+          title: String(row.title ?? title),
+          createdAt: Number(row.created_at ?? row.createdAt ?? Date.now()),
+          articles: [],
+        };
+        emit("collections-changed");
+        return c;
+      }
+    } catch (e) { console.warn("[addCollection] DB create failed, falling back:", e); }
+  }
+  // Fallback: JSON-based
   const all = await loadCollections();
   const c: Collection = { id: genId(), title, createdAt: Date.now(), articles: [] };
   all.push(c);
@@ -141,6 +158,14 @@ export async function addCollection(title: string): Promise<Collection> {
 }
 
 export async function renameCollection(id: string, title: string): Promise<void> {
+  // DB-first
+  if (isTauriEnv()) {
+    try {
+      await tryInvoke(TauriCommands.RenameCollectionDb, { id, title });
+      emit("collections-changed");
+      return;
+    } catch (e) { console.warn("[renameCollection] DB rename failed, falling back:", e); }
+  }
   const all = await loadCollections();
   const c = all.find((x) => x.id === id);
   if (c) { c.title = title; await saveCollections(all); }

@@ -3,7 +3,7 @@
 //   - Content: stored as {id}.md (individual file, future-proof for indexing)
 //   - Metadata: title, dates, collection membership
 
-import { isTauriEnv, invokeOrFallback, TauriCommands } from "../bridge/tauri";
+import { isTauriEnv, invokeOrFallback, tryInvoke, TauriCommands } from "../bridge/tauri";
 
 export interface ArticleMeta {
   id: string;
@@ -18,9 +18,18 @@ export interface ArticleMeta {
 export async function saveArticleContent(id: string, content: string): Promise<void> {
   if (isTauriEnv()) {
     try {
-      await invokeOrFallback(TauriCommands.SaveArticle, { id, content }, () => {});
+      // Try DB-first (SQLite)
+      await tryInvoke(TauriCommands.SaveArticleDb, {
+        article: { id, content, title: "", collection_id: "", created_at: Date.now(), updated_at: Date.now() },
+      });
       return;
-    } catch { /* fallback */ }
+    } catch {
+      // Fallback: JSON file
+      try {
+        await invokeOrFallback(TauriCommands.SaveArticle, { id, content }, () => {});
+        return;
+      } catch { /* both failed, try localStorage */ }
+    }
   }
   // Browser fallback
   try {
@@ -30,6 +39,12 @@ export async function saveArticleContent(id: string, content: string): Promise<v
 
 export async function loadArticleContent(id: string): Promise<string | null> {
   if (isTauriEnv()) {
+    // Try DB-first (SQLite)
+    try {
+      const row = await tryInvoke<Record<string, unknown> | null>(TauriCommands.GetArticleDb, { id });
+      if (row && typeof row.content === "string") return row.content;
+    } catch { /* fallback */ }
+    // Fallback: JSON file
     try {
       const result = await invokeOrFallback<string | null>(TauriCommands.LoadArticle, { id }, () => null);
       if (result !== null && result !== undefined) return result;
