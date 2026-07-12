@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { Loader2, Check, X } from "lucide-react";
 import { generateArticleReview, saveArticleReview, loadArticleReview, applyOptimization, type ArticleReview } from "../../lib/ai/article/review";
-import { loadArticleContent, loadArticleMeta, saveArticleContent } from "../../lib/storage/articles";
+import { useDocument } from "../../hooks/useDocument";
 
 /* ─── 文章质量评估面板 ─── */
 export function ReviewPanel({ articleId }: { articleId: string | null }) {
+  const { loadDocument, loadArticleContent, saveArticleContent } = useDocument();
   const [review, setReview] = useState<ArticleReview | null>(null);
   const [loading, setLoading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
@@ -25,8 +26,8 @@ export function ReviewPanel({ articleId }: { articleId: string | null }) {
         loadFixStatus(articleId).then(setSuggestionStatus).catch(() => {});
       }
     }).catch(() => {});
-    loadArticleMeta(articleId).then((meta) => {
-      if (meta) setArticleTitle(meta.title || "");
+    loadDocument(articleId).then((doc) => {
+      if (doc) setArticleTitle(doc.title || "");
     }).catch(() => {});
   }, [articleId]);
 

@@ -28,7 +28,6 @@ import { AICommandBar } from "../agent/AICommandBar";
 
 import { extractImageKeywords, insertImagesIntoArticle, getCachedImages, cacheImages } from "../../lib/ai/draw";
 import { tryInvoke } from "../../lib/bridge/tauri";
-import { getProvidersSync } from "../../lib/storage/providerModels";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useDrawConfig } from "../../lib/stores/drawConfig";
 import { useDocument } from "../../hooks/useDocument";
@@ -112,6 +111,7 @@ export function EditorPane({
     saveDocument: saveArticleDocument,
     saveVersionSnapshot,
     loadArticleContent, saveArticleContent,
+    getProvidersSync,
   } = useDocument();
   const { loadCollections } = useCollection();
   // ───────────────────────────
@@ -401,7 +401,8 @@ export function EditorPane({
 
     // 2. 获取图片模型对应的 providerId
     let providerId = "";
-    for (const p of getProvidersSync()) {
+    const providers = getProvidersSync() as Array<{ id: string; enabled: boolean; models: Array<{ id: string }> }>;
+    for (const p of providers) {
       if (!p.enabled) continue;
       if (p.models.some(m => m.id === drawCfg.model)) {
         providerId = p.id;

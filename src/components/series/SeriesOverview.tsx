@@ -1,9 +1,9 @@
 import { BookOpen, ChevronRight, FileText, MoreHorizontal, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { emit } from "../../lib/events/eventBus";
-import { loadArticleContent } from "../../lib/storage/articles";
-import type { SeriesArticle, SeriesPlan } from "../../lib/storage/collections";
-import { saveSeriesPlan, trashArticle } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import { useDocument } from "../../hooks/useDocument";
+import type { SeriesArticle, SeriesPlan } from "../../domain";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 
 interface SeriesOverviewProps {
@@ -25,6 +25,8 @@ export function SeriesOverview({
   onEditPlan,
   onDeletePlan,
 }: SeriesOverviewProps) {
+  const { saveSeriesPlan, trashArticle } = useCollection();
+  const { loadArticleContent } = useDocument();
   const [expanded, setExpanded] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -71,7 +73,7 @@ export function SeriesOverview({
     if (article?.articleId) {
       // If the article was actually created, move it to trash
       try {
-        await trashArticle(collectionId, article.articleId);
+        await trashArticle(collectionId, article.articleId, article.title);
       } catch (e) {
         console.warn("[SeriesOverview] trashArticle failed", e);
       }

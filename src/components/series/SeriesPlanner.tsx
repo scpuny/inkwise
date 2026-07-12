@@ -5,7 +5,7 @@ import { usePanelStore } from "../../store/panelStore";
 import { getAllSkills } from "../../lib/ai/writingSkill";
 import type { WritingSkill } from "../../lib/ai/writingSkill";
 import { getBuiltinStyles, BUILTIN_ACTIONS } from "../../lib/ai/skill/styles";
-import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../lib/storage/collections";
+import type { ProjectContext, SeriesArticle, SeriesPlan, FileNode } from "../../domain";
 import { generateSeriesId, getProjectContext } from "../../lib/storage/collections";
 import { ProjectFileTree } from "../common/ProjectFileTree";
 import { resolveProviderForModel } from "../../lib/config/globalAIConfig";
