@@ -52,6 +52,16 @@ pub fn build_context_text(ctx: &ProjectContext) -> String {
         }
     }
 
+    if !ctx.root_contexts.is_empty() {
+        parts.push("## 顶层结构签名".into());
+        for line in ctx.root_contexts.iter().take(50) {
+            parts.push(format!("- `{}`", line));
+        }
+        if ctx.root_contexts.len() > 50 {
+            parts.push(format!("  ... 还有 {} 个", ctx.root_contexts.len() - 50));
+        }
+    }
+
     if !ctx.imports.is_empty() {
         parts.push("## 模块依赖关系".into());
         let mut sources: std::collections::BTreeMap<&str, Vec<&str>> =

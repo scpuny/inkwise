@@ -16,6 +16,8 @@ pub struct ProjectContext {
     pub symbols: Vec<SymbolInfo>,
     pub imports: Vec<ImportEdge>,
     pub codegraph_available: bool,
+    /// 树级上下文行（函数签名/类声明/方法定义等），用于 AI 理解项目结构
+    pub root_contexts: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

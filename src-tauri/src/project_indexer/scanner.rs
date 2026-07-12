@@ -347,7 +347,7 @@ fn detect_primary_language(summary: &ProjectSummary, configs: &[ConfigFile]) -> 
 
 /// 判断扩展名是否可被 tree-sitter 解析
 fn ts_supported_ext(ext: &str) -> bool {
-    matches!(ext, "ts" | "tsx" | "js" | "jsx" | "rs")
+    matches!(ext, "ts" | "tsx" | "js" | "jsx" | "rs" | "py" | "go" | "java")
 }
 
 /// 获取 tree-sitter 语言
@@ -364,6 +364,18 @@ fn get_tree_sitter_language(ext: &str) -> Option<(tree_sitter::Language, &'stati
         "rs" => {
             let lang: tree_sitter::Language = tree_sitter_rust::LANGUAGE.into();
             Some((lang, "rust"))
+        }
+        "py" => {
+            let lang: tree_sitter::Language = tree_sitter_python::LANGUAGE.into();
+            Some((lang, "python"))
+        }
+        "go" => {
+            let lang: tree_sitter::Language = tree_sitter_go::LANGUAGE.into();
+            Some((lang, "go"))
+        }
+        "java" => {
+            let lang: tree_sitter::Language = tree_sitter_java::LANGUAGE.into();
+            Some((lang, "java"))
         }
         _ => None,
     }
@@ -616,6 +628,30 @@ fn extract_docstring_lines(source: &str, def_start_line: u32) -> Option<String> 
 fn extract_symbols_treesitter(source: &str, ext: &str) -> Vec<SymbolInfo> {
     let matches = query_execute(source, ext, "code-snippet");
     symbols_from_query(source, ext, &matches)
+}
+
+/// 用 tree-sitter query 提取根上下文（函数签名/类声明/方法定义等高层结构）
+/// 返回格式化的上下文文本行，用于 AI 理解项目架构
+fn extract_root_context(source: &str, ext: &str) -> Vec<String> {
+    let matches = query_execute(source, ext, "root-context");
+    let mut lines = Vec::new();
+    for m in &matches {
+        // 从 captures 中提取关键信息
+        let name = m.captures.iter().find(|c| c.name == "name").map(|c| c.text.as_str()).unwrap_or("");
+        let params = m.captures.iter().find(|c| c.name == "parameters").map(|c| c.text.as_str()).unwrap_or("");
+        let def = m.captures.iter().find(|c| c.name == "definition").map(|c| c.text.as_str()).unwrap_or("");
+        if !def.is_empty() {
+            lines.push(def.to_string());
+        } else if !name.is_empty() {
+            let sig = if !params.is_empty() {
+                format!("{}({})", name, params)
+            } else {
+                name.to_string()
+            };
+            lines.push(sig);
+        }
+    }
+    lines
 }
 
 // ─── import 层：Query → ImportEdge 列表 ───
@@ -1195,6 +1231,7 @@ pub fn scan_project(path: &str, force_rescan: bool) -> Result<ProjectContext, St
         symbols,
         imports,
         codegraph_available,
+        root_contexts: vec![],
     })
 }
 
@@ -1327,6 +1364,7 @@ pub fn rescan_project_incremental(
         symbols,
         imports,
         codegraph_available,
+        root_contexts: vec![],
     })
 }
 

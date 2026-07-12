@@ -515,7 +515,7 @@ v3.0 全量功能迁移已完成。详见 [20-migration-plan.md](20-migration-pl
 | 9.1 | **工具栏功能对接** — Bold/Italic/Heading/List/Quote/Link/Image 等接入 TipTap 命令 | UI | P0 | 🟢 | 07-12 |
 | 9.2 | **内联 AI 命令完善** — Cmd+K 选中文字→改写/扩写/续写/翻译 | AI | P0 | 🟢 | 07-12 |
 | 9.3 | **快捷键体系** — Cmd+B 加粗、Cmd+I 斜体、Cmd+Shift+K 代码块等 | UI | P1 | 🟢 | 07-12 |
-| 9.4 | **PlanPanel 子拆分** — Sprint 8.2 遗留项 | 架构 | P1 | 🔴 | — |
+| 9.4 | **PlanPanel 子拆分** — Sprint 8.2 遗留项 | 架构 | P1 | 🟢 | 07-12 |
 | 9.5 | **扫描性能优化** — 增量扫描机制完善（边界情况） | 后端 | P1 | 🔴 | — |
 | 9.6 | **新增 tree-sitter 语言支持** — 安装 Python/Go/Java crate，激活已有 .scm 查询 | 后端 | P1 | 🔴 | — |
 | 9.7 | **激活 root-context 层** — 挂接到 query_execute 调用链，提取函数签名+参数类型 | 后端 | P1 | 🔴 | — |
@@ -524,5 +524,5 @@ v3.0 全量功能迁移已完成。详见 [20-migration-plan.md](20-migration-pl
 ### Sprint 9 完成率
 
 ```
-完成：0 / 8 (0%)  |  P0：0/2  |  P1：0/5  |  P2：0/1
+完成：4 / 8 (50%)  |  P0：2/2  |  P1：2/5  |  P2：0/1
 ```
