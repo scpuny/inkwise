@@ -62,6 +62,73 @@ function ToolBtn({
 }
 
 // ── Link Popover ──
+function LinkPopover({ onClose }: { onClose: () => void }) {
+  const [href, setHref] = useState("");
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    const ed = getEditor();
+    if (!ed) return;
+    const { from, to } = ed.state.selection;
+    // Pre-fill with selected text
+    const selText = ed.state.doc.textBetween(from, to);
+    if (selText) setText(selText);
+    // Check if existing link at cursor
+    const attrs = ed.getAttributes("link");
+    if (attrs.href) {
+      setHref(attrs.href);
+      if (!selText) setText(attrs.href);
+    }
+  }, []);
+
+  const handleSetLink = () => {
+    const ed = getEditor();
+    if (!ed) return;
+    if (!href.trim()) {
+      ed.commands.unsetLink();
+      onClose();
+      return;
+    }
+    const url = href.trim().startsWith("http") ? href.trim() : `https://${href.trim()}`;
+    ed.commands.setLink({ href: url });
+    onClose();
+  };
+
+  const handleRemoveLink = () => {
+    const ed = getEditor();
+    if (!ed) return;
+    ed.commands.unsetLink();
+    onClose();
+  };
+
+  return (
+    <div className="toolbar-popover link-popover">
+      <div className="link-popover__body">
+        <input
+          className="link-popover__input"
+          type="text"
+          placeholder="链接文字"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          style={{ marginBottom: 4 }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSetLink(); if (e.key === "Escape") onClose(); }}
+        />
+        <input
+          className="link-popover__input"
+          type="url"
+          placeholder="https://…"
+          value={href}
+          onChange={(e) => setHref(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSetLink(); if (e.key === "Escape") onClose(); }}
+        />
+        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+          <button className="btn btn--small" onClick={handleSetLink}>确定</button>
+          <button className="btn btn--small btn--secondary" onClick={handleRemoveLink}>移除链接</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Image Popover ──
 function ImagePopover({ onClose }: { onClose: () => void }) {
@@ -472,7 +539,10 @@ export function Toolbar({
             </button>
             {imageOpen && <ImagePopover onClose={() => setImageOpen(false)} />}
           </div>
-          <ToolBtn icon={<LinkIcon size={14} />} title="链接" shortcut="⌘K" onClick={() => togglePopover("link")} active={linkOpen || isActive("link")} />
+          <div style={{ position: "relative" }}>
+            <ToolBtn icon={<LinkIcon size={14} />} title="链接" shortcut="⌘K" onClick={() => togglePopover("link")} active={linkOpen || isActive("link")} />
+            {linkOpen && <LinkPopover onClose={() => setLinkOpen(false)} />}
+          </div>
           <ToolBtn icon={<Code2 size={14} />} title="代码" shortcut="⌘E" onClick={() => toggleCmd("code")} active={isActive("code")} />
         </>
       </div>
