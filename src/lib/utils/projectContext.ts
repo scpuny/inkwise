@@ -1,10 +1,8 @@
 // projectContext.ts — 项目上下文桥接层
 // 提供前端构建 AI prompt 时使用的项目上下文字符串生成
 
-import {
-  getProjectContextText,
-  type ProjectContext
-} from "../storage/collections";
+import { getProjectContextText } from "../storage/collections/projectContext";
+import type { ProjectContext } from "../../domain";
 
 /**
  * 构建 AI 可读的项目上下文文本。

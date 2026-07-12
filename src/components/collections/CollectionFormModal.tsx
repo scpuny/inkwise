@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, FolderOpen, Save, FolderInput, RefreshCw, Unlink, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import type { Collection, ProjectContext } from "../../lib/storage/collections";
-import { linkCollectionFolder, rescanProjectFolder } from "../../lib/storage/collections";
+import type { Collection, ProjectContext } from "../../domain";
+import { linkCollectionFolder, rescanProjectFolder } from "../../lib/storage/collections/projectContext";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { usePanelStore } from "../../store/panelStore";
 import { buildProjectLabel } from "../../lib/utils/projectContext";

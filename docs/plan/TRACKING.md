@@ -429,9 +429,9 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 
 | # | 旧文件 | 消费者 | 新替代 | 计划 Phase | 状态 |
 |---|--------|--------|--------|-----------|------|
-| 1 | `storage/collections` | ~14 个文件（-11） | `services/CollectionService` | Phase 2 | 🟡 部分完成 |
-| 2 | `storage/articles.ts` | ~6 个文件（-4） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
-| 3 | `storage/providerModels` | 8 个文件 | `infrastructure/AIProvider` | Phase 2 | 🔴 |
+| 1 | `storage/collections` | ~10 个文件（-15） | `services/CollectionService` | Phase 2 | 🟡 部分完成 |
+| 2 | `storage/articles.ts` | ~2 个文件（仅 TauriDocumentStore 桥接 + importExport 工具） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
+| 3 | `storage/providerModels` | ~6 个文件 | `infrastructure/AIProvider` | Phase 2 | 🔴 |
 | 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 | 🔴 |
 | 5 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
 | 6 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
@@ -451,3 +451,14 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - ai/mod.rs 中 resolve_provider 签名从 `&Mutex<DataStore>` 改为 `&AppStorage`
 - migration.rs 改用 AppStorage
 - 验证：`cargo check` 0 errors + `vite build` success
+
+**增量迁移 Batch 3 完成**（2026-07-12）：
+- SeriesOverview → 完全迁移 useCollection + useDocument（saveSeriesPlan/trashArticle/loadArticleContent + 类型）
+- SeriesPlanner → 类型从 storage/collections 改为 domain
+- EditorPane → getProvidersSync 从旧 providerModels 改为 useDocument()
+- ReviewPanel → 完全替换 loadArticleContent/loadArticleMeta/saveArticleContent 为 useDocument
+- ArticleFinalPage → 移除 loadArticleMeta 静态导入（仅动态使用）
+- storage/collections 消费者: ~13 → ~10（-3）
+- storage/articles: ~5 → 2（仅桥接 + 工具文件）
+- providerModels: 7 → 6（EditorPane 移除）
+- 验证：tsc 0 errors + vite build success

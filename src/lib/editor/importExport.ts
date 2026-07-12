@@ -1,7 +1,7 @@
 // importExport.ts — Markdown file import/export for both Tauri and browser modes.
 
 import { isTauriEnv, tryInvoke } from "../bridge/tauri";
-import { addArticle } from "../storage/collections";
+import { addArticle } from "../storage/collections/crud";
 import { saveArticleContent, loadArticleContent } from "../storage/articles";
 import { compileToWechatHtml } from "./compileHtml";
 

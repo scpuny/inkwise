@@ -16,7 +16,7 @@ import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTempl
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { migrateArticleDocument, createDefaultDocument, DEFAULT_STYLE_CONFIG } from "../../lib/storage/articleDocument";
-import { getProjectContext } from "../../lib/storage/collections";
+import { getProjectContext } from "../../lib/storage/collections/projectContext";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
 import { ArticleHeader } from "./ArticleHeader";

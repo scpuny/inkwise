@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PublishRecord } from "../../lib/storage/platforms";
+import type { PublishRecord } from "../../domain";
 
 interface PublishStatusPanelProps {
   publishRecords: PublishRecord[];

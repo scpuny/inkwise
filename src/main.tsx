@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { initTheme } from "./lib/theme/theme";
-import { seedIfEmpty } from "./lib/storage/collections";
+import { seedIfEmpty } from "./lib/storage/collections/crud";
 import "./styles.css";
 
 // Seed demo data on first launch

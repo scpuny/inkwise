@@ -7,8 +7,8 @@ import {
   getStoredProjectFileTree, getStoredProjectInsights,
   storeProjectFileTree, exploreProjectForCollection,
   clearProjectFileTree, clearProjectInsights,
+  getProjectContext,
 } from "../../lib/storage/collections/projectContext";
-import { getProjectContext } from "../../lib/storage/collections";
 import { useCollection } from "../../hooks/useCollection";
 import type { Collection } from "../../domain";
 import { on, emit } from "../../lib/events/eventBus";

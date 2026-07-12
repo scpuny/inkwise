@@ -13,7 +13,7 @@ import {
   MoonIcon, STYLE_LABELS, fontFamilyLabel, textSizeLabel, themeStyleDesc, themeStyleTag
 } from "./settingsHelpers";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
-import { forceSync } from "../../lib/storage/collections";
+import { forceSync } from "../../lib/storage/collections/crud";
 import { useCollection } from "../../hooks/useCollection";
 import { emit } from "../../lib/events/eventBus";
 
