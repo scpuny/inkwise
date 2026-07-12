@@ -9,6 +9,7 @@ import type {
   SeriesPlan,
   TrashItem,
   SearchResult,
+  VersionEntry,
 } from "../domain";
 import type { DocumentStore } from "./DocumentStore";
 
@@ -49,7 +50,7 @@ import {
   rescanProjectFolder as oldRescanProjectFolder,
 } from "../lib/storage/collections/projectContext";
 import { loadBlueprint as oldLoadBlueprint, saveBlueprint as oldSaveBlueprint } from "../lib/ai/article/blueprint";
-import { saveVersionSnapshot as oldSaveVersionSnapshot } from "../lib/storage/articleVersions";
+import { saveVersionSnapshot as oldSaveVersionSnapshot, getVersionHistory as oldGetVersionHistory, loadVersionContent as oldLoadVersionContent, restoreVersion as oldRestoreVersion } from "../lib/storage/articleVersions";
 import { getProvidersSync as oldGetProvidersSync } from "../lib/storage/providerModels";
 import { genId } from "../lib/storage/collections/crud";
 
@@ -236,6 +237,18 @@ export class TauriDocumentStore implements DocumentStore {
 
   async saveVersionSnapshot(articleId: string, content: string): Promise<void> {
     await oldSaveVersionSnapshot(articleId, content);
+  }
+
+  async getVersionHistory(articleId: string): Promise<VersionEntry[]> {
+    return oldGetVersionHistory(articleId);
+  }
+
+  async loadVersionContent(articleId: string, versionId: string): Promise<string | null> {
+    return oldLoadVersionContent(articleId, versionId);
+  }
+
+  async restoreVersion(articleId: string, versionId: string): Promise<string | null> {
+    return oldRestoreVersion(articleId, versionId);
   }
 
   getProvidersSync(): unknown[] {

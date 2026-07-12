@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { Clock, RotateCcw, X, FileText } from "lucide-react";
-import { getVersionHistory, loadVersionContent, restoreVersion, type VersionEntry } from "../../lib/storage/articleVersions";
+import { useDocument } from "../../hooks/useDocument";
+import type { VersionEntry } from "../../domain";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function VersionHistoryModal({ articleId, articleTitle, open, onClose, onRestore }: Props) {
+  const { getVersionHistory, loadVersionContent, restoreVersion } = useDocument();
   const [versions, setVersions] = useState<VersionEntry[]>([]);
   const [loadingContent, setLoadingContent] = useState<string | null>(null);
   const [previewContent, setPreviewContent] = useState<string | null>(null);

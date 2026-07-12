@@ -2,11 +2,11 @@
 
 ## 项目概览
 - **名称**: InkWise 墨智 — AI 写作助手
-- **版本**: v2.0.0（已发布）
+- **版本**: v3.0（已合并到 main）
 - **技术栈**: React 19 + TypeScript 6 + Vite 6 + Tauri 2 + Rust (edition 2021)
 - **编辑器**: TipTap 3 (ProseMirror) — 富文本 & Markdown 双模
 - **状态管理**: Zustand (articleStore/themeStore/panelStore)
-- **存储**: Rust DataStore (JSON) + SQLite (FTS5) + localStorage (浏览器降级)
+- **存储**: Rust DataStore (JSON) + SQLite (FTS5) + localStorage (浏览器降级) — 统一通过桥接层访问
 
 ## 开发命令
 - `npm run dev` — 浏览器模式
@@ -47,6 +47,8 @@
 - **Batch 6（里程碑）**：storage/articles + storage/articleDocument 非桥接消费者清零；blueprint 类型引用全面清零
 - **Batch 7（基础设施）**：创建 SettingsStore 接口 + TauriSettingsStore + useSettings；迁移 7 个 settings/publish 消费者
 - **Phase 6（全量迁移完成）**：蓝图存储函数桥接 + ArticleFinalPage fallback 重构 — 零非桥接消费者 🏆
+- **Rust 死代码清理**：删除 8 处迁移残留死代码，修复 3 处过期 API，warnings 29→13
+- **Branch merge**：`codex/v3.0-s6` → `main`；v3.0 tag 移至 main HEAD
 
 ### 旧存储引用剩余
 - `storage/collections` → 仅 TauriDocumentStore 桥接 ✅

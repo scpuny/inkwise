@@ -91,6 +91,15 @@ export interface ArticleDocument {
   updatedAt: number;
 }
 
+// ─── 版本快照 ───
+export interface VersionEntry {
+  id: string;
+  articleId: string;
+  createdAt: number;
+  summary: string;
+  charCount: number;
+}
+
 /* ─── 默认值 ─── */
 
 export const DEFAULT_STYLE_CONFIG: ArticleStyleConfig = {

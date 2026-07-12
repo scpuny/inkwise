@@ -9,6 +9,7 @@ import type {
   SeriesPlan,
   TrashItem,
   SearchResult,
+  VersionEntry,
 } from "../domain";
 
 export interface DocumentStore {
@@ -66,6 +67,9 @@ export interface DocumentStore {
 
   // ── 版本快照 ──
   saveVersionSnapshot(articleId: string, content: string): Promise<void>;
+  getVersionHistory(articleId: string): Promise<VersionEntry[]>;
+  loadVersionContent(articleId: string, versionId: string): Promise<string | null>;
+  restoreVersion(articleId: string, versionId: string): Promise<string | null>;
 
   // ── 提供商配置 ──
   getProvidersSync(): unknown[];

@@ -3,7 +3,7 @@
 // 通过 DocumentStore 接口访问存储，不依赖具体实现
 
 import { useState, useCallback } from "react";
-import type { ArticleDocument, ArticleBlueprint } from "../domain";
+import type { ArticleDocument, ArticleBlueprint, VersionEntry } from "../domain";
 import { TauriDocumentStore } from "../infrastructure/TauriDocumentStore";
 import { genId } from "../lib/storage/collections/crud";
 
@@ -92,6 +92,19 @@ export function useDocument(store = DEFAULT_STORE) {
     await store.saveVersionSnapshot(articleId, content);
   }, [store]);
 
+  // ── 版本历史 ──
+  const getVersionHistory = useCallback(async (articleId: string): Promise<VersionEntry[]> => {
+    return store.getVersionHistory(articleId);
+  }, [store]);
+
+  const loadVersionContent = useCallback(async (articleId: string, versionId: string): Promise<string | null> => {
+    return store.loadVersionContent(articleId, versionId);
+  }, [store]);
+
+  const restoreVersion = useCallback(async (articleId: string, versionId: string): Promise<string | null> => {
+    return store.restoreVersion(articleId, versionId);
+  }, [store]);
+
   // ── 提供商配置 ──
   const getProvidersSync = useCallback(() => {
     return store.getProvidersSync();
@@ -119,6 +132,7 @@ export function useDocument(store = DEFAULT_STORE) {
     doc, loading, error,
     loadDocument, saveDocument, createDocument, deleteDocument, reset,
     loadBlueprint, saveBlueprint, saveVersionSnapshot, getProvidersSync,
+    getVersionHistory, loadVersionContent, restoreVersion,
     loadArticleContent, loadArticleMeta, saveArticleContent,
     migrateArticleDocument,
   };
