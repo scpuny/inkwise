@@ -1,12 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Search, FileText, FolderClosed, X, Loader2 } from "lucide-react";
-import {
-  searchArticleTitles,
-  searchArticleContent,
-  type Collection,
-  type SearchResult,
-} from "../../lib/storage/collections";
-import { loadCollections } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import type { SearchResult } from "../../domain";
 
 export interface SearchPanelProps {
   onSelectArticle: (articleId: string) => void;
@@ -16,10 +11,10 @@ export interface SearchPanelProps {
 export function SearchPanel({ onSelectArticle, onClose }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchedContent, setSearchedContent] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { collections, loadCollections, searchArticleTitles, searchArticleContent } = useCollection();
 
   // Focus input on mount
   useEffect(() => {
@@ -28,8 +23,10 @@ export function SearchPanel({ onSelectArticle, onClose }: SearchPanelProps) {
 
   // Load collections
   useEffect(() => {
-    loadCollections().then(setCollections);
-  }, []);
+    if (collections.length === 0) {
+      loadCollections();
+    }
+  }, [collections.length, loadCollections]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -70,7 +67,7 @@ export function SearchPanel({ onSelectArticle, onClose }: SearchPanelProps) {
         }, 400);
       }
     },
-    [collections],
+    [collections, searchArticleTitles, searchArticleContent],
   );
 
   const handleClear = useCallback(() => {

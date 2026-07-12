@@ -4,8 +4,7 @@ import { CollectionTree } from "./CollectionTree";
 import { SearchPanel } from "./SearchPanel";
 import { OutlinePanel, type OutlineItem } from "./OutlinePanel";
 import { ProjectPanel } from "./ProjectPanel";
-import { loadTrash } from "../../lib/storage/collections";
-import { on } from "../../lib/events/eventBus";
+import { useCollection } from "../../hooks/useCollection";
 
 type SidebarTab = "collections" | "outline" | "project";
 
@@ -41,16 +40,12 @@ export function Sidebar({
   const [internalTab, setInternalTab] = useState<SidebarTab>("collections");
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [trashCount, setTrashCount] = useState(0);
+  const { trash, loadTrash } = useCollection();
 
   // 回收站计数（挂载时 + collections-changed 事件触发时更新）
   useEffect(() => {
-    loadTrash().then((items) => setTrashCount(items.length)).catch(() => {});
-    const unsub = on("collections-changed", () => {
-      loadTrash().then((items) => setTrashCount(items.length)).catch(() => {});
-    });
-    return unsub;
-  }, []);
+    loadTrash();
+  }, [loadTrash]);
 
 
   return (
@@ -112,7 +107,7 @@ export function Sidebar({
         <button className="sidebar__action-btn" onClick={() => onOpenTrash?.()} title="回收站">
           <Trash2 size={15} />
           <span className="sidebar__action-label">回收站</span>
-          {trashCount > 0 && <span className="sidebar__trash-badge">{trashCount}</span>}
+          {trash.length > 0 && <span className="sidebar__trash-badge">{trash.length}</span>}
         </button>
         <div className="sidebar__action-spacer" />
         <button className="sidebar__action-btn" onClick={onOpenSettings} title="设置">

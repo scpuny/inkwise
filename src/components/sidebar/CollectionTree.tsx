@@ -2,31 +2,31 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { FileText, FolderClosed, FolderOpen, Plus, Pencil, RefreshCw, ChevronRight, ListCollapse, ArrowUpDown, Type, AlignLeft, FolderInput, BookOpen, Loader2, Trash2 } from "lucide-react";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";
-import type { Collection, TrashItem } from "../../lib/storage/collections";
-import {
-  loadCollections, saveCollections, addCollection, renameCollection, removeCollection,
-  addArticle, renameArticle, trashArticle,
-  loadTrash, saveTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash,
-  linkCollectionFolder, rescanProjectFolder, unlinkCollectionFolder,
-  loadAllSeriesPlans, deleteSeriesPlan,
-  type SeriesPlan,
-} from "../../lib/storage/collections";
+import type { SeriesPlan } from "../../domain";
+import { useCollection } from "../../hooks/useCollection";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { usePanelStore } from "../../store/panelStore";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { SeriesOverview } from "../series/SeriesOverview";
-import { loadArticleContent } from "../../lib/storage/articles";
-import { loadBlueprint } from "../../lib/ai/article/blueprint";
 import { emit, on } from "../../lib/events/eventBus";
 import type { PlanSeriesSavedDetail } from "../../lib/events/events";
 import { getWordCount } from "../../lib/utils/text";
 
 export function CollectionTree({ onSelectArticle, activeArticleId: externalActiveId, onNewArticleInCollection, seriesRefreshKey }: { onSelectArticle?: (articleId: string) => void; activeArticleId?: string | null; onNewArticleInCollection?: (collectionId: string) => void; seriesRefreshKey?: number; }) {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [trash, setTrash] = useState<TrashItem[]>([]);
-    const [loaded, setLoaded] = useState(false);
+  const {
+    collections,
+    loadCollections, createCollection, renameCollection, removeCollection,
+    addArticle, renameArticle, trashArticle,
+    loadTrash, saveTrash,
+    linkCollectionFolder, unlinkCollectionFolder, rescanProjectFolder,
+    loadAllSeriesPlans, deleteSeriesPlan,
+    loadArticleContent, loadBlueprint,
+    refresh,
+  } = useCollection();
+
+  const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-    const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const [ctxMenu, setCtxMenu] = useState<{ items: ContextMenuItem[]; x: number; y: number } | null>(null);
@@ -58,21 +58,19 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
 
   const loadPhase = useCallback(async (articleId: string) => {
     if (phaseCache[articleId]) return;
-    const bp = await loadBlueprint(articleId);
+    const bp: any = await loadBlueprint(articleId);
     if (bp) {
       setPhaseCache((prev) => ({ ...prev, [articleId]: bp.phase }));
     }
-  }, [phaseCache]);
+  }, [phaseCache, loadBlueprint]);
 
   // Load data
-  const refresh = useCallback(async () => {
-    const [cols, tr] = await Promise.all([loadCollections(), loadTrash()]);
-    setCollections(cols);
-    setTrash(tr);
+  const refreshAll = useCallback(async () => {
+    await refresh();
     setLoaded(true);
     // Load series plans
     const plansMap: Record<string, SeriesPlan[]> = {};
-    for (const col of cols) {
+    for (const col of collections) {
       const colPlans = await loadAllSeriesPlans(col.id);
       if (colPlans.length > 0) plansMap[col.id] = colPlans;
     }
@@ -80,10 +78,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     // Reload phases for all articles
     const phaseMap: Record<string, string> = {};
     const phasePromises: Promise<void>[] = [];
-    for (const col of cols) {
+    for (const col of collections) {
       for (const article of col.articles) {
         phasePromises.push(
-          loadBlueprint(article.id).then(bp => {
+          loadBlueprint(article.id).then((bp: any) => {
             if (bp) phaseMap[article.id] = bp.phase;
           }).catch(() => console.warn("[CollectionTree] loadBlueprint failed"))
         );
@@ -105,9 +103,9 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       }
       return changed ? next : prev;
     });
-  }, [seriesRefreshKey]);
+  }, [refresh, collections, loadAllSeriesPlans, loadBlueprint]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refreshAll(); }, [refreshAll]);
 
   // ── Folder linking ──
 
@@ -145,34 +143,20 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       });
     }
     if (folderPath) {
-      // Save linked folder
-      const all = await loadCollections();
-      const col = all.find(x => x.id === colId);
-      if (!col) return;
-      col.linkedFolder = folderPath;
-      await saveCollections(all);
-      await refresh();
       setFolderScanning((prev) => ({ ...prev, [colId]: true }));
       await new Promise(r => setTimeout(r, 50));
       try {
         await linkCollectionFolder(colId, folderPath);
       } catch { console.warn("[CollectionTree] linkCollectionFolder failed (non-critical)"); }
       setFolderScanning((prev) => ({ ...prev, [colId]: false }));
-      await refresh();
+      await refreshAll();
     }
-  }, [refresh]);
+  }, [refreshAll, linkCollectionFolder]);
 
   const handleUnlinkFolder = useCallback(async (colId: string) => {
-    // Clear linkedFolder from collection
-    const all = await loadCollections();
-    const col = all.find(x => x.id === colId);
-    if (col) {
-      col.linkedFolder = undefined;
-      await saveCollections(all);
-    }
     await unlinkCollectionFolder(colId);
-    await refresh();
-  }, [refresh]);
+    await refreshAll();
+  }, [refreshAll, unlinkCollectionFolder]);
 
   const handleRescanFolder = useCallback(async (colId: string) => {
     const col = collections.find((c) => c.id === colId);
@@ -180,13 +164,12 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     setFolderScanning((prev) => ({ ...prev, [colId]: true }));
     try {
       await rescanProjectFolder(col.linkedFolder);
-      emit("collections-changed");
     } catch (e) {
       const msg = String(e);
       if (msg.includes("不是有效的文件夹")) {
         if (confirm(`目录不存在或已被移动：${col.linkedFolder}\n是否取消关联？`)) {
           await unlinkCollectionFolder(colId);
-          await refresh();
+          await refreshAll();
         }
       } else {
         alert(`扫描失败：${msg}`);
@@ -194,23 +177,19 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     } finally {
       setFolderScanning((prev) => ({ ...prev, [colId]: false }));
     }
-  }, [collections, refresh, unlinkCollectionFolder]);
+  }, [collections, refreshAll, unlinkCollectionFolder, rescanProjectFolder]);
 
   // ── Series planning ──
 
   const handlePlanSeries = useCallback(async (colId: string) => {
-    emit("plan-series", { collectionId: colId });
+    emit("plan-series" as any, { collectionId: colId });
   }, []);
 
-  // 监听外部变更（改名只写 localStorage，从 localStorage 读，不从 Tauri 拿旧数据）
+  // 监听外部变更
   useEffect(() => {
-    const handler = () => {
-      loadCollections().then(cols => {
-        setCollections(cols);
-        refresh();
-      });
-    };
-    return on("collections-changed", handler);
+    return on("collections-changed", () => {
+      refresh();
+    });
   }, [refresh]);
 
   // Listen for plan-series-saved to force expand and refresh
@@ -220,10 +199,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
       if (collectionId) {
         setExpanded(prev => new Set(prev).add(collectionId));
       }
-      refresh();
+      refreshAll();
     };
     return on("plan-series-saved", handler);
-  }, [refresh]);
+  }, [refreshAll]);
 
   // Load word counts for articles in expanded collections
   useEffect(() => {
@@ -233,8 +212,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
           if (!statsCache[article.id]) {
             loadArticleContent(article.id).then((content) => {
               if (content) {
-                const words = getWordCount(content);
-                setStatsCache((prev) => ({ ...prev, [article.id]: { words, chars: content.length, paragraphs: 0 } }));
+                setStatsCache((prev) => ({ ...prev, [article.id]: { words: getWordCount(content), chars: content.length, paragraphs: 0 } }));
               }
             });
           }
@@ -245,7 +223,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
     for (const col of collections) {
       for (const article of col.articles) {
         if (!phaseCache[article.id]) {
-          loadBlueprint(article.id).then((bp) => {
+          loadBlueprint(article.id).then((bp: any) => {
             if (bp) {
               setPhaseCache((prev) => ({ ...prev, [article.id]: bp.phase }));
             }
@@ -253,7 +231,7 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
         }
       }
     }
-  }, [collections, expanded]);
+  }, [collections, expanded, statsCache, phaseCache, loadArticleContent, loadBlueprint]);
 
   // ── Collapse / Expand all ──
   const allExpanded = expanded.size === collections.length && collections.length > 0;
@@ -265,27 +243,24 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   // ── Collection ops ──
 
   const handleNewCollection = useCallback(async () => {
-    const c = await addCollection("新建合集");
+    const c = await createCollection("新建合集");
     setExpanded((prev) => new Set(prev).add(c.id));
-    await refresh();
     setEditingId(`col:${c.id}`); setEditingDraft(c.title);
-  }, [refresh]);
+  }, [createCollection]);
 
   // Helper: ensure at least one collection exists; return its id
   const getOrCreateDefaultCollection = useCallback(async (): Promise<string> => {
-    let cols = await loadCollections();
+    const cols = await loadCollections();
     if (cols.length > 0) return cols[0].id;
     // No collections — create default
-    const c = await addCollection("默认合集");
+    const c = await createCollection("默认合集");
     setExpanded((prev) => new Set(prev).add(c.id));
-    await refresh();
     return c.id;
-  }, [refresh]);
+  }, [loadCollections, createCollection]);
 
   const handleRenameCollection = useCallback((id: string, current: string) => {
     setEditingId(`col:${id}`); setEditingDraft(current);
   }, []);
-
 
   const handleRemoveCollection = useCallback((id: string) => {
     const c = collections.find((x) => x.id === id);
@@ -302,21 +277,16 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
         setExpanded((prev) => new Set(prev).add(targetId));
         onSelectArticle?.(a.id);
         setEditingId(`art:${a.id}`); setEditingDraft("新文章");
-        await refresh();
       }
       return;
     }
     // Collection-specific + button: go to StartupSplash with collection context
     onNewArticleInCollection?.(collectionId);
-  }, [getOrCreateDefaultCollection, onSelectArticle, refresh, onNewArticleInCollection]);
+  }, [getOrCreateDefaultCollection, addArticle, onSelectArticle, onNewArticleInCollection]);
 
   const handleTrashArticle = useCallback((collectionId: string, articleId: string, articleTitle: string) => {
     setConfirmDelete({ type: "article", id: articleId, collectionId, title: articleTitle });
   }, []);
-
-  // ── Trash ops ──
-  const handleRestore = useCallback(async (id: string) => { await restoreArticle(id); await refresh(); }, [refresh]);
-  const handlePermanentDelete = useCallback(async (id: string) => { await permanentlyDeleteArticle(id); await refresh(); }, [refresh]);
 
   // ── Context menu ──
   const onCtx = useCallback((e: React.MouseEvent, items: ContextMenuItem[]) => {
@@ -333,10 +303,10 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
   const sortedCollections = [...collections].sort((a, b) => {
     if (sortBy === "name") return a.title.localeCompare(b.title, "zh");
     if (sortBy === "articleCount") {
-        const countA = a.articles.length + (seriesPlansList[a.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
-        const countB = b.articles.length + (seriesPlansList[b.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
-        return countB - countA;
-      }
+      const countA = a.articles.length + (seriesPlansList[a.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
+      const countB = b.articles.length + (seriesPlansList[b.id] || []).reduce((sum, p) => sum + p.articles.length, 0);
+      return countB - countA;
+    }
     return b.createdAt - a.createdAt;
   });
 
@@ -411,21 +381,21 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               ])}>
                 {isEditing ? (
                   <input ref={editInputRef} className="collection-tree__input" value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)}
-                    onBlur={async () => { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); emit("collections-changed"); } setEditingId(null); }}
-                    onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) { const updated = [...collections]; const idx = updated.findIndex(x => x.id === col.id); if (idx >= 0) updated[idx] = { ...updated[idx], title: t }; setCollections(updated); await renameCollection(col.id, t); emit("collections-changed"); } setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
+                    onBlur={async () => { const t = editingDraft.trim(); if (t) await renameCollection(col.id, t); setEditingId(null); }}
+                    onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameCollection(col.id, t); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
                     onClick={(e) => e.stopPropagation()} />
                 ) : (
                   <>
                     <span className="collection-tree__chevron"><ChevronRight size={12} className={isExpanded ? "collection-tree__chevron--open" : ""} /></span>
                     <span className="collection-tree__icon">{isExpanded ? <FolderOpen size={14} /> : (col.linkedFolder ? <FolderInput size={14} style={{color: "var(--accent)"}} /> : <FolderClosed size={14} />)}</span>
                     <span className="collection-tree__label">
-                          {col.title}
-                          {col.linkedFolder && <span className="collection-tree__folder-badge" title={folderScanning[col.id] ? "正在扫描项目结构…" : col.linkedFolder}
-                            onClick={(e) => { e.stopPropagation(); usePanelStore.getState().setProjectPanelColId(col.id); usePanelStore.getState().setMainRoute("scan"); }}
-                            style={{cursor: "pointer"}}>
-                            {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
-                          </span>}
-                        </span>
+                      {col.title}
+                      {col.linkedFolder && <span className="collection-tree__folder-badge" title={folderScanning[col.id] ? "正在扫描项目结构…" : col.linkedFolder}
+                        onClick={(e) => { e.stopPropagation(); usePanelStore.getState().setProjectPanelColId(col.id); usePanelStore.getState().setMainRoute("scan"); }}
+                        style={{cursor: "pointer"}}>
+                        {folderScanning[col.id] ? <Loader2 size={10} className="collection-tree__spinner" /> : <FolderInput size={10} />}
+                      </span>}
+                    </span>
                     <span className="collection-tree__count">{col.articles.length + (seriesPlansList[col.id] || []).reduce((sum, p) => sum + p.articles.length, 0)}</span>
                     <button
                       className="collection-tree__add-btn"
@@ -444,11 +414,11 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
               {isExpanded && (
                 <div className="collection-tree__children">
                   {(col.articles.slice().sort((a, b) => {
-            const sortMode = articleSortBy[col.id] || "created";
-            if (sortMode === "name") return a.title.localeCompare(b.title, "zh");
-            if (sortMode === "words") return (statsCache[b.id]?.words || 0) - (statsCache[a.id]?.words || 0);
-            return b.createdAt - a.createdAt;
-          })).map((article) => {
+                    const sortMode = articleSortBy[col.id] || "created";
+                    if (sortMode === "name") return a.title.localeCompare(b.title, "zh");
+                    if (sortMode === "words") return (statsCache[b.id]?.words || 0) - (statsCache[a.id]?.words || 0);
+                    return b.createdAt - a.createdAt;
+                  })).map((article) => {
                     const isActive = externalActiveId === article.id;
                     const isEditingArt = editingId === `art:${article.id}`;
                     return (
@@ -461,8 +431,8 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                         {isEditingArt ? (
                           <input ref={editInputRef} className="collection-tree__input collection-tree__input--leaf" value={editingDraft}
                             onChange={(e) => setEditingDraft(e.target.value)}
-                            onBlur={async () => { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); await refresh(); }}
-                            onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); await refresh(); } if (e.key === "Escape") setEditingId(null); }}
+                            onBlur={async () => { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); }}
+                            onKeyDown={async (e) => { if (e.key === "Enter") { const t = editingDraft.trim(); if (t) await renameArticle(col.id, article.id, t); setEditingId(null); } if (e.key === "Escape") setEditingId(null); }}
                             onClick={(e) => e.stopPropagation()} />
                         ) : (
                           <><span className="collection-tree__leaf-icon-wrap"><FileText size={13} className={"collection-tree__leaf-icon" + (phaseCache[article.id] ? " series-status-icon--" + phaseCache[article.id] : "")} /></span><span className="collection-tree__leaf-label">{article.title}</span>
@@ -471,46 +441,44 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                       </div>
                     );
                   })}
-                {seriesPlansList[col.id] && seriesPlansList[col.id].length > 0 && (
-                  <div className="collection-tree__series-divider" />
-                )}
-                {seriesPlansList[col.id] && seriesPlansList[col.id].map((plan) => (
-                  <SeriesOverview
-                  key={plan.id}
-                  plan={plan}
-                  collectionId={col.id}
-                  activeArticleId={externalActiveId}
-                  onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
-                  onPlanArticle={(article) => {
-                    emit("plan-series-article", { collectionId: col.id, seriesId: plan.id, article });
-                  }}
-                  onEditPlan={() => {
-                    emit("edit-series-plan", { collectionId: col.id, seriesId: plan.id });
-                  }}
-                  onDeletePlan={async () => {
-                    await deleteSeriesPlan(col.id, plan.id);
-                    const updatedPlans = await loadAllSeriesPlans(col.id);
-                    setSeriesPlansList(prev => {
-                      const next = { ...prev };
-                      if (updatedPlans.length > 0) {
-                        next[col.id] = updatedPlans;
-                      } else {
-                        delete next[col.id];
-                      }
-                      return next;
-                    });
-                    await refresh();
-                  }}
-                />
-              ))}
-            </div>
-          )}
+                  {seriesPlansList[col.id] && seriesPlansList[col.id].length > 0 && (
+                    <div className="collection-tree__series-divider" />
+                  )}
+                  {seriesPlansList[col.id] && seriesPlansList[col.id].map((plan) => (
+                    <SeriesOverview
+                      key={plan.id}
+                      plan={plan}
+                      collectionId={col.id}
+                      activeArticleId={externalActiveId}
+                      onOpenArticle={(articleId) => onSelectArticle?.(articleId)}
+                      onPlanArticle={(article) => {
+                        emit("plan-series-article" as any, { collectionId: col.id, seriesId: plan.id, article });
+                      }}
+                      onEditPlan={() => {
+                        emit("edit-series-plan" as any, { collectionId: col.id, seriesId: plan.id });
+                      }}
+                      onDeletePlan={async () => {
+                        await deleteSeriesPlan(col.id, plan.id);
+                        const updatedPlans = await loadAllSeriesPlans(col.id);
+                        setSeriesPlansList(prev => {
+                          const next = { ...prev };
+                          if (updatedPlans.length > 0) {
+                            next[col.id] = updatedPlans;
+                          } else {
+                            delete next[col.id];
+                          }
+                          return next;
+                        });
+                        await refreshAll();
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-
-
 
       {ctxMenu && <ContextMenu items={ctxMenu.items} position={{ x: ctxMenu.x, y: ctxMenu.y }} onClose={() => setCtxMenu(null)} />}
       {confirmDelete && (
@@ -531,15 +499,12 @@ export function CollectionTree({ onSelectArticle, activeArticleId: externalActiv
                   currentTrash.push({ id: a.id, title: a.title, collectionId: confirmDelete.id, collectionTitle: c.title, deletedAt: Date.now() });
                 }
                 await saveTrash(currentTrash);
-                setTrash(currentTrash);
               }
               await removeCollection(confirmDelete.id);
             } else {
-              await trashArticle(confirmDelete.collectionId!, confirmDelete.id);
-              if (externalActiveId === confirmDelete.id) { /* no-op */ }
+              await trashArticle(confirmDelete.collectionId!, confirmDelete.id, confirmDelete.title);
             }
             setConfirmDelete(null);
-            await refresh();
           }}
           onCancel={() => setConfirmDelete(null)}
         />

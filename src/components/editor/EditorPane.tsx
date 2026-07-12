@@ -15,17 +15,8 @@ import { generateFullArticleStream, generateFullArticleWithTools, generatePlanSt
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
-import { loadArticleContent, saveArticleContent } from "../../lib/storage/articles";
-import {
-  loadArticleDocument,
-  saveArticleDocument,
-  migrateArticleDocument,
-  createDefaultDocument,
-  DEFAULT_STYLE_CONFIG,
-  type ArticleDocument,
-} from "../../lib/storage/articleDocument";
-import { saveVersionSnapshot } from "../../lib/storage/articleVersions";
-import { loadCollections, getProjectContext } from "../../lib/storage/collections";
+import { migrateArticleDocument, createDefaultDocument, DEFAULT_STYLE_CONFIG } from "../../lib/storage/articleDocument";
+import { getProjectContext } from "../../lib/storage/collections";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
 import { ArticleHeader } from "./ArticleHeader";
@@ -37,9 +28,12 @@ import { AICommandBar } from "../agent/AICommandBar";
 
 import { extractImageKeywords, insertImagesIntoArticle, getCachedImages, cacheImages } from "../../lib/ai/draw";
 import { tryInvoke } from "../../lib/bridge/tauri";
-import { ConfirmDialog } from "../common/ConfirmDialog";
 import { getProvidersSync } from "../../lib/storage/providerModels";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useDrawConfig } from "../../lib/stores/drawConfig";
+import { useDocument } from "../../hooks/useDocument";
+import { useCollection } from "../../hooks/useCollection";
+import type { ArticleDocument } from "../../domain";
 
 export function EditorPane({
   hasActiveArticle,
@@ -112,6 +106,15 @@ export function EditorPane({
   const articleCtx = useContext(ArticleCtx);
   const { state: streamState, startStream, cancelStream, clearResponse } = useChatStream();
   const { execute, isProcessing, openPanel, setPanelTab, openCommandBar } = useAgent();
+  // ── Hooks (Phase 3 migration) ──
+  const {
+    loadDocument: loadArticleDocument,
+    saveDocument: saveArticleDocument,
+    saveVersionSnapshot,
+    loadArticleContent, saveArticleContent,
+  } = useDocument();
+  const { loadCollections } = useCollection();
+  // ───────────────────────────
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [planState, setPlanState] = useState<"idle" | "planning" | "review" | "review-title-desc" | "writing" | "article-review">("idle");

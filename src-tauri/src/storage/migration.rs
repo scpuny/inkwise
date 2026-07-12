@@ -4,7 +4,7 @@
 
 use crate::db;
 use crate::domain::*;
-use crate::store::DataStore;
+use crate::storage::app_storage::AppStorage;
 use serde::Serialize;
 use std::path::Path;
 
@@ -20,10 +20,12 @@ pub fn run(data_dir: &Path, database: &db::Database) -> Result<MigrateReport, St
         }
     }
 
-    let store = DataStore::new_with_dir(&data_dir.to_path_buf());
+    // 使用 app_dir（数据目录的父目录）初始化 AppStorage
+    let app_dir = data_dir.parent().unwrap_or(data_dir);
+    let storage = AppStorage::new_with_json_dir(app_dir, data_dir);
 
     // ─── 1. 迁移 Collections ───
-    let collections = store.load_collections();
+    let collections = storage.load_collections();
     if !collections.is_empty() {
         for c in &collections {
             // INSERT OR IGNORE — 已有记录的不覆盖
@@ -37,9 +39,9 @@ pub fn run(data_dir: &Path, database: &db::Database) -> Result<MigrateReport, St
         // 迁移合集内的文章元数据
         for c in &collections {
             for a in &c.articles {
-                let doc = store.load_article_document(&a.id);
-                let content = store.load_article_content(&a.id).unwrap_or_default();
-                let blueprint = store.load_blueprint(&a.id);
+                let doc = storage.load_article_document(&a.id);
+                let content = storage.load_article_content(&a.id).unwrap_or_default();
+                let blueprint = storage.load_blueprint(&a.id);
                 let (outline, phase, tags) = match blueprint {
                     Some(ref bp) => (
                         serde_json::to_string(&bp.outline).unwrap_or_default(),
@@ -81,7 +83,7 @@ pub fn run(data_dir: &Path, database: &db::Database) -> Result<MigrateReport, St
     }
 
     // ─── 2. 迁移 Providers ───
-    let providers = store.load_providers();
+    let providers = storage.load_providers();
     if !providers.is_empty() {
         if let Ok(json) = serde_json::to_string(&providers) {
             database.set_setting("providers_json", &json).ok();
@@ -90,7 +92,7 @@ pub fn run(data_dir: &Path, database: &db::Database) -> Result<MigrateReport, St
     }
 
     // ─── 3. 迁移 Platform Configs ───
-    let configs = store.load_platform_configs();
+    let configs = storage.load_platform_configs();
     if !configs.is_empty() {
         if let Ok(json) = serde_json::to_string(&configs) {
             database.set_setting("platform_configs_json", &json).ok();
@@ -99,21 +101,21 @@ pub fn run(data_dir: &Path, database: &db::Database) -> Result<MigrateReport, St
     }
 
     // ─── 4. 迁移 AppSettings ───
-    let settings = store.load_settings();
+    let settings = storage.load_settings();
     if let Ok(json) = serde_json::to_string(&settings) {
         database.set_setting("app_settings_json", &json).ok();
         report.settings_migrated = true;
     }
 
     // ─── 5. 迁移 AiConfig ───
-    let ai_config = store.load_ai_config();
+    let ai_config = storage.load_ai_config();
     if let Ok(json) = serde_json::to_string(&ai_config) {
         database.set_setting("ai_config_json", &json).ok();
         report.ai_config_migrated = true;
     }
 
     // ─── 6. 迁移 Skills ───
-    let skills = store.load_writing_skills();
+    let skills = storage.load_writing_skills();
     if !skills.is_empty() {
         if let Ok(json) = serde_json::to_string(&skills) {
             database.set_setting("skills_json", &json).ok();

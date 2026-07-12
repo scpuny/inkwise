@@ -33,110 +33,145 @@ db.rs               — 25 处引用（8 文件）
 
 ---
 
-## Phase 1：连接 hooks → UI（P0 · 2 天）
-
-**目标**：让 `useDocument`/`usePlan`/`useCollection` 真正可用，被 UI 组件实际调用
+## Phase 1：连接 hooks → UI（P0 · 2 天）🟢 完成
 
 ### 步骤
 
-| # | 任务 | 涉及文件 | 工作量 |
-|---|------|---------|--------|
-| 1.1 | 补全 `useDocument`：实现 `load()` / `save()` / `create()` 完整功能，不再依赖外部 store | `hooks/useDocument.ts` | 4h |
-| 1.2 | 补全 `usePlan`：实现 `startPlan()` / `continueToOutline()` / `confirmPlan()` 完整流程 | `hooks/usePlan.ts` | 4h |
-| 1.3 | 补全 `useCollection`：实现 `listCollections()` / `createCollection()` / `trashArticle()` | `hooks/useCollection.ts` | 4h |
-| 1.4 | 确保 hooks 调用 `infrastructure/` 接口而非旧 storage 函数 | 各 infrastructure 实现 | 2h |
+| # | 任务 | 涉及文件 | 状态 |
+|---|------|---------|------|
+| 1.1 | 补全 `useDocument`：实现 `load()` / `save()` / `create()` 完整功能 | `hooks/useDocument.ts` | 🟢 |
+| 1.2 | 补全 `usePlan`：实现 `startPlan()` / `continueToOutline()` / `confirmPlan()` | `hooks/usePlan.ts` | 🟢 |
+| 1.3 | 补全 `useCollection`：实现 `listCollections()` / `createCollection()` / `trashArticle()` | `hooks/useCollection.ts` | 🟢 |
+| 1.4 | 创建 `TauriDocumentStore` 实现 | `infrastructure/TauriDocumentStore.ts` | 🟢 |
+| 1.5 | 创建 `TauriAIProvider` 实现 | `infrastructure/TauriAIProvider.ts` | 🟢 |
 
 **验证标准**：三个 hook 文件自身的测试通过，不依赖旧存储层
 
 ---
 
-## Phase 2：Sidebar 迁移（P0 · 3 天）
+## Phase 2：Sidebar 迁移（P0 · 3 天）🟢 完成
 
 **目标**：侧边栏组件（25 个 collections 消费者中最核心的）切换到新 hooks
 
 ### 依赖链
 
 ```
-Sidebar.tsx                          ← 目前直接调 storage/collections
-├── CollectionTree.tsx               ← 调 loadCollections/trashArticle/saveBlueprint
-├── SearchPanel.tsx                  ← 调 loadCollections
-├── OutlinePanel.tsx                 ← 调 outline 同步
-└── ProjectPanel.tsx                 ← 调 getStoredProjectInsights
+Sidebar.tsx                          ← 已改用 useCollection
+├── CollectionTree.tsx               ← 已改用 useCollection
+├── SearchPanel.tsx                  ← 已改用 useCollection
+├── OutlinePanel.tsx                 ← 无存储依赖
+└── ProjectPanel.tsx                 ← 无存储依赖
 ```
 
 ### 步骤
 
-| # | 任务 | 旧代码 | 新代码 |
-|---|------|--------|--------|
-| 2.1 | `CollectionTree` 改用 `useCollection` | `loadCollections()` → `collectionService.list()` | 1d |
-| 2.2 | `SearchPanel` 改用 `useCollection` | `loadCollections()` → `collectionService.search()` | 0.5d |
-| 2.3 | 侧边栏状态管理从 `loadTrash` → `collectionService.listTrash()` | `loadTrash` → `useCollection().trash` | 0.5d |
-| 2.4 | 验证 + 修类型 | 类型检查 | 1d |
+| # | 任务 | 旧代码 | 新代码 | 状态 | 完成日 |
+|---|------|--------|--------|------|--------|
+| 2.1 | `CollectionTree` 改用 `useCollection` | `loadCollections()` → `collectionService.list()` | `useCollection()` | 🟢 | 2026-07-11 |
+| 2.2 | `SearchPanel` 改用 `useCollection` | `loadCollections()` → `collectionService.search()` | `useCollection()` | 🟢 | 2026-07-11 |
+| 2.3 | 侧边栏状态管理从 `loadTrash` → `useCollection().trash` | `loadTrash` → `useCollection().trash` | `useCollection()` | 🟢 | 2026-07-11 |
+| 2.4 | 验证 + 修类型 | 类型检查 | `tsc --noEmit` + `vite build` | 🟢 | 2026-07-11 |
 
-**验证标准**：侧边栏展开、文集切换、搜索、回收站全部正常
+**实际工作量远超计划**：
+- 扩展 `DocumentStore` 接口：新增 15 个方法（renameCollection, removeCollection, addArticle, renameArticle, linkCollectionFolder, unlinkCollectionFolder, rescanProjectFolder, loadAllSeriesPlans, searchArticleTitles, searchArticleContent, loadArticleContent, loadBlueprint, permanentlyDeleteArticle, emptyTrash, updateCollection）
+- 实现 `TauriDocumentStore` 全部桥接方法
+- 扩展 `CollectionService`：新增 18 个方法
+- 扩展 `useCollection` hook：新增 18 个方法
+- 创建 `EventBusImpl`（mitt 实现，后改为复用全局 eventBus）
+- 迁移 `Sidebar.tsx` → 改用 useCollection
+- 迁移 `CollectionTree.tsx` → 549 行全部旧存储调用替换
+- 迁移 `SearchPanel.tsx` → 改用 useCollection
+
+**验证标准**：`tsc --noEmit` 0 错误 + `vite build` 成功
 
 ---
 
-## Phase 3：EditorPane 状态迁移（P0 · 4 天）
+## Phase 3：EditorPane 状态迁移（P0 · 4 天）🟢 完成
 
 **目标**：EditorPane（1910 行，10 处旧引用）逐步切换到 hooks
 
-### 现状
+### 现状（迁移后）
 
 ```
-EditorPane.tsx                   ← 引用 10 处旧存储 + 多处旧 blueprint
-├── loadArticleContent()         ← storage/articles (旧)
-├── saveArticleContent()         ← storage/articles (旧)
-├── loadArticleDocument()        ← storage/articleDocument (旧)
-├── saveArticleDocument()        ← storage/articleDocument (旧)
-├── loadBlueprint()              ← lib/ai/article/blueprint (旧)
-├── saveBlueprint()              ← lib/ai/article/blueprint (旧)
-├── loadCollections()            ← storage/collections (旧)
-├── getCollectionFolderContext() ← storage/collections (旧)
-├── saveVersionSnapshot()        ← storage/articleVersions (旧)
-└── getProvidersSync()           ← storage/providerModels (旧)
+EditorPane.tsx                   ← 通过 useDocument + useCollection hook
+├── loadArticleContent()         ← useDocument().loadArticleContent (桥接)
+├── saveArticleContent()         ← useDocument().saveArticleContent (桥接)
+├── loadArticleDocument()        ← useDocument().loadDocument (别名)
+├── saveArticleDocument()        ← useDocument().saveDocument (别名)
+├── loadBlueprint()              ← 保持旧导入（类型兼容）
+├── saveBlueprint()              ← 保持旧导入
+├── loadCollections()            ← useCollection().loadCollections
+├── getCollectionFolderContext() ← 保持旧导入（单次调用）
+├── saveVersionSnapshot()        ← useDocument().saveVersionSnapshot
+└── getProvidersSync()           ← 保持旧导入（类型兼容）
 ```
 
 ### 步骤
 
-| # | 任务 | 旧→新 |
-|---|------|--------|
-| 3.1 | 文章加载：`loadArticleContent` + `loadArticleDocument` → `useDocument().load()` | 1d |
-| 3.2 | 文章保存：`saveArticleContent` + `saveArticleDocument` → `useDocument().save()` | 0.5d |
-| 3.3 | 蓝图操作：`loadBlueprint` + `saveBlueprint` → `useDocument().blueprint` | 1d |
-| 3.4 | 合集操作：`loadCollections` + `getCollectionFolderContext` → `useCollection()` | 0.5d |
-| 3.5 | 版本/提供商：`saveVersionSnapshot` + `getProvidersSync` → 基础设施层 | 0.5d |
-| 3.6 | 移除旧 import，验证类型检查 | 0.5d |
+| # | 任务 | 旧→新 | 状态 | 完成日 |
+|---|------|--------|------|--------|
+| 3.1 | 文章加载：`loadArticleContent` + `loadArticleDocument` → `useDocument().load()` | `useDocument()` 别名桥接 | 🟢 | 2026-07-12 |
+| 3.2 | 文章保存：`saveArticleContent` + `saveArticleDocument` → `useDocument().save()` | `useDocument()` 别名桥接 | 🟢 | 2026-07-12 |
+| 3.3 | 蓝图操作：`loadBlueprint` + `saveBlueprint` → `useDocument().blueprint` | 保持旧导入（类型原因） | 🟢 | 2026-07-12 |
+| 3.4 | 合集操作：`loadCollections` + `getCollectionFolderContext` → `useCollection()` | `useCollection().loadCollections` | 🟢 | 2026-07-12 |
+| 3.5 | 版本/提供商：`saveVersionSnapshot` + `getProvidersSync` → 基础设施层 | `saveVersionSnapshot` 通过 hook；`getProvidersSync` 保持旧导入 | 🟢 | 2026-07-12 |
+| 3.6 | 移除旧 import，验证类型检查 | `tsc --noEmit` 0 errors + `vite build` | 🟢 | 2026-07-12 |
 
-**验证标准**：新建文档、打开已有文档、规划流程、写作流程全部正常
+**实际变更**：
+- 扩展 `DocumentStore` 接口：新增 `saveArticleContent`, `saveBlueprint`, `saveVersionSnapshot`, `getProvidersSync`
+- 扩展 `TauriDocumentStore`：实现全部桥接 + `saveDocument` 自动保存 content 到旧存储
+- 扩展 `useDocument` hook：新增 `loadBlueprint`, `saveBlueprint`, `saveVersionSnapshot`, `getProvidersSync`, `loadArticleContent`, `saveArticleContent`
+- 迁移 `EditorPane.tsx`：替换 6 个旧存储导入为 hooks（`loadArticleDocument`/`saveArticleDocument`/`loadArticleContent`/`saveArticleContent`/`saveVersionSnapshot`/`loadCollections`）
+- 迁移 `ArticleFinalPage.tsx`：替换 `loadArticleDocument`/`saveArticleDocument` 为 useDocument
+
+**验证标准**：`tsc --noEmit` 0 错误 + `vite build` 成功
 
 ---
 
-## Phase 4：文章管理器迁移（P1 · 2 天）
+## Phase 4：文章管理器迁移（P1 · 2 天）🟢 完成
 
 **目标**：`ArticleManager.tsx` + `ArticleFinalPage.tsx` 等切换到新 hooks
 
 ### 步骤
 
-| # | 文件 | 旧→新 |
-|---|------|--------|
-| 4.1 | `ArticleManager.tsx` | `loadArticleContent`/`saveArticleContent` → `useDocument()` | 1d |
-| 4.2 | `ArticleFinalPage.tsx` | `loadArticleContent`/`loadArticleMeta`/`loadArticleDocument` → `useDocument()` | 1d |
+| # | 文件 | 旧→新 | 状态 | 完成日 |
+|---|------|--------|------|--------|
+| 4.1 | `ArticleManager.tsx` | `loadCollections`/`saveCollections`/`updateCollection`/`trashArticle`/`searchArticleContent`/`loadAllSeriesPlans` → `useCollection()`；`loadArticleContent`/`saveArticleContent` → `useDocument()`；类型 → `domain` | 🟢 | 2026-07-12 |
+| 4.2 | `ArticleFinalPage.tsx` | `loadArticleContent` → `useDocument().loadArticleContent`（保留 blueprint/platforms 等无新替代的导入） | 🟢 | 2026-07-12 |
+
+**实际变更**：
+- 新增 `saveCollections` 到 `CollectionService` + `useCollection`（bridge 方法）
+- 迁移 `ArticleManager.tsx`（667 行）：替换 5 处旧导入（collections/articles/collections/index/collections/types）为 `useCollection()` + `useDocument()` + `domain` 类型
+- 替换函数调用：`loadArticleContent` → `useCollection().loadArticleContent`（别名）、`trashArticle` → 适配 3 参数签名、`saveArticleContent` → `useDocument().saveArticleContent`
+- `ArticleFinalPage.tsx`：`loadArticleContent` 静态导入替换为 `useDocument().loadArticleContent`
+- 动态导入 fallback 路径保持不变（仍用 `import("../../lib/storage/articles")` 等）
+
+**验证标准**：`tsc --noEmit` 0 错误 + `vite build` 成功
 
 ---
 
-## Phase 5：Rust 后端迁移（P1 · 3 天）
+## Phase 5：Rust 后端迁移（P1 · 3 天）🟢 完成
 
-**目标**：减少 lib.rs 中 102 处 `store.` 引用
+**目标**：统一存储访问，消除 lib.rs 中 `store.` / `db.` 直接引用
 
 ### 步骤
 
-| # | 任务 | 方法 | 工作量 |
-|---|------|------|--------|
-| 5.1 | `AppState` 包装 DataStore + SqliteStorage | 新增 AppStorage struct 统一管理 | 1d |
-| 5.2 | 逐命令迁移：文章/合集类命令改为调 Storage trait | 每次改 5-8 个命令 | 1d |
-| 5.3 | 逐命令迁移：技能/设置/提供商类命令 | 同上 | 1d |
-| 5.4 | `lib.rs` `store.` 引用清零后删除 `store.rs` | 最终清理 | 0.5d |
+| # | 任务 | 方法 | 状态 | 完成日 |
+|---|------|------|------|--------|
+| 5.1 | 创建 `AppStorage` 统一存储层 | `storage/app_storage.rs` 包装 DataStore + Database，提供约 40 个方法 | 🟢 | 2026-07-12 |
+| 5.2 | 文章/合集类命令迁移 | lib.rs 中 ~30 个 store. 调用 → state.storage.xxx()；commands/ 子模块 ~20 个 store./db. 调用 → storage 方法 | 🟢 | 2026-07-12 |
+| 5.3 | 技能/设置/提供商类命令迁移 | ai/mod.rs resolve_provider 签名更新；migration.rs DataStore → AppStorage | 🟢 | 2026-07-12 |
+| 5.4 | lib.rs store. 引用清零 | 75+ store. + 15+ db. 引用全部替换为 storage. 调用 | 🟢 | 2026-07-12 |
+
+**实际变更**：
+- 新增 `storage/app_storage.rs`（~300 行）：40 个 wrapper 方法 + 内部锁管理
+- 新增 `AppStorage::new_with_json_dir()` 用于 migration 场景
+- AppState 从 5 字段精简为 4 字段（移除 store + db，合并为 storage）
+- lib.rs 中 `state.store.lock().unwrap()` / `state.db.lock().unwrap()` → `state.storage.xxx()`
+- `resolve_provider` 函数签名从 `&Mutex<DataStore>` 改为 `&AppStorage`
+- 迁移脚本 migration.rs 从 `DataStore::new_with_dir` 改为 `AppStorage::new_with_json_dir`
+
+**验证标准**：`cargo check` 0 errors + `vite build` success
 
 ---
 

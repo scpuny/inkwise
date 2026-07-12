@@ -4,3 +4,4 @@ export type { DocumentStore } from "./DocumentStore";
 export type { EventBus } from "./EventBus";
 export { TauriDocumentStore } from "./TauriDocumentStore";
 export { TauriAIProvider } from "./TauriAIProvider";
+export { MittEventBus } from "./EventBusImpl";

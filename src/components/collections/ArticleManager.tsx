@@ -14,16 +14,15 @@ import {
   FileSearch,
 } from "lucide-react";
 import { CollectionFormModal } from "./CollectionFormModal";
-import { loadCollections, saveCollections, loadAllSeriesPlans, updateCollection, trashArticle, type Collection, type Article, type SeriesPlan, genId } from "../../lib/storage/collections";
-import { loadArticleContent } from "../../lib/storage/articles";
+import type { Collection, Article, SeriesPlan, SearchResult } from "../../domain";
 import { getWordCount } from "../../lib/utils/text";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
+import { genId } from "../../lib/storage/collections/crud";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { VersionHistoryModal } from "./VersionHistoryModal";
-import { saveArticleContent } from "../../lib/storage/articles";
 import { on, emit } from "../../lib/events/eventBus";
-import { searchArticleContent } from "../../lib/storage/collections/index";
-import type { SearchResult } from "../../lib/storage/collections/types";
+import { useCollection } from "../../hooks/useCollection";
+import { useDocument } from "../../hooks/useDocument";
 
 type SortField = "title" | "wordCount" | "updatedAt";
 type SortDir = "asc" | "desc";
@@ -97,6 +96,24 @@ export function ArticleManager({
   const [seriesPlansMap, setSeriesPlansMap] = useState<Record<string, SeriesPlan[]>>({});
   const [deleteColId, setDeleteColId] = useState<string | null>(null);
 
+  // ── Hooks (Phase 4 migration) ──
+  const {
+    loadCollections,
+    saveCollections,
+    loadAllSeriesPlans,
+    updateCollection,
+    trashArticle: trashArticleHook,
+    searchArticleContent,
+    loadArticleContent: loadArticleContentFromCol,
+  } = useCollection();
+  const {
+    saveArticleContent,
+    loadArticleContent: loadArticleContentFromDoc,
+  } = useDocument();
+  // 优先使用 useCollection 的 loadArticleContent（桥接到同一旧存储）
+  const loadArtContent = loadArticleContentFromCol || loadArticleContentFromDoc;
+  // ──────────────────────────────
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -160,7 +177,7 @@ export function ArticleManager({
 
   const loadWordCounts = async (entries: ArticleEntry[]) => {
     const counts = await Promise.all(entries.map(async (entry) => {
-      const content = await loadArticleContent(entry.id);
+      const content = await loadArtContent(entry.id);
       return { id: entry.id, wordCount: content ? getWordCount(content) : 0 };
     }));
     setArticles(prev => prev.map(a => {
@@ -266,7 +283,7 @@ export function ArticleManager({
     for (const id of selectedIds) {
       const article = articles.find((a) => a.id === id);
       if (article) {
-        await trashArticle(article.collectionId, id);
+        await trashArticleHook(article.collectionId, id, article.title);
       } else {
         // Fallback — article not found in cached list
         for (const col of collections) {

@@ -3,16 +3,16 @@ import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/a
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
 import { on } from "../../lib/events/eventBus";
-import { loadArticleContent, loadArticleMeta } from "../../lib/storage/articles";
+import { loadArticleMeta } from "../../lib/storage/articles";
 import { addPublishRecord, publishArticle, type PublishOptions, type PublishResult } from "../../lib/storage/platforms";
 import type { PublishRecord } from "../../lib/storage/articleDocument";
-import { loadArticleDocument, saveArticleDocument } from "../../lib/storage/articleDocument";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { PublishDialog } from "../collections/PublishDialog";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { ArticlePreview } from "./ArticlePreview";
 import { FinalSidePanel } from "./FinalSidePanel";
 import { FinalTopBar } from "./FinalTopBar";
+import { useDocument } from "../../hooks/useDocument";
 
 const DEFAULT_CONTENT = "# 无标题\n\n开始写作…\n";
 
@@ -28,6 +28,7 @@ export function ArticleFinalPage({
   onBackToEdit,
   genId,
 }: ArticleFinalPageProps) {
+  const { loadDocument: loadArticleDocument, saveDocument: saveArticleDocument, loadArticleContent } = useDocument();
   const [markdown, setMarkdown] = useState("");
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
   const [publishRecords, setPublishRecords] = useState<PublishRecord[]>([]);

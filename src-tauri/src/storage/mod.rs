@@ -3,6 +3,7 @@
 
 pub mod migration;
 pub mod sqlite;
+pub mod app_storage;
 
 use crate::domain::*;
 

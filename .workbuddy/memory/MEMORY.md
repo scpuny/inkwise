@@ -34,3 +34,22 @@
 - 前端组件按领域分组：agent/collections/common/editor/series/settings/sidebar
 - Rust 后端模块：store/db/ai/skill/agent/project_indexer/vector/platform
 - Tauri 命令：~80 个，覆盖合集/AI/文章/技能/数据库/项目索引/发布/图片/向量搜索
+
+## 迁移状态（v3.0 渐进式迁移）
+### 已完成
+- **Phase 1**（hooks 补全）：useDocument/usePlan/useCollection + TauriDocumentStore/TauriAIProvider
+- **Phase 2**（Sidebar 迁移）：Sidebar/CollectionTree/SearchPanel → useCollection
+- **Phase 3**（EditorPane 迁移）：EditorPane/ArticleFinalPage → useDocument + useCollection
+- **Phase 4**（文章管理器迁移）：ArticleManager → useCollection + useDocument；ArticleFinalPage 补充迁移
+
+### 新架构层次
+1. **domain/** — 纯数据类型（Document/Collection/Plan/Project/enums）
+2. **infrastructure/** — 接口定义（DocumentStore/AIProvider/EventBus）+ Tauri 实现
+3. **services/** — 业务编排（DocumentService/CollectionService/PlanService/PhaseConfigService）
+4. **hooks/** — React 胶水层（useDocument/useCollection/usePlan）
+
+### 迁移策略
+- 触碰原则（Touch Rule）：改到哪个文件就顺手切到新架构
+- 解构别名：`useDocument().loadDocument` → `loadArticleDocument`
+- 全局 eventBus 共享确保事件互通
+- 旧代码不删直到零引用

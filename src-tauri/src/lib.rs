@@ -16,7 +16,7 @@ use platform::wechat::WeChat;
 
 use domain::*;
 use commands::*;
-use store::DataStore;
+use storage::app_storage::AppStorage;
 use ai::{chat_completion, chat_completion_text, fetch_available_models, resolve_provider, ChatRequest, ChatMessage, ChatToolResponse, ToolDefinition, ProviderConfig, ProviderListConfig};
 use project_indexer::{ProjectContext, scan_project, rescan_project_incremental, build_context_text, spawn_folder_watcher};
 use vector::{VectorSearchResult, IndexResult, ChunkStrategy, Embedder, EmbedderState, semantic_search};
@@ -30,8 +30,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 
 struct AppState {
-    store: Mutex<DataStore>,
-    db: Mutex<Option<db::Database>>,
+    storage: AppStorage,
     watcher_handle: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// 当前活跃的项目路径（用于退出时保存快照）
     current_project_path: Mutex<Option<String>>,
@@ -49,10 +48,7 @@ fn now_ms() -> u64 {
 // ─── 项目快照保存 ───
 
 fn save_project_snapshot(app_state: &AppState, project_path: &str) {
-    let app_dir = match app_state.store.lock() {
-        Ok(store) => store.data_dir().parent().unwrap().to_path_buf(),
-        Err(_) => return,
-    };
+    let app_dir = app_state.storage.data_dir().parent().unwrap().to_path_buf();
 
     let snapshots_dir = app_dir.join("data").join("index").join("snapshots");
     let _ = fs::create_dir_all(&snapshots_dir);
@@ -82,9 +78,8 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
     }
 
     // 清理过期间拍：计算所有合集关联的项目路径 hash 集合，删除不在集合中的快照
-    if let Ok(store) = app_state.store.lock() {
-        let collections = store.load_collections();
-        let mut active_hashes: HashSet<u64> = HashSet::new();
+    let collections = app_state.storage.load_collections();
+    let mut active_hashes: HashSet<u64> = HashSet::new();
         for col in &collections {
             if let Some(ref folder) = col.linked_folder {
                 if !folder.is_empty() {
@@ -111,7 +106,6 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
                 }
             }
         }
-    }
 }
 
 // ─── Collections ───
@@ -120,37 +114,37 @@ fn save_project_snapshot(app_state: &AppState, project_path: &str) {
 
 #[tauri::command]
 fn get_providers(state: tauri::State<AppState>) -> Result<Vec<Provider>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_providers())
+    Ok(state.storage.load_providers())
 }
 
 #[tauri::command]
 fn set_providers(state: tauri::State<AppState>, providers: Vec<Provider>) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_providers(&providers)
+    state.storage.save_providers(&providers)
 }
 
 // ─── Settings ───
 
 #[tauri::command]
 fn get_settings(state: tauri::State<AppState>) -> Result<AppSettings, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_settings())
+    Ok(state.storage.load_settings())
 }
 
 #[tauri::command]
 fn set_settings(state: tauri::State<AppState>, settings: AppSettings) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_settings(&settings)
+    state.storage.save_settings(&settings)
 }
 
 // ─── Storage Management ───
 
 #[tauri::command]
 fn get_storage_path(state: tauri::State<AppState>) -> Result<String, String> {
-    let path = state.store.lock().map_err(|e| e.to_string())?.data_dir().to_string_lossy().to_string();
+    let path = state.storage.data_dir().to_string_lossy().to_string();
     Ok(path)
 }
 
 #[tauri::command]
 fn export_data(state: tauri::State<AppState>, dest: String) -> Result<(), String> {
-    let src = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    let src = state.storage.data_dir().clone();
     let dst = std::path::PathBuf::from(&dest);
     if dst.exists() {
         std::fs::remove_dir_all(&dst).map_err(|e| e.to_string())?;
@@ -161,7 +155,7 @@ fn export_data(state: tauri::State<AppState>, dest: String) -> Result<(), String
 
 #[tauri::command]
 fn import_data(state: tauri::State<AppState>, src: String) -> Result<(), String> {
-    let dst = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    let dst = state.storage.data_dir().clone();
     let src_path = std::path::PathBuf::from(&src);
     if !src_path.exists() {
         return Err("备份路径不存在".into());
@@ -193,12 +187,12 @@ fn import_data(state: tauri::State<AppState>, src: String) -> Result<(), String>
 
 #[tauri::command]
 fn get_ai_config(state: tauri::State<AppState>) -> Result<Option<AiConfig>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_ai_config())
+    Ok(state.storage.load_ai_config())
 }
 
 #[tauri::command]
 fn set_ai_config(state: tauri::State<AppState>, config: AiConfig) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_ai_config(&config)
+    state.storage.save_ai_config(&config)
 }
 
 
@@ -206,7 +200,7 @@ fn set_ai_config(state: tauri::State<AppState>, config: AiConfig) -> Result<(), 
 
 #[tauri::command]
 async fn chat(state: tauri::State<'_, AppState>, provider_id: String, model: String, messages: Vec<ChatMessage>, temperature: Option<f32>, max_tokens: Option<u32>) -> Result<String, String> {
-    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
+    let config = resolve_provider(&state.storage, Some(&provider_id), Some(&model))?;
 
     let req = ChatRequest {
         provider_id,
@@ -234,7 +228,7 @@ async fn chat_stream(
     temperature: Option<f32>,
     max_tokens: Option<u32>,
 ) -> Result<(), String> {
-    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
+    let config = resolve_provider(&state.storage, Some(&provider_id), Some(&model))?;
 
     let req = ChatRequest {
         provider_id,
@@ -272,7 +266,7 @@ async fn chat_stream(
 #[tauri::command]
 async fn fetch_models(state: tauri::State<'_, AppState>, provider_id: String) -> Result<Vec<String>, String> {
     let config = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let providers = store.load_providers();
         let provider = providers.iter().find(|p| p.id == provider_id).ok_or_else(|| format!("未找到提供商: {}", provider_id))?.clone();
         ProviderListConfig {
@@ -294,7 +288,7 @@ async fn fetch_models(state: tauri::State<'_, AppState>, provider_id: String) ->
 /// Return all configured models from all enabled providers as a flat list.
 #[tauri::command]
 fn get_all_models(state: tauri::State<'_, AppState>) -> Result<Vec<String>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let providers = store.load_providers();
     let mut models: Vec<String> = providers
         .iter()
@@ -321,13 +315,13 @@ async fn fetch_models_from_url(kind: String, base_url: String, api_key: String) 
 
 #[tauri::command]
 fn save_article(state: tauri::State<AppState>, id: String, content: String) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     store.save_article_content(&id, &content)
 }
 
 #[tauri::command]
 fn load_article(state: tauri::State<AppState>, id: String) -> Result<Option<String>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     Ok(store.load_article_content(&id))
 }
 
@@ -335,13 +329,13 @@ fn load_article(state: tauri::State<AppState>, id: String) -> Result<Option<Stri
 
 #[tauri::command]
 fn list_writing_skills(state: tauri::State<AppState>) -> Result<Vec<WritingSkill>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     Ok(store.load_writing_skills())
 }
 
 #[tauri::command]
 fn save_writing_skill(state: tauri::State<AppState>, skill: WritingSkill) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let mut skills = store.load_writing_skills();
     // Replace existing or add new
     if let Some(pos) = skills.iter().position(|s| s.id == skill.id) {
@@ -354,7 +348,7 @@ fn save_writing_skill(state: tauri::State<AppState>, skill: WritingSkill) -> Res
 
 #[tauri::command]
 fn delete_writing_skill(state: tauri::State<AppState>, id: String) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let mut skills = store.load_writing_skills();
     skills.retain(|s| s.id != id);
     store.save_writing_skills(&skills)
@@ -363,19 +357,19 @@ fn delete_writing_skill(state: tauri::State<AppState>, id: String) -> Result<(),
 // ─── Skills ───
 #[tauri::command]
 fn list_custom_themes(state: tauri::State<AppState>) -> Result<Vec<serde_json::Value>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     Ok(store.load_custom_themes())
 }
 
 #[tauri::command]
 fn save_custom_themes(state: tauri::State<AppState>, themes: Vec<serde_json::Value>) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     store.save_custom_themes(&themes)
 }
 
 #[tauri::command]
 fn delete_custom_theme(state: tauri::State<AppState>, theme_id: String) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let themes = store.load_custom_themes();
     let filtered: Vec<serde_json::Value> = themes.into_iter()
         .filter(|t| t.get("id").and_then(|v| v.as_str()) != Some(&theme_id))
@@ -386,7 +380,7 @@ fn delete_custom_theme(state: tauri::State<AppState>, theme_id: String) -> Resul
 
 
 fn get_skill_store(state: &AppState) -> Result<SkillStore, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let data_dir = store.data_dir().parent().unwrap().to_path_buf();
     let global_dir = data_dir.join("skills");
     drop(store);
@@ -401,7 +395,7 @@ fn get_skill_store(state: &AppState) -> Result<SkillStore, String> {
 #[tauri::command]
 fn list_skills(state: tauri::State<AppState>) -> Result<Vec<Skill>, String> {
     let disabled = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let data_dir = store.data_dir().parent().unwrap().to_path_buf();
         drop(store);
         let disabled_list_path = data_dir.join("disabled_skills.json");
@@ -433,7 +427,7 @@ fn read_skill(state: tauri::State<AppState>, name: String) -> Result<Option<Skil
 fn list_unified_skills(state: tauri::State<AppState>) -> Result<Vec<UnifiedSkill>, String> {
     let mut skills = unified_builtin_skills();
     let disabled = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let data_dir = store.data_dir().parent().unwrap().to_path_buf();
         drop(store);
         let disabled_list_path = data_dir.join("disabled_skills.json");
@@ -465,7 +459,7 @@ async fn run_skill(
     provider_id: Option<String>,
 ) -> Result<agent::AgentResult, String> {
     let skill = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let data_dir = store.data_dir().parent().unwrap().to_path_buf();
         let global_dir = data_dir.join("skills");
         drop(store);
@@ -479,7 +473,7 @@ async fn run_skill(
     };
 
     let effective_model = model.as_deref().or(skill.model.as_deref());
-    let config = resolve_provider(&state.store, provider_id.as_deref(), effective_model)?;
+    let config = resolve_provider(&state.storage, provider_id.as_deref(), effective_model)?;
 
     // Set up streaming callback
     let app_clone = app.clone();
@@ -505,7 +499,7 @@ async fn run_skill(
 
 #[tauri::command]
 fn install_skill(state: tauri::State<AppState>, name: String, description: String, body: String, run_as: String) -> Result<String, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let data_dir = store.data_dir().parent().unwrap().to_path_buf();
     let global_dir = data_dir.join("skills");
     drop(store);
@@ -520,7 +514,7 @@ fn install_skill(state: tauri::State<AppState>, name: String, description: Strin
 
 #[tauri::command]
 fn delete_skill(state: tauri::State<AppState>, name: String) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let data_dir = store.data_dir().parent().unwrap().to_path_buf();
     let global_dir = data_dir.join("skills");
     drop(store);
@@ -539,7 +533,7 @@ fn delete_skill(state: tauri::State<AppState>, name: String) -> Result<(), Strin
 
 #[tauri::command]
 fn set_skill_enabled(state: tauri::State<AppState>, name: String, enabled: bool) -> Result<(), String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let data_dir = store.data_dir().parent().unwrap().to_path_buf();
     let _global_dir = data_dir.join("skills");
     drop(store);
@@ -566,7 +560,7 @@ fn set_skill_enabled(state: tauri::State<AppState>, name: String, enabled: bool)
 
 #[tauri::command]
 fn list_disabled_skills(state: tauri::State<AppState>) -> Result<Vec<String>, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let data_dir = store.data_dir().parent().unwrap().to_path_buf();
     drop(store);
 
@@ -584,7 +578,7 @@ fn list_disabled_skills(state: tauri::State<AppState>) -> Result<Vec<String>, St
 #[tauri::command]
 async fn generate_skill(state: tauri::State<'_, AppState>, name: String, description: String) -> Result<String, String> {
     // Get provider info
-    let config = resolve_provider(&state.store, None, None)?;
+    let config = resolve_provider(&state.storage, None, None)?;
     let model = config.model.clone();
 
     let system_prompt = "你是 Skill 生成器。根据用户提供的名称和描述，生成一个完整的 Skill 定义文件。
@@ -629,11 +623,11 @@ async fn migrate_to_sqlite(state: tauri::State<'_, AppState>) -> Result<usize, S
     let mut total = 0usize;
     
     // Get DB handle
-    let db_guard = state.db.lock().map_err(|e| e.to_string())?;
+    let db_guard = state.storage.sqlite_lock();
     let db = db_guard.as_ref().ok_or("数据库未初始化")?;
     
     // Get store for reading JSON data
-    let store = state.store.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
     let collections = store.load_collections();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -709,7 +703,7 @@ async fn migrate_to_sqlite(state: tauri::State<'_, AppState>) -> Result<usize, S
 /// Clean up old JSON files after successful migration
 #[tauri::command]
 fn cleanup_old_json(state: tauri::State<AppState>) -> Result<storage::migration::CleanupReport, String> {
-    let data_dir = state.store.lock().map_err(|e| e.to_string())?.data_dir().clone();
+    let data_dir = state.storage.data_dir().clone();
     storage::migration::cleanup_old_files(&data_dir)
 }
 
@@ -721,7 +715,7 @@ fn cleanup_old_json(state: tauri::State<AppState>) -> Result<storage::migration:
 #[tauri::command]
 fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Result<(), String> {
     // 1. 获取合集中所有文章
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     let articles = db.list_articles(Some(&id), None, 0, 10000).map_err(|e| e.to_string())?;
 
@@ -735,7 +729,7 @@ fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Resul
                 let _ = std::fs::remove_file(path);
             }
             // Also check absolute path in articles dir
-            let store = state.store.lock().map_err(|e| e.to_string())?;
+            let store = state.storage.json_lock();
             let abs_path = store.articles_dir().join("_assets").join(&article.id).join(
                 path.file_name().unwrap_or_default()
             );
@@ -754,14 +748,14 @@ fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Resul
         // Remove image records
         let _ = db.delete_article_images(&article.id);
         // Remove assets directory
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let assets_dir = store.articles_dir().join("_assets").join(&article.id);
         if assets_dir.exists() {
             let _ = std::fs::remove_dir_all(&assets_dir);
         }
         drop(store);
         // Delete article content/meta JSON
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let _ = store.delete_article_content(&article.id);
         let _ = store.delete_article_meta(&article.id);
         drop(store);
@@ -774,7 +768,7 @@ fn delete_collection_cascade(state: tauri::State<AppState>, id: String) -> Resul
 /// List articles from DB, optionally filtered by collection
 #[tauri::command]
 fn list_articles_db(state: tauri::State<AppState>, collection_id: Option<String>) -> Result<Vec<db::ArticleRow>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.list_articles(collection_id.as_deref(), None, 0, 1000).map_err(|e| e.to_string())
 }
@@ -785,7 +779,7 @@ fn list_articles_db(state: tauri::State<AppState>, collection_id: Option<String>
 /// Move an article to a different collection
 #[tauri::command]
 fn move_article_db(state: tauri::State<AppState>, id: String, new_collection_id: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.move_article(&id, &new_collection_id).map_err(|e| e.to_string())
 }
@@ -793,7 +787,7 @@ fn move_article_db(state: tauri::State<AppState>, id: String, new_collection_id:
 /// FTS5 search across articles
 #[tauri::command]
 fn search_articles_db(state: tauri::State<AppState>, query: String, limit: Option<i64>) -> Result<Vec<db::SearchResult>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.search(&query, limit.unwrap_or(20)).map_err(|e| e.to_string())
 }
@@ -802,7 +796,7 @@ fn search_articles_db(state: tauri::State<AppState>, query: String, limit: Optio
 /// Link a folder to a collection
 #[tauri::command]
 fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.update_collection_folder(&collection_id, Some(&path)).map_err(|e| e.to_string())
 }
@@ -810,7 +804,7 @@ fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: St
 /// Unlink a folder from a collection
 #[tauri::command]
 fn unlink_folder_db(state: tauri::State<AppState>, collection_id: String) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.update_collection_folder(&collection_id, None).map_err(|e| e.to_string())
 }
@@ -830,7 +824,7 @@ fn save_article_images(
     article_id: String,
     images: Vec<db::ArticleImageRow>,
 ) -> Result<(), String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.save_article_images(&article_id, &images).map_err(|e| e.to_string())
 }
@@ -840,7 +834,7 @@ fn get_article_images(
     state: tauri::State<AppState>,
     article_id: String,
 ) -> Result<Vec<db::ArticleImageRow>, String> {
-    let db_opt = state.db.lock().map_err(|e| e.to_string())?;
+    let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.get_article_images(&article_id).map_err(|e| e.to_string())
 }
@@ -864,7 +858,7 @@ async fn generate_image(
     use image_gen::ImageGenRequest;
 
     let (provider_cfg, client) = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let providers = store.load_providers();
         let provider = providers
             .iter()
@@ -923,7 +917,7 @@ async fn save_images_to_disk(
             .join(".inkwise_assets")
             .join(article_id)
     } else {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         store.articles_dir().join("_assets").join(article_id)
     };
     std::fs::create_dir_all(&assets_dir)
@@ -1242,27 +1236,27 @@ fn read_project_files(path: String, files: Vec<String>) -> Result<Vec<serde_json
 
 #[tauri::command]
 fn save_series_plan(state: tauri::State<'_, AppState>, collection_id: String, plan: SeriesPlan) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_series_plan(&collection_id, &plan)
+    state.storage.save_series_plan(&collection_id, &plan)
 }
 
 #[tauri::command]
 fn save_all_series_plans(state: tauri::State<'_, AppState>, collection_id: String, plans: Vec<SeriesPlan>) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_all_series_plans(&collection_id, &plans)
+    state.storage.save_all_series_plans(&collection_id, &plans)
 }
 
 #[tauri::command]
 fn load_all_series_plans(state: tauri::State<'_, AppState>, collection_id: String) -> Result<Vec<SeriesPlan>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_all_series_plans(&collection_id))
+    Ok(state.storage.load_all_series_plans(&collection_id))
 }
 
 #[tauri::command]
 fn load_series_plan(state: tauri::State<'_, AppState>, collection_id: String, series_id: String) -> Result<Option<SeriesPlan>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_series_plan(&collection_id, &series_id))
+    Ok(state.storage.load_series_plan(&collection_id, &series_id))
 }
 
 #[tauri::command]
 fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String, series_id: String) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.delete_series_plan(&collection_id, &series_id)
+    state.storage.delete_series_plan(&collection_id, &series_id)
 }
 
 
@@ -1271,25 +1265,25 @@ fn delete_series_plan(state: tauri::State<'_, AppState>, collection_id: String, 
 
 #[tauri::command]
 fn get_platform_configs(state: tauri::State<AppState>) -> Result<Vec<PlatformConfig>, String> {
-    Ok(state.store.lock().map_err(|e| e.to_string())?.load_platform_configs())
+    Ok(state.storage.load_platform_configs())
 }
 
 #[tauri::command]
 fn save_platform_config(state: tauri::State<AppState>, config: PlatformConfig) -> Result<(), String> {
-    let mut configs = state.store.lock().map_err(|e| e.to_string())?.load_platform_configs();
+    let mut configs = state.storage.load_platform_configs();
     if let Some(existing) = configs.iter_mut().find(|c| c.id == config.id) {
         *existing = config;
     } else {
         configs.push(config);
     }
-    state.store.lock().map_err(|e| e.to_string())?.save_platform_configs(&configs)
+    state.storage.save_platform_configs(&configs)
 }
 
 #[tauri::command]
 fn delete_platform_config(state: tauri::State<AppState>, id: String) -> Result<(), String> {
-    let mut configs = state.store.lock().map_err(|e| e.to_string())?.load_platform_configs();
+    let mut configs = state.storage.load_platform_configs();
     configs.retain(|c| c.id != id);
-    state.store.lock().map_err(|e| e.to_string())?.save_platform_configs(&configs)
+    state.storage.save_platform_configs(&configs)
 }
 
 #[tauri::command]
@@ -1345,7 +1339,7 @@ async fn chat_tool(
     tools: Option<Vec<ToolDefinition>>,
     tool_choice: Option<serde_json::Value>,
 ) -> Result<ChatToolResponse, String> {
-    let config = resolve_provider(&state.store, Some(&provider_id), Some(&model))?;
+    let config = resolve_provider(&state.storage, Some(&provider_id), Some(&model))?;
 
     // If tools are provided, use non-streaming tool-capable completion
     let has_tools = tools.as_ref().map_or(false, |t| !t.is_empty());
@@ -1383,7 +1377,7 @@ async fn chat_tool(
 
 #[tauri::command]
 fn get_publish_history(state: tauri::State<AppState>, article_id: String) -> Result<Vec<PublishRecord>, String> {
-    let records = state.store.lock().map_err(|e| e.to_string())?.load_publish_records();
+    let records = state.storage.load_publish_records();
     Ok(records.into_iter().filter(|r| r.article_id == article_id).collect())
 }
 
@@ -1405,7 +1399,7 @@ async fn publish_to_platform(
     }
 
     let (app_id, app_secret) = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let configs = store.load_platform_configs();
         let wechat_cfg = configs.iter().find(|c| c.platform == "wechat" && c.enabled)
             .ok_or("未找到已启用的微信公众号配置")?.clone();
@@ -1413,7 +1407,7 @@ async fn publish_to_platform(
     };
 
     let article_dir = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         store.articles_dir().to_string_lossy().to_string()
     };
 
@@ -1424,7 +1418,7 @@ async fn publish_to_platform(
 
 #[tauri::command]
 fn save_publish_records(state: tauri::State<AppState>, records: Vec<PublishRecord>) -> Result<(), String> {
-    state.store.lock().map_err(|e| e.to_string())?.save_publish_records(&records)
+    state.storage.save_publish_records(&records)
 }
 
 fn collect_structure(
@@ -1528,7 +1522,7 @@ fn vector_search(
     k: Option<usize>,
     threshold: Option<f32>,
 ) -> Result<Vec<VectorSearchResult>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = state.storage.sqlite_lock();
     let db = db.as_ref().ok_or("数据库未初始化")?;
     let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
 
@@ -1553,8 +1547,8 @@ fn index_article_vector(
     article_id: String,
     strategy: Option<String>,
 ) -> Result<IndexResult, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let store = state.storage.json_lock();
+    let db = state.storage.sqlite_lock();
     let db = db.as_ref().ok_or("数据库未初始化")?;
     let embedder_guard = state.embedder.lock().map_err(|e| e.to_string())?;
 
@@ -1602,14 +1596,14 @@ fn delete_article_vector(
     state: tauri::State<'_, AppState>,
     article_id: String,
 ) -> Result<(), String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = state.storage.sqlite_lock();
     let db = db.as_ref().ok_or("数据库未初始化")?;
     crate::vector::delete_article_index(db, &article_id)
 }
 
 #[tauri::command]
 fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let db = state.storage.sqlite_lock();
     let db = db.as_ref().ok_or("数据库未初始化")?;
     db.vector_chunk_count().map_err(|e| e.to_string())
 }
@@ -1617,13 +1611,13 @@ fn get_vector_stats(state: tauri::State<'_, AppState>) -> Result<i64, String> {
 #[tauri::command]
 fn check_vector_model(state: tauri::State<'_, AppState>) -> Result<serde_json::Value, String> {
     let app_dir = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         store.data_dir().parent().unwrap().to_path_buf()
     };
     let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
     let exists = Embedder::model_exists(&model_dir);
     let enabled = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         store.load_settings().vector_model_enabled
     };
 
@@ -1647,7 +1641,7 @@ fn check_vector_model(state: tauri::State<'_, AppState>) -> Result<serde_json::V
 #[tauri::command]
 async fn download_vector_model(state: tauri::State<'_, AppState>) -> Result<String, String> {
     let app_dir = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         store.data_dir().parent().unwrap().to_path_buf()
     };
     let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
@@ -1671,7 +1665,7 @@ fn index_all_vectors(
 ) -> Result<(), String> {
     // Fast: grab data while holding lock, then release
     let (app_dir, article_ids) = {
-        let store = state.store.lock().map_err(|e| e.to_string())?;
+        let store = state.storage.json_lock();
         let app_dir = store.data_dir().parent().unwrap().to_path_buf();
         let collections = store.load_collections();
         let ids: Vec<String> = collections
@@ -1705,7 +1699,7 @@ fn index_all_vectors(
             }
         };
 
-        let store = store::DataStore::new(app_dir.clone());
+        let storage_cache = crate::storage::app_storage::AppStorage::new(&app_dir);
 
         // 尝试初始化嵌入器（ONNX Runtime）
         let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
@@ -1729,7 +1723,7 @@ fn index_all_vectors(
         let mut errors_total = 0;
 
         for (i, article_id) in article_ids.iter().enumerate() {
-            let content = match store.load_article_content(article_id) {
+            let content = match storage_cache.load_article_content(article_id) {
                 Some(c) => c,
                 None => {
                     errors_total += 1;
@@ -1825,13 +1819,11 @@ pub fn run() {
                     break;
                 }
             }
-            let database = db::Database::open(&app_dir).ok();
-
             // 嵌入器：后台懒加载，避免启动时卡界面
             let embedder_slot: Arc<Mutex<EmbedderState>> = Arc::new(Mutex::new(EmbedderState::Pending));
             {
                 let model_dir = app_dir.join("models").join("bge-small-zh-v1.5");
-                let settings = DataStore::new(app_dir.clone()).load_settings();
+                let settings = AppStorage::new(&app_dir).load_settings();
                 if settings.vector_model_enabled {
                     let _ = vector::ensure_onnxruntime_dylib(&model_dir);
 
@@ -1862,8 +1854,7 @@ pub fn run() {
             }
 
             app.manage(AppState {
-                store: Mutex::new(DataStore::new(app_dir.clone())),
-                db: Mutex::new(database),
+                storage: AppStorage::new(&app_dir),
                 watcher_handle: Mutex::new(None),
                 current_project_path: Mutex::new(None),
                 embedder: embedder_slot,

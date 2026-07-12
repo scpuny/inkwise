@@ -78,5 +78,38 @@ export function useDocument(store = DEFAULT_STORE) {
     setLoading(false);
   }, []);
 
-  return { doc, loading, error, loadDocument, saveDocument, createDocument, deleteDocument, reset };
+  // ── 蓝图操作（桥接旧模块） ──
+  const loadBlueprint = useCallback(async (articleId: string): Promise<unknown | null> => {
+    return store.loadBlueprint(articleId);
+  }, [store]);
+
+  const saveBlueprint = useCallback(async (articleId: string, blueprint: unknown) => {
+    await store.saveBlueprint(articleId, blueprint);
+  }, [store]);
+
+  // ── 版本快照 ──
+  const saveVersionSnapshot = useCallback(async (articleId: string, content: string) => {
+    await store.saveVersionSnapshot(articleId, content);
+  }, [store]);
+
+  // ── 提供商配置 ──
+  const getProvidersSync = useCallback(() => {
+    return store.getProvidersSync();
+  }, [store]);
+
+  // ── 文章内容 ──
+  const loadArticleContent = useCallback(async (articleId: string): Promise<string | null> => {
+    return store.loadArticleContent(articleId);
+  }, [store]);
+
+  const saveArticleContent = useCallback(async (articleId: string, content: string) => {
+    await store.saveArticleContent(articleId, content);
+  }, [store]);
+
+  return {
+    doc, loading, error,
+    loadDocument, saveDocument, createDocument, deleteDocument, reset,
+    loadBlueprint, saveBlueprint, saveVersionSnapshot, getProvidersSync,
+    loadArticleContent, saveArticleContent,
+  };
 }

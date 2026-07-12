@@ -1,5 +1,5 @@
 // ai.rs — AI 聊天接口，支持多 provider 和 function/tool calling
-use crate::store::DataStore;
+use crate::storage::app_storage::AppStorage;
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -119,18 +119,17 @@ pub struct ProviderListConfig {
 /// Otherwise uses the first enabled provider,
 /// but prefers the user's default model from AiConfig when available.
 pub fn resolve_provider(
-    store: &Mutex<DataStore>,
+    storage: &AppStorage,
     provider_id: Option<&str>,
     model: Option<&str>,
 ) -> Result<ProviderConfig, String> {
-    let store = store.lock().map_err(|e| e.to_string())?;
-    let providers = store.load_providers();
+    let providers = storage.load_providers();
 
     // If no model specified, try to use the user's saved default model from AiConfig
     let effective_model: Option<String> = model
         .map(|m| m.to_string())
         .or_else(|| {
-            store.load_ai_config()
+            storage.load_ai_config()
                 .and_then(|cfg| cfg.default_model)
                 .filter(|m| !m.is_empty())
         });
