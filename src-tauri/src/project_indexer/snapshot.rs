@@ -213,7 +213,7 @@ pub fn detect_git_changes(project_dir: &Path) -> Result<StartupDiff, String> {
     let mut added = Vec::new();
     let mut modified = Vec::new();
     let mut deleted = Vec::new();
-    let mut unchanged = Vec::new();
+    let unchanged = Vec::new();
 
     for line in stdout.lines() {
         let line = line.trim();

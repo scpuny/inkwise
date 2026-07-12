@@ -5,16 +5,6 @@ use crate::AppState;
 use tauri::State;
 
 #[tauri::command]
-pub fn save_article_content(state: State<AppState>, id: String, content: String) -> Result<(), String> {
-    state.storage.save_article_content(&id, &content)
-}
-
-#[tauri::command]
-pub fn load_article_content(state: State<AppState>, id: String) -> Result<Option<String>, String> {
-    Ok(state.storage.load_article_content(&id))
-}
-
-#[tauri::command]
 pub fn delete_article(state: State<AppState>, id: String) -> Result<(), String> {
     let store = state.storage.json_lock();
     store.delete_article_content(&id)?;

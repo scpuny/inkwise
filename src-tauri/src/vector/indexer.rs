@@ -6,6 +6,7 @@ use crate::db::Database;
 use crate::vector::ChunkResult;
 use crate::vector::chunk::chunk_content;
 use crate::vector::embedder::Embedder;
+use base64::Engine;
 use crate::vector::types::{ChunkStrategy, VectorChunkRow};
 
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -74,7 +75,7 @@ pub fn index_article(
                 .iter()
                 .flat_map(|f| f.to_le_bytes())
                 .collect();
-            let emb_b64 = base64::encode(&emb_bytes);
+            let emb_b64 = base64::engine::general_purpose::STANDARD.encode(&emb_bytes);
 
             let row = VectorChunkRow {
                 id: format!("{}_{}", article_id, chunk.index),

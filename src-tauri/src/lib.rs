@@ -792,7 +792,6 @@ fn search_articles_db(state: tauri::State<AppState>, query: String, limit: Optio
     db.search(&query, limit.unwrap_or(20)).map_err(|e| e.to_string())
 }
 
-/// List ALL articles (for management page)
 /// Link a folder to a collection
 #[tauri::command]
 fn link_folder_db(state: tauri::State<AppState>, collection_id: String, path: String) -> Result<(), String> {
@@ -807,13 +806,6 @@ fn unlink_folder_db(state: tauri::State<AppState>, collection_id: String) -> Res
     let db_opt = state.storage.sqlite_lock();
     let db = db_opt.as_ref().ok_or("数据库未初始化")?;
     db.update_collection_folder(&collection_id, None).map_err(|e| e.to_string())
-}
-
-fn chrono_now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as i64
 }
 
 // ─── Article Images (DB) ───

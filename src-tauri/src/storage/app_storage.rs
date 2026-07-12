@@ -26,15 +26,6 @@ impl AppStorage {
         }
     }
 
-    /// 仅用于 storage/migration.rs 等特定场景
-    pub fn new_with_json_dir(app_dir: &std::path::Path, data_dir: &std::path::Path) -> Self {
-        let database = db::Database::open(&app_dir.to_path_buf()).ok();
-        Self {
-            json: Mutex::new(DataStore::new_with_dir(&data_dir.to_path_buf())),
-            sqlite: Mutex::new(database),
-        }
-    }
-
     /// 获取底层 JSON DataStore 的锁
     /// 用于少数需要直接访问 DataStore 的兼容场景
     pub fn json_lock(&self) -> std::sync::MutexGuard<'_, DataStore> {

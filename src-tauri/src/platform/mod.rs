@@ -49,14 +49,6 @@ pub fn set_cached_token(platform_id: &str, app_id: &str, token: String, expires_
     }
 }
 
-/// 清除缓存的 token（例如凭证变更后调用）
-pub fn clear_cached_token(platform_id: &str, app_id: &str) {
-    if let Ok(mut cache) = token_cache().lock() {
-        let key = cache_key(platform_id, app_id);
-        cache.remove(&key);
-    }
-}
-
 // ─── 统一类型 ───
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

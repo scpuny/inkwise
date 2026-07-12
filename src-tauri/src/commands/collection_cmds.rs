@@ -48,10 +48,7 @@ pub fn delete_collection_db(state: State<AppState>, id: String) -> Result<(), St
     state.storage.db_delete_collection(&id)
 }
 
-#[tauri::command]
-pub fn link_collection_folder_db(state: State<AppState>, id: String, folder: String) -> Result<(), String> {
-    state.storage.db_update_collection_folder(&id, Some(&folder))
-}
+
 
 #[tauri::command]
 pub fn unlink_collection_folder(state: State<AppState>, id: String) -> Result<(), String> {

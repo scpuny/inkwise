@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::path::PathBuf;
 
 use crate::domain::*;
@@ -494,24 +494,6 @@ impl DataStore {
             std::fs::remove_file(&path).map_err(|e| e.to_string())
         } else {
             Ok(())
-        }
-    }
-
-    /// 使用指定目录初始化 DataStore（用于 storage/sqlite.rs fallback）
-    pub fn new_with_dir(data_dir: &std::path::PathBuf) -> Self {
-        let articles_dir = data_dir.join("articles");
-        let documents_dir = data_dir.join("documents");
-        let index_dir = data_dir.join("index");
-        let codegraph_dir = data_dir.join("codegraph");
-        for d in [&articles_dir, &documents_dir] {
-            std::fs::create_dir_all(d).ok();
-        }
-        Self {
-            data_dir: data_dir.clone(),
-            articles_dir,
-            documents_dir,
-            _index_dir: index_dir,
-            _codegraph_dir: codegraph_dir,
         }
     }
 }

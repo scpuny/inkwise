@@ -1,6 +1,5 @@
 // ai.rs — AI 聊天接口，支持多 provider 和 function/tool calling
 use crate::storage::app_storage::AppStorage;
-use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

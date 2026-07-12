@@ -12,6 +12,7 @@ mod skill;
 
 pub use collection::*;
 pub use document::*;
+#[allow(unused_imports)]
 pub use package::*;
 pub use provider::*;
 pub use publish::*;

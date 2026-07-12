@@ -3,6 +3,7 @@
 // 从 SQLite 读取嵌入数据，构建矩阵后用 ndarray 矩阵乘法一次算出所有余弦相似度。
 // 相比逐条循环计算，矩阵运算性能提升 10-100 倍。
 
+use base64::Engine;
 use ndarray::Array2;
 
 use crate::db::Database;
@@ -75,7 +76,7 @@ pub fn semantic_search(
     // 6. 矩阵乘：一次算出所有余弦相似度
     // 每一行已经归一化（存储时即是单位向量），所以 dot = cosine
     let q = ndarray::ArrayView1::from(&query_normalized);
-    let scores: Vec<f32> = matrix.dot(&q).into_raw_vec();
+    let scores: Vec<f32> = matrix.dot(&q).into_raw_vec_and_offset().0;
 
     // 7. 收集满足阈值的 (article_id, chunk_id, content, score)
     let mut scored: Vec<(usize, &str, &str, f32)> = Vec::with_capacity(n_valid);
@@ -107,7 +108,7 @@ pub fn semantic_search(
 /// 解码 Base64 编码的 float32 向量
 fn decode_embedding(b64: &Option<String>) -> Option<Vec<f32>> {
     let data = b64.as_ref()?;
-    let bytes = base64::decode(data).ok()?;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data).ok()?;
     // 每 4 字节一个 f32
     Some(
         bytes
