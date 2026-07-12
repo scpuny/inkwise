@@ -4,7 +4,7 @@ import type { ArticleBlueprint } from "../../domain";
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
 import { on } from "../../lib/events/eventBus";
-import { addPublishRecord, publishArticle } from "../../lib/storage/platforms";
+import { useSettings } from "../../hooks/useSettings";
 import type { PublishOptions, PublishResult, PublishRecord } from "../../domain";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { PublishDialog } from "../collections/PublishDialog";
@@ -28,6 +28,7 @@ export function ArticleFinalPage({
   onBackToEdit,
   genId,
 }: ArticleFinalPageProps) {
+  const { addPublishRecord, publishArticle } = useSettings();
   const { loadDocument: loadArticleDocument, saveDocument: saveArticleDocument, loadArticleContent } = useDocument();
   const [markdown, setMarkdown] = useState("");
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);

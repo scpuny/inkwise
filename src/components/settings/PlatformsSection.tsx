@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
-import { getPlatformConfigs, savePlatformConfig, deletePlatformConfig, verifyPlatformCredentials } from "../../lib/storage/platforms";
+import { useSettings } from "../../hooks/useSettings";
 import type { PlatformConfig } from "../../domain";
 import { SettingsPage } from "./SettingsPageLayout";
 
@@ -8,6 +8,7 @@ import { SettingsPage } from "./SettingsPageLayout";
    PLATFORMS — 发布平台配置
    ════════════════════════════════════════════════ */
 export function PlatformsSection() {
+  const { getPlatformConfigs, savePlatformConfig, deletePlatformConfig, verifyPlatformCredentials } = useSettings();
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingInitial, setEditingInitial] = useState<Partial<PlatformConfig> | null>(null);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getPlatformConfigs } from "../../lib/storage/platforms";
+import { useSettings } from "../../hooks/useSettings";
 import { CustomSelect } from "../common/CustomSelect";
 import { getWordCount } from "../../lib/utils/text";
 import type { PlatformConfig, PublishOptions, PublishResult } from "../../domain";
@@ -23,6 +23,7 @@ function extractImagesFromMarkdown(md: string): string[] {
 }
 
 export function PublishDialog({ articleTitle: _articleTitle, markdown, onClose, onSubmit }: PublishDialogProps) {
+  const { getPlatformConfigs } = useSettings();
   const [title, setTitle] = useState(_articleTitle);
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<string>("wechat");

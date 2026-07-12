@@ -429,12 +429,14 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 
 | # | 旧文件 | 消费者 | 新替代 | 计划 Phase | 状态 |
 |---|--------|--------|--------|-----------|------|
-| 1 | `storage/collections` | **~1**（仅 TauriDocumentStore 桥接，其余均为子模块导入） | `services/CollectionService` | Phase 2 | 🟢 桶引用清零 |
-| 2 | `storage/articles.ts` | ~2 个文件（仅 TauriDocumentStore 桥接 + importExport 工具） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
-| 3 | `storage/providerModels` | ~1（仅 TauriDocumentStore 桥接） | `infrastructure/AIProvider` | Phase 2 | 🟢 类型已迁移 domain |
-| 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 | 🔴 |
-| 5 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
-| 6 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
+| 1 | `storage/collections` | **0**（仅 TauriDocumentStore 桥接，其余均为子模块导入） | `services/CollectionService` | Phase 2 | 🟢 桶引用清零 |
+| 2 | `storage/articles.ts` | **0**（仅 TauriDocumentStore 桥接） | `services/DocumentService` | Phase 3 | 🟢 非桥接消费者清零 |
+| 3 | `storage/providerModels` | **4**（函数调用，类型已 domain） | `infrastructure/AIProvider` | Phase 6 | 🟡 类型已迁移 |
+| 4 | `lib/ai/article/blueprint` | **9**（函数调用，类型已 domain） | `domain/Plan` + `services/PlanService` | Phase 6 | 🟡 类型已迁移 |
+| 5 | `storage/articleDocument` | **1**（仅 migrateArticleDocument） | `domain/Document` | Phase 6 | 🟡 工厂函数已迁移 |
+| 6 | `storage/platforms` | **3**（函数调用，类型已 domain） | `domain/Publish` | Phase 6 | 🟡 类型已迁移 |
+| 7 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
+| 8 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
 
 **Phase 2-5 完成**：见下方详细记录
 
@@ -484,4 +486,15 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - storage/providerModels 类型引用精简
 - storage/platforms 类型引用精简
 - 验证：tsc 0 errors + vite build success
+
+**增量迁移 Batch 6 完成**（2026-07-12）：
+- **里程碑**：storage/articles + storage/articleDocument 非桥接消费者清零
+- domain/Document.ts：新增 DEFAULT_STYLE_CONFIG + createDefaultDocument
+- domain/Plan.ts：新增 ArticleBlueprint 类型
+- importExport.ts → TauriDocumentStore 实例替代 storage/articles 直接引用
+- 8 文件 type-only blueprint 导入切换至 domain：
+  - EditorCanvas/PlanPanel/PlanReview（纯类型）
+  - ArticleHeader/PhaseGuideDialog/BlueprintEditor/EditorPane/useArticleLifecycle/ArticleFinalPage（分离类型+函数）
+- lib/ai/plan.ts → OutlineSection 类型从 domain 导入
+- blueprint 类型引用清零（仅剩 7 函数引用）
 - 验证：tsc 0 errors + vite build success

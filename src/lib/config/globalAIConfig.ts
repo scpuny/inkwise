@@ -4,9 +4,11 @@
 
 import { StorageEngine } from "../storage/storageEngine";
 import { isTauriEnv, tryInvoke } from "../bridge/tauri";
-import { getProvidersSync } from "../storage/providerModels";
 import type { Provider } from "../../domain";
+import { TauriSettingsStore } from "../../infrastructure/TauriSettingsStore";
 import { emit } from "../events/eventBus";
+
+const settings = new TauriSettingsStore();
 
 const CACHE_KEY = "ai-config";
 
@@ -87,7 +89,7 @@ export async function saveMaxTokens(tokens: TokenLimit): Promise<void> {
 
 /** 获取当前启用的模型列表（同步，从缓存读取） */
 export function getEnabledModels(): string[] {
-  const providers = getProvidersSync();
+  const providers = settings.getProvidersSync();
   return providers
     .filter((p) => p.enabled && p.models.length > 0)
     .flatMap((p) => p.models)
@@ -96,7 +98,7 @@ export function getEnabledModels(): string[] {
 
 /** 获取默认模型的 provider 信息 */
 export function getDefaultProvider(): Provider | null {
-  const providers = getProvidersSync();
+  const providers = settings.getProvidersSync();
   return providers.find((p) => p.enabled && p.models.length > 0) || null;
 }
 
@@ -115,7 +117,7 @@ export function resolveModel(defaultModel?: string | null): string | null {
 
 /** 获取所有模型 + provider 映射 */
 export function buildModelList(): { id: string; label: string; provider: string }[] {
-  const providers = getProvidersSync();
+  const providers = settings.getProvidersSync();
   const result: { id: string; label: string; provider: string }[] = [];
   for (const p of providers) {
     if (!p.enabled || p.models.length === 0) continue;
@@ -128,7 +130,7 @@ export function buildModelList(): { id: string; label: string; provider: string 
 
 /** 统一解析 provider + model：优先匹配用户保存的默认模型，回退到第一个启用的提供商 */
 export function resolveProviderForModel(): { provider: Provider | null; model: string } {
-  const providers = getProvidersSync();
+  const providers = settings.getProvidersSync();
   const resolvedModel = resolveModel() ?? '';
   
   if (resolvedModel) {

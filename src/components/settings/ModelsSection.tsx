@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { Check, ChevronDown, X } from "lucide-react";
-import { BUILTIN_PROVIDERS, getProvidersSync, saveProvidersSync, defaultModels, inferCapabilities } from "../../lib/storage/providerModels";
+import { BUILTIN_PROVIDERS, defaultModels, inferCapabilities } from "../../lib/storage/providerModels";
+import { useSettings } from "../../hooks/useSettings";
 import type { Provider, ModelEntry } from "../../domain";
 import { useDrawConfig } from "../../lib/stores/drawConfig";
 import { InlineConfirmButton } from "../common/InlineConfirmButton";
@@ -88,6 +89,7 @@ function providerDefaultModel(currentDefault: string, models: string[]): string 
   return currentDefault && models.includes(currentDefault) ? currentDefault : models[0] ?? "";
 }
 export function ModelsSection() {
+  const { getProvidersSync, saveProvidersSync } = useSettings();
   const [subtab, setSubtab] = useState<"usage" | "access">("usage");
   const [providers, setProviders] = useState<Provider[]>(() => getProvidersSync());
   const [editing, setEditing] = useState<string | null>(null);

@@ -15,11 +15,12 @@ import {
 import { runSkill, runSkillStream } from "../../lib/storage/skill";
 import { sendChat, type ChatMessage } from "../../lib/ai/ai";
 import { resolveModel } from "../../lib/config/globalAIConfig";
-import { getProvidersSync } from "../../lib/storage/providerModels";
+import { useSettings } from "../../hooks/useSettings";
 import { saveSessions, loadSessions } from "../../lib/ai/article/sessions";
 import { getStyle, getAction } from "../../lib/ai/skill/styles";
 
 export function AgentProvider({ children }: { children: ReactNode }) {
+  const { getProvidersSync } = useSettings();
   const [state, setState] = useState<AgentState>(() => ({ ...DEFAULT_AGENT_STATE }));
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
   const prevArticleIdRef = useRef<string | null>(null);

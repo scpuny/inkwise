@@ -2,3 +2,4 @@
 export { useDocument } from "./useDocument";
 export { usePlan } from "./usePlan";
 export { useCollection } from "./useCollection";
+export { useSettings } from "./useSettings";

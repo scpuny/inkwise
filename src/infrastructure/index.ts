@@ -5,3 +5,5 @@ export type { EventBus } from "./EventBus";
 export { TauriDocumentStore } from "./TauriDocumentStore";
 export { TauriAIProvider } from "./TauriAIProvider";
 export { MittEventBus } from "./EventBusImpl";
+export type { SettingsStore } from "./SettingsStore";
+export { TauriSettingsStore } from "./TauriSettingsStore";

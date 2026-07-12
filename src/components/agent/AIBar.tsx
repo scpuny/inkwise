@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emit, on } from "../../lib/events/eventBus";
-import { getProvidersSync, getImageModelsSync } from "../../lib/storage/providerModels";
+import { useSettings } from "../../hooks/useSettings";
 import type { ModelEntry } from "../../domain";
 import { listSkills, type Skill } from "../../lib/storage/skill";
 import { saveDefaultModel } from "../../lib/config/globalAIConfig";
@@ -27,8 +27,10 @@ function toAssetUrl(path: string) {
 }
 
 import { useDrawConfig } from "../../lib/stores/drawConfig";
+import { TauriSettingsStore } from "../../infrastructure/TauriSettingsStore";
 
 const COMPOSER_MIN_HEIGHT = 104;
+const __settings = new TauriSettingsStore();
 const COMPOSER_MAX_HEIGHT = 360;
 
 const EFFORTS: MenuItem[] = [
@@ -41,6 +43,7 @@ const EFFORTS: MenuItem[] = [
 const TOKEN_PRESETS = [500, 1000, 2000, 4000, 8000] as const;
 
 export function AIBar({ onSend, sending: externalSending, onIntent }: { onSend?: (text: string) => void; sending?: boolean; onIntent?: (intent: string) => void }) {
+  const { getProvidersSync, getImageModelsSync } = useSettings();
   const [value, setValue] = useState("");
   const [localSending, setLocalSending] = useState(false);
   const sending = externalSending ?? localSending;
@@ -597,7 +600,7 @@ function skillDisplayLabel(name: string): string {
 }
 
 function buildModelItems(): MenuItem[] {
-  const providers = getProvidersSync();
+  const providers = __settings.getProvidersSync();
   const modelProviderMap = new Map<string, string>();
   const allModels: string[] = [];
   for (const p of providers) {

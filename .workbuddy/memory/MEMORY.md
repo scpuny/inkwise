@@ -44,11 +44,13 @@
 - **Phase 5**（Rust 后端统一存储）：AppStorage 包装 DataStore + Database，store./db. 引用清零
 - **Batch 1 增量迁移**：TrashDialog/ProjectPanel/GeneralSection/ProjectExplorer/DocPicker/useCollectionCrud → useCollection
 - **Batch 2-5 增量迁移**：appHooks/useArticleLifecycle/MainEditorPage/SeriesOverview/SeriesPlanner/EditorPane/ReviewPanel/ArticleFinalPage 等 20+ 文件迁移 + domain 类型补全（Publish.ts/Provider.ts）
+- **Batch 6（里程碑）**：storage/articles + storage/articleDocument 非桥接消费者清零；blueprint 类型引用全面清零
 
 ### 旧存储引用剩余
 - `storage/collections` → 仅 TauriDocumentStore 桥接（桶引用已清零）
-- `storage/articles.ts` → 仅 TauriDocumentStore 桥接 + importExport 工具
-- `lib/ai/article/blueprint` → 15 个文件（类型精度尚待 domain 补全）
+- `storage/articles.ts` → 仅 TauriDocumentStore 桥接（非桥接消费者清零 ✅）
+- `storage/articleDocument` → 仅 TauriDocumentStore 桥接 + 1 个 migrateArticleDocument
+- `lib/ai/article/blueprint` → 7 个文件（仅函数调用，类型已 domain 补全 ✅）
 - `storage/providerModels` → 4 个（仅函数调用，类型已 domain）
 - `storage/platforms` → 3 个（仅函数调用，类型已 domain）
 
