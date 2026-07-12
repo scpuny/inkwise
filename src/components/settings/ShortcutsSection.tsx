@@ -6,9 +6,10 @@ const SHORTCUT_GROUPS = [
   {
     title: "全局快捷键",
     items: [
-      { label: "命令面板", keys: "Ctrl+K" },
-      { label: "切换侧栏", keys: `Ctrl+\\` },
+      { label: "切换侧栏", keys: "Ctrl+\\" },
       { label: "切换 AI 面板", keys: "Ctrl+Shift+\\" },
+      { label: "AI 命令条", keys: "Ctrl+Shift+K" },
+      { label: "命令面板", keys: "Ctrl+Shift+P" },
       { label: "焦点模式", keys: "Ctrl+Shift+F" },
       { label: "打开设置", keys: "Ctrl+," },
       { label: "关闭面板/弹窗", keys: "Esc" },
@@ -17,32 +18,25 @@ const SHORTCUT_GROUPS = [
   {
     title: "编辑器",
     items: [
-      { label: "新建文档", keys: "Ctrl+N" },
-      { label: "保存", keys: "Ctrl+S" },
+      { label: "插入链接", keys: "Ctrl+K" },
       { label: "查找替换", keys: "Ctrl+F" },
       { label: "撤销", keys: "Ctrl+Z" },
       { label: "重做", keys: "Ctrl+Shift+Z" },
       { label: "加粗", keys: "Ctrl+B" },
       { label: "斜体", keys: "Ctrl+I" },
+      { label: "下划线", keys: "Ctrl+U" },
+      { label: "删除线", keys: "Ctrl+Shift+S" },
+      { label: "引用", keys: "Ctrl+Shift+." },
+      { label: "无序列表", keys: "Ctrl+Shift+8" },
+      { label: "有序列表", keys: "Ctrl+Shift+7" },
     ],
   },
   {
     title: "AI 交互",
     items: [
-      { label: "打开 AI 对话", keys: "Ctrl+K" },
       { label: "发送消息", keys: "Ctrl+Enter" },
       { label: "接受 AI 建议", keys: "Tab" },
       { label: "忽略 AI 建议", keys: "Esc" },
-    ],
-  },
-  {
-    title: "AI 技能",
-    items: [
-      { label: "润色", keys: "Alt+1" },
-      { label: "改写", keys: "Alt+2" },
-      { label: "翻译", keys: "Alt+3" },
-      { label: "扩写", keys: "Alt+4" },
-      { label: "分析", keys: "Alt+5" },
     ],
   },
 ];
