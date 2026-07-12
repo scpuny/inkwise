@@ -48,7 +48,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   // ── Execute (core AI execution) ──
   const execute = useCallback(async (
     input: string,
-    options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string },
+    options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string; inlineReplace?: boolean },
   ) => {
     // Allow empty input only for continue-writing (ghost text mode)
     if (!input.trim() && options?.intent !== "continue-writing") return;
@@ -223,13 +223,34 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         setState((s) => ({
           ...s,
           isProcessing: false,
-          panelOpen: true,
+          panelOpen: !options?.inlineReplace, // Don't open panel if auto-replacing
           panelTab: "chat",
           ghostText: null,
           sessions: s.sessions.map((se) =>
             se.id === sessionId ? { ...se, afterContent: result, state: "pending" as const } : se
           ),
         }));
+
+        // Auto-replace selected text for inline replace mode
+        if (options?.inlineReplace && selection && result) {
+          try {
+            const editor = (window as any).editorInstance?.editor;
+            if (editor && editor.commands) {
+              editor.commands.focus();
+              editor.commands.deleteRange({ from: selection.from, to: selection.to });
+              editor.commands.insertContentAt(selection.from, result);
+              // Mark session as accepted
+              setState((s) => ({
+                ...s,
+                sessions: s.sessions.map((se) =>
+                  se.id === sessionId ? { ...se, state: "accepted" as const } : se
+                ),
+              }));
+            }
+          } catch (e) {
+            console.warn("[AgentProvider] inlineReplace failed:", e);
+          }
+        }
       }
     } catch (e: any) {
       if (cancelledRef.current) return;

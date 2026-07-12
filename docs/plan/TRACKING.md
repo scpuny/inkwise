@@ -512,7 +512,7 @@ v3.0 全量功能迁移已完成。详见 [20-migration-plan.md](20-migration-pl
 
 | # | 功能点 | 类型 | 优先级 | 状态 | 完成日 |
 |---|--------|:----:|:------:|:----:|:------:|
-| 9.1 | **工具栏功能对接** — Bold/Italic/Heading/List/Quote/Link/Image 等接入 TipTap 命令 | UI | P0 | 🔴 | — |
+| 9.1 | **工具栏功能对接** — Bold/Italic/Heading/List/Quote/Link/Image 等接入 TipTap 命令 | UI | P0 | 🟢 | 07-12 |
 | 9.2 | **内联 AI 命令完善** — Cmd+K 选中文字→改写/扩写/续写/翻译 | AI | P0 | 🔴 | — |
 | 9.3 | **快捷键体系** — Cmd+B 加粗、Cmd+I 斜体、Cmd+Shift+K 代码块等 | UI | P1 | 🔴 | — |
 | 9.4 | **PlanPanel 子拆分** — Sprint 8.2 遗留项 | 架构 | P1 | 🔴 | — |

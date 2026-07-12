@@ -193,6 +193,7 @@ export function InlineToolbar() {
       intent,
       selection: sel,
       beforeContent: docContent,
+      inlineReplace: true,
     });
 
     setVisible(false);
