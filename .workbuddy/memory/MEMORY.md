@@ -2,7 +2,7 @@
 
 ## 项目概览
 - **名称**: InkWise 墨智 — AI 写作助手
-- **版本**: v3.0（已合并到 main）
+- **版本**: v3.0.0（正式发布）
 - **技术栈**: React 19 + TypeScript 6 + Vite 6 + Tauri 2 + Rust (edition 2021)
 - **编辑器**: TipTap 3 (ProseMirror) — 富文本 & Markdown 双模
 - **状态管理**: Zustand (articleStore/themeStore/panelStore)
