@@ -3,8 +3,8 @@ import { usePanelStore } from "../../store/panelStore";
 import { getStoredProjectInsights } from "../../lib/storage/collections/projectContext";
 import { useState, useEffect, useCallback } from "react";
 import { on } from "../../lib/events/eventBus";
-import { loadCollections } from "../../lib/storage/collections";
-import type { Collection } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import type { Collection } from "../../domain";
 
 /**
  * ProjectPanel — 侧边栏"项目"tab 内容。
@@ -19,6 +19,7 @@ export function ProjectPanel({
 }) {
   const colId = usePanelStore((s) => s.projectPanelColId);
   const setMainRoute = usePanelStore((s) => s.setMainRoute);
+  const { loadCollections } = useCollection();
   const [col, setCol] = useState<Collection | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -34,7 +35,7 @@ export function ProjectPanel({
       const found = cols.find((c) => c.id === colId) || null;
       setCol(found);
     });
-  }, [colId, refreshKey]);
+  }, [colId, refreshKey, loadCollections]);
 
   const handleOpenFull = () => {
     setMainRoute("scan");

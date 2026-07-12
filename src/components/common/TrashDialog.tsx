@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Trash2, RotateCcw, X, FileText, ArrowLeft } from "lucide-react";
-import { loadTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash, type TrashItem } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import type { TrashItem } from "../../domain";
 import { on } from "../../lib/events/eventBus";
 import { isTauriEnv } from "../../lib/bridge/tauri";
 
@@ -14,6 +15,7 @@ interface TrashDialogProps {
 }
 
 export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
+  const { loadTrash, restoreArticle, permanentlyDeleteArticle, emptyTrash } = useCollection();
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function TrashDialog({ open, onClose, pageMode }: TrashDialogProps) {
       if (open) loadTrash().then(setTrashItems);
     });
     return () => unsub();
-  }, [open]);
+  }, [open, loadTrash]);
 
   const handleRestore = async (id: string) => {
     console.log("[TrashDialog] handleRestore called, id:", id);

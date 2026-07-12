@@ -1,55 +1,52 @@
 // useCollectionCrud.ts — shared collection CRUD state & handlers
 // ponytail: extracted from ArticleManager + DocPicker to eliminate duplicate inline CRUD
 import { useState, useCallback } from "react";
-import {
-  loadCollections, saveCollections, addCollection,
-  renameCollection, removeCollection, updateCollection,
-  genId, type Collection
-} from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import type { Collection } from "../../domain";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { emit } from "../../lib/events/eventBus";
 import { useToastStore } from "../../store/toastStore";
 
 export function useCollectionCrud() {
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const {
+    collections,
+    loadCollections: loadCollectionsHook,
+    createCollection,
+    renameCollection,
+    removeCollection,
+    updateCollection,
+  } = useCollection();
 
   const loadCols = useCallback(async () => {
-    const cols = await loadCollections();
-    setCollections(cols);
+    const cols = await loadCollectionsHook();
     return cols;
-  }, []);
-
+  }, [loadCollectionsHook]);
 
   const handleAddCollection = useCallback(async (title: string): Promise<Collection | null> => {
     if (!title.trim()) return null;
-    const col = await addCollection(title.trim());
-    setCollections(prev => [...prev, col]);
+    const col = await createCollection(title.trim());
     emit("collections-changed");
     return col;
-  }, []);
+  }, [createCollection]);
 
   const handleRenameCollection = useCallback(async (id: string, title: string) => {
     if (!title.trim()) return;
     await renameCollection(id, title.trim());
-    setCollections(prev => prev.map(c => c.id === id ? { ...c, title: title.trim() } : c));
     if (isTauriEnv()) {
       try { await tryInvoke(TauriCommands.RenameCollectionDb, { id, title: title.trim() }); } catch {}
     }
-  }, []);
+  }, [renameCollection]);
 
   const handleDeleteCollection = useCallback(async (id: string) => {
     const addToast = useToastStore.getState().addToast;
     try {
       await removeCollection(id);
-      // 重新加载合集列表
-      const updated = await loadCollections();
-      setCollections(updated);
       emit("collections-changed");
       addToast({ type: "success", message: "合集已删除（含所有子文章）" });
     } catch (e) {
       addToast({ type: "error", message: "删除合集失败：" + (e as Error).message });
     }
-  }, []);
+  }, [removeCollection]);
 
   const handleSaveCollection = useCallback(async (
     title: string, description: string, coverImage: string, linkedFolder?: string,
@@ -64,25 +61,30 @@ export function useCollectionCrud() {
           coverImage: coverImage || undefined,
           linkedFolder: linkedFolder || undefined,
         });
-        setCollections(prev => prev.map(c => c.id === editingId ? { ...c, title, description: description || undefined, coverImage: coverImage || undefined, linkedFolder: linkedFolder || undefined } : c));
         addToast({ type: "success", message: "合集已更新" });
       } else {
-        const all = await loadCollections();
-        const col: Collection = { id: genId(), title, description: description || undefined, coverImage: coverImage || undefined, linkedFolder: linkedFolder || undefined, articles: [], createdAt: Date.now() };
-        all.push(col);
-        await saveCollections(all);
-        setCollections(all);
+        const col = await createCollection(title);
+        // Patch additional fields after creation
+        if (description || coverImage || linkedFolder) {
+          await updateCollection(col.id, {
+            description: description || undefined,
+            coverImage: coverImage || undefined,
+            linkedFolder: linkedFolder || undefined,
+          });
+        }
         emit("collections-changed");
-        if (isTauriEnv()) { try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {} }
+        if (isTauriEnv()) {
+          try { await tryInvoke(TauriCommands.CreateCollectionDb, { title, linkedFolder: linkedFolder || null }); } catch {}
+        }
         addToast({ type: "success", message: "合集已创建" });
       }
     } catch (e) {
       addToast({ type: "error", message: "保存合集失败：" + (e as Error).message });
     }
-  }, []);
+  }, [createCollection, updateCollection]);
 
   return {
-    collections, setCollections,
+    collections,
     loadCols,
     handleAddCollection, handleRenameCollection,
     handleDeleteCollection, handleSaveCollection,

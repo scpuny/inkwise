@@ -9,7 +9,8 @@ import {
   clearProjectFileTree, clearProjectInsights,
 } from "../../lib/storage/collections/projectContext";
 import { getProjectContext } from "../../lib/storage/collections";
-import { loadCollections, type Collection } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
+import type { Collection } from "../../domain";
 import { on, emit } from "../../lib/events/eventBus";
 import type { EventBusMap } from "../../lib/events/events";
 import { marked } from "marked";
@@ -87,6 +88,7 @@ function toolEventToLogEntries(ev: AgentToolEvent): LogEntry[] {
 export function ProjectExplorer() {
   const colId = usePanelStore((s) => s.projectPanelColId);
   const setMainRoute = usePanelStore((s) => s.setMainRoute);
+  const { loadCollections } = useCollection();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<any[] | null>(null);
@@ -120,7 +122,7 @@ export function ProjectExplorer() {
         startScan(colId, found.linkedFolder);
       }
     });
-  }, [colId]);
+  }, [colId, loadCollections]);
 
   // 监听 rescanned 事件 → 清缓存 + 重新加载文件树
   useEffect(() => {

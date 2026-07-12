@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import type { OutlineItem } from "../components/sidebar/OutlinePanel";
-import type { SeriesPlan } from "../lib/storage/collections";
+import type { SeriesPlan } from "../domain";
 
 /* ───────────── Article Store ───────────── */
 

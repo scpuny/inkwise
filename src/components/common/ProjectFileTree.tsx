@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { ChevronRight, FileText, FolderClosed, FolderOpen } from "lucide-react";
-import type { FileNode } from "../../lib/storage/collections";
+import type { FileNode } from "../../domain";
 
 interface ProjectFileTreeProps {
   nodes: FileNode[];

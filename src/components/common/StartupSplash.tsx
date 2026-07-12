@@ -3,11 +3,11 @@ import { Sparkles, SquarePen, PenLine, ArrowRight, Check, Loader2, FileText, Che
 import { CustomSelect, type CustomSelectOption } from "../common/CustomSelect";
 import type { PlanInput, PlanStep, PartialPlan } from "../../lib/ai/plan";
 import { getAllBuiltinSkills, type WritingSkill, getAllSkills } from "../../lib/ai/writingSkill";
-import type { OutlineSection } from "../../lib/ai/article/blueprint";
+import type { OutlineSection } from "../../domain";
 import type { ToolEvent } from "../../lib/ai/agent/engine";
 import { markdownToHtml } from "../../lib/markdown/renderer";
 import { ProjectFileTree } from "../common/ProjectFileTree";
-import type { FileNode } from "../../lib/storage/collections";
+import type { FileNode } from "../../domain";
 
 const SUGGESTIONS = [
   "写一篇关于秋天午后的散文",

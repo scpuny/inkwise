@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, FileText, FolderOpen, Trash2, Edit3, X, Check, SquarePen, Download, Clipboard } from "lucide-react";
-import { loadCollections, renameArticle, trashArticle, type Collection, type Article } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
 import { useCollectionCrud } from "./useCollectionCrud";
-import { loadArticleContent } from "../../lib/storage/articles";
+import type { Collection, Article } from "../../domain";
 import { exportMarkdown, copyAsMarkdown, copyAsHtml, exportAsHtml } from "../../lib/editor/importExport";
 import { ContextMenu, type ContextMenuItem } from "../common/ContextMenu";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -25,6 +25,7 @@ export function DocPicker({
   activeCollectionId?: string | null;
 }) {
   const { collections, loadCols, handleAddCollection, handleRenameCollection, handleDeleteCollection } = useCollectionCrud();
+  const { renameArticle, trashArticle, loadArticleContent } = useCollection();
   const [selectedColId, setSelectedColId] = useState<string>("");
   const [editingColId, setEditingColId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -60,7 +61,7 @@ export function DocPicker({
         });
       }
     }
-  }, [selectedCol, open, articleStats]);
+  }, [selectedCol, open, articleStats, loadArticleContent]);
 
   // Create new collection
   const handleAddCollectionLocal = async () => {
@@ -119,7 +120,8 @@ export function DocPicker({
   // Trash article
   const handleTrashArticle = async (articleId: string) => {
     if (!selectedColId) return;
-    await trashArticle(selectedColId, articleId);
+    const art = selectedCol?.articles.find((a) => a.id === articleId);
+    await trashArticle(selectedColId, articleId, art?.title || "");
     await refreshCollections();
   };
 

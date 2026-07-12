@@ -13,7 +13,8 @@ import {
   MoonIcon, STYLE_LABELS, fontFamilyLabel, textSizeLabel, themeStyleDesc, themeStyleTag
 } from "./settingsHelpers";
 import { isTauriEnv, tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
-import { loadCollections, forceSync } from "../../lib/storage/collections";
+import { forceSync } from "../../lib/storage/collections";
+import { useCollection } from "../../hooks/useCollection";
 import { emit } from "../../lib/events/eventBus";
 
 export function GeneralSection({
@@ -25,6 +26,7 @@ export function GeneralSection({
   onSelectStyle: (s: ThemeStyle) => void; onSelectTheme: (t: Theme) => void;
   onSelectTextSize: (s: TextSize) => void; onSelectFontFamily: (f: FontFamily) => void;
 }) {
+  const { loadCollections } = useCollection();
   const [customFont, setCustomFont] = useState(getCustomFontName());
   const isCustom = currentFontFamily === "custom";
 
