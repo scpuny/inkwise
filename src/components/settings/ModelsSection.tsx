@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { emit } from "../../lib/events/eventBus";
 import { Check, ChevronDown, X } from "lucide-react";
-import { BUILTIN_PROVIDERS, defaultModels, inferCapabilities } from "../../lib/storage/providerModels";
+import { BUILTIN_PROVIDERS, defaultModels, inferCapabilities, type Provider, type ModelEntry } from "../../domain";
 import { useSettings } from "../../hooks/useSettings";
-import type { Provider, ModelEntry } from "../../domain";
 import { useDrawConfig } from "../../lib/stores/drawConfig";
 import { InlineConfirmButton } from "../common/InlineConfirmButton";
 import { tryInvoke, isTauriEnv, TauriCommands } from "../../lib/bridge/tauri";

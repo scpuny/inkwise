@@ -8,7 +8,7 @@ import {
   Save,
 } from "lucide-react";
 import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../domain";
-import { getPhaseLabel } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel } from "../../domain";
 
 interface ArticleHeaderProps {
   blueprint: ArticleBlueprint;

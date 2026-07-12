@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { X, ArrowRight, Lightbulb, FileText, Search, CheckCircle2 } from "lucide-react";
 import type { ArticlePhase } from "../../domain";
-import { getPhaseLabel } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel } from "../../domain";
 
 const GUIDE_KEY = "inkwise_phase_guide_shown";
 

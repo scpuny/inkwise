@@ -16,6 +16,7 @@ import {
   loadArticleDocument,
   saveArticleDocument,
   createDefaultDocument,
+  migrateArticleDocument,
 } from "../lib/storage/articleDocument";
 import { loadArticleContent, saveArticleContent } from "../lib/storage/articles";
 import {
@@ -234,5 +235,11 @@ export class TauriDocumentStore implements DocumentStore {
 
   getProvidersSync(): unknown[] {
     return oldGetProvidersSync() as unknown[];
+  }
+
+  // ── 数据迁移 ──
+
+  async migrateArticleDocument(id: string): Promise<ArticleDocument | null> {
+    return migrateArticleDocument(id);
   }
 }

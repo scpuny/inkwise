@@ -45,14 +45,15 @@
 - **Batch 1 增量迁移**：TrashDialog/ProjectPanel/GeneralSection/ProjectExplorer/DocPicker/useCollectionCrud → useCollection
 - **Batch 2-5 增量迁移**：appHooks/useArticleLifecycle/MainEditorPage/SeriesOverview/SeriesPlanner/EditorPane/ReviewPanel/ArticleFinalPage 等 20+ 文件迁移 + domain 类型补全（Publish.ts/Provider.ts）
 - **Batch 6（里程碑）**：storage/articles + storage/articleDocument 非桥接消费者清零；blueprint 类型引用全面清零
+- **Batch 7（基础设施）**：创建 SettingsStore 接口 + TauriSettingsStore + useSettings；迁移 7 个 settings/publish 消费者
 
 ### 旧存储引用剩余
-- `storage/collections` → 仅 TauriDocumentStore 桥接（桶引用已清零）
+- `storage/collections` → 仅 TauriDocumentStore 桥接（桶引用已清零 ✅）
 - `storage/articles.ts` → 仅 TauriDocumentStore 桥接（非桥接消费者清零 ✅）
 - `storage/articleDocument` → 仅 TauriDocumentStore 桥接 + 1 个 migrateArticleDocument
 - `lib/ai/article/blueprint` → 7 个文件（仅函数调用，类型已 domain 补全 ✅）
-- `storage/providerModels` → 4 个（仅函数调用，类型已 domain）
-- `storage/platforms` → 3 个（仅函数调用，类型已 domain）
+- `storage/providerModels` → 2 个（仅桥接 + ModelsSection 纯常量，类型已 domain ✅）
+- `storage/platforms` → 1 个（仅桥接，类型已 domain ✅）
 
 ### 新架构层次
 1. **domain/** — 纯数据类型（Document/Collection/Plan/Project/enums）

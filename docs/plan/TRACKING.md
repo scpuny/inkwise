@@ -487,14 +487,14 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - storage/platforms 类型引用精简
 - 验证：tsc 0 errors + vite build success
 
-**增量迁移 Batch 6 完成**（2026-07-12）：
-- **里程碑**：storage/articles + storage/articleDocument 非桥接消费者清零
-- domain/Document.ts：新增 DEFAULT_STYLE_CONFIG + createDefaultDocument
-- domain/Plan.ts：新增 ArticleBlueprint 类型
-- importExport.ts → TauriDocumentStore 实例替代 storage/articles 直接引用
-- 8 文件 type-only blueprint 导入切换至 domain：
-  - EditorCanvas/PlanPanel/PlanReview（纯类型）
-  - ArticleHeader/PhaseGuideDialog/BlueprintEditor/EditorPane/useArticleLifecycle/ArticleFinalPage（分离类型+函数）
-- lib/ai/plan.ts → OutlineSection 类型从 domain 导入
-- blueprint 类型引用清零（仅剩 7 函数引用）
+**增量迁移 Batch 7 完成**（2026-07-12）：
+- **新建 SettingsStore 基础设施**：SettingsStore 接口 + TauriSettingsStore 桥接 + useSettings hook
+- **迁移 7 个 settings/publish 消费者**：
+  - ModelsSection / AIBar / AgentProvider → useSettings（provider 函数）
+  - PlatformsSection / PublishDialog → useSettings（platform 函数）
+  - ArticleFinalPage → useSettings（publishArticle/addPublishRecord）
+  - globalAIConfig → TauriSettingsStore 实例（非组件文件）
+- **消费者大幅减少**：
+  - storage/providerModels: 4 → 2（TauriSettingsStore 桥接 + ModelsSection 纯常量）
+  - storage/platforms: 3 → 1（仅 TauriSettingsStore 桥接）
 - 验证：tsc 0 errors + vite build success

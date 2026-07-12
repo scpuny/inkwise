@@ -67,4 +67,7 @@ export interface DocumentStore {
 
   // ── 提供商配置 ──
   getProvidersSync(): unknown[];
+
+  // ── 数据迁移 ──
+  migrateArticleDocument(id: string): Promise<ArticleDocument | null>;
 }

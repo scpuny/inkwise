@@ -6,7 +6,7 @@ import {
   X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
 } from "lucide-react";
 import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../domain";
-import { getPhaseLabel, getPhaseNext, createDefaultBlueprint } from "../../lib/ai/article/blueprint";
+import { getPhaseLabel, getPhaseNext, createDefaultBlueprint } from "../../domain";
 import { PhaseGuideDialog, isPhaseGuideShown, markPhaseGuideShown } from "./PhaseGuideDialog";
 
 interface BlueprintEditorProps {

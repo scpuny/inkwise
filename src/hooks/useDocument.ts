@@ -106,10 +106,16 @@ export function useDocument(store = DEFAULT_STORE) {
     await store.saveArticleContent(articleId, content);
   }, [store]);
 
+  // ── 数据迁移 ──
+  const migrateArticleDocument = useCallback(async (id: string): Promise<ArticleDocument | null> => {
+    return store.migrateArticleDocument(id);
+  }, [store]);
+
   return {
     doc, loading, error,
     loadDocument, saveDocument, createDocument, deleteDocument, reset,
     loadBlueprint, saveBlueprint, saveVersionSnapshot, getProvidersSync,
     loadArticleContent, saveArticleContent,
+    migrateArticleDocument,
   };
 }
