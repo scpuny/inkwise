@@ -3,6 +3,7 @@
 
 import type {
   ArticleDocument,
+  ArticleBlueprint,
   Article,
   Collection,
   SeriesPlan,
@@ -59,8 +60,9 @@ export interface DocumentStore {
   // ── 内容加载（桥接旧模块） ──
   loadArticleContent(articleId: string): Promise<string | null>;
   saveArticleContent(articleId: string, content: string): Promise<void>;
-  loadBlueprint(articleId: string): Promise<unknown | null>;
-  saveBlueprint(articleId: string, blueprint: unknown): Promise<void>;
+  loadArticleMeta(articleId: string): Promise<{ id: string; collectionId: string; title: string; createdAt: number; updatedAt: number } | null>;
+  loadBlueprint(articleId: string): Promise<ArticleBlueprint | null>;
+  saveBlueprint(articleId: string, blueprint: ArticleBlueprint): Promise<void>;
 
   // ── 版本快照 ──
   saveVersionSnapshot(articleId: string, content: string): Promise<void>;

@@ -1,5 +1,4 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { loadBlueprint, saveBlueprint } from "../../lib/ai/article/blueprint";
 import type { ArticleBlueprint } from "../../domain";
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
@@ -28,8 +27,8 @@ export function ArticleFinalPage({
   onBackToEdit,
   genId,
 }: ArticleFinalPageProps) {
-  const { addPublishRecord, publishArticle } = useSettings();
-  const { loadDocument: loadArticleDocument, saveDocument: saveArticleDocument, loadArticleContent } = useDocument();
+  const { addPublishRecord, publishArticle, getPublishHistory } = useSettings();
+  const { loadDocument: loadArticleDocument, saveDocument: saveArticleDocument, loadArticleContent, loadArticleMeta, loadBlueprint, saveBlueprint } = useDocument();
   const [markdown, setMarkdown] = useState("");
   const [blueprint, setBlueprint] = useState<ArticleBlueprint | null>(null);
   const [publishRecords, setPublishRecords] = useState<PublishRecord[]>([]);
@@ -116,10 +115,10 @@ export function ArticleFinalPage({
       } else {
         // Fallback: load from old storage
         const [meta, content, bp, records] = await Promise.all([
-          import("../../lib/storage/articles").then(m => m.loadArticleMeta(articleId)),
-          import("../../lib/storage/articles").then(m => m.loadArticleContent(articleId)),
-          import("../../lib/ai/article/blueprint").then(m => m.loadBlueprint(articleId)),
-          import("../../lib/storage/platforms").then(m => m.getPublishHistory(articleId)),
+          loadArticleMeta(articleId),
+          loadArticleContent(articleId),
+          loadBlueprint(articleId),
+          getPublishHistory(articleId),
         ]);
         if (cancelled) return;
         if (meta) {

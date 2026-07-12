@@ -3,7 +3,7 @@
 // 通过 DocumentStore 接口访问存储，不依赖具体实现
 
 import { useState, useCallback } from "react";
-import type { ArticleDocument } from "../domain";
+import type { ArticleDocument, ArticleBlueprint } from "../domain";
 import { TauriDocumentStore } from "../infrastructure/TauriDocumentStore";
 import { genId } from "../lib/storage/collections/crud";
 
@@ -79,11 +79,11 @@ export function useDocument(store = DEFAULT_STORE) {
   }, []);
 
   // ── 蓝图操作（桥接旧模块） ──
-  const loadBlueprint = useCallback(async (articleId: string): Promise<unknown | null> => {
+  const loadBlueprint = useCallback(async (articleId: string): Promise<ArticleBlueprint | null> => {
     return store.loadBlueprint(articleId);
   }, [store]);
 
-  const saveBlueprint = useCallback(async (articleId: string, blueprint: unknown) => {
+  const saveBlueprint = useCallback(async (articleId: string, blueprint: ArticleBlueprint) => {
     await store.saveBlueprint(articleId, blueprint);
   }, [store]);
 
@@ -102,6 +102,10 @@ export function useDocument(store = DEFAULT_STORE) {
     return store.loadArticleContent(articleId);
   }, [store]);
 
+  const loadArticleMeta = useCallback(async (articleId: string): Promise<{ id: string; collectionId: string; title: string; createdAt: number; updatedAt: number } | null> => {
+    return store.loadArticleMeta(articleId);
+  }, [store]);
+
   const saveArticleContent = useCallback(async (articleId: string, content: string) => {
     await store.saveArticleContent(articleId, content);
   }, [store]);
@@ -115,7 +119,7 @@ export function useDocument(store = DEFAULT_STORE) {
     doc, loading, error,
     loadDocument, saveDocument, createDocument, deleteDocument, reset,
     loadBlueprint, saveBlueprint, saveVersionSnapshot, getProvidersSync,
-    loadArticleContent, saveArticleContent,
+    loadArticleContent, loadArticleMeta, saveArticleContent,
     migrateArticleDocument,
   };
 }

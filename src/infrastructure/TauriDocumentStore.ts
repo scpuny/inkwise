@@ -3,6 +3,7 @@
 
 import type {
   ArticleDocument,
+  ArticleBlueprint,
   Article,
   Collection,
   SeriesPlan,
@@ -18,7 +19,7 @@ import {
   createDefaultDocument,
   migrateArticleDocument,
 } from "../lib/storage/articleDocument";
-import { loadArticleContent, saveArticleContent } from "../lib/storage/articles";
+import { loadArticleContent, saveArticleContent, loadArticleMeta } from "../lib/storage/articles";
 import {
   loadCollections,
   saveCollections,
@@ -221,11 +222,15 @@ export class TauriDocumentStore implements DocumentStore {
     await saveArticleContent(articleId, content);
   }
 
-  async loadBlueprint(articleId: string): Promise<unknown | null> {
-    return oldLoadBlueprint(articleId);
+  async loadArticleMeta(articleId: string): Promise<{ id: string; collectionId: string; title: string; createdAt: number; updatedAt: number } | null> {
+    return loadArticleMeta(articleId);
   }
 
-  async saveBlueprint(articleId: string, blueprint: unknown): Promise<void> {
+  async loadBlueprint(articleId: string): Promise<ArticleBlueprint | null> {
+    return oldLoadBlueprint(articleId) as Promise<ArticleBlueprint | null>;
+  }
+
+  async saveBlueprint(articleId: string, blueprint: ArticleBlueprint): Promise<void> {
     await oldSaveBlueprint(articleId, blueprint as any);
   }
 

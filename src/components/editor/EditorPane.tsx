@@ -4,7 +4,6 @@ import { useAgent } from "../../lib/ai/agent";
 import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/skill/styles";
 import type { ArticleBlueprint, ArticlePhase, OutlineSection } from "../../domain";
 import { buildBlueprintContext, createDefaultBlueprint } from "../../domain";
-import { loadBlueprint, saveBlueprint } from "../../lib/ai/article/blueprint";
 import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, generatePlanStage2, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
@@ -107,6 +106,7 @@ export function EditorPane({
     loadArticleContent, saveArticleContent,
     getProvidersSync,
     migrateArticleDocument,
+    loadBlueprint, saveBlueprint,
   } = useDocument();
   const { loadCollections } = useCollection();
   // ───────────────────────────
