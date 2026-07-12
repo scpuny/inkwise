@@ -3,8 +3,8 @@ import { loadBlueprint, saveBlueprint, type ArticleBlueprint } from "../../lib/a
 import { compileToInlinedHtml, compileToWechatHtml } from "../../lib/editor/compileHtml";
 import { copyAsHtml, copyAsWechatHtml } from "../../lib/editor/importExport";
 import { on } from "../../lib/events/eventBus";
-import { addPublishRecord, publishArticle, type PublishOptions, type PublishResult } from "../../lib/storage/platforms";
-import type { PublishRecord } from "../../lib/storage/articleDocument";
+import { addPublishRecord, publishArticle } from "../../lib/storage/platforms";
+import type { PublishOptions, PublishResult, PublishRecord } from "../../domain";
 import { collectPublishCss } from "../../lib/styles/collector";
 import { PublishDialog } from "../collections/PublishDialog";
 import { ArticleCtx } from "../../lib/article/ArticleContext";

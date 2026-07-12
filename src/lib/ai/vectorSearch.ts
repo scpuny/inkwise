@@ -8,7 +8,7 @@
 //   const results = await semanticSearch("我的搜索词");
 
 import { TauriCommands, tryInvoke, isTauriEnv } from "../bridge/tauri";
-import type { SearchResult } from "../storage/collections/types";
+import type { SearchResult } from "../../domain";
 
 export { type SearchResult };
 

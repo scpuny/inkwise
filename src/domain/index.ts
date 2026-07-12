@@ -3,6 +3,8 @@ export * from "./Document";
 export * from "./Collection";
 export * from "./Plan";
 export * from "./Project";
+export * from "./Publish";
+export * from "./Provider";
 // enums.ts 单独导出（避免 PlanStep 冲突等）
 export {
   DocumentPhase,

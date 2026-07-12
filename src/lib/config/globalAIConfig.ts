@@ -4,7 +4,8 @@
 
 import { StorageEngine } from "../storage/storageEngine";
 import { isTauriEnv, tryInvoke } from "../bridge/tauri";
-import { getProvidersSync, type Provider } from "../storage/providerModels";
+import { getProvidersSync } from "../storage/providerModels";
+import type { Provider } from "../../domain";
 import { emit } from "../events/eventBus";
 
 const CACHE_KEY = "ai-config";

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { tryInvoke, TauriCommands } from "../../lib/bridge/tauri";
 import { getPlatformConfigs, savePlatformConfig, deletePlatformConfig, verifyPlatformCredentials } from "../../lib/storage/platforms";
-import type { PlatformConfig } from "../../lib/storage/platforms";
+import type { PlatformConfig } from "../../domain";
 import { SettingsPage } from "./SettingsPageLayout";
 
 /* ════════════════════════════════════════════════

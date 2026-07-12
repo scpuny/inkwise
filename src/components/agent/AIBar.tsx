@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emit, on } from "../../lib/events/eventBus";
-import { getProvidersSync, getImageModelsSync, type ModelEntry } from "../../lib/storage/providerModels";
+import { getProvidersSync, getImageModelsSync } from "../../lib/storage/providerModels";
+import type { ModelEntry } from "../../domain";
 import { listSkills, type Skill } from "../../lib/storage/skill";
 import { saveDefaultModel } from "../../lib/config/globalAIConfig";
 import { PopoverMenu, type MenuItem } from "../common/PopoverMenu";

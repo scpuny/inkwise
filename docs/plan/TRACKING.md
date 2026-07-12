@@ -429,7 +429,7 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 
 | # | 旧文件 | 消费者 | 新替代 | 计划 Phase | 状态 |
 |---|--------|--------|--------|-----------|------|
-| 1 | `storage/collections` | ~10 个文件（-15） | `services/CollectionService` | Phase 2 | 🟡 部分完成 |
+| 1 | `storage/collections` | **~1**（仅 TauriDocumentStore 桥接，其余均为子模块导入） | `services/CollectionService` | Phase 2 | 🟢 桶引用清零 |
 | 2 | `storage/articles.ts` | ~2 个文件（仅 TauriDocumentStore 桥接 + importExport 工具） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
 | 3 | `storage/providerModels` | ~6 个文件 | `infrastructure/AIProvider` | Phase 2 | 🔴 |
 | 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 | 🔴 |
@@ -461,4 +461,13 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - storage/collections 消费者: ~13 → ~10（-3）
 - storage/articles: ~5 → 2（仅桥接 + 工具文件）
 - providerModels: 7 → 6（EditorPane 移除）
+- 验证：tsc 0 errors + vite build success
+
+**增量迁移 Batch 4 完成**（2026-07-12）：
+- **里程碑**：storage/collections 桶引用从 ~10 → **1**（仅 TauriDocumentStore 桥接）
+- CollectionFormModal → 类型 domain + 函数从 projectContext 子模块
+- lib/utils/projectContext → 类型 domain + 函数从 projectContext 子模块
+- GeneralSection/ProjectExplorer/EditorPane/SeriesPlanner → 子模块导入
+- main.tsx/importExport → seedIfEmpty/addArticle 从 crud 子模块
+- PublishStatusPanel / FinalSidePanel → PublishRecord + OutlineSection 类型从 domain
 - 验证：tsc 0 errors + vite build success

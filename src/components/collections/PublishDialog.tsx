@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { getPlatformConfigs } from "../../lib/storage/platforms";
 import { CustomSelect } from "../common/CustomSelect";
 import { getWordCount } from "../../lib/utils/text";
-import type { PlatformConfig, PublishOptions, PublishResult } from "../../lib/storage/platforms";
+import type { PlatformConfig, PublishOptions, PublishResult } from "../../domain";
 
 interface PublishDialogProps {
   articleTitle: string;
