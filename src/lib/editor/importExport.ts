@@ -2,8 +2,15 @@
 
 import { isTauriEnv, tryInvoke } from "../bridge/tauri";
 import { addArticle } from "../storage/collections/crud";
-import { saveArticleContent, loadArticleContent } from "../storage/articles";
 import { compileToWechatHtml } from "./compileHtml";
+
+// Use TauriDocumentStore bridge instead of direct storage/articles import.
+// This keeps importExport.ts as a consumer-free utility while the old storage files
+// get cleaned up in Phase 6.
+import { TauriDocumentStore } from "../../infrastructure/TauriDocumentStore";
+const __store = new TauriDocumentStore();
+const saveArticleContent = (id: string, content: string) => __store.saveArticleContent(id, content);
+const loadArticleContent = (id: string) => __store.loadArticleContent(id);
 
 export interface ImportResult {
   success: boolean;

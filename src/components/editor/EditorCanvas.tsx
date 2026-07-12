@@ -6,7 +6,7 @@ import { ArticleHeader } from "./ArticleHeader";
 import { InlineToolbar } from "./InlineToolbar";
 import { AICommandBar } from "../agent/AICommandBar";
 import { EditorSaveIndicator, type SaveState } from "./EditorSaveIndicator";
-import type { ArticleBlueprint } from "../../lib/ai/article/blueprint";
+import type { ArticleBlueprint } from "../../domain";
 import type { BlueprintOutlineItem } from "../sidebar/OutlinePanel";
 import { Toolbar } from "./Toolbar";
 

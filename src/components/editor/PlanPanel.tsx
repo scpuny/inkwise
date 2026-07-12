@@ -3,8 +3,7 @@
 // 替代 EditorPane 中直接渲染 StartupSplash 的三处代码
 
 import { StartupSplash } from "../common/StartupSplash";
-import type { ArticleBlueprint } from "../../lib/ai/article/blueprint";
-import type { OutlineSection } from "../../lib/ai/article/blueprint";
+import type { ArticleBlueprint, OutlineSection } from "../../domain";
 import type { PlanInput, PartialPlan, PlanStep } from "../../lib/ai/plan";
 import type { FileNode } from "../../domain";
 import type { ToolEvent } from "../../lib/ai/agent/engine";

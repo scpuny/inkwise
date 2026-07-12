@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useCollection } from "./useCollection";
 import { useDocument } from "./useDocument";
-import { createDefaultBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
+import { createDefaultBlueprint } from "../lib/ai/article/blueprint";
+import type { OutlineSection } from "../domain";
 import { useAgent } from "../lib/ai/agent";
 import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
 import { ArticleContext } from "../lib/article/ArticleContext";

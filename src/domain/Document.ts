@@ -90,3 +90,48 @@ export interface ArticleDocument {
   createdAt: number;
   updatedAt: number;
 }
+
+/* ─── 默认值 ─── */
+
+export const DEFAULT_STYLE_CONFIG: ArticleStyleConfig = {
+  editorStyleTemplateId: "default",
+  lineHeight: 1.75,
+  editorFontSize: 15,
+  editorMaxWidth: 820,
+  editorParagraphGap: 1.25,
+  editorFontFamily: "",
+  codeThemeId: "atom-one-light",
+  macosCodeBlock: false,
+  firstLineIndent: false,
+  justifyAlign: false,
+  headingConfig: {},
+  bgPattern: "",
+  accentColor: "",
+  captionFormat: "",
+  customCSS: "",
+  articleThemeId: "clean",
+};
+
+export function createDefaultDocument(
+  id: string,
+  title: string,
+  overrides?: Partial<ArticleDocument>,
+): ArticleDocument {
+  const now = Date.now();
+  return {
+    id,
+    title,
+    content: "",
+    styleId: "general",
+    actionId: "action-write",
+    phase: "planning",
+    outline: [],
+    tags: [],
+    styleConfig: { ...DEFAULT_STYLE_CONFIG },
+    publishRecords: [],
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}

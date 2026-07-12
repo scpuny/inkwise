@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   X, Plus, Trash2, GripVertical, ChevronUp, ChevronDown,
 } from "lucide-react";
-import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../lib/ai/article/blueprint";
+import type { ArticleBlueprint, OutlineSection, ArticlePhase } from "../../domain";
 import { getPhaseLabel, getPhaseNext, createDefaultBlueprint } from "../../lib/ai/article/blueprint";
 import { PhaseGuideDialog, isPhaseGuideShown, markPhaseGuideShown } from "./PhaseGuideDialog";
 

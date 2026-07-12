@@ -431,7 +431,7 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 |---|--------|--------|--------|-----------|------|
 | 1 | `storage/collections` | **~1**（仅 TauriDocumentStore 桥接，其余均为子模块导入） | `services/CollectionService` | Phase 2 | 🟢 桶引用清零 |
 | 2 | `storage/articles.ts` | ~2 个文件（仅 TauriDocumentStore 桥接 + importExport 工具） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
-| 3 | `storage/providerModels` | ~6 个文件 | `infrastructure/AIProvider` | Phase 2 | 🔴 |
+| 3 | `storage/providerModels` | ~1（仅 TauriDocumentStore 桥接） | `infrastructure/AIProvider` | Phase 2 | 🟢 类型已迁移 domain |
 | 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 | 🔴 |
 | 5 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
 | 6 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
@@ -470,4 +470,18 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - GeneralSection/ProjectExplorer/EditorPane/SeriesPlanner → 子模块导入
 - main.tsx/importExport → seedIfEmpty/addArticle 从 crud 子模块
 - PublishStatusPanel / FinalSidePanel → PublishRecord + OutlineSection 类型从 domain
+- 验证：tsc 0 errors + vite build success
+
+**增量迁移 Batch 5 完成**（2026-07-12）：
+- 新增 domain 类型文件：Publish.ts（PlatformConfig/PublishOptions/PublishResult）+ Provider.ts（Provider/ModelEntry/ProviderKind/ImageModelConfig）
+- 批量迁移 6 文件类型导入至 domain：
+  - ModelsSection → Provider/ModelEntry
+  - PlatformsSection → PlatformConfig
+  - AIBar → ModelEntry
+  - PublishDialog → PlatformConfig/PublishOptions/PublishResult
+  - ArticleFinalPage → PublishOptions/PublishResult/PublishRecord
+  - globalAIConfig → Provider
+- storage/providerModels 类型引用精简
+- storage/platforms 类型引用精简
+- 验证：tsc 0 errors + vite build success
 - 验证：tsc 0 errors + vite build success

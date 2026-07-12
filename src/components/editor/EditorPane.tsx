@@ -2,20 +2,14 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChatStream } from "../../hooks/useChatStream";
 import { useAgent } from "../../lib/ai/agent";
 import { getStyle, getAction, migrateSkillIdToStyleId } from "../../lib/ai/skill/styles";
-import {
-  ArticleBlueprint,
-  buildBlueprintContext,
-  createDefaultBlueprint,
-  loadBlueprint,
-  saveBlueprint,
-  type ArticlePhase,
-  type OutlineSection,
-} from "../../lib/ai/article/blueprint";
+import type { ArticleBlueprint, ArticlePhase, OutlineSection } from "../../domain";
+import { buildBlueprintContext, createDefaultBlueprint, loadBlueprint, saveBlueprint } from "../../lib/ai/article/blueprint";
 import { generateFullArticleStream, generateFullArticleWithTools, generatePlanStream, generatePlanStage2, writeArticleSection, type ArticleGenInput, type PartialPlan, type PlanInput, type PlanStep } from "../../lib/ai/plan";
 import { addHeadingNumbers, getSelectedTemplateId, getTemplate, setSelectedTemplateId } from "../../lib/editor/editorStyles";
 import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
-import { migrateArticleDocument, createDefaultDocument, DEFAULT_STYLE_CONFIG } from "../../lib/storage/articleDocument";
+import { migrateArticleDocument } from "../../lib/storage/articleDocument";
+import { DEFAULT_STYLE_CONFIG, createDefaultDocument } from "../../domain";
 import { getProjectContext } from "../../lib/storage/collections/projectContext";
 import { StartupSplash } from "../common/StartupSplash";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";

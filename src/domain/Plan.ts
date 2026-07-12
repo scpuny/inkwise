@@ -1,6 +1,6 @@
 // ─── AI 规划领域类型 ───
 // 纯数据定义，不含业务逻辑
-import type { OutlineSection } from "./Document";
+import type { ArticlePhase, OutlineSection } from "./Document";
 
 export interface PartialPlan {
   title: string;
@@ -14,6 +14,25 @@ export interface PartialPlan {
   styleId?: string;
   actionId?: string;
   projectInsights?: string;
+}
+
+/** 文章蓝图 — 规划时的结构化元数据 + 大纲 */
+export interface ArticleBlueprint {
+  workingTitle: string;
+  description: string;
+  targetWordCount?: number;
+  tone?: string;
+  targetAudience?: string;
+  coverImage?: string;
+  phase: ArticlePhase;
+  tags: string[];
+  outline: OutlineSection[];
+  skillId?: string;
+  /** 写作风格 ID（v2.0.0 新增，替代 skillId） */
+  styleId?: string;
+  /** 写作动作 ID（v2.0.0 新增） */
+  actionId?: string;
+  updatedAt: number;
 }
 
 export interface PlanInput {

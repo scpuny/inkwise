@@ -5,7 +5,7 @@ import { resolveProviderForModel } from "../config/globalAIConfig";
 import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agent/engine";
 import { isTauriEnv } from "../bridge/tauri";
 import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
-import type { OutlineSection } from "./article/blueprint";
+import type { OutlineSection } from "../../domain";
 
 // ─── Types ───
 
