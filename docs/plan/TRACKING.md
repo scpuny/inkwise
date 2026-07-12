@@ -1,5 +1,5 @@
-# InkWise v2.0.0 · 功能开发跟踪表
-> 最后更新: 2026-07-10 | 分支: `main` | 状态: 🟡 Sprint 5 进行中
+# InkWise · v3.0 功能跟踪表
+> 最后更新: 2026-07-12 | 分支: `codex/v3.0-s6` → `main` | 状态: 🟢 v3.0 架构迁移完成
 
 ---
 
@@ -423,20 +423,22 @@
 | **Sprint 8 功能** | **6** | **6** | **0** | **100%** |
 | **总计** | **151** | **147** | **4** | **97%** |
 
-## 未完成旧代码迁移
+## 旧代码迁移完成 ✅
 
-v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migration-plan.md](20-migration-plan.md)。
+v3.0 全量功能迁移已完成。详见 [20-migration-plan.md](20-migration-plan.md)。
 
 | # | 旧文件 | 非桥接消费者 | 新替代 | 计划 Phase | 状态 |
 |---|--------|-------------|--------|-----------|------|
 | 1 | `storage/collections` | **0**（仅 TauriDocumentStore 桥接） | `services/CollectionService` | Phase 2 | 🟢 清零 ✅ |
 | 2 | `storage/articles.ts` | **0**（仅 TauriDocumentStore 桥接） | `services/DocumentService` | Phase 3 | 🟢 清零 ✅ |
 | 3 | `storage/providerModels` | **0**（仅 TauriSettingsStore 桥接） | `infrastructure/AIProvider` | Phase 6 | 🟢 清零 ✅ |
-| 4 | `lib/ai/article/blueprint` | **2**（loadBlueprint/saveBlueprint 存储函数） | `domain/Plan` + `services/PlanService` | Phase 6 | 🟢 类型+工具函数已迁移 |
+| 4 | `lib/ai/article/blueprint` | **0**（仅 TauriDocumentStore 桥接） | `domain/Plan` + `services/PlanService` | Phase 6 | 🟢 清零 ✅ |
 | 5 | `storage/articleDocument` | **0**（仅 TauriDocumentStore 桥接） | `domain/Document` | Phase 6 | 🟢 清零 ✅ |
 | 6 | `storage/platforms` | **0**（仅 TauriSettingsStore 桥接） | `domain/Publish` | Phase 6 | 🟢 清零 ✅ |
 | 7 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
 | 8 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
+
+> **注**：旧存储文件仍被桥接层（TauriDocumentStore/TauriSettingsStore）引用，作为底层实现。待 SQLite 全面迁移时自然淘汰。
 
 **Phase 2-5 完成**：见下方详细记录
 
@@ -492,4 +494,10 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 - **ModelsSection 纯常量迁移**：BUILTIN_PROVIDERS / defaultModels / inferCapabilities → domain/Provider.ts
 - **蓝图工具函数迁移**：createDefaultBlueprint / getPhaseLabel / getPhaseNext / buildBlueprintContext → domain/Plan.ts
 - **当前状态**：所有 6 个旧存储模块的非桥接消费者全为 0 ✅ 仅剩藍图 2 个存储函数（已桥接）
+- 验证：tsc 0 errors + vite build success
+
+**Phase 6 完成**（2026-07-12）：**全量功能迁移完成** 🏆
+- **蓝图存储函数桥接**：DocumentStore 接口类型增强（unknown → ArticleBlueprint），EditorPane + ArticleFinalPage 改用 useDocument
+- **ArticleFinalPage fallback 重构**：所有 4 个动态 import() 替换为 hook 直接调用
+- **最终状态**：所有旧存储文件仅被桥接层引用，零非桥接消费者
 - 验证：tsc 0 errors + vite build success

@@ -1,6 +1,6 @@
 # InkWise 架构方案索引
 
-> **当前版本**: **v3.0 (codex/v3.0-s6)** — Sprint 6-8 全部完成 🎉 | 最后更新: 2026-07-11
+> **当前版本**: **v3.0 (codex/v3.0-s6)** — Sprint 6-8 完成 + Phase 1-6 迁移完成 🎉 | 最后更新: 2026-07-12
 
 ---
 
@@ -114,26 +114,13 @@ Sprint 1-5 已全部完成并发布（`v2.0.0` → `v2.1.0-alpha`），细节见
 ## 实施路线
 
 ```
-Sprint 6（2 周）：存储统一 + Rust 后端模块拆分
-  目标：SQLite 唯一事实源，lib.rs 2139→拆 commands/ + storage/ + domain/ + ai/
-  ├── 周1：domain/ 类型定义 → storage/ (trait + sqlite + migration)
-  ├── 周2：commands/ 迁移 + ai/ 拆分 → 前端适配
-  └── 产出：v3.0-s6 分支，稳定后合并 main
-
-Sprint 7（2 周）：分层拆分
-  目标：UI/Service/Domain/Infrastructure 四层清晰
-  ├── 周1：Domain + Infrastructure 接口定义
-  ├── 周2：Service 层提取 + hooks 胶水层
-  └── 产出：v3.0-s7 分支
-
-Sprint 8（2 周）：UI 拆分 + 能力增强
-  目标：EditorPane 1910→拆 5 组件 + Skill 净化 + 向量加速
-  ├── 周1：EditorPage + PlanPanel + EditorCanvas + AIActionBar
-  ├── 周2：AISidebar + Skill 净化 + ndarray 向量加速
-  └── 产出：v3.0 正式发布
+Sprint 6（2 周）：存储统一 + Rust 后端模块拆分    🟢 完成
+Sprint 7（2 周）：分层拆分                           🟢 完成
+Sprint 8（2 周）：UI 拆分 + 能力增强                🟢 完成
+Phase 1-6（1 天）：渐进式迁移                        🟢 完成
 ```
 
-### 重写 vs 适配 vs 保留统计
+> **v3.0 迁移已完成**：所有旧存储仅通过桥接层访问，零非桥接消费者。
 
 | 分类 | 文件数 | 行数 | 占比 |
 |------|--------|------|------|

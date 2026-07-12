@@ -46,21 +46,21 @@
 - **Batch 2-5 增量迁移**：appHooks/useArticleLifecycle/MainEditorPage/SeriesOverview/SeriesPlanner/EditorPane/ReviewPanel/ArticleFinalPage 等 20+ 文件迁移 + domain 类型补全（Publish.ts/Provider.ts）
 - **Batch 6（里程碑）**：storage/articles + storage/articleDocument 非桥接消费者清零；blueprint 类型引用全面清零
 - **Batch 7（基础设施）**：创建 SettingsStore 接口 + TauriSettingsStore + useSettings；迁移 7 个 settings/publish 消费者
-- **Batch 8（里程碑）**：旧存储非桥接消费者全面清零 — migrateArticleDocument 内联 / ModelsSection 常量迁移 / 蓝图工具函数迁移到 domain
+- **Phase 6（全量迁移完成）**：蓝图存储函数桥接 + ArticleFinalPage fallback 重构 — 零非桥接消费者 🏆
 
 ### 旧存储引用剩余
-- `storage/collections` → 仅 TauriDocumentStore 桥接（桶引用已清零 ✅）
-- `storage/articles.ts` → 仅 TauriDocumentStore 桥接（非桥接消费者清零 ✅）
-- `storage/articleDocument` → 仅 TauriDocumentStore 桥接（非桥接消费者清零 ✅）
-- `lib/ai/article/blueprint` → 2 个存储函数（loadBlueprint/saveBlueprint，已桥接 ✅）
-- `storage/providerModels` → 仅 TauriSettingsStore 桥接（非桥接消费者清零 ✅）
-- `storage/platforms` → 仅 TauriSettingsStore 桥接（非桥接消费者清零 ✅）
+- `storage/collections` → 仅 TauriDocumentStore 桥接 ✅
+- `storage/articles.ts` → 仅 TauriDocumentStore 桥接 ✅
+- `storage/articleDocument` → 仅 TauriDocumentStore 桥接 ✅
+- `lib/ai/article/blueprint` → 仅 TauriDocumentStore 桥接 ✅（类型+工具函数已 domain）
+- `storage/providerModels` → 仅 TauriSettingsStore + TauriDocumentStore 桥接 ✅
+- `storage/platforms` → 仅 TauriSettingsStore 桥接 ✅
 
 ### 新架构层次
-1. **domain/** — 纯数据类型（Document/Collection/Plan/Project/enums）
-2. **infrastructure/** — 接口定义（DocumentStore/AIProvider/EventBus）+ Tauri 实现
-3. **services/** — 业务编排（DocumentService/CollectionService/PlanService/PhaseConfigService）
-4. **hooks/** — React 胶水层（useDocument/useCollection/usePlan）
+1. **domain/** — 纯数据类型（Document/Collection/Plan/Project/enums/Publish/Provider）
+2. **infrastructure/** — 接口定义（DocumentStore/AIProvider/SettingsStore/EventBus）+ Tauri 桥接实现
+3. **services/** — 业务编排（DocumentService/CollectionService/PlanService/SettingsService）
+4. **hooks/** — React 胶水层（useDocument/useCollection/usePlan/useSettings）
 
 ### 迁移策略
 - 触碰原则（Touch Rule）：改到哪个文件就顺手切到新架构
