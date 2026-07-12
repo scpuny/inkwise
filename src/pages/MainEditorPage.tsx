@@ -16,9 +16,10 @@ import { TrashDialog } from "../components/common/TrashDialog";
 import { UpdateDialog } from "../components/common/UpdateDialog";
 import { SeriesPlanner } from "../components/series/SeriesPlanner";
 import { ArticleFinalPage } from "../components/editor/ArticleFinalPage";
-import { genId, loadCollections, addCollection, addArticle,
-  saveSeriesPlan, type SeriesPlan } from "../lib/storage/collections";
-import { loadBlueprint } from "../lib/ai/article/blueprint";
+import { useCollection } from "../hooks/useCollection";
+import type { SeriesPlan } from "../domain";
+import { useDocument } from "../hooks/useDocument";
+import { genId } from "../lib/storage/collections/crud";
 import { useAgent } from "../lib/ai/agent";
 import { useThemeHandlers, useSeriesEventListeners } from "../hooks/appHooks";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -34,6 +35,9 @@ import { useArticleStore } from "../store/articleStore";
 import type { MainRoute } from "../store/panelStore";
 
 export default function MainEditorPage() {
+  const { loadCollections, createCollection, addArticle, saveSeriesPlan } = useCollection();
+  const { loadBlueprint } = useDocument();
+
   // ── Theme store ──
   const themeStyle = useThemeStore((s) => s.themeStyle);
   const themeMode = useThemeStore((s) => s.themeMode);
@@ -244,7 +248,7 @@ export default function MainEditorPage() {
                 activeCollectionId={activeCollectionId}
                 onNewDoc={async (collectionId?: string) => {
                   const cols = await loadCollections();
-                  const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id);
+                  const targetId = collectionId || (cols.length > 0 ? cols[0].id : (await createCollection("默认合集")).id);
                   const article = await addArticle(targetId, "无标题");
                   if (article) {
                     setActiveArticleId(article.id);
@@ -307,7 +311,7 @@ export default function MainEditorPage() {
                 break;
               }
             }
-            const bp = await loadBlueprint(id);
+            const bp = await loadBlueprint(id) as { phase?: string } | null;
             setShowFinalPage(bp?.phase === "complete");
             navigateTo('editor');
           }}

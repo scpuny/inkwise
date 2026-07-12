@@ -429,24 +429,23 @@ v3.0 新架构代码已就位，但旧代码仍在使用中。详见 [20-migrati
 
 | # | 旧文件 | 消费者 | 新替代 | 计划 Phase | 状态 |
 |---|--------|--------|--------|-----------|------|
-| 1 | `storage/collections` | ~19 个文件（-6） | `services/CollectionService` | Phase 2 | 🟡 部分完成 |
-| 2 | `storage/articles.ts` | ~7 个文件（-3） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
+| 1 | `storage/collections` | ~14 个文件（-11） | `services/CollectionService` | Phase 2 | 🟡 部分完成 |
+| 2 | `storage/articles.ts` | ~6 个文件（-4） | `services/DocumentService` | Phase 3 | 🟡 部分完成 |
 | 3 | `storage/providerModels` | 8 个文件 | `infrastructure/AIProvider` | Phase 2 | 🔴 |
 | 4 | `lib/ai/article/blueprint` | 15 个文件 | `domain/Plan` + `services/PlanService` | Phase 3 | 🔴 |
 | 5 | `store.rs` (DataStore) | 102 处 → 0 处（仅 app_storage.rs 使用） | `storage/AppStorage` | Phase 5 | 🟢 已完成 |
 | 6 | `db.rs` (Database) | 25 处 `db::` 引用（仍被 5 个文件引用） | `storage/AppStorage` | Phase 5 | 🟡 AppStorage 已封装 |
 
-**Phase 2 完成**：Sidebar / CollectionTree / SearchPanel 已迁移到 useCollection
-**Phase 3 完成**：EditorPane / ArticleFinalPage 已迁移到 useDocument + useCollection（6 个旧存储导入替换为 hooks）
-**Phase 4 完成**：ArticleManager / ArticleFinalPage（剩余）已迁移到 useCollection + useDocument
-- `storage/collections` 消费者减少 3
-- `storage/articles.ts` 消费者减少 1
-- 基础设施层扩展：CollectionService +1 方法，useCollection +1 方法
-- 组件迁移：ArticleManager.tsx 全部 5 处旧导入替换；ArticleFinalPage.tsx loadArticleContent 替换
+**Phase 2-5 完成**：见下方详细记录
 
-**Phase 5 完成**：Rust 后端统一存储
-- 新增 `storage/app_storage.rs`（~300 行）统一包装 DataStore + Database
-- AppState 从 5 字段精简为 4（移除 store + db，合并为 storage）
+**增量迁移 Batch 1 完成**（2026-07-12）：
+- TrashDialog / ProjectPanel / GeneralSection / ProjectExplorer → useCollection hook
+- StartupSplash / ProjectFileTree / articleStore → domain 类型导入
+- useCollectionCrud 完全重写 → 使用 useCollection 替代旧 storage/collections
+- DocPicker → useCollection（renameArticle/trashArticle/loadArticleContent）+ 新 useCollectionCrud
+- `storage/collections` 消费者减少 ~5（TrashDialog, ProjectPanel, GeneralSection, ProjectExplorer, useCollectionCrud→DocPicker）
+- `storage/articles.ts` 消费者减少 ~1（DocPicker）
+- 验证：`tsc --noEmit` 0 errors + `vite build` success
 - lib.rs 中 75+ `store.` + 15+ `db.` 引用清零 → `state.storage.xxx()`
 - commands/ 子模块 ~20 处 `state.db.`/`state.store.` 引用清零
 - ai/mod.rs 中 resolve_provider 签名从 `&Mutex<DataStore>` 改为 `&AppStorage`

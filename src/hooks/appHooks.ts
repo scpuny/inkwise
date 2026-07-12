@@ -2,12 +2,8 @@
 // 替代 App.tsx 中的 useEffect / useCallback 块
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadCollections, addCollection, addArticle, renameArticle, genId,
-  linkCollectionFolder, unlinkCollectionFolder, saveSeriesPlan, loadSeriesPlan, loadAllSeriesPlans,
-  type SeriesPlan,
-} from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type ArticleBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
-import { saveArticleContent } from "../lib/storage/articles";
+import { useCollection } from "./useCollection";
+import type { SeriesPlan } from "../domain";
 import { useAgent } from "../lib/ai/agent";
 import { usePanelStore } from "../store/panelStore";
 import { useArticleStore } from "../store/articleStore";
@@ -133,6 +129,7 @@ export function useArticleLifecycleRefs() {
  * plan-series: 从 CollectionTree 触发，打开系列规划器
  */
 export function usePlanSeriesListener() {
+  const { loadCollections } = useCollection();
   const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
@@ -157,13 +154,14 @@ export function usePlanSeriesListener() {
         .catch(err => console.warn("plan-series: 加载合集失败", err));
     };
     return on("plan-series", handler);
-  }, []);
+  }, [loadCollections]);
 }
 
 /**
  * edit-series-plan: 从 SeriesOverview "编辑规划" 触发
  */
 export function useEditSeriesPlanListener() {
+  const { loadCollections, loadSeriesPlan } = useCollection();
   const setSeriesPlannerColId = useArticleStore((s) => s.setSeriesPlannerColId);
   const setSeriesPlannerColTitle = useArticleStore((s) => s.setSeriesPlannerColTitle);
   const setSeriesPlannerFolder = useArticleStore((s) => s.setSeriesPlannerFolder);
@@ -189,13 +187,14 @@ export function useEditSeriesPlanListener() {
       }
     };
     return on("edit-series-plan", handler);
-  }, []);
+  }, [loadCollections, loadSeriesPlan]);
 }
 
 /**
  * plan-series-article: 从 SeriesOverview 触发，导航到规划模式
  */
 export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.MutableRefObject<{ collectionId: string; seriesId: string; articleId: string } | null>) {
+  const { loadSeriesPlan } = useCollection();
   const setActiveArticleId = useArticleStore((s) => s.setActiveArticleId);
   const setActiveCollectionId = useArticleStore((s) => s.setActiveCollectionId);
   const setHasActiveArticle = useArticleStore((s) => s.setHasActiveArticle);
@@ -253,13 +252,14 @@ export function usePlanSeriesArticleListener(pendingSeriesArticleRef: React.Muta
       }
     };
     return on("plan-series-article", handler);
-  }, []);
+  }, [loadSeriesPlan]);
 }
 
 /**
  * series-article-review: 写作完成 → 更新状态为 reviewing
  */
 export function useSeriesArticleReviewListener() {
+  const { loadSeriesPlan, loadAllSeriesPlans, saveSeriesPlan } = useCollection();
   useEffect(() => {
     const handler = async (detail?: EventBusMap["series-article-review"]) => {
       const { articleId, collectionId, seriesId: eventSeriesId } = detail || {};
@@ -288,7 +288,7 @@ export function useSeriesArticleReviewListener() {
       }
     };
     return on("series-article-review", handler);
-  }, []);
+  }, [loadSeriesPlan, loadAllSeriesPlans, saveSeriesPlan]);
 }
 
 /**

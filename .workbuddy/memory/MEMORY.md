@@ -41,6 +41,15 @@
 - **Phase 2**（Sidebar 迁移）：Sidebar/CollectionTree/SearchPanel → useCollection
 - **Phase 3**（EditorPane 迁移）：EditorPane/ArticleFinalPage → useDocument + useCollection
 - **Phase 4**（文章管理器迁移）：ArticleManager → useCollection + useDocument；ArticleFinalPage 补充迁移
+- **Phase 5**（Rust 后端统一存储）：AppStorage 包装 DataStore + Database，store./db. 引用清零
+- **Batch 1 增量迁移**：TrashDialog/ProjectPanel/GeneralSection/ProjectExplorer/DocPicker/useCollectionCrud → useCollection
+
+### 旧存储引用剩余
+- `storage/collections` → ~14 个文件
+- `storage/articles.ts` → ~6 个文件
+- `lib/ai/article/blueprint` → 15 个文件
+- `storage/providerModels` → 7 个文件
+- `storage/platforms` → 7 个文件
 
 ### 新架构层次
 1. **domain/** — 纯数据类型（Document/Collection/Plan/Project/enums）

@@ -1,9 +1,8 @@
 // useArticleLifecycle.ts — 文章 CRUD、阶段切换、规划完成（从 MainEditorPage 抽出）
 import { useCallback, useEffect, useRef } from "react";
-import { loadCollections, addCollection, addArticle,
-  saveSeriesPlan, loadSeriesPlan } from "../lib/storage/collections";
-import { saveBlueprint, loadBlueprint, createDefaultBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
-import { saveArticleContent } from "../lib/storage/articles";
+import { useCollection } from "./useCollection";
+import { useDocument } from "./useDocument";
+import { createDefaultBlueprint, type OutlineSection } from "../lib/ai/article/blueprint";
 import { useAgent } from "../lib/ai/agent";
 import { loadArticleStyleConfig } from "../lib/editor/editorStyles";
 import { ArticleContext } from "../lib/article/ArticleContext";
@@ -41,6 +40,8 @@ function makeSkeletonDoc(plan: { description: string; outline: OutlineSection[] 
 }
 
 export function useArticleLifecycle() {
+  const { loadCollections, createCollection, addArticle, loadSeriesPlan, saveSeriesPlan, loadAllSeriesPlans } = useCollection();
+  const { saveBlueprint, saveArticleContent } = useDocument();
   const {
     applyHeadingNumbersRef, pendingSeriesArticleRef, prevArticleRef,
     styleReady, setStyleReady,
@@ -190,7 +191,6 @@ export function useArticleLifecycle() {
 
   const syncSeriesArticleStatus = useCallback(async (articleId: string, newStatus: string) => {
     try {
-      const { loadAllSeriesPlans, saveSeriesPlan, loadCollections } = await import("../lib/storage/collections");
       const cols = await loadCollections();
       for (const col of cols) {
         const plans = await loadAllSeriesPlans(col.id);
@@ -206,7 +206,7 @@ export function useArticleLifecycle() {
         }
       }
     } catch { console.warn("[ArticleLifecycle] syncSeriesArticleStatus failed (non-critical)"); }
-  }, []);
+  }, [loadCollections, loadAllSeriesPlans, saveSeriesPlan]);
 
   const handlePhaseChange = useCallback((phase: string) => {
     setArticlePhase(phase);
@@ -231,7 +231,7 @@ export function useArticleLifecycle() {
     try {
       const cols = await loadCollections();
       if (!targetId || !cols.some(c => c.id === targetId)) {
-        targetId = cols.length > 0 ? cols[0].id : (await addCollection("默认合集")).id;
+        targetId = cols.length > 0 ? cols[0].id : (await createCollection("默认合集")).id;
       }
     } catch (e) {
       addToast({ type: "error", message: "加载文集列表失败：" + (e as Error).message });
