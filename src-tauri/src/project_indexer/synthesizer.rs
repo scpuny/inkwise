@@ -64,9 +64,16 @@ impl ProjectKnowledge {
         }
 
         if !self.root_signatures.is_empty() {
+            // 注意：不要用 ``` 包裹 root_signatures，因为调用方（如 plan.ts）
+            // 会把整个 projectKnowledge 再包一层 ```，导致嵌套反引号破坏 prompt 结构。
+            // 使用缩进格式或纯文本即可。
             parts.push(format!(
-                "## 核心接口签名\n```\n{}\n```",
-                self.root_signatures.join("\n")
+                "## 核心接口签名\n{}",
+                self.root_signatures
+                    .iter()
+                    .map(|s| format!("  {}", s))
+                    .collect::<Vec<_>>()
+                    .join("\n")
             ));
         }
 

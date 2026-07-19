@@ -277,11 +277,13 @@ export async function generateFullArticleWithTools(
   // Inject synthesized project knowledge so AI understands the project
   // at a high level before using tools to read specific files
   if (projectKnowledge) {
+    // Escape any triple backticks inside knowledge to prevent breaking the outer code block
+    const safeKnowledge = String(projectKnowledge).slice(0, 8000).replace(/```/g, "\\`\\`\\`");
     parts.push("");
     parts.push("## 关联项目知识（重要）");
     parts.push("以上文章必须基于以下真实项目来撰写。以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系），**不要写不属于此项目的内容**。");
     parts.push("```");
-    parts.push(String(projectKnowledge).slice(0, 8000));
+    parts.push(safeKnowledge);
     parts.push("```");
     parts.push("");
     parts.push("在写作过程中，你可以使用 list_project_files、read_project_files、search_project_files 工具读取项目的具体源码文件。");
@@ -391,7 +393,9 @@ export async function generateFullArticleStream(
       lines.push("关联项目：" + input.projectName);
     }
     lines.push("");
-    lines.push("## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + String(projectKnowledge).slice(0, 30000) + "\n```");
+    // Escape triple backticks to prevent nested code block breakage
+    const safeKnowledge = String(projectKnowledge).slice(0, 30000).replace(/```/g, "\\`\\`\\`");
+    lines.push("## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + safeKnowledge + "\n```");
   } else if (input.projectContext) {
     if (input.projectName) {
       lines.push("关联项目：" + input.projectName);
@@ -718,7 +722,7 @@ export async function writeArticleSection(
     input.targetWordCount ? "目标字数：约 " + Math.floor(input.targetWordCount * 0.3) + " 字" : "",
     input.previousSectionTitle ? "上一章标题：" + input.previousSectionTitle : "",
     input.previousSectionContent ? "上一章内容：\n```\n" + input.previousSectionContent.slice(0, 3000) + "\n```" : "",
-    projectKnowledge ? "\n## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + projectKnowledge.slice(0, 4000) + "\n```" : "",
+    projectKnowledge ? "\n## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + projectKnowledge.slice(0, 4000).replace(/```/g, "\\`\\`\\`") + "\n```" : "",
     "",
     "注意：如果需要引用项目代码，请使用 read_project_files 工具读取真实源码。不要自己编造代码示例。",
   ].filter(Boolean).join("\n");
@@ -803,7 +807,9 @@ async function writeArticleSectionLegacy(
 function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
   if (!ctx) return "";
   const header = name ? "项目「" + name + "」的知识摘要" : "项目知识摘要";
-  return "\n\n## " + header + "\n当前写作关联了以下本地项目目录。以下是项目的结构化知识（技术栈、架构、模块职责、入口点、依赖关系），请据此规划文章内容。\n```\n" + ctx.slice(0, 4000) + "\n```";
+  // Escape triple backticks to prevent nested code block breakage
+  const safeCtx = ctx.slice(0, 4000).replace(/```/g, "\\`\\`\\`");
+  return "\n\n## " + header + "\n当前写作关联了以下本地项目目录。以下是项目的结构化知识（技术栈、架构、模块职责、入口点、依赖关系），请据此规划文章内容。\n```\n" + safeCtx + "\n```";
 }
 
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens?: number): Promise<string> {
