@@ -126,6 +126,15 @@ impl Database {
         Ok(db)
     }
 
+    /// 从数据库文件路径直接打开连接（只读模式，用于工具调用等临时场景）
+    pub fn open_with_path(db_path: &std::path::Path) -> SqlResult<Self> {
+        let conn = Connection::open(db_path)?;
+        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA query_only=1;")?;
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
+    }
+
     fn initialize_schema(&self) -> SqlResult<()> {
         let conn = lock_conn(&self.conn)?;
         conn.execute_batch(

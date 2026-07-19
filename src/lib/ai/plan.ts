@@ -5,6 +5,7 @@ import { resolveProviderForModel } from "../config/globalAIConfig";
 import { runAgentLoop, PROJECT_TOOLS, type ProjectToolContext } from "./agent/engine";
 import { isTauriEnv } from "../bridge/tauri";
 import { getEffectivePhaseConfig, loadCustomSkills, getBuiltinSkills, type WritingSkill } from "../ai/writingSkill";
+import { buildProjectKnowledge } from "../utils/projectContext";
 import type { OutlineSection } from "../../domain";
 
 // ─── Types ───
@@ -249,6 +250,18 @@ export async function generateFullArticleWithTools(
     throw new Error("请先在设置中配置 AI 提供商");
   }
 
+  // Fetch synthesized project knowledge when linked folder is available.
+  // This replaces raw projectContext dump with structured knowledge:
+  // "this module is responsible for X, depends on Y and Z"
+  let projectKnowledge = input.projectContext || "";
+  if (input.linkedFolder && !projectKnowledge) {
+    try {
+      projectKnowledge = await buildProjectKnowledge(input.linkedFolder);
+    } catch {
+      // Fallback: AI can still use tools to explore the project
+    }
+  }
+
   // Build user prompt
   const parts: string[] = [];
   parts.push("请根据以下信息写一篇完整的文章：");
@@ -261,16 +274,17 @@ export async function generateFullArticleWithTools(
   if (input.targetAudience) parts.push("目标读者：" + input.targetAudience);
   if (input.targetWordCount) parts.push("目标字数：约 " + input.targetWordCount + " 字");
 
-  // Include project structure context so AI doesn't need to re-explore
-  if (input.projectContext) {
+  // Inject synthesized project knowledge so AI understands the project
+  // at a high level before using tools to read specific files
+  if (projectKnowledge) {
     parts.push("");
-    parts.push("## 关联项目结构（重要）");
-    parts.push("以上文章必须基于以下真实项目来撰写。这是项目的目录结构和关键文件索引，**不要写不属于此项目的内容**。");
+    parts.push("## 关联项目知识（重要）");
+    parts.push("以上文章必须基于以下真实项目来撰写。以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系），**不要写不属于此项目的内容**。");
     parts.push("```");
-    parts.push(String(input.projectContext || "").slice(0, 8000));
+    parts.push(String(projectKnowledge).slice(0, 8000));
     parts.push("```");
     parts.push("");
-    parts.push("在开始写作前，请先使用 list_project_files 或 read_project_files 工具了解此项目的真实功能。");
+    parts.push("在写作过程中，你可以使用 list_project_files、read_project_files、search_project_files 工具读取项目的具体源码文件。");
   }
 
   parts.push("");
@@ -364,7 +378,21 @@ export async function generateFullArticleStream(
   if (input.targetAudience) lines.push("目标读者：" + input.targetAudience);
   if (input.targetWordCount) lines.push("目标字数：约 " + input.targetWordCount + " 字");
 
-  if (input.projectContext) {
+  // Fetch synthesized knowledge when linked folder is available
+  let projectKnowledge = input.projectContext || "";
+  if (input.linkedFolder && !projectKnowledge) {
+    try {
+      projectKnowledge = await buildProjectKnowledge(input.linkedFolder);
+    } catch { /* fallback to raw context */ }
+  }
+
+  if (projectKnowledge) {
+    if (input.projectName) {
+      lines.push("关联项目：" + input.projectName);
+    }
+    lines.push("");
+    lines.push("## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + String(projectKnowledge).slice(0, 30000) + "\n```");
+  } else if (input.projectContext) {
     if (input.projectName) {
       lines.push("关联项目：" + input.projectName);
     }
@@ -429,6 +457,12 @@ export async function* generatePlanStream(input: PlanInput, stage1?: boolean): A
   if (input.linkedFolder) {
     const { getStoredProjectInsights } = await import("../storage/collections/projectContext");
     projectInsights = getStoredProjectInsights(input.collectionId || "") || "";
+    if (!projectInsights) {
+      // Try synthesized knowledge first (faster than AI exploration)
+      try {
+        projectInsights = await buildProjectKnowledge(input.linkedFolder);
+      } catch { /* will fall through to AI exploration */ }
+    }
     if (!projectInsights) {
       projectInsights = await exploreProjectStructure(input.linkedFolder).catch(function(e: any) {
         console.warn("[generatePlanStream] Project exploration failed:", e);
@@ -664,6 +698,14 @@ export async function writeArticleSection(
     systemPrompt = "整体基调：" + input.tone + "。\n\n" + systemPrompt;
   }
 
+  // Fetch synthesized project knowledge for context
+  let projectKnowledge = "";
+  if (input.linkedFolder) {
+    try {
+      projectKnowledge = await buildProjectKnowledge(input.linkedFolder);
+    } catch { /* AI can still use tools */ }
+  }
+
   const userPrompt = [
     "请写文章的以下章节：",
     "",
@@ -676,6 +718,7 @@ export async function writeArticleSection(
     input.targetWordCount ? "目标字数：约 " + Math.floor(input.targetWordCount * 0.3) + " 字" : "",
     input.previousSectionTitle ? "上一章标题：" + input.previousSectionTitle : "",
     input.previousSectionContent ? "上一章内容：\n```\n" + input.previousSectionContent.slice(0, 3000) + "\n```" : "",
+    projectKnowledge ? "\n## 关联项目知识\n以下是项目的结构化知识摘要（技术栈、架构、模块职责、入口点、依赖关系）：\n```\n" + projectKnowledge.slice(0, 4000) + "\n```" : "",
     "",
     "注意：如果需要引用项目代码，请使用 read_project_files 工具读取真实源码。不要自己编造代码示例。",
   ].filter(Boolean).join("\n");
@@ -759,8 +802,8 @@ async function writeArticleSectionLegacy(
 
 function buildProjectContextBlockForPlan(ctx: string, name?: string): string {
   if (!ctx) return "";
-  const header = name ? "项目「" + name + "」的上下文信息" : "项目上下文信息";
-  return "\n\n## " + header + "\n当前写作关联了以下本地项目目录，请参考项目结构、代码符号和配置来进行写作。\n```\n" + ctx.slice(0, 4000) + "\n```";
+  const header = name ? "项目「" + name + "」的知识摘要" : "项目知识摘要";
+  return "\n\n## " + header + "\n当前写作关联了以下本地项目目录。以下是项目的结构化知识（技术栈、架构、模块职责、入口点、依赖关系），请据此规划文章内容。\n```\n" + ctx.slice(0, 4000) + "\n```";
 }
 
 async function askAI(systemPrompt: string, userPrompt: string, maxTokens?: number): Promise<string> {

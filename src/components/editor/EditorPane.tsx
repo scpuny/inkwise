@@ -10,6 +10,7 @@ import { emit, on } from "../../lib/events/eventBus";
 import { ArticleCtx } from "../../lib/article/ArticleContext";
 import { DEFAULT_STYLE_CONFIG, createDefaultDocument } from "../../domain";
 import { getProjectContext } from "../../lib/storage/collections/projectContext";
+import { buildProjectKnowledge } from "../../lib/utils/projectContext";
 import { StartupSplash } from "../common/StartupSplash";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { parseOutlineFromMarkdown, type BlueprintOutlineItem, type OutlineItem } from "../sidebar/OutlinePanel";
@@ -123,6 +124,7 @@ export function EditorPane({
   const writtenContentRef = useRef<string | null>(null); // written content from plan flow
   const contentInjectedFromPlanRef = useRef(false); // true when handleEnterEditor injected content
   const folderContextRef = useRef<string>("");
+  const linkedFolderRef = useRef<string | undefined>(undefined);
   const seriesCtxRef = useRef<string>("");
   const [projectName, setProjectName] = useState<string>("");
   const [projectFiles, setProjectFiles] = useState<string[]>([]);
@@ -1321,13 +1323,12 @@ export function EditorPane({
       : docContent;
 
     // Prepend project context if available (prefer planning exploration result)
-    const projectCtx = partialPlan.projectInsights || folderContextRef.current || "";
-    let ctxWithFolder = projectCtx
-      ? `## 项目结构
-以下是你已经知道的当前项目目录结构和关键文件。不要重新探索目录结构，直接读具体文件取代码示例。
-\`\`\`
-${String(projectCtx || "").slice(0, 8000)}
-\`\`\`
+    // Note: project knowledge is now injected by the Rust backend via projectPath
+    // We only inject projectInsights here (from AI exploration) as supplementary context
+    const projectInsights = partialPlan.projectInsights || "";
+    let ctxWithFolder = projectInsights
+      ? `## 项目分析报告
+${String(projectInsights || "").slice(0, 4000)}
 
 ${augmentedContent}`
       : augmentedContent;
@@ -1341,11 +1342,15 @@ ${augmentedContent}`
 ${seriesCtx}`;
     }
 
+    // Get linked folder path for project knowledge injection
+    const linkedFolder = linkedFolderRef.current;
+
     execute(input, {
       selection,
       beforeContent: ctxWithFolder,
       blueprint,
       currentSectionId: activeSectionId || undefined,
+      projectPath: linkedFolder,
     });
   }, [activeArticleId, blueprint, activeSectionId, execute]);
 
@@ -1365,17 +1370,24 @@ ${seriesCtx}`;
     const _linkedFolder = targetCollectionId
       ? (await import("../../lib/storage/collections").then(m => m.loadCollections())).find(c => c.id === targetCollectionId)?.linkedFolder || undefined
       : undefined;
-    // Also update project context if we got an explicit collectionId from event
+    // Fetch synthesized project knowledge for AI planning phase.
+    // Knowledge synthesizer produces structured knowledge (tech stack,
+    // architecture, module responsibilities, entry points, dependencies)
+    // which gives AI a deep understanding before generating title/outline.
     const targetFolderContext = (input.planCollectionId && _linkedFolder && !folderContextRef.current)
       ? await (async () => {
           try {
-            const { buildContextText } = await import("../../lib/utils/projectContext");
-            return await buildContextText(_linkedFolder, undefined);
+            return await buildProjectKnowledge(_linkedFolder);
           } catch {
             try {
-              const { getCollectionFolderContext } = await import("../../lib/storage/collections");
-              return await getCollectionFolderContext(input.planCollectionId!);
-            } catch { return undefined; }
+              const { buildContextText } = await import("../../lib/utils/projectContext");
+              return await buildContextText(_linkedFolder, undefined);
+            } catch {
+              try {
+                const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+                return await getCollectionFolderContext(input.planCollectionId!);
+              } catch { return undefined; }
+            }
           }
         })()
       : undefined;
@@ -1383,13 +1395,17 @@ ${seriesCtx}`;
     let projectCtx = folderContextRef.current;
     if (!projectCtx && _linkedFolder) {
       try {
-        const { buildContextText } = await import("../../lib/utils/projectContext");
-        projectCtx = await buildContextText(_linkedFolder, undefined);
+        projectCtx = await buildProjectKnowledge(_linkedFolder);
       } catch {
         try {
-          const { getCollectionFolderContext } = await import("../../lib/storage/collections");
-          projectCtx = await getCollectionFolderContext(activeCollectionId!);
-        } catch {}
+          const { buildContextText } = await import("../../lib/utils/projectContext");
+          projectCtx = await buildContextText(_linkedFolder, undefined);
+        } catch {
+          try {
+            const { getCollectionFolderContext } = await import("../../lib/storage/collections");
+            projectCtx = await getCollectionFolderContext(activeCollectionId!);
+          } catch {}
+        }
       }
     }
     // CRITICAL: Save loaded context back to ref so it persists for confirm/writing phase
@@ -1643,17 +1659,24 @@ ${seriesDescription || ""}`
     loadCollections().then(cols => {
       const col = cols.find(c => c.id === activeCollectionId);
       if (col?.linkedFolder) {
-        import("../../lib/utils/projectContext").then(({ buildContextText }) => {
-          buildContextText(col.linkedFolder!, undefined).then(ctx => {
-            if (ctx) folderContextRef.current = ctx;
-          });
+        linkedFolderRef.current = col.linkedFolder;
+        // Use synthesized knowledge instead of raw project context dump.
+        // Knowledge synthesizer produces structured knowledge (tech stack,
+        // architecture, module responsibilities, entry points, dependencies)
+        // which is far more useful for AI than raw symbol/import lists.
+        buildProjectKnowledge(col.linkedFolder).then(ctx => {
+          if (ctx) folderContextRef.current = ctx;
         }).catch(() => {
-          import("../../lib/storage/collections").then(({ getCollectionFolderContext }) => {
-            getCollectionFolderContext(activeCollectionId!).then(ctx => {
+          // Fallback: try raw context if knowledge synthesis fails
+          import("../../lib/utils/projectContext").then(({ buildContextText }) => {
+            buildContextText(col.linkedFolder!, undefined).then(ctx => {
               if (ctx) folderContextRef.current = ctx;
             });
           });
         });
+      } else {
+        linkedFolderRef.current = undefined;
+        folderContextRef.current = "";
       }
     });
   }, [activeCollectionId, hasActiveArticle]);

@@ -387,10 +387,19 @@ pub(crate) async fn dispatch_tool_call(call: &ai::ToolCall, context: &AgentConte
         }
 
         "vector_search" => {
-            format!(
-                "向量搜索功能尚未集成（查询: {}）",
-                args["query"].as_str().unwrap_or("")
-            )
+            let query = args["query"].as_str().unwrap_or("");
+            let limit = args["limit"].as_u64().unwrap_or(5) as usize;
+            if query.is_empty() {
+                return "错误：未指定搜索查询".to_string();
+            }
+            if let Some(ref search_fn) = context.vector_search_fn {
+                match search_fn(query, limit) {
+                    Ok(result) => result,
+                    Err(e) => format!("向量搜索失败: {}", e),
+                }
+            } else {
+                "向量搜索不可用（嵌入器未加载或数据库未初始化）。请使用 search_project_files 或 read_project_files 工具替代。".to_string()
+            }
         }
 
         "call_web_search" => {

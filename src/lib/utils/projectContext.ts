@@ -1,7 +1,7 @@
 // projectContext.ts — 项目上下文桥接层
 // 提供前端构建 AI prompt 时使用的项目上下文字符串生成
 
-import { getProjectContextText } from "../storage/collections/projectContext";
+import { getProjectContextText, getProjectKnowledge } from "../storage/collections/projectContext";
 import type { ProjectContext } from "../../domain";
 
 /**
@@ -19,6 +19,24 @@ export async function buildContextText(
   if (projectPath) {
     try {
       return await getProjectContextText(projectPath);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+/**
+ * 获取合成的项目知识文本（替代原始 build_context_text dump）。
+ * 由 Rust 端 KnowledgeSynthesizer 从 ProjectContext 数据合成：
+ * 技术栈/架构模式/模块职责/入口点/依赖关系/接口签名。
+ */
+export async function buildProjectKnowledge(
+  projectPath: string,
+): Promise<string> {
+  if (projectPath) {
+    try {
+      return await getProjectKnowledge(projectPath);
     } catch {
       return "";
     }

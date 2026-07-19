@@ -1,5 +1,5 @@
 # InkWise · v3.0 功能跟踪表
-> 最后更新: 2026-07-12 | 分支: `codex/v3.0-s6` → `main` | 状态: 🟢 v3.0 架构迁移完成
+> 最后更新: 2026-07-19 | 分支: `main` | 状态: 🟢 Sprint 10 完成（AI 写作增强 + 知识综合器）
 
 ---
 
@@ -526,3 +526,34 @@ v3.0 全量功能迁移已完成。详见 [20-migration-plan.md](20-migration-pl
 ```
 完成：8 / 8 (100%)  |  P0：2/2  |  P1：5/5  |  P2：1/1
 ```
+
+---
+
+## Sprint 10：AI 写作增强 + 知识综合器（目标：v3.1.0-alpha）
+
+> **周期**：2026-07-12 → 2026-07-19 | **分支**：`main` | **状态**：🟢 已完成
+>
+> **目标**：root_contexts 激活 + 知识综合器将原始扫描数据合成结构化项目知识 + 注入 Agent prompt + 向量搜索工具接线 + 写作流程使用合成知识替代原始数据 dump
+
+| # | 功能点 | 类型 | 优先级 | 状态 | 完成日 |
+|---|--------|:----:|:------:|:----:|:------:|
+| 10.1 | **激活 root_contexts** — `scan_project`/`rescan_project_incremental` 调用 `extract_root_context` | 后端 | P0 | 🟢 | 07-19 |
+| 10.2 | **创建知识综合器** — `KnowledgeSynthesizer`（技术栈/架构/模块职责/入口点/依赖关系/接口签名） | 后端 | P0 | 🟢 | 07-19 |
+| 10.3 | **AgentContext 扩展 + prompt 注入** — `project_knowledge` 字段 + prompt 中注入合成知识 | AI | P0 | 🟢 | 07-19 |
+| 10.4 | **向量搜索工具集成** — `vector_search` 工具从占位文本改为实际调用 `semantic_search()` 回调 | AI | P1 | 🟢 | 07-19 |
+| 10.5 | **ContextPlan 实际注入** — 按 `requiredContexts` 获取真实项目数据 | AI | P1 | 🟢 | 07-19 |
+| 10.6 | **关联目录写作增强** — `generateFullArticleWithTools`/`writeArticleSection`/`generatePlanStream` 使用合成知识替代原始 `buildContextText` dump | AI | P1 | 🟢 | 07-19 |
+| 10.7 | **构建验证 + 提交** — tsc + vite build + cargo check 全部通过 | 工程 | P1 | 🟢 | 07-19 |
+
+### Sprint 10 完成率
+
+```
+完成：7 / 7 (100%)  |  P0：3/3  |  P1：4/4  |  P2：0/0
+```
+
+### Sprint 10 统计
+
+| 类别 | 总数 | 🟢 完成 | 🔴 未开始 | 完成率 |
+|------|------|---------|-----------|--------|
+| **Sprint 10 功能** | **7** | **7** | **0** | **100%** |
+| **总计** | **158** | **154** | **4** | **97%** |

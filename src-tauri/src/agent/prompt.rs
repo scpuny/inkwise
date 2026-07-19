@@ -29,33 +29,50 @@ pub fn build_agent_prompt(skill: &Skill, context: &AgentContext, plan: &ContextP
         prompt.push_str("\n");
     }
 
-    // ─── ContextPlan: 要求注入的上下文 ───
-    if !plan.required_contexts.is_empty() {
-        prompt.push_str("## 已注入的上下文\n");
-        for ctx in &plan.required_contexts {
-            let source_str = match ctx.source {
-                crate::agent::ContextSourceKind::GitDiff => "Git 变更记录",
-                crate::agent::ContextSourceKind::AstSymbols => "AST 符号表",
-                crate::agent::ContextSourceKind::ConfigFile => "配置文件",
-                crate::agent::ContextSourceKind::VectorSearch => "向量语义检索",
-                crate::agent::ContextSourceKind::ArticleSeries => "系列文章规划",
-                crate::agent::ContextSourceKind::PublishHistory => "发布历史",
-                crate::agent::ContextSourceKind::ProjectStructure => "项目结构",
-                crate::agent::ContextSourceKind::DocumentContent => "文档内容",
-                crate::agent::ContextSourceKind::SelectedText => "选中文本",
-            };
-            let scope_str = match ctx.scope.as_str() {
-                "changed_files" => "仅变更文件",
-                "full_project" => "全量",
-                "related_only" => "关联项",
-                _ => &ctx.scope,
-            };
-            prompt.push_str(&format!(
-                "- {}（范围: {}, Token预算: {}, 优先级: {}/5）\n",
-                source_str, scope_str, ctx.max_tokens, ctx.priority
-            ));
+    // ─── 注入合成后的项目知识（替代原始数据 dump）───
+    if let Some(ref knowledge) = context.project_knowledge {
+        if !knowledge.is_empty() {
+            prompt.push_str("# 关联项目知识\n\n");
+            prompt.push_str("以下是基于项目目录自动合成的结构化知识摘要，请在写作时参考：\n\n");
+            prompt.push_str(knowledge);
+            prompt.push_str("\n\n");
         }
-        prompt.push_str("\n");
+    }
+
+    // ─── ContextPlan: 声明其他上下文来源（非项目知识部分）───
+    if !plan.required_contexts.is_empty() {
+        let non_project_contexts: Vec<_> = plan
+            .required_contexts
+            .iter()
+            .filter(|c| !matches!(c.source, crate::agent::ContextSourceKind::ProjectStructure))
+            .collect();
+        if !non_project_contexts.is_empty() {
+            prompt.push_str("## 其他上下文来源\n");
+            for ctx in non_project_contexts {
+                let source_str = match ctx.source {
+                    crate::agent::ContextSourceKind::GitDiff => "Git 变更记录",
+                    crate::agent::ContextSourceKind::AstSymbols => "AST 符号表",
+                    crate::agent::ContextSourceKind::ConfigFile => "配置文件",
+                    crate::agent::ContextSourceKind::VectorSearch => "向量语义检索",
+                    crate::agent::ContextSourceKind::ArticleSeries => "系列文章规划",
+                    crate::agent::ContextSourceKind::PublishHistory => "发布历史",
+                    crate::agent::ContextSourceKind::ProjectStructure => "项目结构",
+                    crate::agent::ContextSourceKind::DocumentContent => "文档内容",
+                    crate::agent::ContextSourceKind::SelectedText => "选中文本",
+                };
+                let scope_str = match ctx.scope.as_str() {
+                    "changed_files" => "仅变更文件",
+                    "full_project" => "全量",
+                    "related_only" => "关联项",
+                    _ => &ctx.scope,
+                };
+                prompt.push_str(&format!(
+                    "- {}（范围: {}, Token预算: {}, 优先级: {}/5）\n",
+                    source_str, scope_str, ctx.max_tokens, ctx.priority
+                ));
+            }
+            prompt.push_str("\n");
+        }
     }
 
     // Inject blueprint context (article structure)

@@ -24,6 +24,6 @@ export {
 } from "./search";
 
 export {
-  linkCollectionFolder, getProjectContext, getProjectContextText,
+  linkCollectionFolder, getProjectContext, getProjectContextText, getProjectKnowledge,
   rescanProjectFolder, readProjectFiles, findAndReadRelevantFiles,
 } from "./projectContext";

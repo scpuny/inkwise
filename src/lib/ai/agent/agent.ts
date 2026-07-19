@@ -121,7 +121,7 @@ export interface AgentActions {
   openCommandBar: () => void;
   closeCommandBar: () => void;
   setCommandBarText: (text: string) => void;
-  execute: (input: string, options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string; inlineReplace?: boolean }) => Promise<void>;
+  execute: (input: string, options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string; inlineReplace?: boolean; projectPath?: string }) => Promise<void>;
   cancel: () => void;
   acceptGhost: () => void;
   rejectGhost: () => void;

@@ -1,14 +1,16 @@
 // project_indexer/ — Project Indexer 模块（v2.0.0 重构）
 //
 // 拆分说明：
-//   types.rs    — 类型定义（ProjectContext / FileNode / SymbolInfo 等）
-//   scanner.rs  — 扫描逻辑（scan_project / treesitter / hash cache）
-//   watcher.rs  — 文件夹监听 + 上下文文本构建
+//   types.rs        — 类型定义（ProjectContext / FileNode / SymbolInfo 等）
+//   scanner.rs      — 扫描逻辑（scan_project / treesitter / hash cache）
+//   watcher.rs      — 文件夹监听 + 上下文文本构建
+//   synthesizer.rs  — 知识综合器（原始数据 → 结构化项目知识摘要）
 
 pub(crate) mod scanner;
 pub(crate) mod snapshot;
 pub(crate) mod watcher;
 pub(crate) mod types;
+pub(crate) mod synthesizer;
 
 // Re-export public types and functions
 pub use types::*;
@@ -16,6 +18,7 @@ pub use scanner::scan_project;
 pub use scanner::rescan_project_incremental;
 pub use snapshot::{IndexSnapshot, save_snapshot, snapshot_dir_files};
 pub use watcher::{build_context_text, spawn_folder_watcher};
+pub use synthesizer::{synthesize_knowledge, ProjectKnowledge};
 
 /// 所有支持索引/监听/快照的文本文件扩展名（不含点号）
 /// 与 scanner::detect_language + snapshot::is_text_file 保持同步

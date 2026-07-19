@@ -244,6 +244,15 @@ export async function getProjectContextText(path: string): Promise<string> {
   } catch { return ""; }
 }
 
+export async function getProjectKnowledge(path: string): Promise<string> {
+  try {
+    return await invokeOrFallback<string>(
+      TauriCommands.GetProjectKnowledge, { path },
+      () => "",
+    );
+  } catch { return ""; }
+}
+
 export async function rescanProjectFolder(path: string): Promise<ProjectContext> {
   return await tryInvoke<ProjectContext>(
     TauriCommands.RescanProjectFolder, { path }

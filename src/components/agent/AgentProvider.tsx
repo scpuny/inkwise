@@ -48,7 +48,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   // ── Execute (core AI execution) ──
   const execute = useCallback(async (
     input: string,
-    options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string; inlineReplace?: boolean },
+    options?: { intent?: string; selection?: { from: number; to: number }; beforeContent?: string; blueprint?: any; currentSectionId?: string; inlineReplace?: boolean; projectPath?: string },
   ) => {
     // Allow empty input only for continue-writing (ghost text mode)
     if (!input.trim() && options?.intent !== "continue-writing") return;
@@ -156,7 +156,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           selection ? beforeContent.slice(selection.from, selection.to) : "",
           options?.blueprint,
           options?.currentSectionId,
-          undefined, // projectPath
+          options?.projectPath, // projectPath — 传递关联项目路径给后端，触发知识合成
           model,
           providerId, // providerId
         );

@@ -481,6 +481,63 @@ async fn run_skill(
         let _ = app_clone.emit("chat:token", serde_json::json!({ "token": token }));
     }));
 
+    // 合成项目知识（如果关联了项目目录）
+    let project_knowledge = if let Some(ref pp) = project_path {
+        if !pp.is_empty() && std::path::Path::new(pp).is_dir() {
+            match crate::project_indexer::scan_project(pp, false) {
+                Ok(ctx) => {
+                    let knowledge = crate::project_indexer::synthesize_knowledge(&ctx);
+                    Some(knowledge.to_markdown())
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // 构建向量搜索回调
+    let vector_search_fn: agent::VectorSearchFn = {
+        let db_path = state.storage.data_dir().join("data").join("inkwise.db");
+        let embedder_guard = state.embedder.lock().map_err(|e| e.to_string()).ok();
+        match embedder_guard {
+            Some(state_ref) => {
+                match &*state_ref {
+                    EmbedderState::Ready(emb) => {
+                        let emb = emb.clone();
+                        Some(std::sync::Arc::new(move |query: &str, limit: usize| {
+                            let db = db::Database::open_with_path(&db_path)
+                                .map_err(|e| format!("数据库打开失败: {}", e))?;
+                            let results = semantic_search(&db, &emb, query, None, limit, 0.6)
+                                .map_err(|e| format!("搜索失败: {}", e))?;
+                            if results.is_empty() {
+                                Ok("未找到匹配结果".to_string())
+                            } else {
+                                let formatted: Vec<String> = results
+                                    .iter()
+                                    .map(|r| {
+                                        format!(
+                                            "- **{}** (相似度: {:.2})\n  文章: {}\n  内容预览: {}...",
+                                            r.chunk_id,
+                                            r.score,
+                                            r.article_id,
+                                            r.content.chars().take(200).collect::<String>()
+                                        )
+                                    })
+                                    .collect();
+                                Ok(format!("找到 {} 条语义匹配结果：\n{}", results.len(), formatted.join("\n")))
+                            }
+                        }))
+                    }
+                    _ => None,
+                }
+            }
+            None => None,
+        }
+    };
+
     let agent_context = agent::AgentContext {
         document_content: document_content.unwrap_or_default(),
         selected_text,
@@ -488,6 +545,8 @@ async fn run_skill(
         blueprint,
         current_section_id,
         project_path,
+        project_knowledge,
+        vector_search_fn,
     };
 
     let result = agent::execute_agent(&skill, &config, &agent_context, on_token).await?;
@@ -1176,6 +1235,21 @@ async fn get_project_context_text(state: tauri::State<'_, AppState>, path: Strin
 }
 
 #[tauri::command]
+async fn get_project_knowledge(state: tauri::State<'_, AppState>, path: String) -> Result<String, String> {
+    let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
+    let knowledge = crate::project_indexer::synthesize_knowledge(&ctx);
+    Ok(knowledge.to_markdown())
+}
+
+#[tauri::command]
+async fn get_project_knowledge_struct(state: tauri::State<'_, AppState>, path: String) -> Result<crate::project_indexer::ProjectKnowledge, String> {
+    let ctx = scan_project(&path, false)?;
+    save_project_snapshot(&state, &path);
+    Ok(crate::project_indexer::synthesize_knowledge(&ctx))
+}
+
+#[tauri::command]
 async fn rescan_project_folder(state: tauri::State<'_, AppState>, path: String) -> Result<ProjectContext, String> {
     let ctx = scan_project(&path, true)?;
     save_project_snapshot(&state, &path);
@@ -1827,7 +1901,7 @@ pub fn run() {
                             match Embedder::new(&mdl) {
                                 Ok(e) => {
                                     println!("[向量] 嵌入器就绪 (bge-small-zh-v1.5, {}d)", e.hidden_size);
-                                    *slot.lock().unwrap() = EmbedderState::Ready(e);
+                                    *slot.lock().unwrap() = EmbedderState::Ready(Arc::new(e));
                                 }
                                 Err(e) => {
                                     eprintln!("[向量] 嵌入器初始化失败: {}", e);
@@ -1940,6 +2014,8 @@ pub fn run() {
             unlink_collection_folder,
             get_project_context,
             get_project_context_text,
+            get_project_knowledge,
+            get_project_knowledge_struct,
             rescan_project_folder,
             rescan_project_folder_incremental,
             read_project_files,

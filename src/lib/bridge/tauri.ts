@@ -48,6 +48,8 @@ export enum TauriCommands {
   LinkCollectionFolder = "link_collection_folder",
   GetProjectContext = "get_project_context",
   GetProjectContextText = "get_project_context_text",
+  GetProjectKnowledge = "get_project_knowledge",
+  GetProjectKnowledgeStruct = "get_project_knowledge_struct",
   RescanProjectFolder = "rescan_project_folder",
   RescanProjectFolderIncremental = "rescan_project_folder_incremental",
   SaveAllSeriesPlans = "save_all_series_plans",

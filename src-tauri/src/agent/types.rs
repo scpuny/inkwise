@@ -1,6 +1,7 @@
 // agent/types.rs — Agent 类型定义（AgentResult / ContextPlan / AgentContext）
 use crate::domain::ArticleBlueprint;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 // ─── Agent execution result ───
 
@@ -9,6 +10,12 @@ pub struct AgentResult {
     pub content: String,
     pub steps: Vec<String>,
 }
+
+// ─── Vector search callback ───
+
+/// 向量搜索回调函数类型
+/// 接收 (query, limit)，返回格式化的搜索结果文本
+pub type VectorSearchFn = Option<Arc<dyn Fn(&str, usize) -> Result<String, String> + Send + Sync>>;
 
 // ─── ContextPlan (精准上下文注入计划) ───
 
@@ -80,4 +87,9 @@ pub struct AgentContext {
     pub current_section_id: Option<String>,
     /// 关联项目根目录（用于文件级工具调用）
     pub project_path: Option<String>,
+    /// 合成后的项目知识文本（由 KnowledgeSynthesizer 生成）
+    /// 替代原始 build_context_text dump，包含技术栈/架构/模块职责/入口点等
+    pub project_knowledge: Option<String>,
+    /// 向量搜索回调（由 lib.rs 注入，用于 vector_search 工具）
+    pub vector_search_fn: VectorSearchFn,
 }

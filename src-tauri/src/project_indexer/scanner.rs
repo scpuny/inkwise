@@ -395,11 +395,37 @@ fn ext_to_query_lang(ext: &str) -> Option<&'static str> {
 
 /// 加载 .scm 查询文件文本
 fn load_query_text(lang_name: &str, layer: &str) -> Option<String> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tree-sitter-queries")
-        .join(layer)
-        .join(format!("{}.scm", lang_name));
-    std::fs::read_to_string(&path).ok()
+        .join(layer);
+
+    // root-context 层：子目录结构 root-context/{type}/{lang}.scm
+    // 读取所有子目录中匹配的 .scm 文件并拼接
+    if layer == "root-context" {
+        let mut combined = String::new();
+        if let Ok(entries) = std::fs::read_dir(&base) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    let scm_path = entry.path().join(format!("{}.scm", lang_name));
+                    if let Ok(content) = std::fs::read_to_string(&scm_path) {
+                        if !combined.is_empty() {
+                            combined.push('\n');
+                        }
+                        combined.push_str(&content);
+                    }
+                }
+            }
+        }
+        if combined.is_empty() {
+            None
+        } else {
+            Some(combined)
+        }
+    } else {
+        // code-snippet / import 层：扁平结构 {layer}/{lang}.scm
+        let path = base.join(format!("{}.scm", lang_name));
+        std::fs::read_to_string(&path).ok()
+    }
 }
 
 // ─── tree-sitter Query 执行结果类型 ───
@@ -1221,6 +1247,9 @@ pub fn scan_project(path: &str, force_rescan: bool) -> Result<ProjectContext, St
         (vec![], vec![])
     };
 
+    // 7. Root contexts — 从源码提取顶层结构签名
+    let root_contexts = scan_root_contexts(dir);
+
     Ok(ProjectContext {
         name: project_name,
         root_path: dir.to_string_lossy().to_string(),
@@ -1231,7 +1260,7 @@ pub fn scan_project(path: &str, force_rescan: bool) -> Result<ProjectContext, St
         symbols,
         imports,
         codegraph_available,
-        root_contexts: vec![],
+        root_contexts,
     })
 }
 
@@ -1354,6 +1383,9 @@ pub fn rescan_project_incremental(
     symbols.sort_by(|a, b| a.file_path.cmp(&b.file_path));
     imports.sort_by(|a, b| a.source.cmp(&b.source));
 
+    // Root contexts — 增量扫描也重新提取（因为结构可能已变）
+    let root_contexts = scan_root_contexts(dir);
+
     Ok(ProjectContext {
         name: project_name,
         root_path: dir.to_string_lossy().to_string(),
@@ -1364,8 +1396,64 @@ pub fn rescan_project_incremental(
         symbols,
         imports,
         codegraph_available,
-        root_contexts: vec![],
+        root_contexts,
     })
+}
+
+/// 扫描项目根上下文 — 从源码中提取函数签名/类声明等高层结构
+/// 遍历所有 tree-sitter 支持的文件，提取 root-context 层信息
+/// 限制最多 100 个文件，输出最多 80 行签名，避免过度膨胀
+fn scan_root_contexts(dir: &Path) -> Vec<String> {
+    let mut contexts = Vec::new();
+    let mut file_count = 0usize;
+    const MAX_FILES: usize = 100;
+    const MAX_CONTEXT_LINES: usize = 80;
+
+    fn walk(dir: &Path, base: &Path, contexts: &mut Vec<String>, file_count: &mut usize) {
+        if *file_count >= MAX_FILES || contexts.len() >= MAX_CONTEXT_LINES {
+            return;
+        }
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            if *file_count >= MAX_FILES || contexts.len() >= MAX_CONTEXT_LINES {
+                return;
+            }
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if should_ignore(&name) {
+                continue;
+            }
+            if path.is_dir() {
+                walk(&path, base, contexts, file_count);
+            } else {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if !ts_supported_ext(ext) {
+                    continue;
+                }
+                let rel = path
+                    .strip_prefix(base)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string();
+                let content = match std::fs::read_to_string(&path) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+                let mut ctx = extract_root_context(&content, ext);
+                if !ctx.is_empty() {
+                    contexts.push(format!("// {}", rel));
+                    contexts.append(&mut ctx);
+                }
+                *file_count += 1;
+            }
+        }
+    }
+    walk(dir, dir, &mut contexts, &mut file_count);
+    contexts.truncate(MAX_CONTEXT_LINES);
+    contexts
 }
 
 // 全量扫描（忽略缓存）
